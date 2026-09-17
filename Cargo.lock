@@ -3802,15 +3802,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mesh-llm-gpu-bench"
-version = "0.76.1"
-dependencies = [
- "serde",
- "serde_json",
- "tracing",
-]
-
-[[package]]
 name = "mesh-llm-host-runtime"
 version = "0.76.1"
 dependencies = [
@@ -4083,7 +4074,6 @@ dependencies = [
  "libloading",
  "mesh-llm-build-info",
  "mesh-llm-events",
- "mesh-llm-gpu-bench",
  "mesh-llm-release-footer",
  "reqwest",
  "semver",
@@ -4091,6 +4081,7 @@ dependencies = [
  "serde_json",
  "serial_test 4.0.1",
  "sha2 0.11.0",
+ "skippy-gpu-bench",
  "skippy-native-runtime",
  "skippy-runtime",
  "skippy-runtime-install",
@@ -7246,6 +7237,15 @@ name = "skippy-ffi"
 version = "0.76.1"
 dependencies = [
  "libloading",
+]
+
+[[package]]
+name = "skippy-gpu-bench"
+version = "0.76.1"
+dependencies = [
+ "serde",
+ "serde_json",
+ "tracing",
 ]
 
 [[package]]
