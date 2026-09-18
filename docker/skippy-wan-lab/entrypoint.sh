@@ -629,7 +629,7 @@ run_stage() {
     )
   fi
 
-  exec skippy-server "${args[@]}"
+  exec skippy "${args[@]}"
 }
 
 run_prompt() {

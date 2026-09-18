@@ -136,7 +136,7 @@ class LlamaUpstreamCanaryWorkflowTests(unittest.TestCase):
         self.assertNotIn('cargo ', commands)
         wrapper = (ROOT / 'scripts/llama-canary-agent-repair.sh').read_text()
         self.assertIn('arch -arm64 bash scripts/build-llama.sh -DCMAKE_OSX_ARCHITECTURES=arm64', wrapper)
-        self.assertIn('cargo build -p skippy-runtime -p skippy-server', wrapper)
+        self.assertIn('cargo build -p skippy-runtime -p skippy-cli', wrapper)
         self.assertIn('lipo -archs', wrapper)
         self.assertEqual(build['env']['LLAMA_STAGE_BACKEND'], 'metal')
         self.assertIn('inputs.pass_id', build['env']['LLAMA_STAGE_BUILD_DIR'])
@@ -872,7 +872,7 @@ class SkippyFamilyBatteryTests(unittest.TestCase):
                 "JSON\n",
                 encoding="utf-8",
             )
-            for name in ("skippy-correctness", "skippy-server", "skippy-topology-plan"):
+            for name in ("skippy-correctness", "skippy", "skippy-topology-plan"):
                 path = bin_dir / name
                 if not path.exists():
                     path.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
