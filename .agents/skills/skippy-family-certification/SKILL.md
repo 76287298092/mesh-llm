@@ -14,7 +14,7 @@ selected-device behavior, and package materialization.
 
 ## Workflow
 
-1. Inspect the model with `skippy-runtime::ModelInfo` or the model-package
+1. Inspect the model with `skippy-runtime::ModelInfo` or the skippy-model-package
    helpers before choosing split points. Keep topology policy in
    `crates/skippy-topology`.
 

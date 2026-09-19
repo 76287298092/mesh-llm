@@ -27,7 +27,7 @@ fn representative_command_summaries_survive_strict_sanitization() {
             "mesh-llm",
             "doctor",
             "split",
-            "--model-ref",
+            "--skippy-model-ref",
             "private/model",
         ],
         &["mesh-llm", "models", "recommended"],
@@ -122,12 +122,12 @@ fn command_summary_covers_plugin_config_and_doctor_values_without_defaults() {
             "mesh-llm",
             "doctor",
             "split",
-            "--model-ref",
+            "--skippy-model-ref",
             "private/model",
             "--output-dir",
             "/private/report"
         ]),
-        "mesh-llm doctor split --model-ref [REDACTED] --output-dir [REDACTED]"
+        "mesh-llm doctor split --skippy-model-ref [REDACTED] --output-dir [REDACTED]"
     );
 }
 
@@ -222,11 +222,11 @@ fn command_summary_deduplicates_parent_and_child_json_flags() {
             "doctor",
             "--json",
             "split",
-            "--model-ref",
+            "--skippy-model-ref",
             "private/model",
             "--json",
         ]),
-        "mesh-llm doctor split --json --model-ref [REDACTED]"
+        "mesh-llm doctor split --json --skippy-model-ref [REDACTED]"
     );
     assert_eq!(
         parsed_summary(&["mesh-llm", "gpus", "--json", "detect", "--json"]),

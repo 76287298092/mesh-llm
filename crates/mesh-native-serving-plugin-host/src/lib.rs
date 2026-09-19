@@ -19,7 +19,7 @@ use anyhow::{Context, Result, anyhow, bail};
 use libloading::Library;
 use mesh_native_serving_plugin_api as abi;
 use plugin_dispatch::{PluginCommand, PluginDriver};
-use skippy_server::frontend::{
+use skippy_serving::frontend::{
     CompositeGenerationLifecycleIngress, GenerationAbort, GenerationCommit,
     GenerationLifecycleIngress, GenerationLifecycleObservation, GenerationReceipt,
     GenerationReceiptConfig, GenerationStart, LinearProposal, LinearProposalDiscardReason,
@@ -27,8 +27,8 @@ use skippy_server::frontend::{
     LinearProposalQuery, LinearProposalReceipt, LinearProposalSourceResponse,
     OpaqueProposalDecisionId,
 };
-use skippy_server::serving_hooks::{ModelServingHooks, ModelServingHooksFactory};
-use skippy_server::tokenizer::TokenizerCapability;
+use skippy_serving::serving_hooks::{ModelServingHooks, ModelServingHooksFactory};
+use skippy_serving::tokenizer::TokenizerCapability;
 use tokenizer_capability::HostTokenizerCapability;
 
 const ERROR_BUFFER_BYTES: usize = 2_048;
@@ -725,16 +725,16 @@ fn proposal_from_output(
 }
 
 fn convert_termination(
-    value: skippy_server::frontend::GenerationTermination,
+    value: skippy_serving::frontend::GenerationTermination,
 ) -> abi::GenerationTermination {
     match value {
-        skippy_server::frontend::GenerationTermination::CallbackStop => {
+        skippy_serving::frontend::GenerationTermination::CallbackStop => {
             abi::GenerationTermination::CALLBACK_STOP
         }
-        skippy_server::frontend::GenerationTermination::MaxTokens => {
+        skippy_serving::frontend::GenerationTermination::MaxTokens => {
             abi::GenerationTermination::MAX_TOKENS
         }
-        skippy_server::frontend::GenerationTermination::Cancelled => {
+        skippy_serving::frontend::GenerationTermination::Cancelled => {
             abi::GenerationTermination::CANCELLED
         }
         _ => abi::GenerationTermination::CANCELLED,

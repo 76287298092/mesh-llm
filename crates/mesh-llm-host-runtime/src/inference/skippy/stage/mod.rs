@@ -12,7 +12,7 @@ use std::{
 use anyhow::{Context, Result, anyhow};
 use skippy_coordinator::{ClaimDecision, ClaimFence, LoadClaimRef};
 use skippy_protocol::{FlashAttentionType, PeerConfig, StageConfig};
-use skippy_server::{EmbeddedServerHandle, binary_transport::BinaryStageOptions};
+use skippy_serving::{EmbeddedServerHandle, binary_transport::BinaryStageOptions};
 use tokio::{
     sync::{mpsc, oneshot},
     task::JoinHandle,
@@ -30,7 +30,7 @@ pub(crate) use types::*;
 struct RunningStage {
     load: StageLoadRequest,
     server: EmbeddedServerHandle,
-    compute_meter: Arc<skippy_server::compute_meter::StageComputeMeter>,
+    compute_meter: Arc<skippy_serving::compute_meter::StageComputeMeter>,
     package: Option<super::materialization::ResolvedStagePackage>,
 }
 
@@ -316,8 +316,8 @@ impl StageControlState {
             resolved_package = Some(package);
         }
         let config = stage_config(&effective_load, resolved_package.as_ref())?;
-        let compute_meter = Arc::new(skippy_server::compute_meter::StageComputeMeter::default());
-        let server = skippy_server::start_binary_stage(BinaryStageOptions {
+        let compute_meter = Arc::new(skippy_serving::compute_meter::StageComputeMeter::default());
+        let server = skippy_serving::start_binary_stage(BinaryStageOptions {
             config,
             topology: None,
             bind_addr,
@@ -705,7 +705,7 @@ pub(crate) fn admitted_resident_tensor_names(
         .unwrap_or(&load.package_ref);
     let manifest: skippy_package_format::PackageManifest = if super::is_package_v2_ref(package_ref)
     {
-        let manifest_path = Path::new(package_ref).join("model-package.json");
+        let manifest_path = Path::new(package_ref).join("skippy-model-package.json");
         let manifest =
             serde_json::from_slice(&std::fs::read(&manifest_path).with_context(|| {
                 format!("read package-v2 manifest {}", manifest_path.display())
@@ -756,11 +756,11 @@ fn status_from_running(stage: &RunningStage) -> StageStatusSnapshot {
     let server = stage.server.status();
     let compute = stage.compute_meter.snapshot();
     let state = match server.state {
-        skippy_server::EmbeddedState::Starting => StageRuntimeState::Starting,
-        skippy_server::EmbeddedState::Ready => StageRuntimeState::Ready,
-        skippy_server::EmbeddedState::Stopping => StageRuntimeState::Stopping,
-        skippy_server::EmbeddedState::Stopped => StageRuntimeState::Stopped,
-        skippy_server::EmbeddedState::Failed => StageRuntimeState::Failed,
+        skippy_serving::EmbeddedState::Starting => StageRuntimeState::Starting,
+        skippy_serving::EmbeddedState::Ready => StageRuntimeState::Ready,
+        skippy_serving::EmbeddedState::Stopping => StageRuntimeState::Stopping,
+        skippy_serving::EmbeddedState::Stopped => StageRuntimeState::Stopped,
+        skippy_serving::EmbeddedState::Failed => StageRuntimeState::Failed,
     };
     let content_addressed_ref =
         crate::inference::skippy::is_content_addressed_gguf_ref(&stage.load.package_ref);

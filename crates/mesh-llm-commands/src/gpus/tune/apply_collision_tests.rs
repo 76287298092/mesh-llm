@@ -3,7 +3,7 @@ use crate::gpus::tune_resolver::{
     ConfigModelMatch, LocalTargetSource, ResolvedTuneTarget, TuneTargetSelection,
 };
 use mesh_llm_config::ConfigStore;
-use model_hf::store::model_ref_for_path;
+use skippy_model_hf::store::model_ref_for_path;
 use tempfile::tempdir;
 
 use super::*;

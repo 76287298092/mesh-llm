@@ -1,7 +1,7 @@
 //! Standalone Skippy settings and path policy, shared by the CLI and serving.
 //!
 //! This crate sits below serving and the lifecycle API: it depends only on
-//! protocol primitives and path policy, never on `skippy-api` or `skippy-server`.
+//! protocol primitives and path policy, never on `skippy-api` or `skippy-serving`.
 
 mod config;
 

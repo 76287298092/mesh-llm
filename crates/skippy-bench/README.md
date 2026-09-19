@@ -16,7 +16,7 @@ drive OpenAI corpus requests through the shared frontend, and collect
 
 ```mermaid
 flowchart LR
-    B["skippy-bench<br/>driver + launcher"] --> O["openai-frontend<br/>optional corpus path"]
+    B["skippy-bench<br/>driver + launcher"] --> O["skippy-openai-frontend<br/>optional corpus path"]
     B --> S0["stage-0"]
     O --> S0
     S0 -->|activation frames| S1["stage-1"]
@@ -46,8 +46,8 @@ should not assume decode is the bottleneck until the report says so.
 ## Commands
 
 ```bash
-skippy-bench run --stage-model model-package/ --model-id org/repo:Q4_K_M
-skippy-bench run --stage-model model-package/ --cache-type-k q8_0 --cache-type-v q8_0
+skippy-bench run --stage-model skippy-model-package/ --model-id org/repo:Q4_K_M
+skippy-bench run --stage-model skippy-model-package/ --cache-type-k q8_0 --cache-type-v q8_0
 skippy-bench local-single --model-path model.gguf --model-id org/repo:Q4_K_M
 skippy-bench local-split-binary --model-path model.gguf --model-id org/repo:Q4_K_M
 skippy-bench local-split-compare --model-path model.gguf --model-id org/repo:Q4_K_M
@@ -60,7 +60,7 @@ skippy-bench eval sync --pack core
 skippy-bench eval run speed-bench --base-url http://127.0.0.1:9337/v1 --model org/repo:Q4_K_M --metrics-http http://127.0.0.1:18080 --metrics-run-id run-local-qwen
 ```
 
-Benchmark-managed Skippy server runs require a release `skippy-server` binary.
+Benchmark-managed Skippy server runs require a release `skippy-serving` binary.
 Run `just release-build` before `run`, `focused-runtime`, `local-single`, or
 local split binary benchmarks. These commands default to
 `target/release/skippy` and reject `target/debug/skippy` because
@@ -186,7 +186,7 @@ OpenAI-compatible endpoint/model as the completion run; set `EVAL_LLM_MODEL`,
 `EVAL_LLM_BASE_URL`, and `EVAL_LLM_API_KEY` to use a separate judge model. For
 small local Skippy validation models, keep the completion endpoint in normal
 compatibility mode and point the scorer override at a strict structured-output
-endpoint, for example a second `skippy-server serve-openai
+endpoint, for example a second `skippy-serving serve-openai
 --openai-guardrails enforce` process. The adapter still uses the native scorer
 and does not rewrite score data. For operator resumes, set
 `MCP_ATLAS_COMPLETION_OUTPUT_NAME` to an existing upstream
@@ -356,7 +356,7 @@ target/debug/llama-spec-bench \
 ```
 
 `chat-corpus` drives `/v1/chat/completions` through an existing
-chat-completions frontend such as `skippy-server serve-openai`. Use it for
+chat-completions frontend such as `skippy-serving serve-openai`. Use it for
 customer-facing benchmark numbers after the stage topology is already running:
 
 ```bash
@@ -414,7 +414,7 @@ baselines, not production performance numbers.
 By default it creates a metrics-server run, writes a deployment plan and stage
 configs, finalizes the run, and fetches `report.json` without starting remote
 processes. Add `--execute-remote` to rsync configs/binaries and start
-`skippy-server serve-binary` over SSH. Add `--rsync-model-artifacts` to
+`skippy-serving serve-binary` over SSH. Add `--rsync-model-artifacts` to
 copy model artifacts for each stage. For `layer-package`, the coordinator
 materializes each stage GGUF locally under `--work-dir/model-cache`, reuses it
 when the cached file is newer than the selected package parts, then shells out

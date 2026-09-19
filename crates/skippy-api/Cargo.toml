@@ -9,18 +9,18 @@ readme = "README.md"
 
 [features]
 default = []
-dynamic-native-runtime = ["skippy-runtime/dynamic-native-runtime", "skippy-server/dynamic-native-runtime"]
+dynamic-native-runtime = ["skippy-runtime/dynamic-native-runtime", "skippy-serving/dynamic-native-runtime"]
 
 [dependencies]
 skippy-config = { path = "../skippy-config", version = "0.76.1" }
-skippy-server = { path = "../skippy-server", version = "0.76.1" }
+skippy-serving = { path = "../skippy-serving", version = "0.76.1" }
 skippy-native-runtime = { path = "../skippy-native-runtime", version = "0.76.1" }
 skippy-runtime-install = { path = "../skippy-runtime-install", version = "0.76.1" }
-openai-frontend = { path = "../openai-frontend", version = "0.76.1" }
+skippy-openai-frontend = { path = "../skippy-openai-frontend", version = "0.76.1" }
 anyhow.workspace = true
 hex = "0.4"
 sha2.workspace = true
-model-artifact = { path = "../model-artifact", version = "0.76.1" }
+skippy-model-artifact = { path = "../skippy-model-artifact", version = "0.76.1" }
 skippy-protocol = { path = "../skippy-protocol", version = "0.76.1" }
 skippy-runtime = { path = "../skippy-runtime", version = "0.76.1" }
 serde.workspace = true
@@ -30,8 +30,8 @@ skippy-package-format = { path = "../skippy-package-format", version = "0.76.1" 
 skippy-model = { path = "../skippy-model", version = "0.76.1" }
 skippy-ffi = { path = "../skippy-ffi", version = "0.76.1", default-features = false }
 
-model-ref = { path = "../model-ref", version = "0.76.1" }
-model-hf = { path = "../model-hf", version = "0.76.1" }
+skippy-model-ref = { path = "../skippy-model-ref", version = "0.76.1" }
+skippy-model-hf = { path = "../skippy-model-hf", version = "0.76.1" }
 hf_hub = { package = "skippy-hf-hub", path = "../skippy-hf-hub", version = "0.76.1", default-features = false, features = ["blocking"] }
 same-file = "1.0.6"
 

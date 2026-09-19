@@ -273,13 +273,13 @@ release tag commit automatically.
 
 The chain currently publishes:
 
-1. `model-ref`
+1. `skippy-model-ref`
 2. `mesh-llm-identity`
 3. `mesh-llm-protocol`
 4. `mesh-llm-routing`
 5. `mesh-llm-types`
-6. `model-artifact`
-7. `model-hf`
+6. `skippy-model-artifact`
+7. `skippy-model-hf`
 8. `mesh-llm-client`
 9. `mesh-llm-api-client`
 10. `mesh-llm-node`

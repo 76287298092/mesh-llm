@@ -1,4 +1,4 @@
-use model_artifact::gguf::{
+use skippy_model_artifact::gguf::{
     GgufCompactMeta, GgufKvCacheQuant, GgufKvCacheType, GgufTensorByteProfile,
     scan_gguf_compact_meta, scan_gguf_tensor_byte_profile,
 };

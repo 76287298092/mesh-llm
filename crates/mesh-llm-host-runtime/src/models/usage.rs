@@ -1,1 +1,1 @@
-pub use model_hf::store::usage::*;
+pub use skippy_model_hf::store::usage::*;

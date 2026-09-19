@@ -58,7 +58,7 @@ pub fn synthetic_direct_gguf_package(
 /// ordered file set, but avoids reading the model weights at startup.
 pub fn synthetic_huggingface_gguf_package(
     _model_id: &str,
-    identity: &model_hf::store::local::HuggingFaceModelIdentity,
+    identity: &skippy_model_hf::store::local::HuggingFaceModelIdentity,
     snapshot_root: &Path,
     build_client: impl FnMut() -> Result<hf_hub::HFClientSync>,
 ) -> Result<SkippyPackageIdentity> {
@@ -219,7 +219,7 @@ fn synthetic_gguf_package_from_source_files(
         .map(|file| file.path.clone())
         .context("direct GGUF source file list is empty")?;
 
-    let compact = model_artifact::gguf::scan_gguf_compact_meta(&source_model_path)
+    let compact = skippy_model_artifact::gguf::scan_gguf_compact_meta(&source_model_path)
         .with_context(|| format!("read GGUF metadata {}", source_model_path.display()))?;
 
     let tensor_count = gguf_tensor_count(&source_model_path)
@@ -337,7 +337,7 @@ pub fn direct_gguf_source_paths(model_path: &Path) -> Result<Vec<PathBuf>> {
     let Some(file_name) = model_path.file_name().and_then(|name| name.to_str()) else {
         anyhow::bail!("GGUF path has no UTF-8 filename: {}", model_path.display());
     };
-    let Some(shard) = model_ref::split_gguf_shard_info(file_name) else {
+    let Some(shard) = skippy_model_ref::split_gguf_shard_info(file_name) else {
         return Ok(vec![model_path.canonicalize().with_context(|| {
             format!("canonicalize GGUF path {}", model_path.display())
         })?]);

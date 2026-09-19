@@ -12,7 +12,7 @@ use mesh_llm_runtime_event_contracts::{
     NumericSummaryKey, NumericValue, Outcome, PrefillEventKind, PrefillFact, ReasonCode,
     RuntimeFact, SessionEventKind, SessionFact,
 };
-use skippy_server::frontend::{GenerationReceipt, GenerationTermination};
+use skippy_serving::frontend::{GenerationReceipt, GenerationTermination};
 
 pub(super) fn empty_data() -> FactData {
     FactData::default()
@@ -138,7 +138,7 @@ pub(super) fn receipt_terminal_fact(receipt: &GenerationReceipt) -> RuntimeFact 
 }
 
 /// §8.10's `first token produced`, backed by the real existing signal this
-/// adapter already observes: the FIRST [`skippy_server::frontend::
+/// adapter already observes: the FIRST [`skippy_serving::frontend::
 /// GenerationCommit`] for a generation IS the moment its first token
 /// became available. StateTransition-class, `unreserved_ingress`-safe.
 pub(super) fn first_token_produced_fact() -> RuntimeFact {

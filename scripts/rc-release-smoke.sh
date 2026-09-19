@@ -6,7 +6,7 @@
 #
 # Useful overrides:
 #   MESH_RC_RELEASE_ASSET=<asset-name>
-#   MESH_RC_RELEASE_MODEL=<model-ref>
+#   MESH_RC_RELEASE_MODEL=<skippy-model-ref>
 #   MESH_RC_RELEASE_API_PORT=<port>
 #   MESH_RC_RELEASE_CONSOLE_PORT=<port>
 #   MESH_RC_RELEASE_AUDIT_DIR=<path>

@@ -39,7 +39,7 @@ PY
 
 infer_layer_count() {
   local model_path="$1"
-  skippy-model-package inspect "$model_path" \
+  skippy-package-builder inspect "$model_path" \
     | jq -r '[.tensors[] | select(.role == "layer") | .layer_index] | max + 1'
 }
 

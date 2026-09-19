@@ -79,7 +79,7 @@ requiring users to send `prompt_cache_key`.
 The default is conditional, not universal:
 
 - unsupported or unknown families may leave `kv_cache` unset.
-- raw `skippy-server serve-openai` leaves cache off unless the stage config or
+- raw `skippy-serving serve-openai` leaves cache off unless the stage config or
   `SKIPPY_KV_CACHE`/`SKIPPY_PREFIX_CACHE` enables it.
 - operators can disable cache with `model_fit.prompt_cache = false` or
   `model_fit.prefix_cache.enabled = false`.

@@ -5,8 +5,8 @@ use std::{
 };
 
 use anyhow::{Context, Result, bail};
-use model_artifact::ModelIdentity;
 use serde::Serialize;
+use skippy_model_artifact::ModelIdentity;
 
 use super::deployment::{
     parse_hosts, parse_stage_ranges, validate_balanced_stage_ranges, validate_distinct_stage_hosts,

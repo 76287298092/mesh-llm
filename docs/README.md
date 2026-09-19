@@ -21,7 +21,7 @@ Use this hub to find project guides that are not owned by a single Rust crate.
 | Local request ledger, retention, artifacts, and maintenance | [LOGGING.md](LOGGING.md) |
 | Exo comparison | [EXO_COMPARISON.md](EXO_COMPARISON.md) |
 
-## Skippy and model-package docs
+## Skippy and skippy-model-package docs
 
 | Doc | What it covers |
 |---|---|

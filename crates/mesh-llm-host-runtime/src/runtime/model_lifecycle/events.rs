@@ -808,7 +808,7 @@ mod tests {
     /// unredacted. That is not an oversight: `models/secretdir/c.gguf` is
     /// structurally identical to a real, canonical Hugging Face exact-file
     /// model ref this codebase produces on the wire today (see
-    /// `RemoteCatalogModel::exact_ref()` -> `model_resolver::
+    /// `RemoteCatalogModel::exact_ref()` -> `skippy_model_resolver::
     /// format_huggingface_display_ref` -> `format_huggingface_exact_ref`,
     /// and the shipped
     /// `resolve::tests::canonicalize_interest_model_ref_normalizes_huggingface_file_refs`

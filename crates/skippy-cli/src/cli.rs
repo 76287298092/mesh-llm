@@ -1,6 +1,6 @@
 use std::{net::SocketAddr, path::PathBuf};
 
-use skippy_server::frontend::DEFAULT_GENERATION_ADMISSION_TIMEOUT_SECS;
+use skippy_serving::frontend::DEFAULT_GENERATION_ADMISSION_TIMEOUT_SECS;
 
 use clap::{Parser, Subcommand, ValueEnum};
 

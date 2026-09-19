@@ -552,7 +552,7 @@ mod tests {
     fn stage_ready_does_not_emit_session_capacity_changed() {
         // Documents the deliberate scope boundary: this layer has no
         // distinct session-capacity signal (owned by Task 12's
-        // skippy-server lane/session tracking), so
+        // skippy-serving lane/session tracking), so
         // `SessionCapacityChanged` is never emitted from here.
         let engine = install_test_engine();
         let op = StageLoadOperation::begin("topo-a", "stage-0", 0, 12);

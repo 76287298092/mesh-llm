@@ -42,7 +42,7 @@ async fn control_plane_api_apply_config_rejects_gpu_assignment_conflict_before_o
     assert_eq!(device_diagnostic["schema_source"], "built_in");
     assert_eq!(
         device_diagnostic["canonical_path"],
-        "models.<model-ref>.hardware.device"
+        "models.<skippy-model-ref>.hardware.device"
     );
     assert!(
         device_diagnostic["message"]

@@ -248,7 +248,7 @@ ubatch = 64
     assert_eq!(payload["ok"], false, "response: {response}");
     assert!(diagnostics.iter().any(|diagnostic| {
         diagnostic["path"] == "models[0].model_fit.ubatch"
-            && diagnostic["canonical_path"] == "models.<model-ref>.model_fit.ubatch"
+            && diagnostic["canonical_path"] == "models.<skippy-model-ref>.model_fit.ubatch"
             && diagnostic["message"]
                 .as_str()
                 .expect("message should be a string")
@@ -297,7 +297,7 @@ rpc_backend = "rpc"
     }));
     assert!(diagnostics.iter().any(|diagnostic| {
         diagnostic["path"] == "models[0].hardware.rpc_backend"
-            && diagnostic["canonical_path"] == "models.<model-ref>.hardware.rpc_backend"
+            && diagnostic["canonical_path"] == "models.<skippy-model-ref>.hardware.rpc_backend"
             && diagnostic["code"] == "rejected_field"
             && diagnostic["schema_source"] == "built_in"
     }));

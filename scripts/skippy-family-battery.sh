@@ -315,19 +315,19 @@ resolve_pinned_model() {
 }
 
 build_certification_binaries() {
-  local bins=(skippy-correctness skippy skippy-model-package skippy-topology-plan)
+  local bins=(skippy-correctness skippy skippy-package-builder skippy-topology-plan)
   local bin
 
   if (( DRY_RUN == 1 )); then
     if (( SKIP_BUILD == 0 )); then
-      echo "env LLAMA_STAGE_BUILD_DIR='<repo>/.deps/llama-build/build-stage-abi-static' cargo build -p skippy-correctness -p skippy-cli -p skippy-model-package -p skippy-topology --bins"
+      echo "env LLAMA_STAGE_BUILD_DIR='<repo>/.deps/llama-build/build-stage-abi-static' cargo build -p skippy-correctness -p skippy-cli -p skippy-package-builder -p skippy-topology --bins"
     fi
     return 0
   fi
 
   if (( SKIP_BUILD == 0 )); then
     env LLAMA_STAGE_BUILD_DIR="${LLAMA_STAGE_BUILD_DIR:-$ROOT/.deps/llama-build/build-stage-abi-static}" \
-      cargo build -p skippy-correctness -p skippy-cli -p skippy-model-package -p skippy-topology --bins
+      cargo build -p skippy-correctness -p skippy-cli -p skippy-package-builder -p skippy-topology --bins
     return 0
   fi
 
@@ -375,10 +375,10 @@ scan_model() {
   MODEL_ACTIVATION_WIDTH=0
 
   if (( DRY_RUN == 1 )); then
-    echo "$BIN_DIR/skippy-model-package inspect '$target' > '$scan_json'"
+    echo "$BIN_DIR/skippy-package-builder inspect '$target' > '$scan_json'"
     return 0
   fi
-  if ! "$BIN_DIR/skippy-model-package" inspect "$target" >"$scan_json" 2>"$scan_log"; then
+  if ! "$BIN_DIR/skippy-package-builder" inspect "$target" >"$scan_json" 2>"$scan_log"; then
     jq -n \
       --arg family "$family" \
       --arg model_id "$model_id" \
@@ -839,9 +839,9 @@ planned_certification_count() {
 }
 
 # Multimodal smoke lane: exercise the real projector + image prefill path
-# through the skippy-server frontend (local monolithic and split stages) using
+# through the skippy-serving frontend (local monolithic and split stages) using
 # the env-gated real-model harness in
-# crates/skippy-server/src/frontend/tests/multimodal.rs. Runs once per family
+# crates/skippy-serving/src/frontend/tests/multimodal.rs. Runs once per family
 # that pins an mmproj artifact, after its core certification lanes.
 run_mmproj_smoke() {
   local family="$1" target="$2" mmproj="$3" model_id="$4" startup_timeout="$5" activation_width="$6" split_layer="$7"
@@ -854,7 +854,7 @@ run_mmproj_smoke() {
   echo "==> family-certify mmproj smoke: family=$family model=$(basename "$target") mmproj=$(basename "$mmproj")"
   MM_SMOKE_TOTAL=$((MM_SMOKE_TOTAL + 1))
   if (( DRY_RUN == 1 )); then
-    echo "env SKIPPY_MM_MODEL='$target' SKIPPY_MM_PROJECTOR='$mmproj' SKIPPY_MM_IMAGE='$ROOT/ci/llama-canary/fixtures/multimodal-smoke.png' SKIPPY_MM_ACTIVATION_WIDTH='$activation_width' SKIPPY_MM_SPLIT_LAYER='$split_layer' cargo test --manifest-path '$ROOT/Cargo.toml' -p skippy-server --lib frontend::tests::multimodal -- --nocapture --test-threads=1"
+    echo "env SKIPPY_MM_MODEL='$target' SKIPPY_MM_PROJECTOR='$mmproj' SKIPPY_MM_IMAGE='$ROOT/ci/llama-canary/fixtures/multimodal-smoke.png' SKIPPY_MM_ACTIVATION_WIDTH='$activation_width' SKIPPY_MM_SPLIT_LAYER='$split_layer' cargo test --manifest-path '$ROOT/Cargo.toml' -p skippy-serving --lib frontend::tests::multimodal -- --nocapture --test-threads=1"
     return 0
   fi
   local -a smoke_command
@@ -862,7 +862,7 @@ run_mmproj_smoke() {
     [[ -x "$FAMILY_BATTERY_MM_TEST_BIN" ]] || return 1
     smoke_command=("$FAMILY_BATTERY_MM_TEST_BIN" frontend::tests::multimodal --nocapture --test-threads=1)
   else
-    smoke_command=(cargo test --manifest-path "$ROOT/Cargo.toml" -p skippy-server --lib frontend::tests::multimodal -- --nocapture --test-threads=1)
+    smoke_command=(cargo test --manifest-path "$ROOT/Cargo.toml" -p skippy-serving --lib frontend::tests::multimodal -- --nocapture --test-threads=1)
   fi
   exit_code=0
   "$ROOT/scripts/run-command-with-timeout.py" \
@@ -889,7 +889,7 @@ run_mmproj_smoke() {
     --arg family "$family" \
     --arg model_id "$model_id" \
     --argjson exit_code "$exit_code" \
-    '{family:$family,model_id:$model_id,mmproj_smoke:true,exit_code:$exit_code,outcomes:[{name:"mmproj-smoke",status:(if $exit_code == 0 then "pass" else "fail" end),outcome:(if $exit_code == 0 then "pass" else "fail" end),exit_code:$exit_code,note:"real projector + image prefill through skippy-server frontend (local + split)"}]}' \
+    '{family:$family,model_id:$model_id,mmproj_smoke:true,exit_code:$exit_code,outcomes:[{name:"mmproj-smoke",status:(if $exit_code == 0 then "pass" else "fail" end),outcome:(if $exit_code == 0 then "pass" else "fail" end),exit_code:$exit_code,note:"real projector + image prefill through skippy-serving frontend (local + split)"}]}' \
     >> "$RESULTS_JSONL"
 }
 
@@ -968,7 +968,7 @@ run_workload_certify() {
       --evidence "$cert_run_dir/workload-oracle-evidence.json" \
       --class "$model_class" --smoke-lane "$smoke_lane" --oracle-lane "$oracle_lane" \
       --model-id "$model_id" --model-path "$target" \
-      --candidate-executable "${SKIPPY_WORKLOAD_CANDIDATE_BIN_DIR:-$ROOT/target/debug}/skippy-server" \
+      --candidate-executable "${SKIPPY_WORKLOAD_CANDIDATE_BIN_DIR:-$ROOT/target/debug}/skippy-serving" \
       --oracle-executable "$oracle_executable" \
       --pinned-patch-sha "$(python3 "$ROOT/scripts/llama-oracle-source.py")")
     if [[ -n "$mmproj" ]]; then

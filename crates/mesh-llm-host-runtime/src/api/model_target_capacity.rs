@@ -117,11 +117,13 @@ impl ModelTargetSizeLookup {
                     .copied()
             })
             .or_else(|| {
-                model_ref::ModelRef::parse(query).ok().and_then(|parsed| {
-                    self.split_capable_by_key
-                        .get(&normalize_match_key(&parsed.repo))
-                        .copied()
-                })
+                skippy_model_ref::ModelRef::parse(query)
+                    .ok()
+                    .and_then(|parsed| {
+                        self.split_capable_by_key
+                            .get(&normalize_match_key(&parsed.repo))
+                            .copied()
+                    })
             })
     }
 
@@ -135,13 +137,13 @@ impl ModelTargetSizeLookup {
         hint: ModelSizeHint,
     ) {
         let basename = source_file.rsplit('/').next().unwrap_or(source_file);
-        let selector = model_ref::quant_selector_from_gguf_file(source_file);
+        let selector = skippy_model_ref::quant_selector_from_gguf_file(source_file);
         let model_ref_with_revision =
-            model_ref::format_model_ref(repo, revision, selector.as_deref());
+            skippy_model_ref::format_model_ref(repo, revision, selector.as_deref());
         let model_ref_without_revision =
-            model_ref::format_model_ref(repo, None, selector.as_deref());
-        let canonical_ref =
-            revision.map(|revision| model_ref::format_canonical_ref(repo, revision, source_file));
+            skippy_model_ref::format_model_ref(repo, None, selector.as_deref());
+        let canonical_ref = revision
+            .map(|revision| skippy_model_ref::format_canonical_ref(repo, revision, source_file));
 
         for alias in [
             variant_name,
@@ -184,13 +186,13 @@ impl ModelTargetSizeLookup {
         source_file: &str,
     ) {
         let basename = source_file.rsplit('/').next().unwrap_or(source_file);
-        let selector = model_ref::quant_selector_from_gguf_file(source_file);
+        let selector = skippy_model_ref::quant_selector_from_gguf_file(source_file);
         let model_ref_with_revision =
-            model_ref::format_model_ref(repo, revision, selector.as_deref());
+            skippy_model_ref::format_model_ref(repo, revision, selector.as_deref());
         let model_ref_without_revision =
-            model_ref::format_model_ref(repo, None, selector.as_deref());
-        let canonical_ref =
-            revision.map(|revision| model_ref::format_canonical_ref(repo, revision, source_file));
+            skippy_model_ref::format_model_ref(repo, None, selector.as_deref());
+        let canonical_ref = revision
+            .map(|revision| skippy_model_ref::format_canonical_ref(repo, revision, source_file));
 
         for alias in [
             variant_name,

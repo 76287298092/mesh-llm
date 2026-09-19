@@ -419,7 +419,7 @@ with open(manifest_path, encoding="utf-8") as fh:
     manifest = json.load(fh)
 runtime = manifest["runtime"]
 # Tools ship in the package too: package-native-runtime.sh builds the GPU
-# benchmark and skippy-model-package, and the host executes the benchmark
+# benchmark and skippy-package-builder, and the host executes the benchmark
 # from crates/mesh-llm-system/src/benchmark.rs. A tool linked above the
 # declared ceiling fails on a supported host exactly like a library does,
 # so the floor in scripts/linux-glibc-floor.txt covers both.

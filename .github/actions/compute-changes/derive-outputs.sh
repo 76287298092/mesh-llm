@@ -399,7 +399,7 @@ fi
 INFERENCE_ARTIFACT_REQUIRED="false"
 if [[ "$ALL_RUST" == "true" ]] || [[ "$UI_CHANGED" == "true" ]] || [[ "$BACKEND_CHANGED" == "true" ]] || [[ "$SDK_SMOKE_REQUIRED" == "true" ]]; then
   INFERENCE_ARTIFACT_REQUIRED="true"
-elif echo "$AFFECTED_CRATES" | jq -e 'index("mesh-llm") or index("mesh-llm-host-runtime") or index("mesh-llm-client") or index("openai-frontend") or index("skippy-server") or index("skippy-runtime") or index("model-artifact")' >/dev/null; then
+elif echo "$AFFECTED_CRATES" | jq -e 'index("mesh-llm") or index("mesh-llm-host-runtime") or index("mesh-llm-client") or index("skippy-openai-frontend") or index("skippy-serving") or index("skippy-runtime") or index("skippy-model-artifact")' >/dev/null; then
   INFERENCE_ARTIFACT_REQUIRED="true"
 fi
 

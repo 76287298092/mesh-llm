@@ -294,7 +294,7 @@ fn parse_failure_family(
         }
         let family = match argument {
             "serve" | "client" => Some(CliCommandFamily::Runtime),
-            "models" | "download" | "model-prepare" | "model-package" => {
+            "models" | "download" | "model-prepare" | "skippy-model-package" => {
                 Some(CliCommandFamily::Models)
             }
             "update" | "setup" | "uninstall" => Some(CliCommandFamily::Installation),

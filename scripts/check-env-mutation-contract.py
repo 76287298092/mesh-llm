@@ -48,7 +48,7 @@ AUDITED_FILES = (
     "crates/mesh-llm-host-runtime/src/inference/skippy/metal_pipeline_cache.rs",
     "crates/mesh-llm-host-runtime/src/inference/skippy/materialization/package_download.rs",
     "crates/mesh-llm-host-runtime/src/inference/skippy/materialization/cache_management.rs",
-    "crates/model-hf/src/store/local.rs",
+    "crates/skippy-model-hf/src/store/local.rs",
     "crates/mesh-llm-system/src/autoupdate.rs",
     "crates/mesh-llm-system/src/autoupdate/release_fetch.rs",
     "crates/mesh-llm-system/src/benchmark/tests.rs",
@@ -75,7 +75,7 @@ KNOWN_UNAUDITED_MUTATION_COUNTS = {
     "crates/mesh-llm-host-runtime/src/runtime/tests/startup_models.rs": 2,
     "crates/skippy-runtime-install/src/lib.rs": 16,
     "crates/mesh-llm/src/commands/plugin_cli.rs": 3,
-    "crates/model-hf/src/cache_paths.rs": 2,
+    "crates/skippy-model-hf/src/cache_paths.rs": 2,
 }
 
 # These are the only intentionally unresolved sites.  They execute on runtime
@@ -130,7 +130,7 @@ SERIAL_TEST_HELPERS = {
         "drop",
         "with_benchmark_child_override",
     },
-    "crates/model-hf/src/store/local.rs": {"restore_env"},
+    "crates/skippy-model-hf/src/store/local.rs": {"restore_env"},
 }
 
 

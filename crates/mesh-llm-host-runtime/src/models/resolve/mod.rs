@@ -7,8 +7,8 @@ use super::{
 use crate::models::usage::ModelUsageRecord;
 use anyhow::{Context, Result, bail};
 use mesh_llm_events::terminal_progress::start_spinner;
-use model_artifact::{ModelArtifactFile, select_primary_artifact_file};
 use serde::Deserialize;
+use skippy_model_artifact::{ModelArtifactFile, select_primary_artifact_file};
 use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::io::Write;
@@ -468,19 +468,19 @@ where
 }
 
 pub(super) fn quant_selector_from_gguf_file(file: &str) -> Option<String> {
-    model_ref::quant_selector_from_gguf_file(file)
+    skippy_model_ref::quant_selector_from_gguf_file(file)
 }
 
 fn is_quant_like_selector(value: &str) -> bool {
-    model_ref::is_quant_like_selector(value)
+    skippy_model_ref::is_quant_like_selector(value)
 }
 
 fn format_repo_selector_ref(repo: &str, revision: Option<&str>, selector: &str) -> String {
-    model_ref::format_model_ref(repo, revision, Some(selector))
+    skippy_model_ref::format_model_ref(repo, revision, Some(selector))
 }
 
 fn format_huggingface_display_ref(repo: &str, revision: Option<&str>, file: &str) -> String {
-    model_resolver::format_huggingface_display_ref(repo, revision, file)
+    skippy_model_resolver::format_huggingface_display_ref(repo, revision, file)
 }
 
 fn artifact_kind_for_file(file: &str) -> &'static str {
@@ -537,19 +537,19 @@ fn matching_remote_catalog_primary_for_url(
 
 #[cfg(test)]
 pub(super) fn parse_hf_resolve_url(url: &str) -> Option<(String, Option<String>, String)> {
-    model_resolver::parse_hf_resolve_url(url)
+    skippy_model_resolver::parse_hf_resolve_url(url)
 }
 
 pub(super) fn parse_huggingface_ref(input: &str) -> Option<(String, Option<String>, String)> {
-    model_resolver::parse_huggingface_file_ref(input)
+    skippy_model_resolver::parse_huggingface_file_ref(input)
 }
 
 fn parse_huggingface_repo_ref(input: &str) -> Option<(String, Option<String>, Option<String>)> {
-    model_resolver::parse_huggingface_repo_ref(input)
+    skippy_model_resolver::parse_huggingface_repo_ref(input)
 }
 
 fn parse_huggingface_repo_url(input: &str) -> Option<(String, Option<String>, Option<String>)> {
-    model_resolver::parse_huggingface_repo_url(input)
+    skippy_model_resolver::parse_huggingface_repo_url(input)
 }
 
 fn parse_exact_model_ref(input: &str) -> Result<ExactModelRef> {
@@ -659,7 +659,7 @@ async fn canonicalize_model_ref_input(input: &str) -> Result<String> {
 }
 
 fn is_split_mlx_first_shard(file: &str) -> bool {
-    model_resolver::is_split_mlx_first_shard(file)
+    skippy_model_resolver::is_split_mlx_first_shard(file)
 }
 
 fn select_default_hf_file_from_siblings(siblings: &[String]) -> Option<String> {
@@ -691,7 +691,8 @@ pub(super) fn is_known_gguf_sidecar(file: &str) -> bool {
 }
 
 fn split_gguf_shard_info(file: &str) -> Option<(&str, &str, &str)> {
-    model_ref::split_gguf_shard_info(file).map(|shard| (shard.prefix, shard.part, shard.total))
+    skippy_model_ref::split_gguf_shard_info(file)
+        .map(|shard| (shard.prefix, shard.part, shard.total))
 }
 
 fn is_split_gguf_first_shard(file: &str) -> bool {
@@ -1095,7 +1096,7 @@ async fn resolve_huggingface_file(
 }
 
 pub(super) fn huggingface_resolve_url(repo: &str, revision: Option<&str>, file: &str) -> String {
-    model_resolver::huggingface_resolve_url(repo, revision, file)
+    skippy_model_resolver::huggingface_resolve_url(repo, revision, file)
 }
 
 pub(super) fn file_preference_score(file: &str) -> usize {

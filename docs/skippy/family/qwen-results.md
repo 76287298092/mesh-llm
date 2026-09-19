@@ -1017,7 +1017,7 @@ Diagnostic prompt-path comparison:
   `/Volumes/External/llama-stage-runtime-bench/qwen36-lab/prompt-compare-20260429-151934`
 - Result: did not reach the stage1-to-stage2 routing comparison.
 - Reason: `llama-stage-prompt` copied the full layer package into
-  `/tmp/llama-stage-remote-prompt/model-package-cache` on `build`, leaving only
+  `/tmp/llama-stage-remote-prompt/skippy-model-package-cache` on `build`, leaving only
   about `127 MiB` free on `/` and `/tmp`. Stage 1 then failed during package
   materialization with `failed to copy selected GGUF tensor data`, so stage 0
   only saw `Connection refused` to `192.168.0.4:19032`.
@@ -1857,7 +1857,7 @@ patch queue. The three-node retry also did not produce request-traffic evidence.
 | TCQ knobs | `cache_type_k=turbo3_tcq`, `cache_type_v=turbo2_tcq` |
 | Stage split | `0..14`, `14..27`, `27..40` |
 | Wire / prefill | `activation_wire_dtype=f16`, `openai_prefill_chunk_size=256`, `async_prefill_forward=true`, `reply_credit_limit=0` |
-| Validation | `just llama-stage-prepare`; `just llama-stage-build`; `LLAMA_STAGE_BUILD_DIR=.deps/llama-stage.cpp/build-stage-abi-static cargo build -p metrics-server -p skippy-server -p skippy-bench -p llama-spec-bench` |
+| Validation | `just llama-stage-prepare`; `just llama-stage-build`; `LLAMA_STAGE_BUILD_DIR=.deps/llama-stage.cpp/build-stage-abi-static cargo build -p metrics-server -p skippy-serving -p skippy-bench -p llama-spec-bench` |
 
 Patch queue note:
 
@@ -2153,7 +2153,7 @@ replace recompute for repeated prefixes.
 | --- | --- | --- | --- |
 | Native llama.cpp patch ABI | Full sequence state export/import and recurrent-only state export/import are present. | `.deps/llama.cpp/src/skippy/state.cpp` implements `skippy_export_full_state`, `skippy_import_full_state`, `skippy_export_recurrent_state`, and `skippy_import_recurrent_state`. | Need payload size and exactness measurements on Qwen3.6 stages. |
 | Rust FFI/runtime | `StageSession` exposes `export_full_state`, `import_full_state`, `export_recurrent_state`, and `import_recurrent_state`. | `crates/skippy-runtime/src/lib.rs` wraps the native ABI. | `RuntimeState` currently exposes full-state import/export, but not recurrent-only helpers. |
-| Binary stage control | `StateImport` / `StateExport` can carry full-state payloads when `state_flags::FULL_STATE` is set. | `crates/skippy-server/src/binary_transport.rs` dispatches full-state import/export through `RuntimeState`. | This is a control-path primitive, not a cache store or prefix lookup policy. |
+| Binary stage control | `StateImport` / `StateExport` can carry full-state payloads when `state_flags::FULL_STATE` is set. | `crates/skippy-serving/src/binary_transport.rs` dispatches full-state import/export through `RuntimeState`. | This is a control-path primitive, not a cache store or prefix lookup policy. |
 | Speculative rollback | In-session checkpoints preserve recurrent state while attention KV is restored by trimming. | `StageSession::checkpoint` documents the recurrent checkpoint plus KV trim behavior. | Useful for speculation rollback, but not reusable across sessions or repeated-prefix cache hits. |
 | KV-only cache guard | Recurrent/SSM tensor names disable KV-only cache for Qwen3.6-style models. | `model_supports_kv_only_cache` returns false when tensors include `.ssm`, `ssm_`, `time_mix`, `recurrent`, or `rwkv`. | Correct default; packages must not turn KV-only lookup/record on for Qwen3.6. |
 
@@ -3074,7 +3074,7 @@ package and keep KV-only cache disabled for Qwen3.6.
 | Surface | embedded stage0 OpenAI `/v1/chat/completions` |
 | Topology | `studio54 192.168.0.2 -> build 192.168.0.4 -> black 192.168.0.3` |
 | Stage split | `0..14`, `14..27`, `27..40` |
-| Build | release `skippy-server` copied to `build` and `black`, foreground real-TTY SSH launch |
+| Build | release `skippy-serving` copied to `build` and `black`, foreground real-TTY SSH launch |
 | Cache | `full_state_cache.mode=lookup-record`, `payload=kv-recurrent`, BLAKE3 1MiB block keys, `max_bytes=1 GiB` physical per stage |
 | Metrics | `metrics-server` OTLP, `993` spans, `7` OpenAI requests, `3` stages |
 | Request sequence | shared prefix cold/partial/warm, three unrelated cold prompts, exact repeat of unrelated-alpha |

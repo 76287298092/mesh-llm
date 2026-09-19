@@ -162,7 +162,7 @@ Trial support added:
 
 - `skippy-bench run --stage-max-inflight N`
 - `skippy-bench run --stage-reply-credit-limit N`
-- these are passed to every `skippy-server serve-binary`
+- these are passed to every `skippy-serving serve-binary`
 - the credit path only affects prefill ACK deferral; decode remains unchanged
 
 Initial outcome:
@@ -355,7 +355,7 @@ Important runner fix:
 - `skippy-bench` now keeps the SSH session alive for each remote stage
   process and starts stages downstream-first, waiting for each stage to log
   `listening` before launching the upstream stage.
-- A conservative downstream connect fallback remains in `skippy-server`,
+- A conservative downstream connect fallback remains in `skippy-serving`,
   but the real lab fix was avoiding detached SSH-launched stage servers.
 
 Runs:
@@ -376,7 +376,7 @@ Prompt elapsed times:
 
 KV growth notes from the KV telemetry run:
 
-- `skippy-server` debug spans now include `kv_tokens_after`,
+- `skippy-serving` debug spans now include `kv_tokens_after`,
   `kv_layer_count`, and `kv_token_layer_cells`.
 - With a balanced 10-layer stage, the long prompt reached 343 KV positions per
   stage after eight decode steps, or 3430 token-layer cells per stage.
@@ -636,7 +636,7 @@ Session reuse ABI:
 - run:
   `lab-session-reuse-mixed192-gpu-summary-chunk256-20260426-132829`
 - change: added `skippy_session_reset` to the stage ABI and reused idle
-  `StageSession` handles inside `skippy-server` instead of freeing the
+  `StageSession` handles inside `skippy-serving` instead of freeing the
   llama context at request end
 - same corpus, four hosts, balanced split, `f32`, `--prefill-chunk-size 256`,
   `--stage-max-inflight 2`, `--stage-reply-credit-limit 1`,
@@ -852,7 +852,7 @@ cargo run -p skippy-bench -- run \
   --metrics-otlp-grpc-addr 0.0.0.0:14317 \
   --metrics-otlp-grpc-url http://10.0.0.1:14317 \
   --stage-load-mode layer-package \
-  --stage-model /path/to/model-package \
+  --stage-model /path/to/skippy-model-package \
   --model-id unsloth/Qwen3.6-35B-A3B-GGUF \
   --ctx-size 512 \
   --layer-end 40 \

@@ -160,7 +160,7 @@ fn ensure_cached_hf_asset(api: &hf_hub::HFClientSync, asset: &HfAsset) -> Result
                 asset.repo,
                 asset.file,
                 asset.revision,
-                model_hf::download_cache_diagnostic(),
+                skippy_model_hf::download_cache_diagnostic(),
             )
         })
 }
@@ -710,7 +710,7 @@ fn download_hf_assets_sync(
                         asset.repo,
                         asset.file,
                         asset.revision,
-                        model_hf::download_cache_diagnostic(),
+                        skippy_model_hf::download_cache_diagnostic(),
                     )
                 });
             }

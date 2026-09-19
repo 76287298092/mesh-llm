@@ -17,10 +17,10 @@ use std::{
 
 use anyhow::{Context, Result, anyhow, bail};
 use clap::{Parser, Subcommand, ValueEnum};
-use model_artifact::gguf::{GgufCompactMeta, scan_gguf_compact_meta};
-use openai_frontend::{ReasoningConfig, normalize_reasoning_template_options};
 use rustyline::{DefaultEditor, error::ReadlineError};
 use serde_json::Value;
+use skippy_model_artifact::gguf::{GgufCompactMeta, scan_gguf_compact_meta};
+use skippy_openai_frontend::{ReasoningConfig, normalize_reasoning_template_options};
 use skippy_protocol::binary::{
     LLAMA_TOKEN_NULL, READY_MAGIC, StageReply, StageReplyStats, StageStateHeader, StageWireMessage,
     WireMessageKind, WireReplyKind, recv_reply, write_stage_message,

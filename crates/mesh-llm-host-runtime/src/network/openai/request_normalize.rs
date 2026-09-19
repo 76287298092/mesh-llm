@@ -23,13 +23,13 @@ pub(super) fn normalize_openai_compat_request(
     path: &str,
     body: &mut serde_json::Value,
 ) -> Result<RequestNormalization> {
-    let normalized = openai_frontend::normalize_openai_compat_request(path, body)?;
+    let normalized = skippy_openai_frontend::normalize_openai_compat_request(path, body)?;
     let response_adapter = match normalized.response_adapter {
-        openai_frontend::ResponseAdapterMode::None => ResponseAdapter::None,
-        openai_frontend::ResponseAdapterMode::OpenAiResponsesJson => {
+        skippy_openai_frontend::ResponseAdapterMode::None => ResponseAdapter::None,
+        skippy_openai_frontend::ResponseAdapterMode::OpenAiResponsesJson => {
             ResponseAdapter::OpenAiResponsesJson
         }
-        openai_frontend::ResponseAdapterMode::OpenAiResponsesStream => {
+        skippy_openai_frontend::ResponseAdapterMode::OpenAiResponsesStream => {
             ResponseAdapter::OpenAiResponsesStream
         }
     };

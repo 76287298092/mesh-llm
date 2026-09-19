@@ -15,7 +15,7 @@ use crate::runtime_events::{clear_runtime_event_engine, install_runtime_event_en
 use mesh_llm_runtime_event_contracts::{
     GenerationEventKind, NumericValue, PrefillEventKind, SessionEventKind,
 };
-use skippy_server::frontend::GenerationTermination;
+use skippy_serving::frontend::GenerationTermination;
 use std::sync::Arc;
 use std::sync::Arc as StdArc;
 

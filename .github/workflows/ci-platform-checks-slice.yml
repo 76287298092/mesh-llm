@@ -187,7 +187,7 @@ jobs:
         if: ${{ matrix.check.kind == 'unit' && matrix.check.platform == 'macos' }}
         run: |
           set -euo pipefail
-          cargo test --locked -p model-artifact --lib
+          cargo test --locked -p skippy-model-artifact --lib
           cargo test --locked -p mesh-llm-host-runtime --lib
           cargo test --locked -p mesh-llm --lib
       - name: Run Windows unit tests

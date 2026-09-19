@@ -385,10 +385,10 @@ fn materialize_stage_artifacts(args: &PromptArgs, stages: &[LocalStage]) -> Resu
             stage.stage_id, stage.layer_start, stage.layer_end
         );
         let status = run_with_progress(command, "materializing GGUF shards", done, total, &label)
-            .with_context(|| format!("run skippy-model-package for {}", stage.stage_id))?;
+            .with_context(|| format!("run skippy-package-builder for {}", stage.stage_id))?;
         if !status.success() {
             bail!(
-                "skippy-model-package failed for {} with status {status}",
+                "skippy-package-builder failed for {} with status {status}",
                 stage.stage_id
             );
         }
@@ -433,9 +433,9 @@ fn materialize_model_package(args: &PromptArgs, package_dir: &Path) -> Result<()
         1,
         &format!("{} -> {}", args.model_path.display(), package_dir.display()),
     )
-    .with_context(|| "run skippy-model-package write-package")?;
+    .with_context(|| "run skippy-package-builder write-package")?;
     if !status.success() {
-        bail!("skippy-model-package write-package failed with status {status}");
+        bail!("skippy-package-builder write-package failed with status {status}");
     }
 
     fs::write(

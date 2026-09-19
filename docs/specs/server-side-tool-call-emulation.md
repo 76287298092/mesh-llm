@@ -13,12 +13,12 @@ model name.
 
 ## Where it lives
 
-- `crates/skippy-server/src/frontend/tool_emulation.rs` — detection, request
+- `crates/skippy-serving/src/frontend/tool_emulation.rs` — detection, request
   adaptation, and response parsing. Self-contained and unit-tested.
-- `crates/skippy-server/src/frontend/prompting.rs` — wires emulation into
+- `crates/skippy-serving/src/frontend/prompting.rs` — wires emulation into
   `prepare_chat_prompt` (request adaptation) and `parse_chat_output` (response
   parsing).
-- `crates/skippy-server/src/frontend.rs` — `parse_emulated_chat_output`, the
+- `crates/skippy-serving/src/frontend.rs` — `parse_emulated_chat_output`, the
   streaming-aware bridge into `ParsedChatMessage`.
 
 ## Detection

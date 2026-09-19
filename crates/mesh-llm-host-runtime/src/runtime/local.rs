@@ -16,9 +16,9 @@ use crate::runtime_data::{
 };
 use anyhow::{Context, Result};
 use mesh_llm_events::{OutputEvent, emit_event};
-use openai_frontend::OpenAiHookPolicy;
+use skippy_openai_frontend::OpenAiHookPolicy;
 use skippy_protocol::{FlashAttentionType, LoadMode};
-use skippy_server::serving_hooks::SharedModelServingHooksFactory;
+use skippy_serving::serving_hooks::SharedModelServingHooksFactory;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -47,20 +47,20 @@ pub(super) fn skippy_native_model_open_event_reporter(
     native_runtime_events::skippy_native_model_open_event_reporter(model_name, progress_ingress)
 }
 
-pub(super) type OpenAiGuardrailPolicyHandle = openai_frontend::GuardrailPolicyHandle;
+pub(super) type OpenAiGuardrailPolicyHandle = skippy_openai_frontend::GuardrailPolicyHandle;
 
 pub(super) fn openai_guardrail_policy_handle(
-    mode: openai_frontend::GuardrailMode,
+    mode: skippy_openai_frontend::GuardrailMode,
 ) -> OpenAiGuardrailPolicyHandle {
-    OpenAiGuardrailPolicyHandle::new(openai_frontend::GuardrailPolicy {
+    OpenAiGuardrailPolicyHandle::new(skippy_openai_frontend::GuardrailPolicy {
         mode,
-        ..openai_frontend::GuardrailPolicy::default()
+        ..skippy_openai_frontend::GuardrailPolicy::default()
     })
 }
 
 pub(super) fn set_openai_guardrail_policy_mode(
     handle: &OpenAiGuardrailPolicyHandle,
-    mode: openai_frontend::GuardrailMode,
+    mode: skippy_openai_frontend::GuardrailMode,
 ) {
     handle.set_mode(mode);
 }
@@ -122,7 +122,7 @@ impl LocalRuntimeModelHandle {
         }
     }
 
-    pub(super) fn openai_server_status(&self) -> skippy_server::EmbeddedServerStatus {
+    pub(super) fn openai_server_status(&self) -> skippy_serving::EmbeddedServerStatus {
         match &self.inner {
             LocalRuntimeBackendHandle::Skippy { http, .. } => http.status(),
         }
@@ -130,7 +130,7 @@ impl LocalRuntimeModelHandle {
 
     pub(super) fn set_openai_guardrail_mode(
         &self,
-        mode: openai_frontend::GuardrailMode,
+        mode: skippy_openai_frontend::GuardrailMode,
     ) -> Option<skippy::SkippyOpenAiGuardrailsStatus> {
         match &self.inner {
             LocalRuntimeBackendHandle::Skippy { model, .. } => {
@@ -1548,7 +1548,7 @@ mod tests {
             auto_balance: false,
             planning_profile: RuntimeResourcePlanningProfile::DedicatedLocal,
             openai_guardrail_policy: openai_guardrail_policy_handle(
-                openai_frontend::GuardrailMode::Disabled,
+                skippy_openai_frontend::GuardrailMode::Disabled,
             ),
             skippy_telemetry: skippy::SkippyTelemetryOptions::off(),
             survey_telemetry: survey::SurveyTelemetry::disabled(),

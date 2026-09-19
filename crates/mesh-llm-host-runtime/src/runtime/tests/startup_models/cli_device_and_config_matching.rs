@@ -406,7 +406,7 @@ fn cli_gguf_does_not_match_configured_model_path_for_pinned_gpu() {
             parallel: None,
         },
         models: vec![plugin::ModelConfigEntry {
-            model: "configured/model-ref".into(),
+            model: "configured/skippy-model-ref".into(),
             gpu_id: Some("pci:0000:65:00.0".into()),
             hardware: Some(plugin::HardwareConfig {
                 model_path: Some(model_path.display().to_string()),
@@ -448,7 +448,7 @@ fn cli_gguf_inherits_global_pinned_default_without_model_ownership() {
             ..Default::default()
         }),
         models: vec![plugin::ModelConfigEntry {
-            model: "configured/model-ref".into(),
+            model: "configured/skippy-model-ref".into(),
             hardware: Some(plugin::HardwareConfig {
                 model_path: Some(model_path.display().to_string()),
                 device: Some("pci:0000:b3:00.0".into()),

@@ -3,13 +3,13 @@ use std::io::Write;
 use anyhow::{Context, Result, bail};
 use tokio_stream::StreamExt;
 
-use ::model_package::jobs::HfJobsClient;
-use ::model_package::permissions;
-use ::model_package::prepare::{self, DiscoveredQuant, PrepareJob, PrepareParams};
-use ::model_package::script;
+use ::skippy_model_package::jobs::HfJobsClient;
+use ::skippy_model_package::permissions;
+use ::skippy_model_package::prepare::{self, DiscoveredQuant, PrepareJob, PrepareParams};
+use ::skippy_model_package::script;
 use serde_json::json;
 
-/// All CLI arguments for `model-package`, bundled to avoid too-many-arguments.
+/// All CLI arguments for `skippy-model-package`, bundled to avoid too-many-arguments.
 pub struct ModelPrepareArgs<'a> {
     pub source_repo: Option<&'a str>,
     pub quant: Option<&'a str>,
@@ -30,7 +30,7 @@ pub struct ModelPrepareArgs<'a> {
     pub update_script: bool,
 }
 
-/// Dispatch the model-package command.
+/// Dispatch the skippy-model-package command.
 pub async fn dispatch_model_package(args: ModelPrepareArgs<'_>) -> Result<()> {
     let ModelPrepareArgs {
         source_repo,
@@ -79,7 +79,7 @@ pub async fn dispatch_model_package(args: ModelPrepareArgs<'_>) -> Result<()> {
         "Source repo is required for job submission.\n\
          Usage: mesh-llm models package <source_repo>:<quant>",
     )?;
-    let source_model_ref = model_ref::ModelRef::parse(source_ref)
+    let source_model_ref = skippy_model_ref::ModelRef::parse(source_ref)
         .with_context(|| format!("invalid source model ref: {source_ref}"))?;
     let source_repo = source_model_ref.repo.as_str();
     let source_quant = match (source_model_ref.selector.as_deref(), quant) {
@@ -95,7 +95,7 @@ pub async fn dispatch_model_package(args: ModelPrepareArgs<'_>) -> Result<()> {
     };
 
     // Build HF client for API calls.
-    let hf_client = ::model_package::build_hf_client()?;
+    let hf_client = ::skippy_model_package::build_hf_client()?;
 
     // If no quant specified, list available quants and exit.
     // This path doesn't need HF_TOKEN — works for public repos.
@@ -247,7 +247,7 @@ fn validate_submit_output_options(follow: bool, json: bool) -> Result<()> {
 
 fn print_prepare_job(job: &PrepareJob, perms: &permissions::PermissionCheck) {
     let mut err = mesh_llm_events::console_err();
-    let shard_info = model_ref::split_gguf_shard_info(&job.source_file);
+    let shard_info = skippy_model_ref::split_gguf_shard_info(&job.source_file);
     let shard_str = if let Some(shard) = shard_info {
         format!(" ({} shards)", shard.total)
     } else {
@@ -397,7 +397,7 @@ async fn run_update_script() -> Result<()> {
         err,
         "📤 Uploading embedded script to meshllm/layer-split-output bucket..."
     )?;
-    let client = ::model_package::build_hf_client()?;
+    let client = ::skippy_model_package::build_hf_client()?;
 
     // Check permissions first.
     let perms = permissions::check_permissions(&client).await?;
@@ -446,7 +446,7 @@ async fn run_status(client: &HfJobsClient, job_id: &str, json_output: bool) -> R
 }
 
 async fn run_logs(client: &HfJobsClient, job_id: &str, json_output: bool) -> Result<()> {
-    use ::model_package::jobs::JobStage;
+    use ::skippy_model_package::jobs::JobStage;
 
     let mut out = mesh_llm_events::console_out();
     let mut err = mesh_llm_events::console_err();
@@ -514,7 +514,7 @@ async fn run_list(client: &HfJobsClient, json_output: bool) -> Result<()> {
     let mut err = mesh_llm_events::console_err();
     let mut machine = mesh_llm_events::machine_out();
     // We need to know the namespace — resolve via whoami.
-    let hf_client = ::model_package::build_hf_client()?;
+    let hf_client = ::skippy_model_package::build_hf_client()?;
     let perms = permissions::check_permissions(&hf_client).await?;
 
     let jobs = client.list(&perms.namespace).await?;
@@ -545,7 +545,7 @@ async fn run_list(client: &HfJobsClient, json_output: bool) -> Result<()> {
 
 /// Follow job logs until the job reaches a terminal state.
 async fn follow_until_done(client: &HfJobsClient, namespace: &str, job_id: &str) -> Result<()> {
-    use ::model_package::jobs::JobStage;
+    use ::skippy_model_package::jobs::JobStage;
 
     let mut out = mesh_llm_events::console_out();
     let mut err = mesh_llm_events::console_err();
@@ -642,7 +642,9 @@ async fn ensure_bucket_script_current(client: &hf_hub::HFClient) -> Result<()> {
     }
 }
 
-fn redacted_spec(spec: &::model_package::jobs::JobSpec) -> ::model_package::jobs::JobSpec {
+fn redacted_spec(
+    spec: &::skippy_model_package::jobs::JobSpec,
+) -> ::skippy_model_package::jobs::JobSpec {
     let mut redacted = spec.clone();
     for value in redacted.secrets.values_mut() {
         if value.len() > 8 {
@@ -676,7 +678,7 @@ async fn parse_job_id(job_id: &str) -> Result<(String, String)> {
         Ok((ns.to_string(), id.to_string()))
     } else {
         // Need to figure out namespace from the user's identity.
-        let hf_client = ::model_package::build_hf_client()?;
+        let hf_client = ::skippy_model_package::build_hf_client()?;
         let perms = permissions::check_permissions(&hf_client).await?;
         Ok((perms.namespace, job_id.to_string()))
     }

@@ -1,8 +1,8 @@
 use std::{fs, net::SocketAddr, process::Command, time::Instant};
 
 use anyhow::{Context, Result, bail};
-use model_artifact::ModelIdentity;
 use serde_json::json;
+use skippy_model_artifact::ModelIdentity;
 use skippy_protocol::binary::{StageWireMessage, WireReplyKind, recv_reply, write_stage_message};
 use skippy_runtime::{GGML_TYPE_F16, MtpSource, RuntimeConfig, RuntimeLoadMode, StageModel};
 

@@ -500,7 +500,7 @@ pub(super) async fn send_moa_as_responses_sse_inner(
     // so downstream consumers (chat UI, billing) see the right keys.
     let usage = response
         .get("usage")
-        .map(openai_frontend::responses::chat_usage_to_responses_usage);
+        .map(skippy_openai_frontend::responses::chat_usage_to_responses_usage);
     let item_id = format!("msg_moa_{}", short_id_from_response(response));
 
     // On the progress path, reuse the timestamp the early
@@ -519,7 +519,7 @@ pub(super) async fn send_moa_as_responses_sse_inner(
         }
     };
 
-    use openai_frontend::responses as resp;
+    use skippy_openai_frontend::responses as resp;
 
     // `response.created` must come before any delta events. When the
     // progress path is driving us (continuation is Some), it already
@@ -1225,7 +1225,7 @@ mod tests {
 
     #[tokio::test]
     async fn chat_sse_preserves_worker_assigned_tool_call_ids() {
-        // skippy-server assigns `call_<uuid>` before the body reaches MoA.
+        // skippy-serving assigns `call_<uuid>` before the body reaches MoA.
         // The SSE adapter must forward that id rather than substituting its
         // `call_0` fallback, so the client can pair its tool result.
         let response = serde_json::json!({

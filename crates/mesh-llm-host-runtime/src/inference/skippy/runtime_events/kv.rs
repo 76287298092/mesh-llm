@@ -1,4 +1,4 @@
-//! Host-side [`skippy_server::kv_integration::KvLifecycleObserver`]
+//! Host-side [`skippy_serving::kv_integration::KvLifecycleObserver`]
 //! implementation, translating real resident-prefix cache decisions
 //! (plan task 12, §8.11) into `RuntimeFact::KvRuntimeState` facts.
 //!
@@ -16,7 +16,7 @@ use mesh_llm_runtime_event_contracts::{
     NumericSummaryKey, NumericValue, OperationId, OperationScope, Outcome, RuntimeEventIngress,
     RuntimeFact,
 };
-use skippy_server::kv_integration::{KvLifecycleEvent, KvLifecycleObserver};
+use skippy_serving::kv_integration::{KvLifecycleEvent, KvLifecycleObserver};
 
 use crate::runtime_events::runtime_event_engine;
 

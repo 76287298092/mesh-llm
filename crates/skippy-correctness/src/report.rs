@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-pub use model_artifact::ModelIdentity;
+pub use skippy_model_artifact::ModelIdentity;
 
 #[derive(Debug, Serialize)]
 pub struct BaselineReport {

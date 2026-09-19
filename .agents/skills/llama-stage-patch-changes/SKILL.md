@@ -184,7 +184,7 @@ So on every re-pin, in addition to the checks above:
 - Read `git log <old-pin>..<new-pin> -- src/llama-model-loader.* src/llama-model.*`
   for changes to load order, not just to signatures the patches touch.
 - Prove the staged load path with a real artifact whose first block is not
-  block 0. `cargo test -p skippy-model-package` covers this via
+  block 0. `cargo test -p skippy-package-builder` covers this via
   `mid_stage_artifact_opens_with_the_stage_filter_applied`.
 - Confirm that test actually ran rather than skipped. It is gated on
   `SKIPPY_CORRECTNESS_MODEL`; without it the test prints
@@ -202,7 +202,7 @@ For Rust fallout, run cargo commands serially:
 cargo fmt --all --check
 cargo check -p mesh-llm
 cargo test -p skippy-runtime --lib
-cargo test -p skippy-server --lib
+cargo test -p skippy-serving --lib
 cargo test -p mesh-llm --lib
 ```
 

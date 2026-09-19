@@ -20,11 +20,11 @@ startup, observation, prompt driving, and teardown.
 - Do not bring back standalone `kv-server` or `ngram-pool`.
 - Use `$HOME/tmp` for run roots, source syncs, logs, and bundles. Avoid `/tmp`
   unless the user explicitly asks for it.
-- Public OpenAI compatibility belongs in `openai-frontend`, not prompt tooling.
+- Public OpenAI compatibility belongs in `skippy-openai-frontend`, not prompt tooling.
   Prompt workflows are for development, diagnostics, and reproducible model
   checks.
 - Do not use `skippy-prompt prompt` as the launcher on this branch. The skill
-  starts `skippy-server serve-binary` stages directly and uses
+  starts `skippy-serving serve-binary` stages directly and uses
   `skippy-prompt binary` as the interactive client.
 
 ## Launch Workflow
@@ -91,9 +91,9 @@ cargo metadata --no-deps --format-version 1 | jq -r '.packages[].name' | sort
 Expected prompt-owned binaries are:
 
 ```text
-skippy-server
+skippy-serving
 skippy-prompt
-skippy-model-package
+skippy-package-builder
 metrics-server
 ```
 

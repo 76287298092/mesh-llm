@@ -11,7 +11,7 @@ use crate::system::hardware::GpuFacts;
 use crate::system::{backend, benchmark, hardware};
 use hf_hub::RepoTypeModel;
 use mesh_llm_events::{DashboardEndpointRow, DashboardSnapshotProvider, RuntimeStatus};
-use model_hf::{huggingface_repo_folder_name, huggingface_snapshot_path};
+use skippy_model_hf::{huggingface_repo_folder_name, huggingface_snapshot_path};
 use skippy_protocol::FlashAttentionType;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};

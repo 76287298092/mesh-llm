@@ -185,7 +185,7 @@ mod tests {
 
     #[test]
     fn chat_completion_json_normalizer_preserves_skippy_assigned_tool_call_ids() {
-        // skippy-server now assigns `call_<uuid>` before the body reaches the
+        // skippy-serving now assigns `call_<uuid>` before the body reaches the
         // proxy. The front door must pass those through untouched rather than
         // rewriting them to `call_mesh_*`, so a client that already saw the id
         // in a streamed chunk can still pair its tool result.

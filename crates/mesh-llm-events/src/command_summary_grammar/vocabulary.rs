@@ -141,7 +141,7 @@ pub(super) fn is_redacted_marker(token: &str) -> bool {
             | "--sort"
             | "--host"
             | "--config-path"
-            | "--model-ref"
+            | "--skippy-model-ref"
             | "--output-dir"
             | "--agent"
             | "--archive"

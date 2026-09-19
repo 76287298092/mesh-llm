@@ -45,7 +45,7 @@ pub(super) fn format_doctor(
     }) = command
     {
         assembly.command.push_str(" split");
-        assembly.redact("--model-ref", !model_ref.is_empty());
+        assembly.redact("--skippy-model-ref", !model_ref.is_empty());
         assembly.port(*port, DEFAULT_LOCAL_PORT);
         child_json = *split_json;
         assembly.redact("--output-dir", output_dir.is_some());

@@ -268,7 +268,7 @@ pub fn synthetic_huggingface_gguf_package(
     model_id: &str,
     identity: &crate::models::HuggingFaceModelIdentity,
 ) -> Result<SkippyPackageIdentity> {
-    let snapshot_root = model_hf::store::local::huggingface_snapshot_path(
+    let snapshot_root = skippy_model_hf::store::local::huggingface_snapshot_path(
         &identity.repo_id,
         hf_hub::RepoTypeModel,
         &identity.revision,

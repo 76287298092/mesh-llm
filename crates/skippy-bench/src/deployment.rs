@@ -9,10 +9,10 @@ use std::{
 };
 
 use anyhow::{Context, Result, anyhow, bail};
-use model_artifact::ModelIdentity;
-use model_ref::ModelRef;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use skippy_model_artifact::ModelIdentity;
+use skippy_model_ref::ModelRef;
 use skippy_protocol::binary::{StageWireMessage, recv_ready, write_stage_message};
 use skippy_protocol::{LoadMode, StageTopology, StageTopologyEntry};
 use skippy_runtime::write_gguf_from_parts;
@@ -927,14 +927,14 @@ fn wait_remote_exit_code(stage: &StageAssignment, timeout: Duration) -> Result<(
 fn remote_log_ready(stage: &StageAssignment) -> Result<bool> {
     if stage.local {
         let log = fs::read_to_string(&stage.remote_log_path).unwrap_or_default();
-        return Ok(log.contains("skippy-server listening: binary="));
+        return Ok(log.contains("skippy-serving listening: binary="));
     }
     ssh_success(
         &stage.host,
         &format!(
             "test -f {} && grep -q {} {}",
             shell_quote(&stage.remote_log_path),
-            shell_quote("skippy-server listening: binary="),
+            shell_quote("skippy-serving listening: binary="),
             shell_quote(&stage.remote_log_path)
         ),
     )
@@ -1479,7 +1479,7 @@ mod tests {
             topology_id: "quad/small".to_string(),
             model_id: "Qwen/Qwen3-4B:Q4_K_M".to_string(),
             model_path: None,
-            stage_model: Some(PathBuf::from("model-package")),
+            stage_model: Some(PathBuf::from("skippy-model-package")),
             stage_load_mode: "layer-package".to_string(),
             splits: "1".to_string(),
             layer_end: 2,
@@ -1738,7 +1738,7 @@ mod tests {
             &args,
             &plan,
             &stage,
-            "/tmp/remote/run-1/stage-0/skippy-server",
+            "/tmp/remote/run-1/stage-0/skippy-serving",
         );
         assert!(command.contains("stage.exit"));
         assert!(command.contains("stage.pid"));

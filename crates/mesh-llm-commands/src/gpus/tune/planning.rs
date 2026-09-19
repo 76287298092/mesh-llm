@@ -20,11 +20,11 @@ pub(crate) fn derive_fit_target_mib(allocatable_memory_bytes: u64) -> u64 {
 
 pub(crate) fn recommended_kv_cache_quant(
     model_bytes: u64,
-) -> model_artifact::gguf::GgufKvCacheQuant {
+) -> skippy_model_artifact::gguf::GgufKvCacheQuant {
     if model_bytes >= LARGE_MODEL_MIN_BYTES {
-        model_artifact::gguf::GgufKvCacheQuant::Q4_0
+        skippy_model_artifact::gguf::GgufKvCacheQuant::Q4_0
     } else {
-        model_artifact::gguf::GgufKvCacheQuant::Q8_0
+        skippy_model_artifact::gguf::GgufKvCacheQuant::Q8_0
     }
 }
 
@@ -38,12 +38,12 @@ pub(crate) fn tune_kv_cache_type(value: &str) -> Option<TuneKvCacheType> {
 }
 
 pub(crate) fn tune_kv_cache_type_from_quant(
-    quant: model_artifact::gguf::GgufKvCacheQuant,
+    quant: skippy_model_artifact::gguf::GgufKvCacheQuant,
 ) -> TuneKvCacheType {
     match quant.v {
-        model_artifact::gguf::GgufKvCacheType::F16 => TuneKvCacheType::F16,
-        model_artifact::gguf::GgufKvCacheType::Q8_0 => TuneKvCacheType::Q8_0,
-        model_artifact::gguf::GgufKvCacheType::Q4_0 => TuneKvCacheType::Q4_0,
+        skippy_model_artifact::gguf::GgufKvCacheType::F16 => TuneKvCacheType::F16,
+        skippy_model_artifact::gguf::GgufKvCacheType::Q8_0 => TuneKvCacheType::Q8_0,
+        skippy_model_artifact::gguf::GgufKvCacheType::Q4_0 => TuneKvCacheType::Q4_0,
     }
 }
 
@@ -86,10 +86,10 @@ pub(crate) fn resident_model_bytes_for_layers(
 }
 
 pub(crate) fn planned_context_length(
-    metadata: &model_artifact::gguf::GgufCompactMeta,
+    metadata: &skippy_model_artifact::gguf::GgufCompactMeta,
     resident_model_bytes: u64,
     memory_budget_bytes: u64,
-    kv_cache_quant: model_artifact::gguf::GgufKvCacheQuant,
+    kv_cache_quant: skippy_model_artifact::gguf::GgufKvCacheQuant,
 ) -> u32 {
     let fallback_context = fallback_context_length(memory_budget_bytes, resident_model_bytes);
     let native_context = metadata.context_length;

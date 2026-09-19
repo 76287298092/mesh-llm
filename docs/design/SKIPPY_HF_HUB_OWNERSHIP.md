@@ -7,7 +7,7 @@ the single extraction PR, not an exception to its final acceptance criteria.
 
 ## Evidence at ff7fb85c83aad3e755419035ee4ef74491a5ed29
 
-`model-hf` and `model-package` depend on the registry package
+`skippy-model-hf` and `skippy-model-package` depend on the registry package
 `mesh-llm-hf-hub` 1.0.2 under the Rust import alias `hf_hub`, with the `blocking`
 feature enabled. See their Cargo manifests and the root Cargo.lock. Renaming
 only the import alias does not remove that package from the dependency graph.
@@ -32,7 +32,7 @@ reverse call into Mesh discovery, plugins or serving. Its package identity still
 fails the literal no-`mesh-*` dependency criterion.
 
 The lockfile includes paths from `skippy-bench`, `skippy-correctness` and
-`skippy-model-package` through `model-hf` to that registry package. Standalone
+`skippy-package-builder` through `skippy-model-hf` to that registry package. Standalone
 acquisition will also use it when the lifecycle API consumes model resolution.
 The current check must therefore cover aliases and transitive registry packages,
 not only workspace paths or Rust import names.
@@ -46,7 +46,7 @@ not only workspace paths or Rust import names.
 2. Switch model acquisition and any shared Mesh consumers together as needed to
    avoid incompatible client types. Keep credentials, endpoints, retry behavior,
    Hugging Face/Xet cache layout, integrity checks and TLS provider setup under
-   explicit validation. `model-hf/src/tls.rs` documents the current reqwest 0.13
+   explicit validation. `skippy-model-hf/src/tls.rs` documents the current reqwest 0.13
    and CPU-safe provider contract.
 3. Run complete affected-package tests and exercise real model download, cached
    reuse and removal from a clean Skippy installation. Include blocking and async

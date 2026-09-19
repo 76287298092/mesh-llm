@@ -304,7 +304,7 @@ pub(super) fn runtime_tracing_subscriber()
                 .add_directive("nostr_relay_pool=off".parse()?)
                 .add_directive("nostr_sdk=warn".parse()?)
                 .add_directive("noq_proto::connection=warn".parse()?)
-                .add_directive("skippy_server=warn".parse()?)
+                .add_directive("skippy_serving=warn".parse()?)
                 .add_directive("mesh_native_serving_plugin_host=warn".parse()?)
                 .add_directive("skippy_runtime_install=warn".parse()?),
         )

@@ -9,7 +9,7 @@ If you are just trying Mesh for the first time, do not start here. Run the [Quic
 Run the same private mesh name on each machine:
 
 ```sh
-mesh-llm serve --discover my-private-mesh --model <model-ref>
+mesh-llm serve --discover my-private-mesh --model <skippy-model-ref>
 ```
 
 Each serving node advertises its available models. Your local API stays:
@@ -57,4 +57,4 @@ flowchart LR
   Ready -.-> Middle
 ```
 
-The [architecture hub](/docs/pages/architecture/) explains how Mesh routes requests into Skippy. See the [model package specification](/docs/pages/model-package-spec/) for the manifest schema, artifact checksums, and stage-selection rules. For package publishing and validation, see [Layer package repositories](https://github.com/Mesh-LLM/mesh-llm/blob/main/docs/LAYER_PACKAGE_REPOS.md).
+The [architecture hub](/docs/pages/architecture/) explains how Mesh routes requests into Skippy. See the [model package specification](/docs/pages/skippy-model-package-spec/) for the manifest schema, artifact checksums, and stage-selection rules. For package publishing and validation, see [Layer package repositories](https://github.com/Mesh-LLM/mesh-llm/blob/main/docs/LAYER_PACKAGE_REPOS.md).

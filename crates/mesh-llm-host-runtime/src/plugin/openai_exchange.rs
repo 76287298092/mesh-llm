@@ -7,7 +7,7 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use openai_frontend::{
+use skippy_openai_frontend::{
     CapsuleMarker, ChatCompletionOutcome, ChatCompletionRequest, ChatCompletionResponse,
     ChatExchangeRoute, OpenAiHookPolicy,
 };
@@ -24,7 +24,7 @@ pub const OPENAI_EXCHANGE_CHANNEL: &str = "openai.exchange.v1";
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum OpenAiExchangeDispatchPath {
-    /// `openai-frontend`'s typed `OpenAiHookPolicy`/`HookedOpenAiBackend` seam.
+    /// `skippy-openai-frontend`'s typed `OpenAiHookPolicy`/`HookedOpenAiBackend` seam.
     TypedFrontend,
     /// The raw-proxy ingress (`network/openai/ingress.rs`), used for
     /// plugin-served models; never sees a typed `ChatCompletionRequest`.
@@ -182,7 +182,7 @@ pub enum CapsuleIdProvenance {
 }
 
 /// The wire shape both dispatch paths publish on [`OPENAI_EXCHANGE_CHANNEL`].
-/// Deliberately independent of `openai_frontend`'s typed request/response —
+/// Deliberately independent of `skippy_openai_frontend`'s typed request/response —
 /// the raw-proxy path never has one — so one shape covers both paths without
 /// either being forced into the other's type.
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -488,7 +488,7 @@ impl OpenAiExchangeChannel for PluginManager {
     }
 }
 
-/// Bridges path 1 (`openai-frontend`'s typed hook seam) to
+/// Bridges path 1 (`skippy-openai-frontend`'s typed hook seam) to
 /// [`OpenAiExchangeChannel`], so an out-of-process plugin observes the same
 /// effective-request/terminal events this crate's `MeshAutoHookPolicy`
 /// already sees in-process. Compose alongside other [`OpenAiHookPolicy`]
@@ -538,7 +538,7 @@ impl OpenAiHookPolicy for OpenAiExchangeHookBridge {
             _ => (None, None),
         };
         // Recomputed from `request` rather than threaded through
-        // `CapsuleMarker` (an `openai-frontend` public type this crate
+        // `CapsuleMarker` (an `skippy-openai-frontend` public type this crate
         // doesn't own): both this and `capsule_marker_for_response` below
         // read the same `client_nonce` field, so they always agree on which
         // branch was taken.
@@ -638,7 +638,7 @@ pub(crate) mod test_support {
 
 #[cfg(test)]
 mod tests {
-    use openai_frontend::{ChatCompletionOutcome, HookedOpenAiBackend, OpenAiBackend, Usage};
+    use skippy_openai_frontend::{ChatCompletionOutcome, HookedOpenAiBackend, OpenAiBackend, Usage};
 
     use super::test_support::RecordingChannel;
     use super::*;
@@ -647,14 +647,14 @@ mod tests {
 
     #[async_trait]
     impl OpenAiBackend for EchoBackend {
-        async fn models(&self) -> openai_frontend::OpenAiResult<Vec<openai_frontend::ModelObject>> {
+        async fn models(&self) -> skippy_openai_frontend::OpenAiResult<Vec<skippy_openai_frontend::ModelObject>> {
             Ok(Vec::new())
         }
 
         async fn chat_completion(
             &self,
             request: ChatCompletionRequest,
-        ) -> openai_frontend::OpenAiResult<ChatCompletionResponse> {
+        ) -> skippy_openai_frontend::OpenAiResult<ChatCompletionResponse> {
             Ok(ChatCompletionResponse::new(
                 request.model,
                 "ok",
@@ -665,8 +665,8 @@ mod tests {
         async fn chat_completion_stream(
             &self,
             _request: ChatCompletionRequest,
-            _context: openai_frontend::OpenAiRequestContext,
-        ) -> openai_frontend::OpenAiResult<openai_frontend::ChatCompletionStream> {
+            _context: skippy_openai_frontend::OpenAiRequestContext,
+        ) -> skippy_openai_frontend::OpenAiResult<skippy_openai_frontend::ChatCompletionStream> {
             Ok(Box::pin(futures_util::stream::empty()))
         }
     }
@@ -802,7 +802,7 @@ mod tests {
         assert!(events[0].nonce_source.is_none());
     }
 
-    /// The exact scenario `TerminalGuard` (in `openai-frontend`) exists to
+    /// The exact scenario `TerminalGuard` (in `skippy-openai-frontend`) exists to
     /// close: the backend future never returns, so `HookedOpenAiBackend`
     /// reports `ChatCompletionOutcome::Cancelled` instead of nothing — this
     /// bridge must still publish a terminal event for it, with no status,
@@ -832,14 +832,14 @@ mod tests {
 
     #[async_trait]
     impl OpenAiBackend for DelayedBackend {
-        async fn models(&self) -> openai_frontend::OpenAiResult<Vec<openai_frontend::ModelObject>> {
+        async fn models(&self) -> skippy_openai_frontend::OpenAiResult<Vec<skippy_openai_frontend::ModelObject>> {
             Ok(Vec::new())
         }
 
         async fn chat_completion(
             &self,
             request: ChatCompletionRequest,
-        ) -> openai_frontend::OpenAiResult<ChatCompletionResponse> {
+        ) -> skippy_openai_frontend::OpenAiResult<ChatCompletionResponse> {
             tokio::time::sleep(self.delay).await;
             Ok(ChatCompletionResponse::new(
                 request.model,
@@ -851,8 +851,8 @@ mod tests {
         async fn chat_completion_stream(
             &self,
             _request: ChatCompletionRequest,
-            _context: openai_frontend::OpenAiRequestContext,
-        ) -> openai_frontend::OpenAiResult<openai_frontend::ChatCompletionStream> {
+            _context: skippy_openai_frontend::OpenAiRequestContext,
+        ) -> skippy_openai_frontend::OpenAiResult<skippy_openai_frontend::ChatCompletionStream> {
             Ok(Box::pin(futures_util::stream::empty()))
         }
     }
@@ -1251,7 +1251,7 @@ mod tests {
     /// Verifies the envelope constructor shape for the RawProxy effective +
     /// terminal pair: both envelopes carry `RawProxy` dispatch path, and
     /// nonce/nonce_source/capsule_id are all absent (the raw-proxy path never
-    /// runs through `openai-frontend`'s `OpenAiHookPolicy`, so no marker is
+    /// runs through `skippy-openai-frontend`'s `OpenAiHookPolicy`, so no marker is
     /// minted).
     ///
     /// // Shape test only — does not invoke the routing function.

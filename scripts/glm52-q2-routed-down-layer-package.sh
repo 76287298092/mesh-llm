@@ -35,7 +35,7 @@ fi
 
 if [[ "$dry_run" != "1" && ! -x "$skippy_model_package_bin" ]]; then
   echo "missing executable: $skippy_model_package_bin" >&2
-  echo "build it with: cargo build --release --locked -p skippy-model-package" >&2
+  echo "build it with: cargo build --release --locked -p skippy-package-builder" >&2
   exit 1
 fi
 

@@ -233,7 +233,7 @@ where
     }
 
     // Follow existing mesh-llm conventions for app data directories:
-    // 1. MESH_LLM_DATA_DIR env var (highest priority, used by model-hf crate)
+    // 1. MESH_LLM_DATA_DIR env var (highest priority, used by skippy-model-hf crate)
     // 2. platform default
     if let Some(env_path) = data_dir {
         return Ok(PathBuf::from(env_path).join("logging"));

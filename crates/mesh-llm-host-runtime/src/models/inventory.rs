@@ -8,7 +8,7 @@ use super::local::{
 };
 use hf_hub::{RepoType, RepoTypeModel};
 
-/// Prefix of synthetic model refs produced by `model-hf` for local GGUF files
+/// Prefix of synthetic model refs produced by `skippy-model-hf` for local GGUF files
 /// that cannot be mapped back to a Hugging Face repo/file identity.
 const SYNTHETIC_LOCAL_GGUF_PREFIX: &str = "local-gguf/";
 

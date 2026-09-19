@@ -592,7 +592,7 @@ boundary.
   import report and checksum.
 - `prepare-native-runtime-input`: one verified native runtime archive and
   manifest. Non-Windows artifacts include the checksum-bound
-  `skippy-model-package` tool used by split-serving consumers to prepare
+  `skippy-package-builder` tool used by split-serving consumers to prepare
   package-v2 fixtures; Windows artifacts remain DLL-only until the producer has
   a reliable import-library path for the tool.
 - `prepare-static-abi-input`: portable static ABI archive.
@@ -635,7 +635,7 @@ boundary.
   a positive floor fail when no cache requests are observable; the zero-floor
   SafeTensors observation remains non-failing and emits a wiring warning.
 
-Rust-test batches that contain `skippy-runtime` or `skippy-model-package`
+Rust-test batches that contain `skippy-runtime` or `skippy-package-builder`
 resolve the generated Skippy correctness manifest, then restore the pinned Qwen
 fixture from one exact GitHub Actions cache key containing its file SHA-256 and
 `.github/cache-version.txt`. Every use is verified against the pinned size and
@@ -866,7 +866,7 @@ The handle rule exempts only the files that implement the console output
 facility, listed as `CONSOLE_OUTPUT_OWNERS` in the same module: the sink-aware
 writer and its pre-sink CLI fallback, the inline progress renderers, the TUI
 output manager / fd capture / terminal backend, the runtime tracing writer,
-skippy-server's stderr telemetry sink, and the CLI presentation surfaces.
+skippy-serving's stderr telemetry sink, and the CLI presentation surfaces.
 A capability probe such as `io::stdout().is_terminal()` reads nothing and is
 not a handle.
 
@@ -988,7 +988,7 @@ checkpoint preparation. The host consumes it; publish/affected-crate rosters and
 Linux Docker contexts include the new owner. Mesh rendering and hooks stay in
 the host. No external CI policy changes.
 
-The shared `skippy-api` lifecycle now consumes the embedded `skippy-server`
+The shared `skippy-api` lifecycle now consumes the embedded `skippy-serving`
 service; publish order places the server before the API, then the CLI. Native
 runtime startup and model backend composition belong to the API. Source identity
 and planning are shared with Mesh. CI topology and runner policy are unchanged.
@@ -997,4 +997,4 @@ Split-certification roster generation now targets `crates/skippy-api/src/split-c
 The release-bound recipe build script and admission checks move with this neutral
 owner; canary generation/check commands and enforcement policy are unchanged.
 
-The standalone command now lives in `skippy-cli` (binary `skippy`); `skippy-server` is the Clap-free embedded service library. CLI source is included in Docker prechecks, affected-crate selection, split-serving ownership and the publish roster after its server dependency. Certification, benchmark, smoke and WAN lab launches use the new binary. `just skippy-build` and `just skippy-release-build` select the dynamic-runtime CLI.
+The standalone command now lives in `skippy-cli` (binary `skippy`); `skippy-serving` is the Clap-free embedded service library. CLI source is included in Docker prechecks, affected-crate selection, split-serving ownership and the publish roster after its server dependency. Certification, benchmark, smoke and WAN lab launches use the new binary. `just skippy-build` and `just skippy-release-build` select the dynamic-runtime CLI.

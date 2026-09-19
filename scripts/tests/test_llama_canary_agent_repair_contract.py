@@ -185,7 +185,7 @@ run_candidate_gates() {
         for package in (
             "skippy-runtime",
             "skippy-cli",
-            "skippy-model-package",
+            "skippy-package-builder",
             "skippy-correctness",
         ):
             self.assertIn(f"-p {package}", build)

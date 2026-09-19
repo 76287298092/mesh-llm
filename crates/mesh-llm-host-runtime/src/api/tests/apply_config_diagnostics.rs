@@ -68,7 +68,7 @@ async fn control_plane_api_apply_config_serializes_structured_diagnostics() {
                 ),
                 path: Some("models[0].request_defaults.reasoning_format".to_string()),
                 canonical_path: Some(
-                    "models.<model-ref>.request_defaults.reasoning_format".to_string(),
+                    "models.<skippy-model-ref>.request_defaults.reasoning_format".to_string(),
                 ),
                 message:
                     "models[0].request_defaults.reasoning_format must be one of: auto, none, deepseek, deepseek-legacy, hidden"

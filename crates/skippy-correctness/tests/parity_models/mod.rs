@@ -7,9 +7,9 @@ use std::{
 };
 
 use anyhow::{Context, Result, anyhow, bail};
-use model_ref::split_gguf_shard_info;
 use serde::Deserialize;
 use serde_json::Value;
+use skippy_model_ref::split_gguf_shard_info;
 use skippy_runtime::{
     ActivationFrame, GGML_TYPE_F16, IterationBatchPhase, IterationBatchRequest, MtpSource,
     RuntimeConfig, RuntimeKvPage, RuntimeLoadMode, StageModel, StageSession,
@@ -846,7 +846,7 @@ fn repo_snapshot_files(repo: &str) -> Result<Vec<PathBuf>> {
 }
 
 fn repo_snapshot_dirs(repo: &str) -> Result<Vec<PathBuf>> {
-    let cache_dir = model_hf::huggingface_hub_cache_dir();
+    let cache_dir = skippy_model_hf::huggingface_hub_cache_dir();
     let repo_dir = cache_dir.join(format!("models--{}", repo.replace('/', "--")));
     let snapshots = repo_dir.join("snapshots");
     if !snapshots.is_dir() {
@@ -867,7 +867,7 @@ fn repo_snapshot_dirs(repo: &str) -> Result<Vec<PathBuf>> {
 }
 
 fn repo_relative_path(repo: &str, path: &Path) -> Option<PathBuf> {
-    let cache_dir = model_hf::huggingface_hub_cache_dir();
+    let cache_dir = skippy_model_hf::huggingface_hub_cache_dir();
     let snapshots = cache_dir
         .join(format!("models--{}", repo.replace('/', "--")))
         .join("snapshots");

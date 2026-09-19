@@ -48,12 +48,12 @@ pub fn retry(timeout_secs: u64, mut action: impl FnMut() -> Result<()>) -> Resul
     Err(last_error.unwrap_or_else(|| anyhow!("timed out")))
 }
 
-pub fn ensure_release_skippy_server_bin(path: &Path) -> Result<()> {
+pub fn ensure_release_skippy_serving_bin(path: &Path) -> Result<()> {
     let path = path.to_string_lossy();
     let debug_path = path.contains("target/debug/skippy") || path.contains("target\\debug\\skippy");
     if debug_path {
         bail!(
-            "SkippyBench benchmark-managed skippy-server runs require a release binary; run `just skippy-release-build` and use --stage-server-bin target/release/skippy"
+            "SkippyBench benchmark-managed skippy-serving runs require a release binary; run `just skippy-release-build` and use --stage-server-bin target/release/skippy"
         );
     }
     Ok(())

@@ -3,7 +3,7 @@ use super::test_support::*;
 use super::*;
 use crate::inference::skippy::SkippyTelemetryOptions;
 use anyhow::Result;
-use openai_frontend::OpenAiBackend;
+use skippy_openai_frontend::OpenAiBackend;
 use skippy_protocol::LoadMode;
 use skippy_runtime::{
     MtpSource,
@@ -25,22 +25,22 @@ use std::{
 #[derive(Default)]
 struct RecordingNativeProposalIngress {
     proposals: AtomicUsize,
-    reports: Mutex<Vec<skippy_server::LinearProposalReceipt>>,
+    reports: Mutex<Vec<skippy_serving::LinearProposalReceipt>>,
 }
 
-impl skippy_server::LinearProposalIngress for RecordingNativeProposalIngress {
+impl skippy_serving::LinearProposalIngress for RecordingNativeProposalIngress {
     fn propose(
         &self,
-        _query: skippy_server::LinearProposalQuery,
-    ) -> anyhow::Result<skippy_server::LinearProposalSourceResponse> {
+        _query: skippy_serving::LinearProposalQuery,
+    ) -> anyhow::Result<skippy_serving::LinearProposalSourceResponse> {
         self.proposals.fetch_add(1, Ordering::Relaxed);
-        let decision_id = skippy_server::OpaqueProposalDecisionId::new(vec![1])?;
-        Ok(skippy_server::LinearProposalSourceResponse::new(Some(
-            skippy_server::LinearProposal::new(decision_id, vec![0]),
+        let decision_id = skippy_serving::OpaqueProposalDecisionId::new(vec![1])?;
+        Ok(skippy_serving::LinearProposalSourceResponse::new(Some(
+            skippy_serving::LinearProposal::new(decision_id, vec![0]),
         )))
     }
 
-    fn report(&self, receipt: &skippy_server::LinearProposalReceipt) -> anyhow::Result<()> {
+    fn report(&self, receipt: &skippy_serving::LinearProposalReceipt) -> anyhow::Result<()> {
         self.reports.lock().unwrap().push(receipt.clone());
         Ok(())
     }
@@ -48,20 +48,20 @@ impl skippy_server::LinearProposalIngress for RecordingNativeProposalIngress {
 
 struct NoopGenerationReceiptSink;
 
-impl skippy_server::frontend::GenerationReceiptSink for NoopGenerationReceiptSink {
-    fn begin(&self, _start: &skippy_server::frontend::GenerationStart) -> Result<()> {
+impl skippy_serving::frontend::GenerationReceiptSink for NoopGenerationReceiptSink {
+    fn begin(&self, _start: &skippy_serving::frontend::GenerationStart) -> Result<()> {
         Ok(())
     }
 
-    fn committed(&self, _commit: &skippy_server::frontend::GenerationCommit) -> Result<()> {
+    fn committed(&self, _commit: &skippy_serving::frontend::GenerationCommit) -> Result<()> {
         Ok(())
     }
 
-    fn abort(&self, _abort: &skippy_server::frontend::GenerationAbort) -> Result<()> {
+    fn abort(&self, _abort: &skippy_serving::frontend::GenerationAbort) -> Result<()> {
         Ok(())
     }
 
-    fn record(&self, _receipt: &skippy_server::frontend::GenerationReceipt) -> Result<()> {
+    fn record(&self, _receipt: &skippy_serving::frontend::GenerationReceipt) -> Result<()> {
         Ok(())
     }
 }
@@ -70,22 +70,22 @@ struct RecordingNativeHooksFactory {
     ingress: Arc<RecordingNativeProposalIngress>,
 }
 
-impl skippy_server::serving_hooks::ModelServingHooksFactory for RecordingNativeHooksFactory {
+impl skippy_serving::serving_hooks::ModelServingHooksFactory for RecordingNativeHooksFactory {
     fn create(
         &self,
-        _tokenizer: skippy_server::TokenizerCapability,
+        _tokenizer: skippy_serving::TokenizerCapability,
         _extra_generation_sink: Option<
-            Arc<dyn skippy_server::frontend::GenerationLifecycleIngress>,
+            Arc<dyn skippy_serving::frontend::GenerationLifecycleIngress>,
         >,
-    ) -> Result<skippy_server::serving_hooks::ModelServingHooks> {
-        let source: Arc<dyn skippy_server::LinearProposalIngress> = self.ingress.clone();
-        let ingress = skippy_server::frontend::LinearProposalIngressConfig::new(
+    ) -> Result<skippy_serving::serving_hooks::ModelServingHooks> {
+        let source: Arc<dyn skippy_serving::LinearProposalIngress> = self.ingress.clone();
+        let ingress = skippy_serving::frontend::LinearProposalIngressConfig::new(
             source,
             Duration::from_millis(25),
             1,
         )?;
-        Ok(skippy_server::serving_hooks::ModelServingHooks::new(
-            skippy_server::frontend::GenerationReceiptConfig::new(Arc::new(
+        Ok(skippy_serving::serving_hooks::ModelServingHooks::new(
+            skippy_serving::frontend::GenerationReceiptConfig::new(Arc::new(
                 NoopGenerationReceiptSink,
             )),
             ingress,
@@ -551,7 +551,7 @@ strategy = "ngram-cache"
     assert_eq!(openai.speculative_window, 6);
     assert_eq!(
         openai.speculative.ngram.as_ref().map(|ngram| ngram.kind),
-        Some(skippy_server::NgramProposerKind::Cache)
+        Some(skippy_serving::NgramProposerKind::Cache)
     );
 }
 
@@ -586,7 +586,7 @@ fn package_suffix_strategy_resolves_as_a_standalone_proposer() {
     assert_eq!(openai.speculative.verify_window.pipeline_depth, 2);
     assert_eq!(
         openai.speculative.ngram.as_ref().map(|ngram| ngram.kind),
-        Some(skippy_server::NgramProposerKind::Suffix)
+        Some(skippy_serving::NgramProposerKind::Suffix)
     );
 }
 
@@ -633,7 +633,7 @@ ngram_max_proposal_tokens = 6
     assert!(openai.native_mtp_enabled);
     assert_eq!(
         openai.speculative.ngram.as_ref().map(|ngram| ngram.kind),
-        Some(skippy_server::NgramProposerKind::Cache)
+        Some(skippy_serving::NgramProposerKind::Cache)
     );
 }
 
@@ -678,7 +678,7 @@ verify_window_pipeline_depth = 2
         .ngram
         .as_ref()
         .expect("suffix proposer should resolve");
-    assert_eq!(ngram.kind, skippy_server::NgramProposerKind::Suffix);
+    assert_eq!(ngram.kind, skippy_serving::NgramProposerKind::Suffix);
     assert_eq!(ngram.min_ngram, 5);
     assert_eq!(ngram.max_ngram, 32);
     assert_eq!(ngram.max_proposal_tokens, 48);
@@ -762,7 +762,7 @@ ngram_max_proposal_tokens = 6
         .ngram
         .as_ref()
         .expect("direct cache strategy should select an N-gram proposer");
-    assert_eq!(ngram.kind, skippy_server::NgramProposerKind::Cache);
+    assert_eq!(ngram.kind, skippy_serving::NgramProposerKind::Cache);
     assert_eq!(ngram.min_ngram, 2);
     assert_eq!(ngram.max_ngram, 4);
     assert_eq!(ngram.max_proposal_tokens, 6);
@@ -805,7 +805,7 @@ ngram_max_proposal_tokens = 48
     assert_eq!(openai.speculative_window, 48);
     assert_eq!(
         openai.speculative.ngram.as_ref().map(|ngram| ngram.kind),
-        Some(skippy_server::NgramProposerKind::Suffix)
+        Some(skippy_serving::NgramProposerKind::Suffix)
     );
 }
 
@@ -907,7 +907,7 @@ ngram_max_proposal_tokens = 48
     assert_eq!(openai.speculative_window, 48);
     assert_eq!(
         openai.speculative.ngram.as_ref().map(|ngram| ngram.kind),
-        Some(skippy_server::NgramProposerKind::Suffix)
+        Some(skippy_serving::NgramProposerKind::Suffix)
     );
 }
 
@@ -941,7 +941,7 @@ ngram_max_proposal_tokens = 1
     })?;
     let embedded_openai = resolved.to_embedded_openai_args(0, false)?;
     let ingress = Arc::new(RecordingNativeProposalIngress::default());
-    let factory: skippy_server::serving_hooks::SharedModelServingHooksFactory =
+    let factory: skippy_serving::serving_hooks::SharedModelServingHooksFactory =
         Arc::new(RecordingNativeHooksFactory {
             ingress: Arc::clone(&ingress),
         });

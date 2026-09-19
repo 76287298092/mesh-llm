@@ -1,4 +1,4 @@
-//! Host-side [`skippy_server::runtime_state::SessionLifecycleObserver`]
+//! Host-side [`skippy_serving::runtime_state::SessionLifecycleObserver`]
 //! implementation, translating real session-lifecycle decisions (plan
 //! task 12, §8.7) into `RuntimeFact::Session` facts.
 //!
@@ -14,7 +14,7 @@ use mesh_llm_runtime_event_contracts::{
     NumericSummaryKey, NumericValue, OperationId, OperationScope, Outcome, RuntimeEventIngress,
     RuntimeFact, SessionEventKind, SessionFact,
 };
-use skippy_server::runtime_state::{SessionLifecycleEvent, SessionLifecycleObserver};
+use skippy_serving::runtime_state::{SessionLifecycleEvent, SessionLifecycleObserver};
 
 use crate::runtime_events::runtime_event_engine;
 

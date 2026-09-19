@@ -18,7 +18,7 @@ use anyhow::{Context, Result};
 use mesh_llm_events::{OutputEvent, emit_event};
 use skippy_protocol::{FlashAttentionType, LoadMode, PeerConfig};
 use skippy_runtime::ActivationBoundaryDesc;
-use skippy_server::serving_hooks::SharedModelServingHooksFactory;
+use skippy_serving::serving_hooks::SharedModelServingHooksFactory;
 use std::collections::HashMap;
 use std::future::Future;
 use std::path::{Path, PathBuf};
@@ -100,7 +100,7 @@ pub(super) struct SplitGenerationLoadSpec<'a> {
 
 pub(super) struct SplitGenerationLoadSettings<'a> {
     pub(super) stage0: &'a RuntimeSliceStagePlan,
-    pub(super) runtime_options: skippy_server::EmbeddedRuntimeOptions,
+    pub(super) runtime_options: skippy_serving::EmbeddedRuntimeOptions,
     pub(super) embedded_openai: skippy::ResolvedEmbeddedOpenAiArgs,
     pub(super) load_mode: LoadMode,
     pub(super) startup_timeout: Duration,
@@ -382,7 +382,7 @@ pub(super) async fn stage0_runtime_options(
     downstream: &skippy::StagePeerDescriptor,
     downstream_endpoint: &str,
     stage0_return_endpoint: &str,
-) -> Result<skippy_server::EmbeddedRuntimeOptions> {
+) -> Result<skippy_serving::EmbeddedRuntimeOptions> {
     let mut runtime_options = settings.runtime_options.clone();
     runtime_options.config.run_id = spec.generation.run_id.clone();
     runtime_options.config.topology_id = spec.generation.topology_id.clone();

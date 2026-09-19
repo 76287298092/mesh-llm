@@ -16,7 +16,7 @@ mesh-llm serve --discover my-private-mesh --model unsloth/gemma-4-E4B-it-GGUF:UD
 Install Mesh on the second machine, then use the same mesh name:
 
 ```sh
-mesh-llm serve --discover my-private-mesh --model <model-ref>
+mesh-llm serve --discover my-private-mesh --model <skippy-model-ref>
 ```
 
 ## Join as an API-only client
@@ -57,11 +57,11 @@ From a controlling node authenticated as the same owner:
 
 ```sh
 mesh-llm runtime load-model \
-  --endpoint '<control-endpoint>' --model '<canonical-model-ref>'
+  --endpoint '<control-endpoint>' --model '<canonical-skippy-model-ref>'
 mesh-llm runtime ensure-model \
-  --endpoint '<control-endpoint>' --model '<canonical-model-ref>'
+  --endpoint '<control-endpoint>' --model '<canonical-skippy-model-ref>'
 mesh-llm runtime unload-model \
-  --endpoint '<control-endpoint>' --model '<canonical-model-ref>'
+  --endpoint '<control-endpoint>' --model '<canonical-skippy-model-ref>'
 mesh-llm runtime drain-model \
   --endpoint '<control-endpoint>' --instance-id '<instance-id>'
 ```

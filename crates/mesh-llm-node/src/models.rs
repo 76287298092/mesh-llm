@@ -1,11 +1,13 @@
 use anyhow::{Context, Result};
 pub use mesh_llm_types::models::capabilities::{CapabilityLevel, ModelCapabilities};
 use mesh_llm_types::models::capabilities::{merge_config_signals, merge_name_signals};
-use model_artifact::{ModelFormat, ResolvedModelArtifact, resolve_model_artifact_ref};
-use model_hf::HfModelRepository;
-use model_ref::{format_model_ref, normalize_gguf_distribution_id, quant_selector_from_gguf_file};
 use serde::Deserialize;
 use serde_json::Value;
+use skippy_model_artifact::{ModelFormat, ResolvedModelArtifact, resolve_model_artifact_ref};
+use skippy_model_hf::HfModelRepository;
+use skippy_model_ref::{
+    format_model_ref, normalize_gguf_distribution_id, quant_selector_from_gguf_file,
+};
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
@@ -126,7 +128,7 @@ struct CatalogModel {
 }
 
 pub fn default_huggingface_cache_dir() -> PathBuf {
-    model_hf::huggingface_hub_cache_dir()
+    skippy_model_hf::huggingface_hub_cache_dir()
 }
 
 pub fn scan_installed_models(cache_dir: impl AsRef<Path>) -> Vec<InstalledModel> {

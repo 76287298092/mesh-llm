@@ -1,14 +1,14 @@
 //! Runtime-event producer wiring for OpenAI request/admission/stream
 //! outcomes (plan task 11, `.omo/plans/event-system.md` line 286).
 //!
-//! Adapts `openai-frontend`'s dependency-safe [`OpenAiLifecycleObserver`]
+//! Adapts `skippy-openai-frontend`'s dependency-safe [`OpenAiLifecycleObserver`]
 //! events into root/child `RuntimeFact::Request` facts through the host
 //! runtime-event engine. The request root [`OperationId`] is minted
 //! byte-equal to the logging `RequestId` (task 2's byte-equality rule) at
 //! admission and never regenerated, so a consumer can correlate a runtime
 //! event stream operation directly against the existing structured log.
 //!
-//! Exactly one terminal decision per request: `openai-frontend`'s own
+//! Exactly one terminal decision per request: `skippy-openai-frontend`'s own
 //! `RequestLifecycle`/`StreamLifecycle` already guarantee exactly one
 //! root-scope terminal event (`NonStreamTerminal`/`StreamTerminal`/
 //! `Rejected`/`StreamCancelled`/`StreamDropped`/`RequestCancelled`) and
@@ -18,7 +18,7 @@
 //! guarantee rather than reimplementing it: every terminal-shaped branch
 //! below `Option::take`s its tracked reservation exactly once and submits
 //! its terminal fact through it, so a second observation of the same
-//! logical terminal (which `openai-frontend` never produces) would be a
+//! logical terminal (which `skippy-openai-frontend` never produces) would be a
 //! silent no-op rather than a write-once-slot rejection.
 //!
 //! Every emission is best-effort. An absent engine, a reservation-table
@@ -36,7 +36,7 @@ use mesh_llm_runtime_event_contracts::{
     ChildOperationId, FactData, OperationId, Outcome, ReasonCode, RequestEventKind, RequestFact,
     RequestId, RuntimeEventIngress, RuntimeFact, ScopeIdentities,
 };
-use openai_frontend::{
+use skippy_openai_frontend::{
     OpenAiFailure, OpenAiLifecycleContext, OpenAiLifecycleEvent, OpenAiLifecycleObserver,
     OpenAiRejection, OpenAiTerminalResult,
 };
@@ -432,7 +432,7 @@ mod tests {
     use crate::runtime_events::engine::RuntimeEventEngine;
     use crate::runtime_events::{clear_runtime_event_engine, install_runtime_event_engine};
     use mesh_llm_runtime_event_contracts::RuntimeFact;
-    use openai_frontend::{OpenAiFrontendRoute, OpenAiRequestMethod, parse_request_id};
+    use skippy_openai_frontend::{OpenAiFrontendRoute, OpenAiRequestMethod, parse_request_id};
 
     const REQUEST_ID: &str = "c0a801ef-2a39-4f52-99f5-bdc849127cde";
 
@@ -538,12 +538,12 @@ mod tests {
         });
         observer.observe(&OpenAiLifecycleEvent::BackendDispatched {
             context: context.clone(),
-            operation: openai_frontend::OpenAiBackendOperation::ChatCompletion,
+            operation: skippy_openai_frontend::OpenAiBackendOperation::ChatCompletion,
         });
         assert_eq!(engine.occupied_count(), 2, "root + backend child");
         observer.observe(&OpenAiLifecycleEvent::BackendTerminal {
             context: context.clone(),
-            operation: openai_frontend::OpenAiBackendOperation::ChatCompletion,
+            operation: skippy_openai_frontend::OpenAiBackendOperation::ChatCompletion,
             result: OpenAiTerminalResult::Completed { status_code: 200 },
         });
         engine.drain();
@@ -574,7 +574,7 @@ mod tests {
         });
         observer.observe(&OpenAiLifecycleEvent::BackendDispatched {
             context: context.clone(),
-            operation: openai_frontend::OpenAiBackendOperation::ChatCompletion,
+            operation: skippy_openai_frontend::OpenAiBackendOperation::ChatCompletion,
         });
 
         observer.observe(&OpenAiLifecycleEvent::NonStreamTerminal {
@@ -597,7 +597,7 @@ mod tests {
 
         observer.observe(&OpenAiLifecycleEvent::BackendTerminal {
             context,
-            operation: openai_frontend::OpenAiBackendOperation::ChatCompletion,
+            operation: skippy_openai_frontend::OpenAiBackendOperation::ChatCompletion,
             result: OpenAiTerminalResult::Completed { status_code: 200 },
         });
         let tracked = observer.lock();
@@ -621,12 +621,12 @@ mod tests {
         });
         observer.observe(&OpenAiLifecycleEvent::BackendDispatched {
             context: context.clone(),
-            operation: openai_frontend::OpenAiBackendOperation::ChatCompletion,
+            operation: skippy_openai_frontend::OpenAiBackendOperation::ChatCompletion,
         });
 
         observer.observe(&OpenAiLifecycleEvent::BackendTerminal {
             context: context.clone(),
-            operation: openai_frontend::OpenAiBackendOperation::ChatCompletion,
+            operation: skippy_openai_frontend::OpenAiBackendOperation::ChatCompletion,
             result: OpenAiTerminalResult::Completed { status_code: 200 },
         });
         {
@@ -741,11 +741,11 @@ mod tests {
         });
         observer.observe(&OpenAiLifecycleEvent::BackendDispatched {
             context: context.clone(),
-            operation: openai_frontend::OpenAiBackendOperation::ChatCompletion,
+            operation: skippy_openai_frontend::OpenAiBackendOperation::ChatCompletion,
         });
         observer.observe(&OpenAiLifecycleEvent::BackendTerminal {
             context: context.clone(),
-            operation: openai_frontend::OpenAiBackendOperation::ChatCompletion,
+            operation: skippy_openai_frontend::OpenAiBackendOperation::ChatCompletion,
             result: OpenAiTerminalResult::Completed { status_code: 200 },
         });
         observer.observe(&OpenAiLifecycleEvent::NonStreamTerminal {
@@ -770,7 +770,7 @@ mod tests {
         });
         observer.observe(&OpenAiLifecycleEvent::BackendDispatched {
             context: context.clone(),
-            operation: openai_frontend::OpenAiBackendOperation::ChatCompletion,
+            operation: skippy_openai_frontend::OpenAiBackendOperation::ChatCompletion,
         });
         observer.observe(&OpenAiLifecycleEvent::NonStreamTerminal {
             context,

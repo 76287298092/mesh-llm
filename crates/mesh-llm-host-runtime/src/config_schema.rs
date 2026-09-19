@@ -977,8 +977,8 @@ mod tests {
                             | "defaults.multimodal.mmproj_url"
                             | "defaults.request_defaults.dry"
                             | "defaults.engine.vllm.temperature"
-                            | "models.<model-ref>.hardware.device"
-                            | "models.<model-ref>.hardware.rpc_backend"
+                            | "models.<skippy-model-ref>.hardware.device"
+                            | "models.<skippy-model-ref>.hardware.rpc_backend"
                             | "plugin.<plugin-name>.startup.connect_timeout_secs"
                             | "plugin.<plugin-name>.url"
                             | "plugin.blackboard.settings.retention_days"
@@ -1178,7 +1178,7 @@ mod tests {
         let model_rpc_backend = exported
             .settings
             .iter()
-            .find(|entry| entry.canonical_path == "models.<model-ref>.hardware.rpc_backend")
+            .find(|entry| entry.canonical_path == "models.<skippy-model-ref>.hardware.rpc_backend")
             .expect("model rpc backend should be exported");
         assert_eq!(model_rpc_backend.support, ConfigSupportState::Rejected);
 

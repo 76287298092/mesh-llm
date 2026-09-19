@@ -128,7 +128,7 @@ fn prompt_repl_launch(args: PromptArgs) -> Result<()> {
     };
     let model_package_dir = args
         .run_root
-        .join("model-package-cache")
+        .join("skippy-model-package-cache")
         .join(&model_package_cache_key);
     let binary_cache_key = binary_cache_key(&args.stage_server_bin)?;
 
@@ -148,7 +148,7 @@ fn prompt_repl_launch(args: PromptArgs) -> Result<()> {
                 args.model_path.to_str().unwrap_or("").to_string()
             } else {
                 format!(
-                    "{}/model-package-cache/{model_package_cache_key}",
+                    "{}/skippy-model-package-cache/{model_package_cache_key}",
                     args.remote_root
                 )
             };

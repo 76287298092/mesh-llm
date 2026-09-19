@@ -1,8 +1,11 @@
 use super::*;
 use std::path::PathBuf;
 
-fn hf_identity(repo_id: &str, revision: &str) -> model_hf::store::local::HuggingFaceModelIdentity {
-    model_hf::store::local::HuggingFaceModelIdentity {
+fn hf_identity(
+    repo_id: &str,
+    revision: &str,
+) -> skippy_model_hf::store::local::HuggingFaceModelIdentity {
+    skippy_model_hf::store::local::HuggingFaceModelIdentity {
         repo_id: repo_id.to_string(),
         revision: revision.to_string(),
         file: "model-00001-of-00002.gguf".to_string(),

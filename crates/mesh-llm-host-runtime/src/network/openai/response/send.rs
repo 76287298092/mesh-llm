@@ -214,23 +214,23 @@ fn openai_error_body(status_code: u16, message: &str) -> Vec<u8> {
     let status =
         http::StatusCode::from_u16(status_code).unwrap_or(http::StatusCode::INTERNAL_SERVER_ERROR);
     let kind = openai_error_kind_for_status(status_code);
-    let error = openai_frontend::OpenAiError::from_kind(status, kind, message)
+    let error = skippy_openai_frontend::OpenAiError::from_kind(status, kind, message)
         .with_code(openai_error_code_for_status(status_code));
     serde_json::to_vec(&error.body()).expect("serializing JSON error response should not fail")
 }
 
-const fn openai_error_kind_for_status(status_code: u16) -> openai_frontend::OpenAiErrorKind {
+const fn openai_error_kind_for_status(status_code: u16) -> skippy_openai_frontend::OpenAiErrorKind {
     match status_code {
-        401 => openai_frontend::OpenAiErrorKind::Authentication,
-        403 => openai_frontend::OpenAiErrorKind::Permission,
-        404 | 410 => openai_frontend::OpenAiErrorKind::NotFound,
-        413 => openai_frontend::OpenAiErrorKind::PayloadTooLarge,
-        429 => openai_frontend::OpenAiErrorKind::RateLimit,
-        500 => openai_frontend::OpenAiErrorKind::Internal,
-        502 => openai_frontend::OpenAiErrorKind::ServiceUnavailable,
-        503 => openai_frontend::OpenAiErrorKind::ServiceUnavailable,
-        504 => openai_frontend::OpenAiErrorKind::Timeout,
-        _ => openai_frontend::OpenAiErrorKind::InvalidRequest,
+        401 => skippy_openai_frontend::OpenAiErrorKind::Authentication,
+        403 => skippy_openai_frontend::OpenAiErrorKind::Permission,
+        404 | 410 => skippy_openai_frontend::OpenAiErrorKind::NotFound,
+        413 => skippy_openai_frontend::OpenAiErrorKind::PayloadTooLarge,
+        429 => skippy_openai_frontend::OpenAiErrorKind::RateLimit,
+        500 => skippy_openai_frontend::OpenAiErrorKind::Internal,
+        502 => skippy_openai_frontend::OpenAiErrorKind::ServiceUnavailable,
+        503 => skippy_openai_frontend::OpenAiErrorKind::ServiceUnavailable,
+        504 => skippy_openai_frontend::OpenAiErrorKind::Timeout,
+        _ => skippy_openai_frontend::OpenAiErrorKind::InvalidRequest,
     }
 }
 

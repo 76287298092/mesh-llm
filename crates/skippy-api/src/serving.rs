@@ -1,7 +1,7 @@
 //! Product-neutral options for local and staged OpenAI model serving.
-use openai_frontend::OpenAiHookPolicy;
+use skippy_openai_frontend::OpenAiHookPolicy;
 use skippy_protocol::StageConfig;
-use skippy_server::{
+use skippy_serving::{
     DEFAULT_GENERATION_ADMISSION_TIMEOUT_SECS, EmbeddedOpenAiArgs, EmbeddedOpenAiRequestDefaults,
     NativeMtpProposalConfig, SpeculativeDecodeConfig,
     telemetry::{Telemetry, TelemetryLevel},
@@ -79,7 +79,7 @@ impl OpenAiOptions {
             generation_concurrency,
             continuous_batching: true,
             adaptive_generation_min_concurrency: None,
-            generation_queue_capacity: skippy_server::frontend::default_generation_queue_capacity(
+            generation_queue_capacity: skippy_serving::frontend::default_generation_queue_capacity(
                 generation_concurrency,
             ),
             generation_admission_timeout_secs: DEFAULT_GENERATION_ADMISSION_TIMEOUT_SECS,
@@ -132,7 +132,7 @@ impl OpenAiOptions {
         self,
         bind_addr: SocketAddr,
         config: StageConfig,
-        runtime: Arc<Mutex<skippy_server::runtime_state::RuntimeState>>,
+        runtime: Arc<Mutex<skippy_serving::runtime_state::RuntimeState>>,
         telemetry: Telemetry,
         hook_policy: Option<Arc<dyn OpenAiHookPolicy>>,
     ) -> EmbeddedOpenAiArgs {
@@ -167,7 +167,7 @@ impl OpenAiOptions {
             activation_width: self.activation_width,
             reply_credit_limit: self.reply_credit_limit,
             downstream_connect_timeout_secs: self.downstream_connect_timeout_secs,
-            downstream_wire_condition: skippy_server::binary_transport::WireCondition::new(
+            downstream_wire_condition: skippy_serving::binary_transport::WireCondition::new(
                 0.0, None,
             )
             .expect("static downstream wire condition should construct"),

@@ -7,11 +7,11 @@ pub(super) fn single_quote_shell_arg(value: &str) -> String {
 
 pub(super) fn mesh_guardrail_mode_to_openai(
     mode: MeshGuardrailMode,
-) -> openai_frontend::GuardrailMode {
+) -> skippy_openai_frontend::GuardrailMode {
     match mode {
-        MeshGuardrailMode::Disabled => openai_frontend::GuardrailMode::Disabled,
-        MeshGuardrailMode::Metrics => openai_frontend::GuardrailMode::MetricsOnly,
-        MeshGuardrailMode::Enforce => openai_frontend::GuardrailMode::Enforce,
+        MeshGuardrailMode::Disabled => skippy_openai_frontend::GuardrailMode::Disabled,
+        MeshGuardrailMode::Metrics => skippy_openai_frontend::GuardrailMode::MetricsOnly,
+        MeshGuardrailMode::Enforce => skippy_openai_frontend::GuardrailMode::Enforce,
     }
 }
 

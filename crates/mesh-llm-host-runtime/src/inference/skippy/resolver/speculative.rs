@@ -3,12 +3,12 @@ use std::path::{Path, PathBuf};
 use crate::models::find_model_path;
 use anyhow::{Result, bail};
 use mesh_llm_system::util::validate_draft_min_max;
-use model_artifact::gguf::{scan_gguf_compact_meta, scan_gguf_tensor_names_any};
+use skippy_model_artifact::gguf::{scan_gguf_compact_meta, scan_gguf_tensor_names_any};
 use skippy_runtime::package::{
     PackageExtensionPolicyInfo, PackageGenerationInfo, PackageSpeculativeDecodingInfo,
     PackageSpeculativeProposerInfo, PackageSpeculativeStrategyInfo, PackageWindowPolicyInfo,
 };
-use skippy_server::{
+use skippy_serving::{
     NativeMtpProposalConfig, NgramExtensionConfig, NgramProposalConfig, NgramProposerKind,
     SpeculativeDecodeConfig, VerifyWindowConfig,
 };

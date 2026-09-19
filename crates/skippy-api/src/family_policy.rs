@@ -2,7 +2,7 @@ use std::path::Path;
 
 use skippy_protocol::{StageConfig, StageKvCacheConfig, StageKvCacheMode, StageKvCachePayload};
 
-use model_artifact::gguf::{GgufCompactMeta, scan_gguf_compact_meta};
+use skippy_model_artifact::gguf::{GgufCompactMeta, scan_gguf_compact_meta};
 
 const DEFAULT_PREFIX_CACHE_MIN_TOKENS: u64 = 256;
 const DEFAULT_PREFIX_CACHE_MAX_ENTRIES: usize = 512;

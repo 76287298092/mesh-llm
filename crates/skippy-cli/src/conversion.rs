@@ -2,7 +2,7 @@ use crate::cli::{ServeArgs, ServeBinaryArgs};
 use anyhow::{Context, Result, bail};
 use skippy_config::load_json;
 use skippy_protocol::{StageConfig, StageTopology};
-use skippy_server::{
+use skippy_serving::{
     binary_transport::{BinaryStageOptions, EmbeddedOpenAiStageOptions, WireCondition},
     frontend::SpeculativeDecodeConfig,
     http::StageHttpOptions,
@@ -61,12 +61,12 @@ pub fn binary_stage_options(args: ServeBinaryArgs) -> Result<BinaryStageOptions>
         .unwrap_or_else(|| usize::try_from(config.lane_count).unwrap_or(usize::MAX));
     let openai_generation_queue_capacity =
         args.openai_generation_queue_capacity.unwrap_or_else(|| {
-            skippy_server::frontend::default_generation_queue_capacity(
+            skippy_serving::frontend::default_generation_queue_capacity(
                 openai_generation_concurrency,
             )
         });
     let adaptive_generation_min_concurrency =
-        skippy_server::frontend::resolve_adaptive_generation_min_concurrency(
+        skippy_serving::frontend::resolve_adaptive_generation_min_concurrency(
             args.openai_adaptive_generation_concurrency,
             args.openai_adaptive_generation_min_concurrency,
             openai_generation_concurrency,
@@ -151,6 +151,7 @@ pub fn local_openai_options(
         .transpose()
         .context("load speculative config")?
         .unwrap_or_default();
+
     Ok(skippy_api::serving::LocalOpenAiOptions {
         config,
         topology,
@@ -177,7 +178,7 @@ pub fn local_openai_options(
     })
 }
 
-impl From<crate::cli::TelemetryLevel> for skippy_server::telemetry::TelemetryLevel {
+impl From<crate::cli::TelemetryLevel> for skippy_serving::telemetry::TelemetryLevel {
     fn from(value: crate::cli::TelemetryLevel) -> Self {
         match value {
             crate::cli::TelemetryLevel::Off => Self::Off,
@@ -186,7 +187,7 @@ impl From<crate::cli::TelemetryLevel> for skippy_server::telemetry::TelemetryLev
         }
     }
 }
-impl From<crate::cli::OpenAiGuardrailsCliMode> for skippy_server::frontend::OpenAiGuardrailsMode {
+impl From<crate::cli::OpenAiGuardrailsCliMode> for skippy_serving::frontend::OpenAiGuardrailsMode {
     fn from(value: crate::cli::OpenAiGuardrailsCliMode) -> Self {
         match value {
             crate::cli::OpenAiGuardrailsCliMode::Disabled => Self::Disabled,
@@ -216,7 +217,7 @@ mod tests {
     use super::*;
     use crate::cli::{Cli, Command};
     use skippy_runtime::MtpSource;
-    use skippy_server::frontend::{
+    use skippy_serving::frontend::{
         NativeMtpProposalConfig, NgramExtensionConfig, NgramProposalConfig, NgramProposerKind,
         VerifyWindowConfig,
     };

@@ -37,7 +37,7 @@ fn is_monolithic_gguf(path: &Path) -> bool {
         return false;
     };
     extension.eq_ignore_ascii_case("gguf")
-        && model_ref::split_gguf_shard_info(&format!("{stem}.gguf")).is_none()
+        && skippy_model_ref::split_gguf_shard_info(&format!("{stem}.gguf")).is_none()
 }
 
 #[cfg(test)]

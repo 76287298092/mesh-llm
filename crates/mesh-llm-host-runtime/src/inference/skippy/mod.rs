@@ -30,7 +30,7 @@ use std::{
 
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use openai_frontend::{
+use skippy_openai_frontend::{
     AudioResponse, AudioSpeechRequest, AudioTranscriptionRequest, AudioTranscriptionResponse,
     EmbeddingResponse, EmbeddingsRequest, RerankRequest, RerankResponse,
     ChatCompletionRequest, ChatCompletionResponse, ChatCompletionStream, CompactionConfig,
@@ -40,8 +40,8 @@ use openai_frontend::{
 };
 use skippy_protocol::{FlashAttentionType, LoadMode, StageConfig, StageDevice, StageKvCacheConfig};
 use skippy_runtime::{ModelInfo, MtpSource};
-use skippy_server::serving_hooks::SharedModelServingHooksFactory;
-use skippy_server::{
+use skippy_serving::serving_hooks::SharedModelServingHooksFactory;
+use skippy_serving::{
     DEFAULT_EMBEDDED_MAX_TOKENS, EmbeddedRuntimeOptions, EmbeddedRuntimeStatus,
     EmbeddedServerHandle, EmbeddedState, OpenAiGuardrailsConfig, OpenAiGuardrailsStatus,
     OpenAiGuardrailsTarget, SkippyRuntimeHandle, binary_transport::PredictionReturnListener,
@@ -87,7 +87,7 @@ pub(crate) use skippy_api::family_policy;
 pub(crate) use skippy_api::family_policy::{
     family_policy_for_compact_meta, family_policy_for_model_path, family_policy_for_stage_config,
 };
-pub(crate) use skippy_server::OpenAiGuardrailsStatus as SkippyOpenAiGuardrailsStatus;
+pub(crate) use skippy_serving::OpenAiGuardrailsStatus as SkippyOpenAiGuardrailsStatus;
 pub(crate) use split_certification::{SplitCertificationAdmission, require_split_certification};
 #[cfg(test)]
 pub(crate) use stage::test_stage_admission;
@@ -492,7 +492,7 @@ impl SkippyHttpHandle {
         self.port
     }
 
-    pub(crate) fn status(&self) -> skippy_server::EmbeddedServerStatus {
+    pub(crate) fn status(&self) -> skippy_serving::EmbeddedServerStatus {
         self.server.status()
     }
 
@@ -559,7 +559,7 @@ impl SkippyModelHandle {
         let lifecycle_observer = crate::network::openai::runtime_events::compose_lifecycle_observer(
             crate::logging_runtime_state().and_then(|state| state.openai_lifecycle_observer()),
         );
-        let server = skippy_server::start_openai_backend_with_tokenizer_and_lifecycle_observer(
+        let server = skippy_serving::start_openai_backend_with_tokenizer_and_lifecycle_observer(
             bind_addr,
             self.backend(),
             tokenizer,
@@ -609,7 +609,7 @@ fn wrap_host_guardrail_backend(
     backend: Arc<dyn OpenAiBackend>,
     openai_guardrails: Option<&OpenAiGuardrailsConfig>,
     context_limit_tokens: Option<usize>,
-    telemetry: Option<Arc<dyn openai_frontend::GuardrailTelemetrySink>>,
+    telemetry: Option<Arc<dyn skippy_openai_frontend::GuardrailTelemetrySink>>,
 ) -> Arc<dyn OpenAiBackend> {
     match openai_guardrails {
         Some(config) => {
@@ -885,7 +885,7 @@ static STAGE0_COMPUTE_METERS: std::sync::LazyLock<
     std::sync::Mutex<
         std::collections::HashMap<
             String,
-            std::sync::Arc<skippy_server::compute_meter::StageComputeMeter>,
+            std::sync::Arc<skippy_serving::compute_meter::StageComputeMeter>,
         >,
     >,
 > = std::sync::LazyLock::new(Default::default);
@@ -901,7 +901,7 @@ fn register_stage0_compute_meter(run_id: &str, runtime: &SkippyRuntimeHandle) {
 
 pub(crate) fn stage0_compute_meter(
     run_id: &str,
-) -> Option<std::sync::Arc<skippy_server::compute_meter::StageComputeMeter>> {
+) -> Option<std::sync::Arc<skippy_serving::compute_meter::StageComputeMeter>> {
     STAGE0_COMPUTE_METERS.lock().ok()?.get(run_id).cloned()
 }
 
@@ -914,20 +914,20 @@ pub(crate) fn forget_stage0_compute_meter(run_id: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use openai_frontend::{
+    use skippy_openai_frontend::{
     AudioResponse, AudioSpeechRequest, AudioTranscriptionRequest, AudioTranscriptionResponse,
     EmbeddingResponse, EmbeddingsRequest, RerankRequest, RerankResponse,MESH_COMPACT_FIELD, OpenAiError};
     use serde_json::json;
-    use skippy_server::runtime_state::RuntimeSessionStats;
-    use skippy_server::telemetry::TelemetryStats;
+    use skippy_serving::runtime_state::RuntimeSessionStats;
+    use skippy_serving::telemetry::TelemetryStats;
 
     #[test]
     fn lifecycle_only_hooks_leave_exact_receipts_unset() {
-        let ingress: Arc<dyn skippy_server::frontend::GenerationLifecycleIngress> =
+        let ingress: Arc<dyn skippy_serving::frontend::GenerationLifecycleIngress> =
             Arc::new(runtime_events::SkippyGenerationRuntimeEventAdapter::new());
-        let hooks = skippy_server::serving_hooks::ModelServingHooks::default()
+        let hooks = skippy_serving::serving_hooks::ModelServingHooks::default()
             .with_generation_lifecycle(
-                skippy_server::frontend::GenerationLifecycleConfig::from_ingress(ingress),
+                skippy_serving::frontend::GenerationLifecycleConfig::from_ingress(ingress),
             );
 
         assert!(hooks.generation_lifecycle().is_some());
@@ -972,7 +972,7 @@ mod tests {
             Ok(ChatCompletionResponse::new(
                 request.model,
                 "ok",
-                openai_frontend::Usage::new(0, 0),
+                skippy_openai_frontend::Usage::new(0, 0),
             ))
         }
 
@@ -1386,6 +1386,6 @@ mod tests {
             .filter_map(|function| function.get("name"))
             .filter_map(serde_json::Value::as_str)
             .collect::<Vec<_>>();
-        assert!(tool_names.contains(&openai_frontend::MESH_RESPOND_TOOL_NAME));
+        assert!(tool_names.contains(&skippy_openai_frontend::MESH_RESPOND_TOOL_NAME));
     }
 }

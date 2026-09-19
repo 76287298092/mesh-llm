@@ -13,9 +13,9 @@ executing if telemetry queues fill or export retries fail.
 
 ```mermaid
 flowchart LR
-    S["skippy-server<br/>request summaries"] -.-> M["metrics-server"]
+    S["skippy-serving<br/>request summaries"] -.-> M["metrics-server"]
     Mesh["mesh-llm<br/>topology, lifecycle, model refs"] -.-> M
-    O["openai-frontend<br/>request IDs"] -.-> M
+    O["skippy-openai-frontend<br/>request IDs"] -.-> M
     B["bench / debug launcher<br/>run metadata"] -.-> M
     M --> D["metrics.sqlite"]
     M --> R["report.json"]

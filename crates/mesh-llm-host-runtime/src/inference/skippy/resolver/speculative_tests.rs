@@ -674,7 +674,7 @@ verify_window_pipeline_depth = 2
         "effective strategy"
     );
     let ngram = decode.ngram.expect("suffix proposer must be present");
-    assert_eq!(ngram.kind, skippy_server::NgramProposerKind::Suffix);
+    assert_eq!(ngram.kind, skippy_serving::NgramProposerKind::Suffix);
     assert_eq!(ngram.min_ngram, 5);
     assert_eq!(ngram.max_ngram, 32);
     assert_eq!(ngram.max_proposal_tokens, 48);
@@ -725,7 +725,7 @@ verify_window_pipeline_depth = 2
         .ngram
         .as_ref()
         .expect("resolved decode plan must keep the suffix proposer");
-    assert_eq!(ngram.kind, skippy_server::NgramProposerKind::Suffix);
+    assert_eq!(ngram.kind, skippy_serving::NgramProposerKind::Suffix);
     assert_eq!(ngram.min_ngram, 5);
     assert_eq!(ngram.max_proposal_tokens, 48);
     let args = resolved
@@ -736,7 +736,7 @@ verify_window_pipeline_depth = 2
         .ngram
         .as_ref()
         .expect("staged embedded args must keep the suffix proposer");
-    assert_eq!(translated.kind, skippy_server::NgramProposerKind::Suffix);
+    assert_eq!(translated.kind, skippy_serving::NgramProposerKind::Suffix);
     assert_eq!(translated.min_ngram, 5);
     assert_eq!(translated.max_ngram, 32);
     assert_eq!(translated.max_proposal_tokens, 48);

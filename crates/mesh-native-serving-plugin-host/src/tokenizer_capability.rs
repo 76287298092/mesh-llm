@@ -2,7 +2,7 @@ use std::{ffi::c_void, mem::size_of, sync::Arc};
 
 use anyhow::{Context, Result, anyhow, bail};
 use mesh_native_serving_plugin_api as abi;
-use skippy_server::tokenizer::TokenizerCapability;
+use skippy_serving::tokenizer::TokenizerCapability;
 use skippy_tokenizer::{EncodeRequest, InputPiece, inventory};
 
 pub(super) struct ActivationInventory {

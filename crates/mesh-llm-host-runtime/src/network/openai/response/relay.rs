@@ -46,7 +46,7 @@ pub(in crate::network::openai::response) fn remap_error_http_response(
         return None;
     }
     let mapped_body =
-        openai_frontend::map_upstream_error_body(status_code, &full_response[header_end..])?;
+        skippy_openai_frontend::map_upstream_error_body(status_code, &full_response[header_end..])?;
     // The upstream frontend echoes the capsule nonce on its error responses too;
     // rebuilding the header from scratch would drop it, so re-append whatever the
     // upstream sent. This keeps the nonce contract intact even when a llama.cpp
@@ -327,8 +327,8 @@ mod tests {
 
     #[test]
     fn test_remap_error_http_response_preserves_upstream_nonce_headers() {
-        let nonce_header = openai_frontend::lifecycle::CLIENT_NONCE_HEADER.as_str();
-        let origin_header = openai_frontend::lifecycle::CLIENT_NONCE_ORIGIN_HEADER.as_str();
+        let nonce_header = skippy_openai_frontend::lifecycle::CLIENT_NONCE_HEADER.as_str();
+        let origin_header = skippy_openai_frontend::lifecycle::CLIENT_NONCE_ORIGIN_HEADER.as_str();
         let upstream = format!(
             "HTTP/1.1 404 Not Found\r\nContent-Type: application/json\r\n{nonce_header}: 11111111-1111-4111-8111-111111111111\r\n{origin_header}: frontend\r\nContent-Length: 52\r\n\r\n{{\"type\":\"not_found_error\",\"message\":\"model missing\"}}"
         );

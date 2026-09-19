@@ -134,7 +134,7 @@ fn outcome_was_served(outcome: &proxy::RouteDispatchOutcome) -> bool {
 /// real values ride along; anything the node doesn't know for this model, or
 /// the dispatch didn't carry, stays omitted (never fabricated). No
 /// `X-Capsule-Id` marker exists on this path (it never runs through
-/// `openai-frontend`'s `OpenAiHookPolicy`, the only place a marker is minted),
+/// `skippy-openai-frontend`'s `OpenAiHookPolicy`, the only place a marker is minted),
 /// so nonce/nonce_source are `None`.
 ///
 /// `served_locally` distinguishes the host-served path (this node's own
@@ -339,8 +339,8 @@ async fn check_activity_admission(
 
 /// Parse a model identifier that may include a profile suffix.
 ///
-/// Returns `(model_ref, profile)` where:
-/// - `model_ref` is the base model identifier (without `#profile`)
+/// Returns `(skippy_model_ref, profile)` where:
+/// - `skippy_model_ref` is the base model identifier (without `#profile`)
 /// - `profile` is `Some(profile_name)` if `#profile` was present, `None` otherwise
 ///
 /// Examples:
@@ -349,12 +349,12 @@ async fn check_activity_admission(
 /// - `"model#"` → `("model", None)` (empty profile treated as None)
 pub(super) fn parse_model_with_profile(model: &str) -> (&str, &str) {
     if let Some(hash_pos) = model.rfind('#') {
-        let model_ref = &model[..hash_pos];
+        let skippy_model_ref = &model[..hash_pos];
         let profile = &model[hash_pos + 1..];
         if profile.is_empty() {
-            (model_ref, "")
+            (skippy_model_ref, "")
         } else {
-            (model_ref, profile)
+            (skippy_model_ref, profile)
         }
     } else {
         (model, "")
@@ -656,7 +656,7 @@ async fn auto_route_model_has_ready_ingress_target(
 ///
 /// The backend reads `model` out of `request.raw` and rejects anything that is
 /// not its own advertised identity (`ensure_requested_model`,
-/// `skippy-server/src/frontend/generation/parsing.rs:21-32`), so a selected
+/// `skippy-serving/src/frontend/generation/parsing.rs:21-32`), so a selected
 /// model that is not written back 404s. This gate previously matched only
 /// `None` and `auto`, which left a single-model `mesh` request forwarding
 /// `"model":"mesh"` while routing to a concrete target.

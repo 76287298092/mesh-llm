@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-pub use model_hf::store::local::{
+pub use skippy_model_hf::store::local::{
     HuggingFaceModelIdentity, direct_hf_cache_root_gguf_paths, find_model_path,
     gguf_metadata_cache_path, huggingface_hub_cache, huggingface_hub_cache_dir,
     huggingface_identity_for_path, huggingface_repo_folder_name,
@@ -10,7 +10,7 @@ pub use model_hf::store::local::{
 };
 
 #[cfg(test)]
-pub use model_hf::store::local::huggingface_snapshot_path;
+pub use skippy_model_hf::store::local::huggingface_snapshot_path;
 
 pub fn find_mmproj_path(model_name: &str, model_path: &Path) -> Option<PathBuf> {
     if let Some(path) = crate::models::remote_catalog::find_loaded_model_exact(model_name)
@@ -20,5 +20,5 @@ pub fn find_mmproj_path(model_name: &str, model_path: &Path) -> Option<PathBuf> 
     {
         return Some(path);
     }
-    model_hf::store::local::find_mmproj_path(model_name, model_path)
+    skippy_model_hf::store::local::find_mmproj_path(model_name, model_path)
 }

@@ -266,19 +266,19 @@ SDK and API surface:
 - `mesh-llm-sdk/` — Rust SDK facade for clients and embedded serving.
 - `mesh-llm-api-server/`, `mesh-llm-api-client/` — public Rust SDK APIs for embedding nodes / client-only use.
 - `mesh-llm-ffi/`, `mesh-llm-nodejs/` — FFI bindings and Node.js native addon.
-- `openai-frontend/` — OpenAI-compatible HTTP frontend (chat, completions, responses, models).
+- `skippy-openai-frontend/` — OpenAI-compatible HTTP frontend (chat, completions, responses, models).
 - `mesh-mixture-of-agents/` — Mixture-of-Agents fan-out/arbitration engine.
 
 Models:
 
-- `model-artifact/`, `model-hf/`, `model-package/`, `model-ref/`, `model-resolver/` — model catalog, HuggingFace download, packaging, reference resolution.
+- `skippy-model-artifact/`, `skippy-model-hf/`, `skippy-model-package/`, `skippy-model-ref/`, `skippy-model-resolver/` — model catalog, HuggingFace download, packaging, reference resolution.
 
 Embedded staged runtime (skippy):
 
 - `skippy-ffi/` — Rust ABI bindings to the patched llama.cpp staged runtime.
 - `skippy-runtime/` — Rust-side staged runtime, package materialization, model info.
-- `skippy-server/` — embedded staged-runtime serving (frontend, binary transport, runtime state, embedded HTTP).
-- `skippy-protocol/`, `skippy-topology/`, `skippy-coordinator/`, `skippy-cache/`, `skippy-prompt/`, `skippy-metrics/`, `skippy-bench/`, `skippy-correctness/`, `skippy-model-package/` — supporting skippy infrastructure.
+- `skippy-serving/` — embedded staged-runtime serving (frontend, binary transport, runtime state, embedded HTTP).
+- `skippy-protocol/`, `skippy-topology/`, `skippy-coordinator/`, `skippy-cache/`, `skippy-prompt/`, `skippy-metrics/`, `skippy-bench/`, `skippy-correctness/`, `skippy-package-builder/` — supporting skippy infrastructure.
 
 Tools and benchmarks:
 
@@ -379,7 +379,7 @@ When to add a new workspace crate.
 
 - Prefer adding modules inside an existing crate first.
 - Add a new `crates/<name>/` only when the responsibility is genuinely cross-cutting (used by host and client, or host and a separate binary) or when isolating compile time / dependencies for a specific binary or FFI surface.
-- New crates should be named after the responsibility they own, not the consumer (e.g., `model-resolver` not `mesh-llm-model-helpers`).
+- New crates should be named after the responsibility they own, not the consumer (e.g., `skippy-model-resolver` not `mesh-llm-model-helpers`).
 
 Current structure notes.
 
@@ -448,11 +448,11 @@ Embedded staged runtime (`crates/skippy-*`):
 - `skippy-ffi/src/lib.rs` — Rust ABI mirror of the patched llama.cpp staged runtime; `ABI_VERSION_*` constants must stay in sync with `skippy/common.h` in the patch queue.
 - `skippy-runtime/src/package.rs` — layer-package materialization, identity-bound cache.
 - `skippy-runtime/src/devices.rs` — backend device enumeration.
-- `skippy-server/src/frontend.rs`, `skippy-server/src/frontend/` — embedded chat/generation frontend.
-- `skippy-server/src/runtime_state.rs` — KV-slot, lane, session state machine.
-- `skippy-server/src/binary_transport.rs`, `binary_transport/` — binary transport to embedded server.
+- `skippy-serving/src/frontend.rs`, `skippy-serving/src/frontend/` — embedded chat/generation frontend.
+- `skippy-serving/src/runtime_state.rs` — KV-slot, lane, session state machine.
+- `skippy-serving/src/binary_transport.rs`, `binary_transport/` — binary transport to embedded server.
 
-OpenAI-compatible HTTP frontend (`crates/openai-frontend/src/`):
+OpenAI-compatible HTTP frontend (`crates/skippy-openai-frontend/src/`):
 
 - `router.rs`, `chat.rs`, `completions.rs`, `responses.rs`, `models.rs`, `sse.rs`, `backend.rs` — OpenAI surface.
 
@@ -542,7 +542,7 @@ Run `cargo` commands serially. Do not run multiple `cargo` commands in parallel 
 ### Which crate to `-p`
 
 - Touched `mesh-llm-host-runtime` or the shipped `mesh-llm` binary — use `-p mesh-llm` for build/check (it pulls the host runtime through its single dep) and `-p mesh-llm-host-runtime` for focused tests.
-- Touched a specific workspace crate (e.g., `skippy-runtime`, `openai-frontend`, `mesh-client`) — run `cargo check -p <crate>` and `cargo test -p <crate> --lib` for fast iteration.
+- Touched a specific workspace crate (e.g., `skippy-runtime`, `skippy-openai-frontend`, `mesh-client`) — run `cargo check -p <crate>` and `cargo test -p <crate> --lib` for fast iteration.
 - For broad refactors, fall back to `cargo check --workspace` (serially!).
 
 ## Running mesh-llm locally

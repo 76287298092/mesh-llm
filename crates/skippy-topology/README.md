@@ -59,7 +59,7 @@ Reviewed capability records live in
 - report fixed-f32 activation payload sizing
 - infer capabilities for reviewed and known dense/recurrent families
 
-Use this crate before `skippy-model-package`, mesh stage deployment,
+Use this crate before `skippy-package-builder`, mesh stage deployment,
 `skippy-prompt`, or `skippy-bench` commits to a runnable stage layout. When new
 peers or devices make a better split possible, mesh replans by preparing the
 replacement topology, waiting for readiness, and only then publishing the new

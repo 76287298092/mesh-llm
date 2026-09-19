@@ -1,7 +1,7 @@
 //! Iteration-level scheduling policy for Skippy staged serving.
 //!
 //! The crate owns policy, not a concrete server runtime. Every stage consumes
-//! the same [`IterationPlan`], while `skippy-server` translates work items into
+//! the same [`IterationPlan`], while `skippy-serving` translates work items into
 //! native ABI requests.
 
 mod cache_policy;

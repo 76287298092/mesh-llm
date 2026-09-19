@@ -1,9 +1,9 @@
 use std::path::Path;
 
 use anyhow::{Context, Result};
-use model_artifact::ModelIdentity;
-use model_hf::HfModelRepository;
-use model_ref::ModelRef;
+use skippy_model_artifact::ModelIdentity;
+use skippy_model_hf::HfModelRepository;
+use skippy_model_ref::ModelRef;
 
 pub fn explicit_model_identity(model_id: &str) -> Result<ModelIdentity> {
     let model_ref = ModelRef::parse(model_id)

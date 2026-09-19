@@ -123,7 +123,7 @@ pub const VERSION: &str = RELEASE_VERSION;
 /// Configure the Hugging Face TLS provider before any one-shot or runtime
 /// client is constructed.
 pub fn configure_hf_tls_provider() {
-    let _ = model_hf::configure_hf_tls_provider();
+    let _ = skippy_model_hf::configure_hf_tls_provider();
 }
 
 pub use runtime::{

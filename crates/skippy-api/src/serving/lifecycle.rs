@@ -2,9 +2,9 @@
 use std::sync::Arc;
 
 use anyhow::{Context, Result, ensure};
-use openai_frontend::{GuardrailTelemetrySink, OpenAiBackend, OpenAiHookPolicy};
+use skippy_openai_frontend::{GuardrailTelemetrySink, OpenAiBackend, OpenAiHookPolicy};
 use skippy_protocol::{LoadMode, StageConfig};
-use skippy_server::{
+use skippy_serving::{
     EmbeddedRuntimeOptions, OpenAiGuardrailsConfig, SkippyRuntimeHandle,
     binary_transport::{PredictionReturnListener, WireCondition},
     embedded_openai_backend,
@@ -171,7 +171,7 @@ impl LoadedModelBackend {
             .runtime
             .tokenizer_capability()
             .context("construct tokenizer capability for OpenAI serving")?;
-        let result = skippy_server::frontend::serve_openai_backend_with_shutdown(
+        let result = skippy_serving::frontend::serve_openai_backend_with_shutdown(
             bind_addr,
             self.backend.clone(),
             tokenizer,
@@ -205,7 +205,7 @@ mod tests {
                 mtp_source: skippy_runtime::MtpSource::Disabled,
                 metrics_otlp_grpc: None,
                 telemetry_queue_capacity: 0,
-                telemetry_level: skippy_server::telemetry::TelemetryLevel::Off,
+                telemetry_level: skippy_serving::telemetry::TelemetryLevel::Off,
                 operation_id: None,
                 session_lifecycle_observer: None,
             },

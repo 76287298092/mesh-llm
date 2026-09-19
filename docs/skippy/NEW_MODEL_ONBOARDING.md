@@ -14,7 +14,7 @@ Issue #630, Cohere Command A+, is the first model tracked with this flow.
 | --- | --- | --- |
 | Candidate identified | A source model and at least one plausible GGUF or package artifact are known. | No support claim. |
 | Artifact inspected | GGUF metadata or package manifest gives architecture, layer count, activation width, quant, shard layout, and tokenizer sidecars. | May plan a package job. |
-| Package validated | `skippy-model-package` writes, validates, and preflights a package with no unresolved manifest, artifact, sidecar, materialization, missing, duplicate, or checksum diagnostics. | May test staged serving. |
+| Package validated | `skippy-package-builder` writes, validates, and preflights a package with no unresolved manifest, artifact, sidecar, materialization, missing, duplicate, or checksum diagnostics. | May test staged serving. |
 | Runtime smoke passed | A package-backed model starts and answers through the OpenAI-compatible surface. | May collect serving evidence. |
 | Family certified | Split correctness, dtype matrix, state handoff/cache policy, required context capacity, and required multimodal sidebands pass. | May promote to reviewed support. |
 | Reviewed support | `docs/skippy/FAMILY_STATUS.md` and reviewed topology records are updated from evidence. | User-visible support claim. |
@@ -56,7 +56,7 @@ python3 scripts/skippy-llama-parity.py inventory --priority p0
 List a candidate package job without spending HF Jobs credits:
 
 ```bash
-cargo run -p model-package --bin queue-unsloth-layer-packages -- \
+cargo run -p skippy-model-package --bin queue-unsloth-layer-packages -- \
   --author DevQuasar \
   --search command-a-plus \
   --max-jobs 1 \
@@ -75,7 +75,7 @@ After a package exists, validate the package and then run the certification
 surface that matches the evidence you need:
 
 ```bash
-skippy-model-package verify-package-v2 /path/to/package --source /path/to/model.gguf
+skippy-package-builder verify-package-v2 /path/to/package --source /path/to/model.gguf
 mesh-llm models certify hf://namespace/repo@revision --package-only --report-out cert.json
 mesh-llm models certify hf://namespace/repo@revision --api-base http://127.0.0.1:9337 --json
 ```

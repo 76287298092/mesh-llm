@@ -71,14 +71,14 @@ pub async fn run(explicit_cache: Option<PathBuf>, command: ModelAction) -> Resul
             size_bytes,
         } => {
             validate_digest(sha256.as_deref())?;
-            let _cache_lock = model_hf::local_cache::lock_cache(&cache)?;
-            let repository = model_hf::HfModelRepository::builder()
+            let _cache_lock = skippy_model_hf::local_cache::lock_cache(&cache)?;
+            let repository = skippy_model_hf::HfModelRepository::builder()
                 .cache_dir(&cache)
                 .retry_max_attempts(6)
                 .retry_base_delay(Duration::from_millis(500))
                 .build()?;
             let artifact =
-                model_artifact::resolve_model_artifact_ref(&model_ref, &repository).await?;
+                skippy_model_artifact::resolve_model_artifact_ref(&model_ref, &repository).await?;
             let paths = repository.download_artifact_files(&artifact).await?;
             ensure!(
                 paths.len() == artifact.files.len(),
@@ -110,11 +110,11 @@ pub async fn run(explicit_cache: Option<PathBuf>, command: ModelAction) -> Resul
             }))
         }
         ModelAction::Remove { repo, dry_run } => crate::console::write_json(
-            &model_hf::local_cache::remove_repository(&cache, &repo, dry_run)?,
+            &skippy_model_hf::local_cache::remove_repository(&cache, &repo, dry_run)?,
         ),
         ModelAction::List => {
             // This operation scans only the explicit local root; it issues no Hub request.
-            let _ = model_hf::configure_hf_tls_provider();
+            let _ = skippy_model_hf::configure_hf_tls_provider();
             let client = hf_hub::HFClient::builder().cache_dir(&cache).build()?;
             let scan = client.scan_cache().send().await?;
             let repos = scan.repos.iter().filter(|r| r.repo_type == "model").map(|r| {

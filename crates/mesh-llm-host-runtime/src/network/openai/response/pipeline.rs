@@ -12,11 +12,11 @@ use mesh_llm_events::logging::events::TokenUsage;
 /// only `content-type`) still echo them to the client.
 fn capsule_nonce_headers(headers: &reqwest::header::HeaderMap) -> (Option<String>, Option<String>) {
     let nonce = headers
-        .get(openai_frontend::lifecycle::CLIENT_NONCE_HEADER.as_str())
+        .get(skippy_openai_frontend::lifecycle::CLIENT_NONCE_HEADER.as_str())
         .and_then(|value| value.to_str().ok())
         .map(str::to_string);
     let origin = headers
-        .get(openai_frontend::lifecycle::CLIENT_NONCE_ORIGIN_HEADER.as_str())
+        .get(skippy_openai_frontend::lifecycle::CLIENT_NONCE_ORIGIN_HEADER.as_str())
         .and_then(|value| value.to_str().ok())
         .map(str::to_string);
     (nonce, origin)
@@ -109,13 +109,13 @@ fn attach_capsule_nonce_headers(
     let mut builder = builder;
     if let Some(nonce) = capsule_nonce.client_nonce.as_deref() {
         builder = builder.header(
-            openai_frontend::lifecycle::CLIENT_NONCE_HEADER.as_str(),
+            skippy_openai_frontend::lifecycle::CLIENT_NONCE_HEADER.as_str(),
             nonce,
         );
     }
     if let Some(origin) = capsule_nonce.nonce_origin.as_deref() {
         builder = builder.header(
-            openai_frontend::lifecycle::CLIENT_NONCE_ORIGIN_HEADER.as_str(),
+            skippy_openai_frontend::lifecycle::CLIENT_NONCE_ORIGIN_HEADER.as_str(),
             origin,
         );
     }
@@ -390,14 +390,14 @@ mod tests {
         let headers = request.headers();
         assert_eq!(
             headers
-                .get(openai_frontend::lifecycle::CLIENT_NONCE_HEADER.as_str())
+                .get(skippy_openai_frontend::lifecycle::CLIENT_NONCE_HEADER.as_str())
                 .and_then(|value| value.to_str().ok()),
             Some("11111111-2222-4333-8444-555555555555"),
             "the stabilized nonce must reach the strong-model request"
         );
         assert_eq!(
             headers
-                .get(openai_frontend::lifecycle::CLIENT_NONCE_ORIGIN_HEADER.as_str())
+                .get(skippy_openai_frontend::lifecycle::CLIENT_NONCE_ORIGIN_HEADER.as_str())
                 .and_then(|value| value.to_str().ok()),
             Some("frontend"),
             "the origin marker must reach the strong-model request"
@@ -416,7 +416,7 @@ mod tests {
         assert!(
             request
                 .headers()
-                .get(openai_frontend::lifecycle::CLIENT_NONCE_HEADER.as_str())
+                .get(skippy_openai_frontend::lifecycle::CLIENT_NONCE_HEADER.as_str())
                 .is_none()
         );
     }

@@ -17,7 +17,7 @@ use crate::repo_consistency::{CargoMetadata, workspace_metadata};
 const NON_PRODUCT_CRATES: &[&str] = &[
     "skippy-prompt",
     "skippy-bench",
-    "skippy-model-package",
+    "skippy-package-builder",
     "llama-spec-bench",
     "skippy-quantize",
     "skippy-correctness",
@@ -37,7 +37,7 @@ const NON_PRODUCT_CRATES: &[&str] = &[
 /// - the TUI's own output manager, fd capture, and terminal backend,
 /// - the runtime's tracing writer, the last-resort path used when event
 ///   emission itself fails,
-/// - skippy-server's stderr telemetry sink, whose entire purpose is writing
+/// - skippy-serving's stderr telemetry sink, whose entire purpose is writing
 ///   newline-delimited events to stderr,
 /// - CLI presentation surfaces that render to the user's terminal by design.
 pub(super) const CONSOLE_OUTPUT_OWNERS: &[&str] = &[
@@ -49,7 +49,7 @@ pub(super) const CONSOLE_OUTPUT_OWNERS: &[&str] = &[
     "crates/mesh-llm-tui/src/output/formatting.rs",
     "crates/mesh-llm-tui/src/output/terminal_out.rs",
     "crates/mesh-llm-host-runtime/src/runtime/tracing_writer.rs",
-    "crates/skippy-server/src/telemetry.rs",
+    "crates/skippy-serving/src/telemetry.rs",
     "crates/skippy-commands/src/console.rs",
     "crates/mesh-llm-cli/src/pager.rs",
     "crates/mesh-llm-commands/src/gpus/tune_runner.rs",

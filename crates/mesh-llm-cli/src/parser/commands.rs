@@ -1035,10 +1035,10 @@ pub enum Command {
     /// Prepare a model for distributed inference by splitting it into
     /// per-layer files on HF compute.
     ///
-    /// Submits an HF Job that builds skippy-model-package from source,
+    /// Submits an HF Job that builds skippy-package-builder from source,
     /// splits the model, publishes the layer package, and updates the
     /// meshllm/catalog.
-    #[command(name = "model-prepare", hide = true, alias = "model-package")]
+    #[command(name = "model-prepare", hide = true, alias = "skippy-model-package")]
     ModelPrepare {
         /// Source HuggingFace model ref (e.g. unsloth/Qwen3-235B-A22B-GGUF:UD-Q4_K_XL).
         source_repo: Option<String>,
@@ -1095,7 +1095,7 @@ pub enum Command {
         #[arg(long)]
         cancel: Option<String>,
 
-        /// List recent model-package jobs.
+        /// List recent skippy-model-package jobs.
         #[arg(long)]
         list: bool,
 

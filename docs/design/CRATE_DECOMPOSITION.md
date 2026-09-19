@@ -32,11 +32,11 @@ The app crate is now decomposed into the following owned crates:
   the binary: CLI, management API, mesh orchestration, host-local protocol
   conversion, gateway/proxy glue, plugin host, runtime-data aggregation, and
   embedded skippy coordination.
-- `openai-frontend` now owns the OpenAI request/response adapter pieces that
+- `skippy-openai-frontend` now owns the OpenAI request/response adapter pieces that
   were previously duplicated under the host network module: request
   normalization, stream-chunk parsing, response stream usage conversion, and
   upstream error mapping.
-- `model-artifact` owns GGUF header metadata scanning and KV-cache byte
+- `skippy-model-artifact` owns GGUF header metadata scanning and KV-cache byte
   estimation; host/client model modules re-export it instead of treating
   `mesh-client` as the GGUF parser crate.
 
@@ -50,8 +50,8 @@ flowchart TD
     system["mesh-llm-system"]
     protocol["mesh-llm-protocol"]
     routing["mesh-llm-routing"]
-    openai["openai-frontend"]
-    artifact["model-artifact"]
+    openai["skippy-openai-frontend"]
+    artifact["skippy-model-artifact"]
     ui["mesh-llm-ui"]
     api_assets["mesh-llm API asset routes"]
 
@@ -76,10 +76,10 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    model_ref["model-ref"]
-    model_artifact["model-artifact"]
-    model_resolver["model-resolver"]
-    model_hf["model-hf"]
+    model_ref["skippy-model-ref"]
+    model_artifact["skippy-model-artifact"]
+    model_resolver["skippy-model-resolver"]
+    model_hf["skippy-model-hf"]
 
     types["mesh-llm-types"]
     identity["mesh-llm-identity"]
@@ -137,14 +137,14 @@ flowchart TD
 | `mesh/` gossip, heartbeat, membership, peer state, config sync | New `mesh-llm-control-plane` | This avoids the self-referential `mesh-llm-mesh` name and describes the subsystem's actual role: control-plane membership and coordination, not model execution. |
 | `network/router.rs`, `network/affinity.rs`, route scoring, request placement, election-adjacent logic | New `mesh-llm-routing` | Routing and placement should be reusable without pulling in process runtime or CLI UI. |
 | `network/proxy.rs`, `network/tunnel.rs`, HTTP ingress glue | New `mesh-llm-gateway` | This is the network edge around OpenAI/API traffic. |
-| `network/openai/*` | Existing `openai-frontend` | Request/response adapter shims, stream-chunk schema parsing, response stream usage conversion, and upstream error mapping belong in `openai-frontend`; host networking keeps ingress and mesh transport glue. |
+| `network/openai/*` | Existing `skippy-openai-frontend` | Request/response adapter shims, stream-chunk schema parsing, response stream usage conversion, and upstream error mapping belong in `skippy-openai-frontend`; host networking keeps ingress and mesh transport glue. |
 | `plugin/` host runtime, MCP bridge, transport, config support | New `mesh-llm-plugin-host` | Keep host-side plugin orchestration separate from `mesh-llm-plugin`, which should remain the plugin author API. |
 | Plugin protobuf schema | `mesh-llm-plugin` | The plugin wire schema belongs beside the plugin author/runtime API crate, outside the host binary crate. |
 | `plugins/blobstore`, `plugins/blackboard`, telemetry, OpenAI endpoint plugin | Initially submodules of `mesh-llm-plugin-host`; later first-party plugin crates if needed | These do not all need crates yet. Extract only when boundaries harden. |
 | `runtime_data/` | New `mesh-llm-runtime-data` | Shared by runtime, API, plugins, and CLI dashboard. |
 | `system/hardware.rs`, backend detection, benchmark primitives, process validation, prompt benchmark import, release target modeling, self-update plumbing | `mesh-llm-system` | Implemented so local-machine concerns stay out of mesh/protocol/runtime crates. |
-| `models/resolve`, `catalog`, `remote_catalog`, `search`, download code | Existing `model-resolver` and `model-hf` | Avoid creating `mesh-llm-models` for code that already belongs to model infrastructure. |
-| `models/capabilities.rs`, `models/topology.rs`, `models/gguf.rs` | Existing `model-artifact`, `model-ref`, or `model-resolver` depending on final ownership | GGUF scanner ownership has moved to `model-artifact`; remaining capability/topology helpers should keep moving into existing model infrastructure instead of a new host-owned model crate. |
+| `models/resolve`, `catalog`, `remote_catalog`, `search`, download code | Existing `skippy-model-resolver` and `skippy-model-hf` | Avoid creating `mesh-llm-models` for code that already belongs to model infrastructure. |
+| `models/capabilities.rs`, `models/topology.rs`, `models/gguf.rs` | Existing `skippy-model-artifact`, `skippy-model-ref`, or `skippy-model-resolver` depending on final ownership | GGUF scanner ownership has moved to `skippy-model-artifact`; remaining capability/topology helpers should keep moving into existing model infrastructure instead of a new host-owned model crate. |
 | `inference/skippy/*` | Existing `skippy-*` crates where possible | The host should orchestrate Skippy rather than own Skippy package, topology, and runtime internals. |
 | `inference/election.rs`, split planning | `mesh-llm-routing`, or existing shared client inference modules if needed by embedded clients | Shared target/table primitives and split-GGUF size accounting are implemented in `mesh-llm-routing`; higher-level split planning still needs further extraction. |
 | React console | `mesh-llm-ui` | The console owns its package metadata, build, generated assets, Rust embedding surface, and UI conventions instead of living under the host binary crate. |
@@ -181,7 +181,7 @@ The main blocker is dependency direction. Before extracting crates, reduce direc
 The crate split should include the documentation migration as part of the same scope, not as follow-up cleanup:
 
 - Add a `README.md` for every new crate that explains ownership, public API boundaries, dependency expectations, and how the crate fits into the host runtime.
-- Update existing crate READMEs when code moves into or out of those crates, especially `mesh-client`, `mesh-llm-api-server`, `mesh-llm-plugin`, `openai-frontend`, `model-*`, and `skippy-*`.
+- Update existing crate READMEs when code moves into or out of those crates, especially `mesh-client`, `mesh-llm-api-server`, `mesh-llm-plugin`, `skippy-openai-frontend`, `model-*`, and `skippy-*`.
 - Update top-level docs that describe repository structure, architecture, runtime composition, plugin ownership, model resolution, OpenAI routing, and console/API packaging.
 - Update Mermaid diagrams anywhere they describe the crate graph, runtime architecture, protocol/control-plane flow, API/UI packaging, or plugin/data ownership.
 - Keep the root `README.md`, `docs/README.md`, and `crates/mesh-llm/README.md` aligned so new contributors can find the owning crate for a subsystem without reading implementation details first.
@@ -190,7 +190,7 @@ The crate split should include the documentation migration as part of the same s
 
 1. Extract the first `mesh-llm-types`, `mesh-llm-identity`, `mesh-llm-protocol`, and `mesh-llm-routing` slices.
 2. Continue moving model metadata, resolve, search, and download code into existing `model-*` crates.
-3. Continue moving OpenAI adapter and schema code into `openai-frontend`.
+3. Continue moving OpenAI adapter and schema code into `skippy-openai-frontend`.
 4. Push Skippy-owned logic into existing `skippy-*` crates.
 5. Extract `mesh-llm-runtime-data`.
 6. Decouple `mesh/` from CLI, system, and runtime, then extract `mesh-llm-control-plane`.

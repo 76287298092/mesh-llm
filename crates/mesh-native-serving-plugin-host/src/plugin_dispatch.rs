@@ -18,7 +18,7 @@ use std::{
 };
 
 use anyhow::{Context, Result, anyhow, bail};
-use skippy_server::frontend::{
+use skippy_serving::frontend::{
     GenerationAbort, GenerationCommit, GenerationReceipt, GenerationStart, LinearProposal,
     LinearProposalDiscardReason, LinearProposalQuery, LinearProposalReceipt,
     LinearProposalSourceOutcome, LinearProposalSourceTelemetry,

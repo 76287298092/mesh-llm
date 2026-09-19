@@ -44,7 +44,7 @@ graph-derived stage plan:
 2. Partition it using generic, stage-independent block and state metadata.
 3. Derive the executable node set, exact tensor dependency closure, activation
    boundary, and state ownership from that partition.
-4. Load only the derived tensor set from a new model-package format.
+4. Load only the derived tensor set from a new skippy-model-package format.
 5. Validate the realized stage before topology publication.
 
 No model family names, architecture enums, tensor-name heuristics, or mutable
@@ -538,7 +538,7 @@ For every legal cut:
   lifecycle across adjacent boundaries.
 
 Run the same behavioral matrix through direct GGUF, callback/SafeTensors, and
-model-package v2 sources where those paths are supported.
+skippy-model-package v2 sources where those paths are supported.
 
 ### Cross-cutting product acceptance and KV validation
 
@@ -845,9 +845,9 @@ The completed cutover satisfies the accepted criteria:
 
 ## Evidence Base
 
-- `crates/skippy-model-package/src/package_v2.rs`
-- `crates/skippy-model-package/src/package.rs`
-- `crates/skippy-model-package/src/write.rs`
+- `crates/skippy-package-builder/src/package_v2.rs`
+- `crates/skippy-package-builder/src/package.rs`
+- `crates/skippy-package-builder/src/write.rs`
 - `crates/skippy-runtime/src/package.rs`
 - `crates/skippy-runtime/src/types.rs`
 - `crates/skippy-protocol/proto/stage.proto`

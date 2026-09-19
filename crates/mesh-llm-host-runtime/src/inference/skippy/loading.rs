@@ -171,7 +171,7 @@ impl SkippyModelHandle {
             config.native_mtp_enabled,
             embedded_args.native_mtp_draft_model_path.as_deref(),
         );
-        let session_observer: Arc<dyn skippy_server::runtime_state::SessionLifecycleObserver> =
+        let session_observer: Arc<dyn skippy_serving::runtime_state::SessionLifecycleObserver> =
             Arc::new(runtime_events::SkippySessionRuntimeEventObserver::new());
         Self::load_stage0_runtime_options_with_openai_args(
             EmbeddedRuntimeOptions {

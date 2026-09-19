@@ -702,7 +702,7 @@ fn quantize_layer_package(args: QuantizeLayerPackageArgs) -> Result<()> {
     );
     ensure!(
         args.skippy_model_package_bin.is_file(),
-        "missing skippy-model-package binary {}; build it with `cargo build --release --locked -p skippy-model-package` or pass --skippy-model-package-bin",
+        "missing skippy-model-package binary {}; build it with `cargo build --release --locked -p skippy-package-builder` or pass --skippy-model-package-bin",
         args.skippy_model_package_bin.display()
     );
     if args.package_dir.exists() && !args.resume_package {
@@ -743,11 +743,11 @@ fn write_and_preflight_layer_package(
     manifest: &Manifest,
 ) -> Result<()> {
     let first_quantized_shard = find_first_shard(&manifest.target, &manifest.target_prefix)?;
-    run_skippy_model_package_write(args, &first_quantized_shard)?;
-    run_skippy_model_package_v2_verify(args, &first_quantized_shard)
+    run_skippy_package_builder_write(args, &first_quantized_shard)?;
+    run_skippy_package_builder_v2_verify(args, &first_quantized_shard)
 }
 
-fn run_skippy_model_package_write(
+fn run_skippy_package_builder_write(
     args: &QuantizeLayerPackageArgs,
     first_source_shard: &Path,
 ) -> Result<()> {
@@ -790,7 +790,7 @@ fn run_skippy_model_package_write(
     Ok(())
 }
 
-fn run_skippy_model_package_v2_verify(
+fn run_skippy_package_builder_v2_verify(
     args: &QuantizeLayerPackageArgs,
     first_source_shard: &Path,
 ) -> Result<()> {

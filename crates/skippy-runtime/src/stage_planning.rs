@@ -4,8 +4,8 @@ use std::path::{Path, PathBuf};
 use std::ptr;
 
 use anyhow::{Context, Result};
-use model_ref::split_gguf_shard_info;
 use sha2::{Digest, Sha256};
+use skippy_model_ref::split_gguf_shard_info;
 
 use crate::{ModelInfo, RuntimeConfig, ensure_ok};
 

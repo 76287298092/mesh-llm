@@ -2,7 +2,7 @@
 use super::{ModelLoadRequest, ModelOpenEvents, OpenAiOptions};
 use anyhow::{Result, bail};
 use skippy_protocol::{StageConfig, StageTopology};
-use skippy_server::{EmbeddedRuntimeOptions, SpeculativeDecodeConfig};
+use skippy_serving::{EmbeddedRuntimeOptions, SpeculativeDecodeConfig};
 use std::{future::Future, net::SocketAddr};
 
 /// Prepared local OpenAI serving options. Model acquisition and argument parsing belong to callers.
@@ -27,8 +27,8 @@ pub struct LocalOpenAiOptions {
     pub prefill_adaptive_target_ms: f64,
     pub metrics_otlp_grpc: Option<String>,
     pub telemetry_queue_capacity: usize,
-    pub telemetry_level: skippy_server::telemetry::TelemetryLevel,
-    pub openai_guardrails: skippy_server::frontend::OpenAiGuardrailsMode,
+    pub telemetry_level: skippy_serving::telemetry::TelemetryLevel,
+    pub openai_guardrails: skippy_serving::frontend::OpenAiGuardrailsMode,
 }
 
 impl LocalOpenAiOptions {
@@ -49,7 +49,7 @@ impl LocalOpenAiOptions {
             .generation_concurrency
             .unwrap_or_else(|| usize::try_from(self.config.lane_count).unwrap_or(usize::MAX));
         let adaptive_minimum =
-            skippy_server::frontend::resolve_adaptive_generation_min_concurrency(
+            skippy_serving::frontend::resolve_adaptive_generation_min_concurrency(
                 self.adaptive_generation_concurrency,
                 self.adaptive_generation_min_concurrency,
                 concurrency,
@@ -65,7 +65,7 @@ impl LocalOpenAiOptions {
         );
         openai.adaptive_generation_min_concurrency = adaptive_minimum;
         openai.generation_queue_capacity = self.generation_queue_capacity.unwrap_or_else(|| {
-            skippy_server::frontend::default_generation_queue_capacity(concurrency)
+            skippy_serving::frontend::default_generation_queue_capacity(concurrency)
         });
         openai.generation_admission_timeout_secs = self.generation_admission_timeout_secs;
         openai.prefill_chunk_size = self.prefill_chunk_size;
@@ -98,11 +98,11 @@ impl LocalOpenAiOptions {
                 generation_observer: None,
                 kv_observer: None,
                 hook_policy: None,
-                guardrails: Some(skippy_server::OpenAiGuardrailsConfig::for_standalone_mode(
+                guardrails: Some(skippy_serving::OpenAiGuardrailsConfig::for_standalone_mode(
                     self.openai_guardrails,
                 )),
                 guardrail_telemetry: None,
-                downstream_wire_condition: skippy_server::binary_transport::WireCondition::new(
+                downstream_wire_condition: skippy_serving::binary_transport::WireCondition::new(
                     0.0, None,
                 )?,
                 serving_telemetry: None,
@@ -148,8 +148,8 @@ mod tests {
             prefill_adaptive_target_ms: 100.0,
             metrics_otlp_grpc: None,
             telemetry_queue_capacity: 0,
-            telemetry_level: skippy_server::telemetry::TelemetryLevel::Off,
-            openai_guardrails: skippy_server::frontend::OpenAiGuardrailsMode::Disabled,
+            telemetry_level: skippy_serving::telemetry::TelemetryLevel::Off,
+            openai_guardrails: skippy_serving::frontend::OpenAiGuardrailsMode::Disabled,
         }
     }
 

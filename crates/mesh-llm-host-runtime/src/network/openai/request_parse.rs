@@ -640,9 +640,10 @@ fn finalize_forwarded_request(
         // marker (which asserts *this* frontend minted the value) or a duplicate
         // nonce through the raw proxy; both are re-stamped from the resolved,
         // validated value below.
-        if name.eq_ignore_ascii_case(openai_frontend::lifecycle::CLIENT_NONCE_HEADER.as_str())
+        if name
+            .eq_ignore_ascii_case(skippy_openai_frontend::lifecycle::CLIENT_NONCE_HEADER.as_str())
             || name.eq_ignore_ascii_case(
-                openai_frontend::lifecycle::CLIENT_NONCE_ORIGIN_HEADER.as_str(),
+                skippy_openai_frontend::lifecycle::CLIENT_NONCE_ORIGIN_HEADER.as_str(),
             )
         {
             continue;
@@ -668,13 +669,13 @@ fn finalize_forwarded_request(
     rebuilt.push_str(&format!("x-request-id: {}\r\n", request_id.as_uuid()));
     rebuilt.push_str(&format!(
         "{}: {}\r\n",
-        openai_frontend::lifecycle::CLIENT_NONCE_HEADER.as_str(),
+        skippy_openai_frontend::lifecycle::CLIENT_NONCE_HEADER.as_str(),
         client_nonce,
     ));
     if let Some(origin) = client_nonce_origin {
         rebuilt.push_str(&format!(
             "{}: {origin}\r\n",
-            openai_frontend::lifecycle::CLIENT_NONCE_ORIGIN_HEADER.as_str(),
+            skippy_openai_frontend::lifecycle::CLIENT_NONCE_ORIGIN_HEADER.as_str(),
         ));
     }
 
@@ -870,7 +871,7 @@ pub(crate) fn raw_lifecycle_owner_from_header_prefix(prefix: &[u8]) -> Option<Re
     }
     let marker_id = std::str::from_utf8(marker.value)
         .ok()
-        .and_then(openai_frontend::parse_request_id)?;
+        .and_then(skippy_openai_frontend::parse_request_id)?;
     (marker_id == parsed).then_some(parsed)
 }
 
@@ -883,7 +884,7 @@ fn canonical_request_id_from_headers(headers: &[httparse::Header<'_>]) -> Option
         .iter()
         .filter(|header| header.name.eq_ignore_ascii_case("x-request-id"))
         .map(|header| std::str::from_utf8(header.value).ok());
-    openai_frontend::parse_single_request_id(request_id_values)
+    skippy_openai_frontend::parse_single_request_id(request_id_values)
 }
 
 /// Resolve the capsule client nonce for a forwarded request, using the same
@@ -913,8 +914,8 @@ fn capsule_nonce_headers_from_raw(raw: &[u8]) -> (Option<String>, Option<String>
     {
         return (None, None);
     }
-    let nonce_header = openai_frontend::lifecycle::CLIENT_NONCE_HEADER.as_str();
-    let origin_header = openai_frontend::lifecycle::CLIENT_NONCE_ORIGIN_HEADER.as_str();
+    let nonce_header = skippy_openai_frontend::lifecycle::CLIENT_NONCE_HEADER.as_str();
+    let origin_header = skippy_openai_frontend::lifecycle::CLIENT_NONCE_ORIGIN_HEADER.as_str();
     let find = |name: &str| {
         req.headers
             .iter()
@@ -955,12 +956,12 @@ fn header_values_from_raw(raw: &[u8], name: &str) -> Result<Vec<String>, ()> {
 }
 
 fn client_nonce_from_headers(headers: &[httparse::Header<'_>]) -> (String, Option<&'static str>) {
-    let nonce_header = openai_frontend::lifecycle::CLIENT_NONCE_HEADER.as_str();
+    let nonce_header = skippy_openai_frontend::lifecycle::CLIENT_NONCE_HEADER.as_str();
     let inbound = headers
         .iter()
         .filter(|header| header.name.eq_ignore_ascii_case(nonce_header))
         .map(|header| std::str::from_utf8(header.value).ok());
-    match openai_frontend::parse_single_client_nonce(inbound) {
+    match skippy_openai_frontend::parse_single_client_nonce(inbound) {
         Some(value) => (
             value
                 .to_str()
@@ -969,11 +970,11 @@ fn client_nonce_from_headers(headers: &[httparse::Header<'_>]) -> (String, Optio
             None,
         ),
         None => (
-            openai_frontend::lifecycle::generate_client_nonce()
+            skippy_openai_frontend::lifecycle::generate_client_nonce()
                 .to_str()
                 .expect("a minted UUIDv4 nonce is always ASCII")
                 .to_string(),
-            Some(openai_frontend::lifecycle::CLIENT_NONCE_ORIGIN_FRONTEND),
+            Some(skippy_openai_frontend::lifecycle::CLIENT_NONCE_ORIGIN_FRONTEND),
         ),
     }
 }
@@ -989,7 +990,7 @@ async fn read_more<S: AsyncRead + Unpin>(stream: &mut S, buf: &mut Vec<u8>) -> R
 }
 
 fn request_requires_json_transform(path: &str, body: &[u8], plugin_manager_present: bool) -> bool {
-    openai_frontend::request_body_requires_json_normalization(path, body)
+    skippy_openai_frontend::request_body_requires_json_normalization(path, body)
         || (plugin_manager_present
             && path.split('?').next().unwrap_or(path) == "/v1/chat/completions"
             && std::str::from_utf8(body).ok().is_some_and(|body_text| {

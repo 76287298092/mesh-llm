@@ -23,8 +23,8 @@ use mesh_llm_config::{
 };
 use mesh_llm_config::{ConfigDiagnosticSeverity, legacy_validation_error_text};
 use mesh_llm_node::serving::{UnloadOptions, UnloadTarget};
-use openai_frontend::GuardrailMode;
 use serde::{Deserialize, Serialize};
+use skippy_openai_frontend::GuardrailMode;
 use std::collections::BTreeMap;
 use std::net::SocketAddr;
 

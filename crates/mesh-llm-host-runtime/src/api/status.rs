@@ -14,7 +14,7 @@ mod runtime;
 pub(crate) use memory::MemoryPayload;
 pub(crate) use runtime::*;
 use serde::Serialize;
-use skippy_server::OpenAiGuardrailsStatus;
+use skippy_serving::OpenAiGuardrailsStatus;
 use std::collections::BTreeMap;
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize)]

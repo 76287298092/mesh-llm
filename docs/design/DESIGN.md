@@ -57,7 +57,7 @@ crates/mesh-llm-host-runtime/src/
 ## Skippy lifecycle boundary
 
 `skippy-api` owns verified model preparation and model backend construction over
-`skippy-server`. The serving library has no dependency back into the lifecycle
+`skippy-serving`. The serving library has no dependency back into the lifecycle
 API. Native runtime selection/loading takes explicit bundle/cache inputs through
 `skippy-api::native_runtime`.
 

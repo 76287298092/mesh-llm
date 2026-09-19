@@ -7,15 +7,15 @@ benchmark client. Its upstream README currently says it evaluates
 
 ## Contract
 
-`skippy-server serve-openai` should expose enough of the OpenAI API for
+`skippy-serving serve-openai` should expose enough of the OpenAI API for
 benchy to run without the stage protocol leaking through:
 
 | Endpoint / field | Why benchy needs it | Our owner |
 | --- | --- | --- |
-| `GET /v1/models` | Optional model auto-discovery | `openai-frontend` route, backend model list |
-| `POST /v1/chat/completions` | Main benchmark request path | `openai-frontend` route, stage backend generation |
-| `stream: true` SSE | Token timing and throughput | `openai-frontend` SSE framing |
-| `[DONE]` SSE marker | Stream termination | `openai-frontend` |
+| `GET /v1/models` | Optional model auto-discovery | `skippy-openai-frontend` route, backend model list |
+| `POST /v1/chat/completions` | Main benchmark request path | `skippy-openai-frontend` route, stage backend generation |
+| `stream: true` SSE | Token timing and throughput | `skippy-openai-frontend` SSE framing |
+| `[DONE]` SSE marker | Stream termination | `skippy-openai-frontend` |
 | streaming and non-stream `usage` | Prompt/completion accounting | stage backend usage counts |
 | `max_tokens` | Generation length control | stage backend enforcement |
 
@@ -28,7 +28,7 @@ the legacy completions API.
 Single-stage or final-stage local runtime:
 
 ```bash
-skippy-server serve-openai \
+skippy-serving serve-openai \
   --config stage.json \
   --bind-addr 127.0.0.1:9337 \
   --model-id org/repo:Q4_K_M
@@ -37,7 +37,7 @@ skippy-server serve-openai \
 Existing staged binary chain:
 
 ```bash
-skippy-server serve-openai \
+skippy-serving serve-openai \
   --config final-stage.json \
   --bind-addr 127.0.0.1:9337 \
   --first-stage-addr 127.0.0.1:19031 \
@@ -63,7 +63,7 @@ RUN_BENCHY=1 scripts/openai-smoke.sh
 
 The smoke downloads a small SmolLM2 GGUF unless `MODEL_PATH` is already set,
 infers `layer_end`, writes a temporary single-stage config, starts
-`skippy-server serve-openai`, probes the OpenAI routes, optionally runs the
+`skippy-serving serve-openai`, probes the OpenAI routes, optionally runs the
 tiny benchy case, and then stops the server.
 
 Useful overrides:

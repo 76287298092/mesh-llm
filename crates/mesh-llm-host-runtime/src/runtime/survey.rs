@@ -5,13 +5,13 @@ use crate::network::metrics::{
 use crate::plugin;
 use crate::system::hardware;
 use anyhow::{Context, Result};
-use openai_frontend::{GuardrailMode, GuardrailTelemetrySink};
 use opentelemetry::KeyValue;
 use opentelemetry::metrics::{Counter, Gauge, Histogram, MeterProvider as _};
 use opentelemetry_otlp::{Protocol, WithExportConfig, WithHttpConfig};
 use opentelemetry_sdk::Resource;
 use opentelemetry_sdk::metrics::{PeriodicReader, SdkMeterProvider};
 use sha2::{Digest, Sha256};
+use skippy_openai_frontend::{GuardrailMode, GuardrailTelemetrySink};
 use std::collections::VecDeque;
 use std::path::Path;
 use std::sync::{Arc, Mutex};

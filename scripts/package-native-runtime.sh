@@ -347,7 +347,7 @@ build_model_package_tool() {
     else
         env "${cargo_env[@]}" \
             cargo build --release --locked --target "$TARGET_TRIPLE" \
-                -p skippy-model-package
+                -p skippy-package-builder
         cargo_target_dir="$(
             cargo metadata --no-deps --format-version 1 |
                 "$(python_bin)" -c 'import json, sys; print(json.load(sys.stdin)["target_directory"])'

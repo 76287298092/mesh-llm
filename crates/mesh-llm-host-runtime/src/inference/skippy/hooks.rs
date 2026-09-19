@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use openai_frontend::{
+use serde_json::Value;
+use skippy_openai_frontend::{
     ChatCompletionRequest, ChatHookOutcome, ChatMediaKind, GenerationHookSignals, OpenAiHookPolicy,
     OpenAiResult, PrefillHookSignals, chat_mesh_hooks_enabled, first_chat_media,
 };
-use serde_json::Value;
 
 use crate::{inference::virtual_llm, mesh};
 
@@ -304,7 +304,7 @@ fn virtual_hook_response_to_outcome(response: &Value) -> ChatHookOutcome {
 
 fn virtual_media_hook_response_to_outcome(
     response: &Value,
-    media: openai_frontend::ChatMediaRef,
+    media: skippy_openai_frontend::ChatMediaRef,
 ) -> ChatHookOutcome {
     virtual_hook_injected_text(response)
         .map(|text| ChatHookOutcome::injected_with_consumed_media(text, media))
@@ -321,7 +321,7 @@ fn virtual_hook_injected_text(response: &Value) -> Option<&str> {
         .filter(|text| !text.is_empty())
 }
 
-fn chat_messages_as_values(messages: &[openai_frontend::ChatMessage]) -> Vec<Value> {
+fn chat_messages_as_values(messages: &[skippy_openai_frontend::ChatMessage]) -> Vec<Value> {
     serde_json::to_value(messages)
         .ok()
         .and_then(|value| value.as_array().cloned())
@@ -338,8 +338,8 @@ fn mid_generation_signals_should_fire(signals: &GenerationHookSignals) -> bool {
 mod tests {
     use std::sync::{Arc, Mutex};
 
-    use openai_frontend::{MessageContent, MessageContentPart, apply_chat_hook_outcome};
     use serde_json::json;
+    use skippy_openai_frontend::{MessageContent, MessageContentPart, apply_chat_hook_outcome};
 
     use super::*;
 
@@ -601,7 +601,7 @@ mod tests {
             outcome,
             ChatHookOutcome::injected_with_consumed_media(
                 "[media fallback]\n\n",
-                openai_frontend::ChatMediaRef {
+                skippy_openai_frontend::ChatMediaRef {
                     kind: ChatMediaKind::Image,
                     url: "data:image/png;base64,abc".to_string(),
                     user_text: "what is this?".to_string(),
@@ -632,7 +632,7 @@ mod tests {
             outcome,
             ChatHookOutcome::injected_with_consumed_media(
                 "[media fallback]\n\n",
-                openai_frontend::ChatMediaRef {
+                skippy_openai_frontend::ChatMediaRef {
                     kind: ChatMediaKind::Audio,
                     url: "data:audio/wav;base64,abc".to_string(),
                     user_text: "please transcribe this".to_string(),

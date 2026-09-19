@@ -50,7 +50,7 @@ chunk and every normal decode token.
 
 - [x] Enable async prefill forwarding for mesh-launched remote stages.
   - DONE: `async_prefill_forward` exists and defaults on
-    (`skippy-server/src/binary_transport/options.rs`:
+    (`skippy-serving/src/binary_transport/options.rs`:
     `async_prefill_forward: args.async_prefill_forward || !args.no_async_prefill_forward`).
     Revisit credit-limit-from-mesh-policy + flush-on-control if not yet covered.
   - Start with conservative bounded credit.
@@ -59,7 +59,7 @@ chunk and every normal decode token.
     cache control all flush pending forwards before continuing.
 
 - [x] Add direct final-stage predicted-token replies.
-  - DONE: `skippy-server/src/binary_transport/direct_return.rs` — a direct
+  - DONE: `skippy-serving/src/binary_transport/direct_return.rs` — a direct
     prediction-return listener (`PredictionReturnKey`, return address bound by
     stage0; final stage sends `send_reply_predicted_tokens_with_stats` /
     `send_reply_predicted_with_tokens_and_stats` directly back, bypassing the
@@ -176,7 +176,7 @@ chunk and every normal decode token.
 ## Validation Gates
 
 - [ ] Run protocol tests: `cargo test -p skippy-protocol --lib`.
-- [ ] Run server tests: `cargo test -p skippy-server --lib`.
+- [ ] Run server tests: `cargo test -p skippy-serving --lib`.
 - [ ] For protocol or staged-serving changes, run mesh skippy tests:
   `cargo test -p mesh-llm inference::skippy --lib`.
 - [ ] For gossip, routing, API serialization, or topology-visible changes, run:

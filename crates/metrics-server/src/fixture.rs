@@ -26,7 +26,7 @@ pub(crate) async fn emit_fixture(args: EmitFixtureArgs) -> Result<()> {
             }),
             scope_spans: vec![ScopeSpans {
                 scope: Some(InstrumentationScope {
-                    name: "skippy-server-fixture".to_string(),
+                    name: "skippy-serving-fixture".to_string(),
                     version: env!("CARGO_PKG_VERSION").to_string(),
                     attributes: vec![],
                     dropped_attributes_count: 0,

@@ -143,7 +143,7 @@ impl RemoteStageGuard {
         for _ in 0..attempts {
             let command = format!(
                 "if ! kill -0 {pid} 2>/dev/null; then echo dead; exit 2; fi; \
-                 grep -q 'skippy-server listening:' {log}"
+                 grep -q 'skippy-serving listening:' {log}"
             );
             let output = Command::new("ssh")
                 .arg(&self.host)

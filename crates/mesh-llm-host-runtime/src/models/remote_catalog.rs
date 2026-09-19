@@ -19,7 +19,7 @@ use std::{
 use std::sync::{Arc, LazyLock};
 
 use anyhow::{Context, Result, bail};
-use model_resolver::{
+use skippy_model_resolver::{
     CatalogProvider, CatalogSidecarAsset, CatalogSidecarRef,
     CatalogVariant as ResolverCatalogVariant, HfCatalogProvider, ModelArtifactCandidate,
     ModelResolver,
@@ -29,9 +29,9 @@ use model_resolver::{
 // Schema types
 // ---------------------------------------------------------------------------
 
-pub use model_resolver::CatalogEntry;
+pub use skippy_model_resolver::CatalogEntry;
 #[cfg(test)]
-pub use model_resolver::{
+pub use skippy_model_resolver::{
     CatalogPackage, CatalogSidecarAsset as CatalogSidecarAssetRef,
     CatalogSidecarRef as CatalogSidecar, CatalogSource, CatalogVariant,
     CuratedMeta as CatalogCurated,
@@ -376,8 +376,8 @@ pub fn find_huggingface_layer_package(model_query: &str) -> Option<String> {
 }
 
 fn parse_exact_huggingface_repo(input: &str) -> Option<(String, Option<String>)> {
-    let (repo, revision, selector) = model_resolver::parse_huggingface_repo_ref(input)
-        .or_else(|| model_resolver::parse_huggingface_repo_url(input))?;
+    let (repo, revision, selector) = skippy_model_resolver::parse_huggingface_repo_ref(input)
+        .or_else(|| skippy_model_resolver::parse_huggingface_repo_url(input))?;
     selector.is_none().then_some((repo, revision))
 }
 
@@ -457,7 +457,7 @@ impl RemoteCatalogModel {
     }
 
     pub fn resolve_url(&self) -> String {
-        model_resolver::huggingface_resolve_url(
+        skippy_model_resolver::huggingface_resolve_url(
             &self.repo,
             self.revision.as_deref(),
             &self.source_file,
@@ -465,7 +465,7 @@ impl RemoteCatalogModel {
     }
 
     pub fn exact_ref(&self) -> String {
-        model_resolver::format_huggingface_display_ref(
+        skippy_model_resolver::format_huggingface_display_ref(
             &self.repo,
             self.revision.as_deref(),
             &self.source_file,
@@ -555,7 +555,7 @@ pub fn matching_primary_for_huggingface(
 
 #[cfg(test)]
 pub fn matching_primary_for_url(url: &str) -> Option<RemoteCatalogModel> {
-    let (repo, revision, file) = model_resolver::parse_hf_resolve_url(url)?;
+    let (repo, revision, file) = skippy_model_resolver::parse_hf_resolve_url(url)?;
     matching_primary_for_huggingface(&repo, revision.as_deref(), &file)
 }
 
@@ -724,8 +724,8 @@ fn parse_sidecar_ref(value: &CatalogSidecarRef) -> Result<Option<RemoteCatalogAs
 }
 
 fn parse_sidecar_string_ref(value: &str) -> Result<Option<RemoteCatalogAsset>> {
-    let (repo, revision, source_file) = model_resolver::parse_huggingface_file_ref(value)
-        .or_else(|| model_resolver::parse_hf_resolve_url(value))
+    let (repo, revision, source_file) = skippy_model_resolver::parse_huggingface_file_ref(value)
+        .or_else(|| skippy_model_resolver::parse_hf_resolve_url(value))
         .with_context(|| format!("catalog sidecar ref is not a Hugging Face file ref: {value}"))?;
     let file = source_file
         .rsplit('/')

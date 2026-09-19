@@ -36,7 +36,8 @@ fn scan_runtime_media_capability_evidence(
     let Some(projector_path) = projector_path else {
         return RuntimeMediaCapabilityEvidence::default();
     };
-    let projector_meta = model_artifact::gguf::scan_gguf_projector_meta(Path::new(&projector_path));
+    let projector_meta =
+        skippy_model_artifact::gguf::scan_gguf_projector_meta(Path::new(&projector_path));
     RuntimeMediaCapabilityEvidence {
         vision_projector_loaded: projector_meta
             .and_then(|meta| meta.has_vision_encoder)

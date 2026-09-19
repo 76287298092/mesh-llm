@@ -9,7 +9,7 @@ import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "check-env-mutation-contract.py"
-AUDITED_FILE = "crates/model-hf/src/store/local.rs"
+AUDITED_FILE = "crates/skippy-model-hf/src/store/local.rs"
 TODO = "// TODO: Audit that the environment access only happens in single-threaded code."
 
 

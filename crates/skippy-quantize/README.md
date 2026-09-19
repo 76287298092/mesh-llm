@@ -474,7 +474,7 @@ Build prerequisites:
 
 ```bash
 just skippy-quantize-standalone-release-build
-cargo build --release --locked -p skippy-model-package
+cargo build --release --locked -p skippy-package-builder
 ```
 
 The command validates the source split, writes the package artifacts from the

@@ -468,7 +468,7 @@ mod tests {
             canonical_builtin_diagnostic_path("models[0].gpu_id")
                 .as_ref()
                 .map(ConfigPath::render),
-            Some("models.<model-ref>.hardware.device".to_string())
+            Some("models.<skippy-model-ref>.hardware.device".to_string())
         );
 
         let diagnostic = built_in_support_diagnostic(
@@ -483,7 +483,7 @@ mod tests {
         );
         assert_eq!(
             diagnostic.canonical_path.as_ref().map(ConfigPath::render),
-            Some("models.<model-ref>.hardware.device".to_string())
+            Some("models.<skippy-model-ref>.hardware.device".to_string())
         );
     }
 }

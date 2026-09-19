@@ -79,8 +79,8 @@ python3 evals/skippy-waiting-prefix-ab.py \
   --acceptance-contract evals/skippy-capacity-acceptance.json \
   --prompt-manifest /tmp/skippy-agentic-eviction-pressure.json \
   --case-file /path/to/one-model-case.json \
-  --old-bin /path/to/old/skippy-server \
-  --new-bin /path/to/new/skippy-server \
+  --old-bin /path/to/old/skippy-serving \
+  --new-bin /path/to/new/skippy-serving \
   --old-commit <old-commit> \
   --new-commit <new-commit> \
   --native-build /path/to/matched/native-build \

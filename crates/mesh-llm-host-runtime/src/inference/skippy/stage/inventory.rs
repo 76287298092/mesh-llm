@@ -136,6 +136,6 @@ pub(super) fn inventory_source_candidates(request: &StageInventoryRequest) -> Ve
 fn is_split_gguf_path(path: &Path) -> bool {
     path.file_name()
         .and_then(|name| name.to_str())
-        .and_then(model_ref::split_gguf_shard_info)
+        .and_then(skippy_model_ref::split_gguf_shard_info)
         .is_some()
 }

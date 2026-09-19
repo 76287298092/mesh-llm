@@ -7,8 +7,8 @@ use std::{
 };
 
 use anyhow::{Context, Result, bail};
-use model_artifact::ModelIdentity;
 use serde_json::json;
+use skippy_model_artifact::ModelIdentity;
 use skippy_protocol::binary::{StageWireMessage, WireReplyKind, write_stage_message};
 use skippy_runtime::{GGML_TYPE_F16, MtpSource, RuntimeConfig, StageModel};
 

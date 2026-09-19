@@ -85,8 +85,8 @@ if [[ "$MODEL_IDENTITY_OVERRIDDEN" == "0" ]]; then
     --verify-root "$(dirname "$MODEL_PATH")"
 fi
 
-echo "building skippy-server and skippy-model-package"
-LLAMA_STAGE_BUILD_DIR="$LLAMA_BUILD_DIR" cargo build -p skippy-cli -p skippy-model-package
+echo "building skippy-serving and skippy-package-builder"
+LLAMA_STAGE_BUILD_DIR="$LLAMA_BUILD_DIR" cargo build -p skippy-cli -p skippy-package-builder
 
 echo "inferring layer_end from $MODEL_PATH"
 LAYER_END="$(

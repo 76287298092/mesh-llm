@@ -7,7 +7,7 @@ use crate::plugin::{
 use anyhow::Context as _;
 use serde_json::Value;
 use skippy_protocol::{LoadMode, StageKvCacheMode, StageKvCachePayload};
-use skippy_server::{EmbeddedReasoningBudget, EmbeddedReasoningEnabled, EmbeddedReasoningFormat};
+use skippy_serving::{EmbeddedReasoningBudget, EmbeddedReasoningEnabled, EmbeddedReasoningFormat};
 use std::{io::Write, path::Path};
 use tempfile::NamedTempFile;
 
@@ -976,7 +976,7 @@ fn hardware_checkpoint_quantization_reaches_stage_config() {
 }
 
 /// Exercises the same Mesh configuration -> resolver -> stage-config ->
-/// skippy-server model-open and inference path used by the embedded host. CI
+/// skippy-serving model-open and inference path used by the embedded host. CI
 /// supplies a pinned Hugging Face checkpoint directory rather than checking
 /// model bytes into the repository.
 #[test]
@@ -1067,7 +1067,7 @@ fn safetensors_checkpoint_reaches_mesh_host_runtime() -> anyhow::Result<()> {
             "importance matrix digest was not included in stage identity"
         );
     }
-    let runtime = skippy_server::runtime_state::load_runtime(&stage)?
+    let runtime = skippy_serving::runtime_state::load_runtime(&stage)?
         .ok_or_else(|| anyhow::anyhow!("Mesh host did not open the checkpoint"))?;
     let mut runtime = runtime
         .lock()

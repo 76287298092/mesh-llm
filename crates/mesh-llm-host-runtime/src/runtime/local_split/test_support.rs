@@ -504,7 +504,7 @@ stop = ["END"]
         n_ubatch_override: None,
         flash_attention_override: FlashAttentionType::Auto,
         openai_guardrail_policy: openai_guardrail_policy_handle(
-            openai_frontend::GuardrailMode::Disabled,
+            skippy_openai_frontend::GuardrailMode::Disabled,
         ),
         skippy_telemetry: skippy::SkippyTelemetryOptions::off(),
         survey_telemetry: survey::SurveyTelemetry::disabled(),
@@ -643,7 +643,7 @@ async fn split_stage_load_guards_metadata_kv_default_with_planned_metadata() {
         n_ubatch_override: None,
         flash_attention_override: FlashAttentionType::Auto,
         openai_guardrail_policy: openai_guardrail_policy_handle(
-            openai_frontend::GuardrailMode::Disabled,
+            skippy_openai_frontend::GuardrailMode::Disabled,
         ),
         skippy_telemetry: skippy::SkippyTelemetryOptions::off(),
         survey_telemetry: survey::SurveyTelemetry::disabled(),
@@ -693,7 +693,7 @@ async fn runtime_resolver_uses_config_identity_and_honors_device_override() {
     let mesh_config: plugin::MeshConfig = toml::from_str(&format!(
         r#"
 [[models]]
-model = "other/model-ref"
+model = "other/skippy-model-ref"
 
 [models.hardware]
 model_path = {model_path}
@@ -704,7 +704,7 @@ threads = 17
 threads_batch = 13
 
 [[models]]
-model = "configured/model-ref"
+model = "configured/skippy-model-ref"
 
 [models.hardware]
 model_path = {model_path}
@@ -722,7 +722,7 @@ max_tokens = 222
     let model_bytes = fs::metadata(&model_path).unwrap().len();
     let spec = LocalOpenAiModelStartSpec {
         mesh_config: &mesh_config,
-        config_model_id: Some("configured/model-ref"),
+        config_model_id: Some("configured/skippy-model-ref"),
         model_path: &model_path,
         model_bytes,
         mmproj_override: None,
@@ -738,7 +738,7 @@ max_tokens = 222
         parallel_override: None,
         planning_profile: RuntimeResourcePlanningProfile::DedicatedLocal,
         openai_guardrail_policy: openai_guardrail_policy_handle(
-            openai_frontend::GuardrailMode::Disabled,
+            skippy_openai_frontend::GuardrailMode::Disabled,
         ),
         skippy_telemetry: skippy::SkippyTelemetryOptions::off(),
         survey_telemetry: survey::SurveyTelemetry::disabled(),
@@ -788,7 +788,7 @@ max_tokens = 222
         parallel_override: None,
         planning_profile: RuntimeResourcePlanningProfile::DedicatedLocal,
         openai_guardrail_policy: openai_guardrail_policy_handle(
-            openai_frontend::GuardrailMode::Disabled,
+            skippy_openai_frontend::GuardrailMode::Disabled,
         ),
         skippy_telemetry: skippy::SkippyTelemetryOptions::off(),
         survey_telemetry: survey::SurveyTelemetry::disabled(),
@@ -798,7 +798,7 @@ max_tokens = 222
     };
     let cli_resolved = resolve_local_openai_skippy_config(
         &cli_spec,
-        "configured/model-ref",
+        "configured/skippy-model-ref",
         cli_model_bytes,
         4096,
         3,
@@ -811,7 +811,7 @@ max_tokens = 222
     assert_eq!(cli_resolved.throughput.threads_batch, None);
     assert_eq!(
         cli_resolved.request_defaults.max_tokens,
-        skippy_server::CONTEXT_BUDGET_MAX_TOKENS
+        skippy_serving::CONTEXT_BUDGET_MAX_TOKENS
     );
 }
 

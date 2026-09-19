@@ -60,7 +60,7 @@ pub(crate) fn identity_from_model_source(source: &str) -> Option<ServedModelIden
         return None;
     }
 
-    if let Ok(model_ref) = model_ref::ModelRef::parse(trimmed) {
+    if let Ok(model_ref) = skippy_model_ref::ModelRef::parse(trimmed) {
         let display_id = model_ref.display_id();
         return Some(ServedModelIdentity {
             model_name: String::new(),

@@ -112,14 +112,14 @@ test-all:
         --exclude skippy-quantize \
         --exclude skippy-model-package \
         --exclude skippy-runtime \
-        --exclude skippy-server \
+        --exclude skippy-serving \
         --exclude skippy-cli
     echo "--- Static Skippy model-package tests ---"
     just with-lld cargo test --package skippy-model-package --no-default-features
     echo "--- Static Skippy runtime tests ---"
     just with-lld cargo test --package skippy-runtime --no-default-features --lib
     echo "--- Static Skippy server tests ---"
-    just with-lld cargo test --package skippy-server --no-default-features --lib
+    just with-lld cargo test --package skippy-serving --no-default-features --lib
     echo ""
     echo "--- Static Skippy CLI tests ---"
     just with-lld cargo test --package skippy-cli --no-default-features

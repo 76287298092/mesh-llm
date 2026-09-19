@@ -115,7 +115,7 @@ mod tests {
                 }),
                 scope_metrics: vec![MetricScopeMetrics {
                     scope: Some(InstrumentationScope {
-                        name: "skippy-server".to_string(),
+                        name: "skippy-serving".to_string(),
                         version: "test".to_string(),
                         attributes: vec![],
                         dropped_attributes_count: 0,

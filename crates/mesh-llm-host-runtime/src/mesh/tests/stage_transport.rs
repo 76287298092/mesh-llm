@@ -201,7 +201,7 @@ async fn artifact_transfer_stream_uses_mesh_subprotocol_and_rejects_dedicated_al
         .record_stage_topology(StageTopologyInstance {
             topology_id: "topology-artifact".to_string(),
             run_id: "run-artifact".to_string(),
-            model_id: "model-artifact".to_string(),
+            model_id: "skippy-model-artifact".to_string(),
             package_ref: package_ref.clone(),
             manifest_sha256: manifest_sha256.clone(),
             admissions: Default::default(),
@@ -334,7 +334,7 @@ async fn package_v2_artifact_transfer_populates_empty_peer_cache_with_only_admit
         .record_stage_topology(StageTopologyInstance {
             topology_id: "topology-artifact-v2".to_string(),
             run_id: "run-artifact-v2".to_string(),
-            model_id: "model-artifact-v2".to_string(),
+            model_id: "skippy-model-artifact-v2".to_string(),
             package_ref: package_ref.clone(),
             manifest_sha256: manifest_sha256.clone(),
             admissions: std::collections::BTreeMap::from([(
@@ -477,7 +477,7 @@ async fn artifact_transfer_stream_rejects_corrupt_same_size_cached_artifact() ->
         .record_stage_topology(StageTopologyInstance {
             topology_id: "topology-artifact-corrupt".to_string(),
             run_id: "run-artifact-corrupt".to_string(),
-            model_id: "model-artifact".to_string(),
+            model_id: "skippy-model-artifact".to_string(),
             package_ref: package_ref.clone(),
             manifest_sha256: manifest_sha256.clone(),
             admissions: Default::default(),
@@ -556,7 +556,7 @@ async fn artifact_transfer_stream_rejects_public_mesh_without_opt_in() -> Result
         .record_stage_topology(StageTopologyInstance {
             topology_id: "topology-artifact-disabled".to_string(),
             run_id: "run-artifact-disabled".to_string(),
-            model_id: "model-artifact".to_string(),
+            model_id: "skippy-model-artifact".to_string(),
             package_ref: package_ref.clone(),
             manifest_sha256: manifest_sha256.clone(),
             admissions: Default::default(),

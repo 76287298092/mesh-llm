@@ -1,7 +1,7 @@
 use crate::gpus::tune_resolver::{
     ConfigModelMatch, LocalTargetSource, ResolvedTuneTarget, TuneTargetSelection,
 };
-use model_hf::store::model_ref_for_path;
+use skippy_model_hf::store::model_ref_for_path;
 use std::path::Path;
 
 pub(crate) fn write_local_gguf_file(dir: &Path, name: &str) -> std::path::PathBuf {

@@ -73,7 +73,7 @@ fn composite_ingress_delivers_to_both_sinks_when_one_fails() {
     }
 
     let recording = Arc::new(RecordingSink(std::sync::Mutex::new(0)));
-    let composite = skippy_server::frontend::CompositeGenerationLifecycleIngress::new(vec![
+    let composite = skippy_serving::frontend::CompositeGenerationLifecycleIngress::new(vec![
         Arc::new(FailingSink),
         recording.clone(),
     ]);

@@ -1,7 +1,7 @@
 use crate::network::openai::client_stream::ClientStream;
 use tokio::io::AsyncWriteExt;
 
-pub(crate) use openai_frontend::{
+pub(crate) use skippy_openai_frontend::{
     responses_stream_completed_event_with_sequence, responses_stream_content_part_added_event,
     responses_stream_content_part_done_event, responses_stream_created_event_with_sequence,
     responses_stream_delta_event_with_logprobs_and_sequence,

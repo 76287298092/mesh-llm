@@ -3,7 +3,7 @@
 Status: draft
 
 Layer package repositories are durable model artifacts for skippy-backed stage
-serving. A repository contains one `model-package.json` manifest plus GGUF
+serving. A repository contains one `skippy-model-package.json` manifest plus GGUF
 fragments that can be selected by layer range and loaded by a stage without
 requiring every peer to store or materialize the full source model.
 
@@ -34,7 +34,7 @@ meshllm/DeepSeek-V3.2-UD-Q4_K_XL-layers
 ```
 
 The repository identity is not enough to prove compatibility. Consumers MUST
-read `model-package.json` and use the manifest fields below as the source of
+read `skippy-model-package.json` and use the manifest fields below as the source of
 truth.
 
 Package references use `hf://` so runtime code can distinguish package repos
@@ -51,12 +51,12 @@ not a moving branch.
 
 ## Repository Layout
 
-The root of the repository MUST contain `model-package.json`.
+The root of the repository MUST contain `skippy-model-package.json`.
 
 Recommended layout:
 
 ```text
-model-package.json
+skippy-model-package.json
 shared/
   metadata.gguf
   embeddings.gguf
@@ -123,7 +123,7 @@ Privacy and compatibility boundaries:
   needed by the requesting node's assigned stage range. Stage 0 may fetch input
   boundary files and projector artifacts; final stages may fetch output boundary
   files.
-- `model-package.json` is capped at 16 MiB for peer transfer.
+- `skippy-model-package.json` is capped at 16 MiB for peer transfer.
 - Non-manifest artifacts must match the manifest-declared relative path, byte
   size, and SHA-256 digest.
 - Received artifacts are written to a fresh hidden partial file and installed
@@ -639,7 +639,7 @@ routed and shared experts together. Keep
 `generation.policy.experimental.moe_weighted_down` at `evidence-gated`; it is
 not a package default. The q2_K down alternative is still the useful follow-up
 because it produced the clearest combined-graph speedup, but it needs quality
-validation before it can become a model-package quant policy.
+validation before it can become a skippy-model-package quant policy.
 
 The IndexShare numbers are why `generation.policy.indexshare` is a first-class
 policy field instead of an implementation note. For GLM-5.2-style DSA with a
@@ -798,7 +798,7 @@ cooldown, and VerifyWindow depth. A named package strategy cannot be invented
 outside its package. For direct GGUF operation, operators may explicitly select
 the request-local `ngram-cache` or `ngram-suffix` proposer by supplying valid
 N-gram bounds; mesh-llm constructs
-and validates that generic plan before starting Skippy. `skippy-server` receives
+and validates that generic plan before starting Skippy. `skippy-serving` receives
 the resulting typed plan and does not repeat this policy resolution.
 
 Operators may also pass the legacy `native-mtp-n1` value; the runtime normalizes it to `mtp` for backward compatibility. New configs should use `mtp`.
@@ -839,26 +839,26 @@ stems. If a package needs a projector, the manifest must declare it explicitly.
 Package creation SHOULD use:
 
 ```bash
-skippy-model-package write-package org/repo:distribution --out-dir model-package/
+skippy-package-builder write-package org/repo:distribution --out-dir skippy-model-package/
 ```
 
 Multimodal packages SHOULD declare projector artifacts at write time:
 
 ```bash
-skippy-model-package write-package org/repo:distribution \
+skippy-package-builder write-package org/repo:distribution \
   --projector mmproj-model-f16.gguf \
-  --out-dir model-package/
+  --out-dir skippy-model-package/
 ```
 
 The package writer copies declared projectors into `projectors/`, records their
-checksums and sizes in `model-package.json`, and keeps them as durable package
+checksums and sizes in `skippy-model-package.json`, and keeps them as durable package
 artifacts.
 
 Local source GGUF paths are allowed only with explicit provenance:
 
 ```bash
-skippy-model-package write-package ./model.gguf \
-  --out-dir model-package/ \
+skippy-package-builder write-package ./model.gguf \
+  --out-dir skippy-model-package/ \
   --model-id org/repo:distribution \
   --source-revision <commit> \
   --source-file model.gguf
@@ -867,7 +867,7 @@ skippy-model-package write-package ./model.gguf \
 Before publishing, run package validation against the source model:
 
 ```bash
-skippy-model-package verify-package-v2 model-package/ --source /path/to/source.gguf
+skippy-package-builder verify-package-v2 skippy-model-package/ --source /path/to/source.gguf
 ```
 
 A published repository SHOULD include a short `README.md` with:
@@ -888,7 +888,7 @@ A published repository SHOULD include a short `README.md` with:
 
 Before a stage starts, consumers MUST validate:
 
-- `model-package.json` parses as schema version `1`;
+- `skippy-model-package.json` parses as schema version `1`;
 - `format` is `layer-package`;
 - `skippy_abi_version` is compatible with the runtime ABI;
 - `model_id` and source identity fields are non-empty;

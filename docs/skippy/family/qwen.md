@@ -16,7 +16,7 @@ flowchart LR
     Package["Qwen3.6 package<br/>target, draft, knobs"] --> Planner["topology planner"]
     Planner --> Single["single-node stage<br/>0..40"]
     Planner --> Multi["three-node middle-out stages<br/>0..14, 14..27, 27..40"]
-    Single --> Runner["openai-frontend<br/>/v1/chat/completions"]
+    Single --> Runner["skippy-openai-frontend<br/>/v1/chat/completions"]
     Multi --> Runner
     Runner --> Cache["future exact kv-recurrent cache<br/>off until reintroduced"]
     Runner --> Draft["draft verifier<br/>opt-in evidence gate"]
@@ -87,7 +87,7 @@ scripts/qwen-lab-preflight.sh \
   --out "$RUN_ROOT/preflight.txt"
 ```
 
-The preflight must report no stale `skippy-server`, legacy cache, Llama,
+The preflight must report no stale `skippy-serving`, legacy cache, Llama,
 Mesh, or Ollama processes, no listeners on the reserved lab ports, and at least
 20 GB free on `/` and `/tmp` for each lab host. Keep `preflight.txt` with the
 raw run artifacts, and do not promote a run that started with stale processes,
@@ -96,8 +96,8 @@ occupied lab ports, or low disk.
 ## Benchmark Entry Point
 
 All customer-readiness benchmark numbers must go through the chat-completions
-frontend. Use `skippy-server serve-openai`, backed by the shared
-`openai-frontend` crate, and send benchmark traffic to `/v1/chat/completions`.
+frontend. Use `skippy-serving serve-openai`, backed by the shared
+`skippy-openai-frontend` crate, and send benchmark traffic to `/v1/chat/completions`.
 
 Direct `skippy-prompt` or binary protocol runs are allowed for
 correctness isolation, debugging, and preflight checks, but they are not
@@ -264,7 +264,7 @@ Start the chat-completions frontend with an explicit concurrency limit after
 the stage chain is listening:
 
 ```bash
-skippy-server serve-openai \
+skippy-serving serve-openai \
   --config "$RUN_ROOT/configs/stage-0.json" \
   --bind-addr 192.168.0.2:9337 \
   --first-stage-addr 192.168.0.2:19031 \

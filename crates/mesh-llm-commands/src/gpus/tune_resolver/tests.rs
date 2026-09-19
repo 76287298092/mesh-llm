@@ -1,10 +1,10 @@
 use super::*;
 use hf_hub::RepoTypeModel;
-use model_hf::store::{
+use rand::{RngExt, distr::Alphanumeric, rng};
+use skippy_model_hf::store::{
     huggingface_hub_cache_dir, huggingface_identity_for_path, huggingface_repo_folder_name,
     model_ref_for_path,
 };
-use rand::{RngExt, distr::Alphanumeric, rng};
 use std::fs;
 use tempfile::{TempDir, tempdir};
 

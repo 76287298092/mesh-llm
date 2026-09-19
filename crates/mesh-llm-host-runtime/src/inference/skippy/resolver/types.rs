@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use skippy_protocol::{FlashAttentionType, StageKvCacheMode, StageKvCachePayload};
 use skippy_runtime::package::PackageGenerationInfo;
-use skippy_server::SpeculativeDecodeConfig;
+use skippy_serving::SpeculativeDecodeConfig;
 
 use crate::plugin::{MeshConfig, ReasoningBudget, ReasoningEnabled, RequestDefaultsConfig};
 

@@ -7,7 +7,7 @@
 //! module's instruments never feed the reducer or readiness decisions
 //! (they are a pure downstream consumer of already-decided engine state),
 //! and this module never touches existing Skippy telemetry
-//! (`crates/skippy-server/src/telemetry.rs`, `crates/skippy-metrics`),
+//! (`crates/skippy-serving/src/telemetry.rs`, `crates/skippy-metrics`),
 //! which stays out of scope for this pipeline.
 //!
 //! Extraction note: this file is `runtime/survey/runtime_events.rs`, a new

@@ -174,7 +174,7 @@ pub(super) const DESCRIPTORS: &[Descriptor] = &[
     descriptor(
         &["mesh-llm", "doctor", "split"],
         JSON,
-        &["--model-ref", "--output-dir"],
+        &["--skippy-model-ref", "--output-dir"],
         true,
         RawKind::None,
     ),

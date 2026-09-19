@@ -397,9 +397,9 @@ publish_crates=(
     skippy-topology
     skippy-metrics
     skippy-cache
-    model-ref
-    model-artifact
-    model-resolver
+    skippy-model-ref
+    skippy-model-artifact
+    skippy-model-resolver
     mesh-llm-client
     mesh-llm-api-client
     mesh-llm-events
@@ -414,17 +414,17 @@ publish_crates=(
     mesh-llm-tui
     mesh-llm-cli
     skippy-hf-hub
-    model-hf
-    model-package
+    skippy-model-hf
+    skippy-model-package
     mesh-llm-node
     mesh-llm-api-server
     skippy-hardware-profile
     skippy-runtime
     skippy-scheduler
-    openai-frontend
+    skippy-openai-frontend
     skippy-runtime-install
     skippy-config
-    skippy-server
+    skippy-serving
     skippy-api
     skippy-commands
     skippy-cli

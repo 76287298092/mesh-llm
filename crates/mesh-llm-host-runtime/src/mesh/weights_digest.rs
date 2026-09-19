@@ -54,7 +54,7 @@ use std::sync::{Arc, Condvar, Mutex, OnceLock};
 use std::time::{Instant, UNIX_EPOCH};
 
 /// (path, size in bytes, mtime as nanos since the epoch) -- the same recipe
-/// `model-hf`'s local-GGUF synthetic ref already uses to detect "this exact
+/// `skippy-model-hf`'s local-GGUF synthetic ref already uses to detect "this exact
 /// file state," just applied to a cache key instead of a name.
 type CacheKey = (PathBuf, u64, u128);
 

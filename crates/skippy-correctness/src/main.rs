@@ -19,7 +19,7 @@ use crate::{
 };
 
 fn prepare_model_download_directories() {
-    let prepared = match model_hf::prepare_download_directories() {
+    let prepared = match skippy_model_hf::prepare_download_directories() {
         Ok(prepared) => prepared,
         Err(error) => {
             eprintln!(

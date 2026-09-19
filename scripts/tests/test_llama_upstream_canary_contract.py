@@ -820,7 +820,7 @@ class SkippyFamilyBatteryTests(unittest.TestCase):
             bin_dir.mkdir()
             hf = bin_dir / "hf"
             hf.write_text('#!/bin/sh\nprintf "path=%s\\n" "$FAKE_MODEL_PATH"\n', encoding="utf-8")
-            inspect = bin_dir / "skippy-model-package"
+            inspect = bin_dir / "skippy-package-builder"
             complete_tensors = [
                 {
                     "name": f"blk.{layer}.weight",
@@ -861,7 +861,7 @@ class SkippyFamilyBatteryTests(unittest.TestCase):
                 f"#!/bin/sh\nprintf '%s\\n' '{complete_scan}'\n",
                 encoding="utf-8",
             )
-            for name in ("hf", "skippy-model-package"):
+            for name in ("hf", "skippy-package-builder"):
                 path = bin_dir / name
                 path.chmod(path.stat().st_mode | stat.S_IXUSR)
             topology = bin_dir / "skippy-topology-plan"

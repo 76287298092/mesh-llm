@@ -219,7 +219,7 @@ arbitrary labels; it never feeds the reducer or readiness decisions. This is
 narrower than spec §12.3, which is the plan's intentional v1 restriction.
 
 **Existing Skippy telemetry stays out of scope.** This pipeline never
-touches `crates/skippy-server/src/telemetry.rs` or the attribute vocabulary
+touches `crates/skippy-serving/src/telemetry.rs` or the attribute vocabulary
 in `crates/skippy-metrics`. Converting that existing Skippy telemetry into a
 consumer of the runtime-event pipeline is recorded in the plan's deferred
 follow-on register, triggered when these instruments have one release of

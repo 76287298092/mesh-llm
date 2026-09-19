@@ -25,6 +25,6 @@ impl DiagnosticSink for MeshDiagnostics {
 
 pub(crate) fn install() {
     // Explicit routing preserves warnings in every Mesh output mode and keeps
-    // listener status independent of the skippy_server=warn tracing filter.
+    // listener status independent of the skippy_serving=warn tracing filter.
     set_diagnostic_sink(Arc::new(MeshDiagnostics));
 }

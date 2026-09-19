@@ -105,7 +105,7 @@ fn find_partial_gpu_layers_fit(
     layer_count: u32,
     selected_budget: u64,
     kv_bytes_per_token: u64,
-    quant: model_artifact::gguf::GgufKvCacheQuant,
+    quant: skippy_model_artifact::gguf::GgufKvCacheQuant,
 ) -> Option<(TuneGpuLayersValue, u32)> {
     let bytes_per_layer = resident_model_bytes_for_layers(metadata.model_bytes, layer_count, 1);
     let max_layers = selected_budget

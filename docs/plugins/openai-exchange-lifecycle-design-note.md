@@ -20,7 +20,7 @@ why the M1 seam alone could not do either.
 topology-only; the real path is somewhere in `inference::provider()`) is close but
 imprecise about the codebase, and the imprecision matters for design:
 
-- `OpenAiHookPolicy` (`crates/openai-frontend/src/hooks.rs`) is correct: today it has
+- `OpenAiHookPolicy` (`crates/skippy-openai-frontend/src/hooks.rs`) is correct: today it has
   `before_chat_completion`, `after_prefill`, `mid_generation` — no terminal hook.
 - `MeshEvent` doesn't exist as a single type. There are two distinct things this could
   mean:
@@ -39,7 +39,7 @@ imprecise about the codebase, and the imprecision matters for design:
 That last point is the important correction: **there are two disjoint real dispatch
 paths for an OpenAI-shaped request, and only one of them is `OpenAiHookPolicy`.**
 
-1. **The `openai-frontend` crate path** — a typed Rust API
+1. **The `skippy-openai-frontend` crate path** — a typed Rust API
    (`ChatCompletionRequest`/`ChatCompletionResponse`, `OpenAiBackend` trait). This is
    what `#1331` names and what this milestone extends. It's used when a model is served
    in-process (e.g. the embedded/skippy backend, see
@@ -64,7 +64,7 @@ than what's here.
 
 ## What this milestone implements
 
-In `crates/openai-frontend/src/hooks.rs`, `OpenAiHookPolicy` gained two new default
+In `crates/skippy-openai-frontend/src/hooks.rs`, `OpenAiHookPolicy` gained two new default
 no-op async methods (additive, so `MeshAutoHookPolicy` and any other existing
 implementor keep compiling unchanged):
 
@@ -85,16 +85,16 @@ untouched, per this milestone's scope.
 
 ### Why `route` is just a model string
 
-`OpenAiRequestContext` (`crates/openai-frontend/src/backend.rs:66`) carries no
+`OpenAiRequestContext` (`crates/skippy-openai-frontend/src/backend.rs:66`) carries no
 backend/route identity, and `HookedOpenAiBackend` wraps exactly one already-chosen
 `Arc<dyn OpenAiBackend>` — there is no per-request backend selection inside
-`openai-frontend` to report. `request.model` is the only route-relevant fact available
+`skippy-openai-frontend` to report. `request.model` is the only route-relevant fact available
 at this layer. Route/provider selection (which plugin, which endpoint) happens entirely
 on path 2 above, outside this crate.
 
 ### Why this stays in-process here
 
-`openai-frontend` has a standing architectural invariant, enforced by its own test
+`skippy-openai-frontend` has a standing architectural invariant, enforced by its own test
 (`lifecycle.rs`'s `manifest_has_no_host_runtime_dependency`), that it never depends on
 `mesh-llm-host-runtime`. So this crate cannot itself dial the out-of-process plugin
 transport (`PluginMeshEvent`/`plugin/transport.rs`) — that bridging necessarily happens
@@ -126,7 +126,7 @@ two independent reasons.**
    are observe-only; see "What this milestone implements" above). Even a policy that
    wanted to stamp a capsule id has no write access to the response through this call.
 2. Even with a mutable reference, there is nowhere on `ChatCompletionResponse` to put it.
-   The struct (`crates/openai-frontend/src/chat.rs:270-278`: `id, object, created, model,
+   The struct (`crates/skippy-openai-frontend/src/chat.rs:270-278`: `id, object, created, model,
    choices, usage, timings`) has no open field — contrast `ChatCompletionRequest`, which
    does carry a `pub extra: BTreeMap<String, Value>` bag (`chat.rs:45`) that
    `chat_mesh_hooks_enabled`/`set_chat_mesh_hooks_enabled` already read/write. Nothing
@@ -150,7 +150,7 @@ for two reasons that are architectural, not just unimplemented: no capsule id ex
 correlate against (per (a)), and — separately — the client's ack is necessarily a
 **different, later HTTP request** (there is no wire mechanism, in this exchange's
 response, for the client to attach anything to *this* call). `OpenAiHookPolicy` and
-`HookedOpenAiBackend` are scoped to one request's lifecycle; nothing in `openai-frontend`
+`HookedOpenAiBackend` are scoped to one request's lifecycle; nothing in `skippy-openai-frontend`
 threads state from one request to a later, unrelated one. Observing the ack would need a
 new endpoint (or a recognized field on an existing one) plus a correlation store, neither
 of which exists.
@@ -185,12 +185,12 @@ named as the way out ("give `ChatCompletionResponse` an extensible field... add 
 second, header-capable hook point next to `frontend_lifecycle_middleware`"):
 
 - `OpenAiHookPolicy` gained a fourth hook, `capsule_marker_for_response(&self, request,
-  response) -> Option<CapsuleMarker>` (`crates/openai-frontend/src/hooks.rs`), fired once
+  response) -> Option<CapsuleMarker>` (`crates/skippy-openai-frontend/src/hooks.rs`), fired once
   after the backend returns a successful response and before the terminal hook. Unlike
   the three observer methods, this one returns a value — the write-capable half a plain
   `&ChatCompletionResponse` observer can never provide.
 - `ChatCompletionResponse` gained `capsule_marker: Option<CapsuleMarker>`
-  (`crates/openai-frontend/src/chat.rs`), `#[serde(skip)]` so it never enters the
+  (`crates/skippy-openai-frontend/src/chat.rs`), `#[serde(skip)]` so it never enters the
   OpenAI-shaped JSON body — exactly the extensible-field gap M1 identified, closed the
   same way `ChatCompletionRequest.extra` already solves it for the request side, minus
   ever putting it on the wire as JSON.

@@ -2,7 +2,7 @@
 
 Layer package repositories let Mesh LLM run very large models with Skippy stage
 splits. A package repository is a durable Hugging Face repo containing one
-`model-package.json` manifest plus GGUF fragments for shared tensors, per-layer
+`skippy-model-package.json` manifest plus GGUF fragments for shared tensors, per-layer
 tensors, and optional multimodal projectors.
 
 Use this page for contributor workflow. The exact schema lives in
@@ -11,7 +11,7 @@ Use this page for contributor workflow. The exact schema lives in
 ## Repository shape
 
 ```text
-model-package.json
+skippy-model-package.json
 shared/
   metadata.gguf
   embeddings.gguf
@@ -27,7 +27,7 @@ README.md
 
 Required rules:
 
-- `model-package.json` must be at the repo root.
+- `skippy-model-package.json` must be at the repo root.
 - `schema_version` must be `1`.
 - `format` must be `layer-package`.
 - Each manifest artifact path must be relative to the repo root.
@@ -237,20 +237,20 @@ IndexShare is required unless an explicit fallback is selected and logged.
 
 ## Local package tooling
 
-`skippy-model-package` is the local inspection and writing tool. Current
+`skippy-package-builder` is the local inspection and writing tool. Current
 subcommands are:
 
 ```bash
-skippy-model-package inspect <model.gguf>
-skippy-model-package write-package <model.gguf> --out-dir ./package
-skippy-model-package verify-package-v2 ./package --source <model.gguf>
-skippy-model-package validate-glm-dsa-contract ./package
+skippy-package-builder inspect <model.gguf>
+skippy-package-builder write-package <model.gguf> --out-dir ./package
+skippy-package-builder verify-package-v2 ./package --source <model.gguf>
+skippy-package-builder validate-glm-dsa-contract ./package
 ```
 
 Validate before publishing:
 
 ```bash
-skippy-model-package verify-package-v2 ./package --source <model.gguf>
+skippy-package-builder verify-package-v2 ./package --source <model.gguf>
 ```
 
 ## Queue a Hugging Face package job
@@ -265,7 +265,7 @@ mesh-llm models package unsloth/inkling-GGUF:UD-Q2_K_XL --dry-run
 mesh-llm models package unsloth/inkling-GGUF:UD-Q2_K_XL --experimental --confirm --follow
 ```
 
-The hidden compatibility alias is `mesh-llm model-package`; prefer
+The hidden compatibility alias is `mesh-llm skippy-model-package`; prefer
 `mesh-llm models package` in docs and scripts.
 
 Important options:
@@ -293,7 +293,7 @@ the quant into a separate `--quant` argument for generated job inputs.
 
 Repository GGUFs whose basenames start with `mmproj` are discovered as
 multimodal projector sidecars, not model quants. The job passes them to
-`skippy-model-package write-package`, publishes them under `projectors/`, and
+`skippy-package-builder write-package`, publishes them under `projectors/`, and
 preserves the source pipeline tag in the package model card. This is how a
 combined vision/audio projector such as Inkling's `mmproj-BF16.gguf` travels
 with its Q2 layer package.
@@ -303,11 +303,11 @@ with its Q2 layer package.
 The HF Jobs script performs the publishing work:
 
 1. clone mesh-llm,
-2. build `skippy-model-package`,
+2. build `skippy-package-builder`,
 3. run `write-package`,
 4. validate the manifest,
 5. upload package artifacts incrementally,
-6. upload `model-package.json`,
+6. upload `skippy-model-package.json`,
 7. write a package model card,
 8. update `meshllm/catalog`,
 9. print the suggested run command.

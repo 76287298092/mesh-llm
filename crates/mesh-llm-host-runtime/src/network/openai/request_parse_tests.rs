@@ -890,7 +890,7 @@ fn public_model_id_with_huggingface_ref_and_profile() {
 // ── Capsule client-nonce ingress normalization (PR #1397) ──
 
 fn client_nonce_header_values(raw: &[u8]) -> Vec<String> {
-    let nonce_header = openai_frontend::lifecycle::CLIENT_NONCE_HEADER.as_str();
+    let nonce_header = skippy_openai_frontend::lifecycle::CLIENT_NONCE_HEADER.as_str();
     std::str::from_utf8(raw)
         .unwrap_or_default()
         .lines()
@@ -904,7 +904,7 @@ fn client_nonce_header_values(raw: &[u8]) -> Vec<String> {
 }
 
 fn nonce_origin_header_values(raw: &[u8]) -> Vec<String> {
-    let origin_header = openai_frontend::lifecycle::CLIENT_NONCE_ORIGIN_HEADER.as_str();
+    let origin_header = skippy_openai_frontend::lifecycle::CLIENT_NONCE_ORIGIN_HEADER.as_str();
     std::str::from_utf8(raw)
         .unwrap_or_default()
         .lines()
@@ -940,7 +940,7 @@ async fn ingress_mints_exactly_one_stable_nonce_when_absent() {
     );
     assert_eq!(
         nonce_origin_header_values(&request.raw),
-        vec![openai_frontend::lifecycle::CLIENT_NONCE_ORIGIN_FRONTEND.to_string()],
+        vec![skippy_openai_frontend::lifecycle::CLIENT_NONCE_ORIGIN_FRONTEND.to_string()],
         "a minted nonce carries exactly one trusted origin marker"
     );
 }
@@ -951,7 +951,7 @@ async fn ingress_preserves_a_client_supplied_valid_uuidv4_without_marker() {
     let request = read_request_from_parts(vec![
         format!(
             "POST /v1/chat/completions HTTP/1.1\r\nHost: localhost\r\n{}: {supplied_nonce}\r\nContent-Length: 2\r\n\r\n{{}}",
-            openai_frontend::lifecycle::CLIENT_NONCE_HEADER.as_str(),
+            skippy_openai_frontend::lifecycle::CLIENT_NONCE_HEADER.as_str(),
         )
         .into_bytes(),
     ])
@@ -976,8 +976,8 @@ async fn ingress_strips_forged_origin_marker_on_forwarded_nonce() {
     let request = read_request_from_parts(vec![
         format!(
             "POST /v1/chat/completions HTTP/1.1\r\nHost: localhost\r\n{}: {supplied_nonce}\r\n{}: frontend\r\nContent-Length: 2\r\n\r\n{{}}",
-            openai_frontend::lifecycle::CLIENT_NONCE_HEADER.as_str(),
-            openai_frontend::lifecycle::CLIENT_NONCE_ORIGIN_HEADER.as_str(),
+            skippy_openai_frontend::lifecycle::CLIENT_NONCE_HEADER.as_str(),
+            skippy_openai_frontend::lifecycle::CLIENT_NONCE_ORIGIN_HEADER.as_str(),
         )
         .into_bytes(),
     ])
@@ -999,7 +999,7 @@ async fn ingress_rejects_non_uuid_nonce_and_mints_a_marked_one() {
     let request = read_request_from_parts(vec![
         format!(
             "POST /v1/chat/completions HTTP/1.1\r\nHost: localhost\r\n{}: attacker-chosen-value\r\nContent-Length: 2\r\n\r\n{{}}",
-            openai_frontend::lifecycle::CLIENT_NONCE_HEADER.as_str(),
+            skippy_openai_frontend::lifecycle::CLIENT_NONCE_HEADER.as_str(),
         )
         .into_bytes(),
     ])
@@ -1014,14 +1014,14 @@ async fn ingress_rejects_non_uuid_nonce_and_mints_a_marked_one() {
     );
     assert_eq!(
         nonce_origin_header_values(&request.raw),
-        vec![openai_frontend::lifecycle::CLIENT_NONCE_ORIGIN_FRONTEND.to_string()]
+        vec![skippy_openai_frontend::lifecycle::CLIENT_NONCE_ORIGIN_FRONTEND.to_string()]
     );
 }
 
 #[tokio::test]
 async fn ingress_rejects_duplicate_nonce_headers_and_mints_a_single_one() {
     let supplied_nonce = "11111111-1111-4111-8111-111111111111";
-    let nonce_header = openai_frontend::lifecycle::CLIENT_NONCE_HEADER.as_str();
+    let nonce_header = skippy_openai_frontend::lifecycle::CLIENT_NONCE_HEADER.as_str();
     let request = read_request_from_parts(vec![
         format!(
             "POST /v1/chat/completions HTTP/1.1\r\nHost: localhost\r\n{nonce_header}: {supplied_nonce}\r\n{nonce_header}: {supplied_nonce}\r\nContent-Length: 2\r\n\r\n{{}}",
@@ -1038,7 +1038,7 @@ async fn ingress_rejects_duplicate_nonce_headers_and_mints_a_single_one() {
     );
     assert_eq!(
         nonce_origin_header_values(&request.raw),
-        vec![openai_frontend::lifecycle::CLIENT_NONCE_ORIGIN_FRONTEND.to_string()]
+        vec![skippy_openai_frontend::lifecycle::CLIENT_NONCE_ORIGIN_FRONTEND.to_string()]
     );
 }
 

@@ -4,8 +4,8 @@ use std::{
 };
 
 use anyhow::{Context, Result, bail};
-use model_artifact::ModelIdentity;
 use serde_json::json;
+use skippy_model_artifact::ModelIdentity;
 use skippy_protocol::binary::{
     StageStateHeader, StageWireMessage, WireMessageKind, WireReplyKind, recv_reply,
     write_stage_message,
@@ -25,7 +25,7 @@ use crate::{
     },
     model_identity::model_identity_for_path,
     support::{
-        ChildGuard, activation_width, connect_ready, ensure_release_skippy_server_bin,
+        ChildGuard, activation_width, connect_ready, ensure_release_skippy_serving_bin,
         generate_run_id, temp_config_path_for,
     },
 };
@@ -290,7 +290,7 @@ fn run_binary_split(args: BinarySplitConfig) -> Result<BinarySplitResult> {
     if args.split_layer == 0 || args.split_layer >= args.layer_end {
         bail!("split_layer must be greater than zero and less than layer_end");
     }
-    ensure_release_skippy_server_bin(&args.stage_server_bin)?;
+    ensure_release_skippy_serving_bin(&args.stage_server_bin)?;
     validate_local_topology_plan(&args.model_path, args.layer_end, &[args.split_layer], 2)?;
     let mut runtime_plans = plan_gguf_stage_runtime_plans(
         &args.model_path,
@@ -491,7 +491,7 @@ fn run_binary_split(args: BinarySplitConfig) -> Result<BinarySplitResult> {
 }
 
 fn run_binary_chain(args: LocalSplitChainBinaryArgs) -> Result<BinaryChainResult> {
-    ensure_release_skippy_server_bin(&args.stage_server_bin)?;
+    ensure_release_skippy_serving_bin(&args.stage_server_bin)?;
     if args.split_layer_1 == 0
         || args.split_layer_1 >= args.split_layer_2
         || args.split_layer_2 >= args.layer_end

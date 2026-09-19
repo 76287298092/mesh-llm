@@ -7,11 +7,11 @@ use std::{
 };
 
 use anyhow::{Context, Result, bail};
-use model_artifact::ModelIdentity;
-use model_hf::HfModelRepository;
-use model_ref::ModelRef;
 use serde::Deserialize;
 use serde_json::json;
+use skippy_model_artifact::ModelIdentity;
+use skippy_model_hf::HfModelRepository;
+use skippy_model_ref::ModelRef;
 use skippy_protocol::binary::{
     StageReply, StageStateHeader, StageWireMessage, WireMessageKind, WireReplyKind, recv_reply,
     write_stage_message,

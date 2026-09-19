@@ -24,7 +24,7 @@ of the status shape.
 ## Validation
 
 ```bash
-cargo test -p skippy-server --lib
+cargo test -p skippy-serving --lib
 cargo test -p mesh-llm --lib
 ```
 

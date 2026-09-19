@@ -625,9 +625,9 @@ gpu_id = "pci:0000:65:00.0"
             "telemetry.prompt_shape_metrics",
             "defaults.model_fit.ctx_size",
             "defaults.hardware.rpc_backend",
-            "models.<model-ref>.hardware.device",
-            "models.<model-ref>.throughput.sleep_idle_seconds",
-            "models.<model-ref>.request_defaults.json_schema",
+            "models.<skippy-model-ref>.hardware.device",
+            "models.<skippy-model-ref>.throughput.sleep_idle_seconds",
+            "models.<skippy-model-ref>.request_defaults.json_schema",
             "plugin.<plugin-name>.startup.connect_timeout_secs",
         ] {
             assert!(
@@ -640,16 +640,22 @@ gpu_id = "pci:0000:65:00.0"
     #[test]
     fn canonical_path_aliases() {
         let cases = [
-            ("models[0].gpu_id", "models.<model-ref>.hardware.device"),
+            (
+                "models[0].gpu_id",
+                "models.<skippy-model-ref>.hardware.device",
+            ),
             (
                 "models[0].ctx_size",
-                "models.<model-ref>.model_fit.ctx_size",
+                "models.<skippy-model-ref>.model_fit.ctx_size",
             ),
             (
                 "models[0].parallel",
-                "models.<model-ref>.throughput.parallel",
+                "models.<skippy-model-ref>.throughput.parallel",
             ),
-            ("models[0].mmproj", "models.<model-ref>.multimodal.mmproj"),
+            (
+                "models[0].mmproj",
+                "models.<skippy-model-ref>.multimodal.mmproj",
+            ),
             ("defaults.gpu_id", "defaults.hardware.device"),
             ("defaults.ctx_size", "defaults.model_fit.ctx_size"),
             ("defaults.parallel", "defaults.throughput.parallel"),
@@ -715,10 +721,10 @@ gpu_id = "pci:0000:65:00.0"
                     "gpu.assignment",
                     "owner_control.bind",
                     "owner_control.advertise_addr",
-                    "models.<model-ref>.hardware.device",
-                    "models.<model-ref>.model_fit.ctx_size",
-                    "models.<model-ref>.throughput.parallel",
-                    "models.<model-ref>.multimodal.mmproj",
+                    "models.<skippy-model-ref>.hardware.device",
+                    "models.<skippy-model-ref>.model_fit.ctx_size",
+                    "models.<skippy-model-ref>.throughput.parallel",
+                    "models.<skippy-model-ref>.multimodal.mmproj",
                 ],
             ),
             (
@@ -763,46 +769,46 @@ gpu_id = "pci:0000:65:00.0"
             ),
             (
                 "ModelConfigEditor::runtime",
-                vec!["models.<model-ref>.hardware.model_runtime"],
+                vec!["models.<skippy-model-ref>.hardware.model_runtime"],
             ),
             (
                 "ModelConfigEditor::clear_runtime",
-                vec!["models.<model-ref>.hardware.model_runtime"],
+                vec!["models.<skippy-model-ref>.hardware.model_runtime"],
             ),
             (
                 "ModelConfigEditor::device",
-                vec!["models.<model-ref>.hardware.device"],
+                vec!["models.<skippy-model-ref>.hardware.device"],
             ),
             (
                 "ModelConfigEditor::clear_device",
-                vec!["models.<model-ref>.hardware.device"],
+                vec!["models.<skippy-model-ref>.hardware.device"],
             ),
             (
                 "ModelConfigEditor::context_size",
-                vec!["models.<model-ref>.model_fit.ctx_size"],
+                vec!["models.<skippy-model-ref>.model_fit.ctx_size"],
             ),
             (
                 "ModelConfigEditor::parallel",
-                vec!["models.<model-ref>.throughput.parallel"],
+                vec!["models.<skippy-model-ref>.throughput.parallel"],
             ),
             (
                 "ModelConfigEditor::cache_types",
                 vec![
-                    "models.<model-ref>.model_fit.cache_type_k",
-                    "models.<model-ref>.model_fit.cache_type_v",
+                    "models.<skippy-model-ref>.model_fit.cache_type_k",
+                    "models.<skippy-model-ref>.model_fit.cache_type_v",
                 ],
             ),
             (
                 "ModelConfigEditor::max_tokens",
-                vec!["models.<model-ref>.request_defaults.max_tokens"],
+                vec!["models.<skippy-model-ref>.request_defaults.max_tokens"],
             ),
             (
                 "ModelConfigEditor::temperature",
-                vec!["models.<model-ref>.request_defaults.temperature"],
+                vec!["models.<skippy-model-ref>.request_defaults.temperature"],
             ),
             (
                 "ModelConfigEditor::mmproj",
-                vec!["models.<model-ref>.multimodal.mmproj"],
+                vec!["models.<skippy-model-ref>.multimodal.mmproj"],
             ),
             (
                 "PluginConfigEditor::enabled",

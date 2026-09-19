@@ -11,10 +11,10 @@ use std::{
 };
 
 use anyhow::{Context, Result, anyhow, bail};
-use model_artifact::ModelIdentity;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use skippy_model_artifact::ModelIdentity;
 use skippy_protocol::binary::{
     StageStateHeader, StageWireMessage, WireMessageKind, WireReplyKind, recv_reply,
     write_stage_message,
@@ -28,7 +28,7 @@ use crate::{
     cli::{DEFAULT_RUN_MAX_NEW_TOKENS, FocusedRuntimeArgs, RunArgs},
     direct_return_listener::{DriverReturnListener, DriverReturnReceiver},
     model_identity::model_identity_for_path,
-    support::{ChildGuard, ensure_release_skippy_server_bin, retry},
+    support::{ChildGuard, ensure_release_skippy_serving_bin, retry},
 };
 
 #[path = "deployment.rs"]
@@ -145,7 +145,7 @@ pub fn run_distributed(args: RunArgs) -> Result<()> {
 }
 
 pub(super) fn run_distributed_collect(args: RunArgs) -> Result<DistributedRunOutcome> {
-    ensure_release_skippy_server_bin(&args.stage_server_bin)?;
+    ensure_release_skippy_serving_bin(&args.stage_server_bin)?;
     let run_started = Instant::now();
     let hosts = parse_hosts(&args.hosts)?;
     let ranges = parse_stage_ranges(&args.splits, args.layer_end)?;

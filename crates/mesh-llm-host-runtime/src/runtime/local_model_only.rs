@@ -14,8 +14,8 @@ use crate::runtime::survey;
 use crate::system::hardware;
 use anyhow::{Context, Result};
 use mesh_llm_events::{OutputEvent, emit_event};
-use skippy_server::EmbeddedState;
-use skippy_server::serving_hooks::SharedModelServingHooksFactory;
+use skippy_serving::EmbeddedState;
+use skippy_serving::serving_hooks::SharedModelServingHooksFactory;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 use std::time::Duration;
@@ -441,7 +441,7 @@ mod tests {
     use crate::runtime_events::{
         clear_runtime_event_engine, install_runtime_event_engine, runtime_event_engine,
     };
-    use openai_frontend::ChatCompletionRequest;
+    use skippy_openai_frontend::ChatCompletionRequest;
     use skippy_protocol::{StageKvCacheConfig, StageKvCacheMode, StageKvCachePayload};
     use std::path::PathBuf;
     use std::sync::Arc;

@@ -2,7 +2,7 @@
 //!
 //! Argument parsing lives in `skippy-cli`; this crate executes the parsed
 //! commands against the shared Skippy API and renders their JSON output.
-//! It intentionally has no dependency on `skippy-server` and adds no
+//! It intentionally has no dependency on `skippy-serving` and adds no
 //! serving options types of its own.
 
 pub mod console;

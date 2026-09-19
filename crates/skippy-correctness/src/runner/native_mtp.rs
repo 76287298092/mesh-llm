@@ -1,9 +1,9 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, bail};
-use model_artifact::gguf::scan_gguf_compact_meta;
-use model_ref::split_gguf_shard_info;
 use serde::Serialize;
+use skippy_model_artifact::gguf::scan_gguf_compact_meta;
+use skippy_model_ref::split_gguf_shard_info;
 use skippy_protocol::binary::StageReply;
 use skippy_runtime::ModelInfo;
 

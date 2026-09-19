@@ -16,7 +16,7 @@ separate follow-on stacked on stable radix node and payload semantics.
 
 ## Current serving boundary
 
-The PR #1420 baseline `skippy-server`:
+The PR #1420 baseline `skippy-serving`:
 
 1. uses `PrefixCandidatePolicy` to enumerate a sparse list of token lengths;
 2. hashes each candidate into a `page_id`;
@@ -27,7 +27,7 @@ The PR #1420 baseline `skippy-server`:
 
 The replacement preserves that crate boundary. `skippy-cache` stays pure and
 owns logical matching, node splits, references, recency, accounting, pruning,
-and eviction choice. `skippy-server` remains the adapter that mutates native
+and eviction choice. `skippy-serving` remains the adapter that mutates native
 runtime state and emits telemetry.
 
 ## Logical shape

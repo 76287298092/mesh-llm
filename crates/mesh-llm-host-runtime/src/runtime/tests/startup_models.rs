@@ -1737,7 +1737,7 @@ fn skippy_telemetry_endpoint_enables_summary_without_debug() {
     );
     assert_eq!(
         telemetry.level,
-        skippy_server::telemetry::TelemetryLevel::Summary
+        skippy_serving::telemetry::TelemetryLevel::Summary
     );
 }
 
@@ -1753,7 +1753,7 @@ fn skippy_telemetry_debug_keeps_debug_level_when_endpoint_is_set() {
 
     assert_eq!(
         telemetry.level,
-        skippy_server::telemetry::TelemetryLevel::Debug
+        skippy_serving::telemetry::TelemetryLevel::Debug
     );
 }
 

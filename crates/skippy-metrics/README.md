@@ -3,7 +3,7 @@
 Shared telemetry naming conventions for staged runtime components.
 
 Use this crate for stable attribute keys, metric names, and report vocabulary
-that must line up across `skippy-server`, `metrics-server`, benchmarks, and
+that must line up across `skippy-serving`, `metrics-server`, benchmarks, and
 correctness tooling.
 
 ## Architecture Role

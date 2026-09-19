@@ -1,6 +1,6 @@
 use anyhow::{Result, bail};
-use openai_frontend::ReasoningEffort;
-use skippy_server::{
+use skippy_openai_frontend::ReasoningEffort;
+use skippy_serving::{
     CONTEXT_BUDGET_MAX_TOKENS, EmbeddedReasoningBudget, EmbeddedReasoningEnabled,
     EmbeddedReasoningFormat,
 };

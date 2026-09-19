@@ -1,1 +1,1 @@
-pub use model_artifact::gguf::*;
+pub use skippy_model_artifact::gguf::*;

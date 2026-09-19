@@ -364,7 +364,7 @@ class ModelArtifactRegistryTests(unittest.TestCase):
         smoke = (ROOT / "scripts" / "ci-hf-download-smoke.sh").read_text(
             encoding="utf-8"
         )
-        fixture = (ROOT / "crates" / "model-hf" / "tests" / "hf_download.rs").read_text(
+        fixture = (ROOT / "crates" / "skippy-model-hf" / "tests" / "hf_download.rs").read_text(
             encoding="utf-8"
         )
 

@@ -31,13 +31,13 @@ pub(in crate::network::openai::response) fn append_capsule_nonce_headers(
     if let Some(nonce) = client_nonce {
         header.push_str(&format!(
             "{}: {nonce}\r\n",
-            openai_frontend::lifecycle::CLIENT_NONCE_HEADER.as_str()
+            skippy_openai_frontend::lifecycle::CLIENT_NONCE_HEADER.as_str()
         ));
     }
     if let Some(origin) = nonce_origin {
         header.push_str(&format!(
             "{}: {origin}\r\n",
-            openai_frontend::lifecycle::CLIENT_NONCE_ORIGIN_HEADER.as_str()
+            skippy_openai_frontend::lifecycle::CLIENT_NONCE_ORIGIN_HEADER.as_str()
         ));
     }
 }
@@ -214,9 +214,9 @@ pub(in crate::network::openai::response) fn try_parse_response_headers(
             let mut content_type = None;
             let mut client_nonce = None;
             let mut nonce_origin = None;
-            let nonce_header = openai_frontend::lifecycle::CLIENT_NONCE_HEADER.as_str();
+            let nonce_header = skippy_openai_frontend::lifecycle::CLIENT_NONCE_HEADER.as_str();
             let nonce_origin_header =
-                openai_frontend::lifecycle::CLIENT_NONCE_ORIGIN_HEADER.as_str();
+                skippy_openai_frontend::lifecycle::CLIENT_NONCE_ORIGIN_HEADER.as_str();
             for header in response.headers.iter() {
                 if header.name.eq_ignore_ascii_case("content-length") {
                     let value = std::str::from_utf8(header.value)

@@ -26,14 +26,14 @@ async fn main() -> Result<()> {
     }
     match cli.command {
         Command::Serve(args) => {
-            skippy_server::http::serve_stage_http_with_shutdown(
+            skippy_serving::http::serve_stage_http_with_shutdown(
                 conversion::stage_http_options(args)?,
                 shutdown_signal()?,
             )
             .await
         }
         Command::ServeBinary(args) => {
-            skippy_server::binary_transport::serve_binary_stage_with_shutdown(
+            skippy_serving::binary_transport::serve_binary_stage_with_shutdown(
                 conversion::binary_stage_options(args)?,
                 shutdown_signal()?,
             )

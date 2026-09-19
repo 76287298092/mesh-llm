@@ -17,9 +17,9 @@ route, and then lets diagnostic clients attach to the first stage.
 ```mermaid
 flowchart TB
     Mesh["mesh-llm coordinator"] --> Plan["skippy-topology<br/>validate splits"]
-    Mesh --> Slice["skippy-model-package<br/>materialize derived stage cache"]
+    Mesh --> Slice["skippy-package-builder<br/>materialize derived stage cache"]
     Mesh --> Metrics["metrics-server<br/>optional debug sink"]
-    Mesh --> S0["stage-0<br/>skippy-server"]
+    Mesh --> S0["stage-0<br/>skippy-serving"]
     S0 --> S1["stage-1"]
     S1 --> SF["final stage"]
     CLI["skippy-prompt binary<br/>diagnostic client"] --> REPL["interactive REPL<br/>history, interrupts"]
@@ -64,9 +64,9 @@ Useful REPL commands include `:history`, `:logs [name] [lines]`, and `:quit`.
 - `--draft-model-path` enables draft-model speculative proposals.
 - Standalone cache and n-gram sidecars are not imported into mesh-llm; topology
   launch exits before starting sidecars.
-- Thinking controls are forwarded through the shared `openai-frontend`
+- Thinking controls are forwarded through the shared `skippy-openai-frontend`
   reasoning/template normalization helpers.
 
-Keep server transport behavior in `skippy-server`, model/session ABI
+Keep server transport behavior in `skippy-serving`, model/session ABI
 wrapping in `skippy-runtime`, and reusable OpenAI request shapes in
-`openai-frontend`.
+`skippy-openai-frontend`.

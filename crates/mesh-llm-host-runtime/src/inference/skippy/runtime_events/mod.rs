@@ -1,14 +1,14 @@
 //! Runtime-event producer wiring for Skippy's authoritative generation
 //! lifecycle (plan task 12, `.omo/plans/event-system.md` line 294).
 //!
-//! Adapts `skippy-server`'s dependency-safe [`GenerationLifecycleIngress`]
+//! Adapts `skippy-serving`'s dependency-safe [`GenerationLifecycleIngress`]
 //! observations onto `RuntimeFact::Generation`/`Prefill`/`Session`/
 //! `KvRuntimeState` facts through the host runtime-event engine, without
 //! displacing or replacing the trait or its existing implementors (PR
 //! #1149's native-plugin lifecycle ingress). `resolve_serving_hooks` in
 //! `inference/skippy/mod.rs` always installs this adapter, and composes it
 //! with a native plugin's own ingress via
-//! [`skippy_server::frontend::CompositeGenerationLifecycleIngress`] when a
+//! [`skippy_serving::frontend::CompositeGenerationLifecycleIngress`] when a
 //! plugin is loaded (the serving-hooks slot is single-occupancy).
 //!
 //! `facts.rs` owns pure fact construction per family; this module owns
@@ -51,7 +51,7 @@ use mesh_llm_runtime_event_contracts::{
     ChildOperationId, GenerationEventKind, OperationId, RuntimeEventIngress, RuntimeFact,
     SubmitOutcome,
 };
-use skippy_server::frontend::{
+use skippy_serving::frontend::{
     GenerationAbort, GenerationCommit, GenerationCompletion, GenerationLifecycleIngress,
     GenerationLifecycleObservation, GenerationReceipt, GenerationStart,
 };
@@ -298,7 +298,7 @@ impl SkippyGenerationRuntimeEventAdapter {
     fn record(&self, receipt: &GenerationReceipt) {
         let stop_condition_reached = matches!(
             receipt.termination,
-            skippy_server::frontend::GenerationTermination::CallbackStop
+            skippy_serving::frontend::GenerationTermination::CallbackStop
         );
         self.finish(
             (receipt.request_id, receipt.session_id),
@@ -311,7 +311,7 @@ impl SkippyGenerationRuntimeEventAdapter {
     fn finish_lightweight(&self, completion: &GenerationCompletion) {
         let stop_condition_reached = matches!(
             completion.termination,
-            skippy_server::frontend::GenerationTermination::CallbackStop
+            skippy_serving::frontend::GenerationTermination::CallbackStop
         );
         self.finish(
             (completion.request_id, completion.session_id),
@@ -330,7 +330,7 @@ impl SkippyGenerationRuntimeEventAdapter {
 
     /// Receipt-build failure (review defect D1): the generation itself
     /// completed, but `canonical_session_position`/`export_full_state`
-    /// bookkeeping failed, so `skippy-server` has no receipt to hand
+    /// bookkeeping failed, so `skippy-serving` has no receipt to hand
     /// `record`. Bumps engine health directly (unlike the normal
     /// `finish`-only paths, whose reservation submissions are expected to
     /// succeed) and synthesizes the same `terminal_not_delivered` terminals

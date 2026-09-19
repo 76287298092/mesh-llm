@@ -6,7 +6,7 @@ pub(super) const REQUEST_TOKEN_MARGIN: u32 = 256;
 
 /// Decode headroom Skippy admission reserves, as a `u32` for token arithmetic.
 fn decode_headroom_tokens() -> u32 {
-    saturating_u32(skippy_server::DECODE_BATCH_HEADROOM_TOKENS)
+    saturating_u32(skippy_serving::DECODE_BATCH_HEADROOM_TOKENS)
 }
 
 fn saturating_u32(value: usize) -> u32 {
@@ -523,7 +523,7 @@ mod tests {
         let huge = request_budget_tokens_from_parts(4_096, Some(u32::MAX)).unwrap();
         let headroom = request_budget_tokens_from_parts(
             4_096,
-            Some(skippy_server::DECODE_BATCH_HEADROOM_TOKENS as u32),
+            Some(skippy_serving::DECODE_BATCH_HEADROOM_TOKENS as u32),
         )
         .unwrap();
 

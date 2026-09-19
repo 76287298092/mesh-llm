@@ -1,8 +1,8 @@
 mod types;
 
 use mesh_llm_config::MeshConfig;
-use model_hf::store::{find_model_path, huggingface_identity_for_path, model_ref_for_path};
-use model_ref::ModelRef;
+use skippy_model_hf::store::{find_model_path, huggingface_identity_for_path, model_ref_for_path};
+use skippy_model_ref::ModelRef;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 

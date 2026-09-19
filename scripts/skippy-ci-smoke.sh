@@ -382,7 +382,7 @@ fi
 
 echo "building skippy smoke binaries"
 LLAMA_STAGE_BUILD_DIR="$LLAMA_BUILD_DIR" \
-  cargo build -p skippy-cli -p skippy-correctness -p skippy-model-package -p skippy-prompt
+  cargo build -p skippy-cli -p skippy-correctness -p skippy-package-builder -p skippy-prompt
 
 DENSE_LAYER_END="$(model_layer_end "$DENSE_MODEL_PATH")"
 RECURRENT_LAYER_END="$(model_layer_end "$RECURRENT_MODEL_PATH")"

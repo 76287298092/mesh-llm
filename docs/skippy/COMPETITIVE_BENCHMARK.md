@@ -1,7 +1,7 @@
 # Mesh versus llama.cpp competitive benchmark
 
 `evals/skippy-competitive-benchmark.py` is the reproducible entrypoint for the
-cross-platform scheduler benchmark. It compares the release `skippy-server`
+cross-platform scheduler benchmark. It compares the release `skippy-serving`
 OpenAI surface with the repository's pinned raw llama.cpp baseline without
 changing serving code during a run.
 
@@ -101,7 +101,7 @@ conversion, then prints the canonical BF16 tensor digest pinned in the config.
 
 ## Run one hardware platform
 
-Build `skippy-server` in release mode before measuring. Run the same entrypoint
+Build `skippy-serving` in release mode before measuring. Run the same entrypoint
 on each hardware host and point both at one artifact root. The runner records
 the exact Git heads and SHA-256 values of both binaries and refuses to resume
 into a directory created by different binaries or config.

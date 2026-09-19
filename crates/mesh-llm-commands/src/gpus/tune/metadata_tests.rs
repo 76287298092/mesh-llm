@@ -220,9 +220,9 @@ fn gpu_tune_accepts_supported_kv_types() {
 
     assert_eq!(
         quant,
-        model_artifact::gguf::GgufKvCacheQuant::new(
-            model_artifact::gguf::GgufKvCacheType::Q8_0,
-            model_artifact::gguf::GgufKvCacheType::Q4_0,
+        skippy_model_artifact::gguf::GgufKvCacheQuant::new(
+            skippy_model_artifact::gguf::GgufKvCacheType::Q8_0,
+            skippy_model_artifact::gguf::GgufKvCacheType::Q4_0,
         )
     );
 }

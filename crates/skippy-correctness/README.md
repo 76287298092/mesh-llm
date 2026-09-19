@@ -11,7 +11,7 @@ diagnostics rather than throughput.
 `skippy-correctness` compares staged execution against a full-model
 baseline before performance results are trusted. It validates the same split
 boundaries, load modes, raw-f32 transport, and binary-chain behavior used
-by `skippy-server`.
+by `skippy-serving`.
 
 ```mermaid
 flowchart LR
@@ -41,7 +41,7 @@ skippy-correctness single-step \
   --model model.gguf \
   --model-id org/repo:Q4_K_M \
   --stage-load-mode layer-package \
-  --stage-model /path/to/model-package \
+  --stage-model /path/to/skippy-model-package \
   --split-layer 15 \
   --layer-end 30 \
   --report-out reports/single-step.json
@@ -192,7 +192,7 @@ same activation/cache contracts without requiring a monolithic full GGUF.
   ref, distribution id, and selector in `model_identity`.
 - `--stage-load-mode runtime-slice` uses the full GGUF for staged execution.
 - `--stage-load-mode artifact-slice` compares the full GGUF baseline with
-  prewritten `skippy-model-package` artifacts. `--stage-model` may be a directory
+  prewritten `skippy-package-builder` artifacts. `--stage-model` may be a directory
   containing `stage-000.gguf`, `stage-001.gguf`, and so on, or a
   `slice-manifest.json`.
 - `--stage-load-mode layer-package` compares the full GGUF baseline with stage
@@ -212,7 +212,7 @@ same activation/cache contracts without requiring a monolithic full GGUF.
   `--cache-hit-repeats` to repeatedly attach the exported state and decode the
   same continuation, producing a recompute-vs-cache-hit speedup estimate. Use
   `--allow-mismatch` only for diagnostic payloads such as recurrent-only.
-- `native-mtp-open-ai-ab` launches a real two-stage `skippy-server
+- `native-mtp-open-ai-ab` launches a real two-stage `skippy-serving
   serve-binary` split three times through the embedded OpenAI frontend. The
   baseline run sets `SKIPPY_NATIVE_MTP_ENABLED=0`, the n=1 run sets
   `SKIPPY_NATIVE_MTP_BATCHED_VERIFY=0`, and the batched run uses the default
@@ -239,7 +239,7 @@ same activation/cache contracts without requiring a monolithic full GGUF.
 - For manually managed lab splits, pass `--external-stage1`. The harness writes
   the stage configs and waits for the configured stage-1 endpoint, but it does
   not start or stop the remote process.
-- Requires a built `skippy-server` binary for binary transport checks.
+- Requires a built `skippy-serving` binary for binary transport checks.
 - Uses the same llama-backed runtime ABI as the server.
 - The default build statically links llama from
   `.deps/llama.cpp/build-stage-abi-static`; set

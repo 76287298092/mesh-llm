@@ -51,7 +51,7 @@ fn is_huggingface_commit(value: &str) -> bool {
 /// point at those immutable blobs. Their names and sizes are authoritative
 /// identity inputs, so startup does not need to scan the weight payload.
 pub(super) fn huggingface_source_files(
-    identity: &model_hf::store::local::HuggingFaceModelIdentity,
+    identity: &skippy_model_hf::store::local::HuggingFaceModelIdentity,
     snapshot_root: &Path,
     mut build_client: impl FnMut() -> Result<HFClientSync>,
 ) -> Result<HuggingFaceSourceFiles> {
@@ -165,7 +165,7 @@ pub(super) fn huggingface_source_files(
 }
 
 fn huggingface_identity_sha256(
-    identity: &model_hf::store::local::HuggingFaceModelIdentity,
+    identity: &skippy_model_hf::store::local::HuggingFaceModelIdentity,
     files: &[HuggingFaceGgufIdentityFile],
 ) -> Result<String> {
     let canonical = HuggingFaceGgufIdentity {
@@ -181,7 +181,7 @@ fn huggingface_identity_sha256(
 
 fn hub_file_identity(
     api: &mut Option<HFClientSync>,
-    identity: &model_hf::store::local::HuggingFaceModelIdentity,
+    identity: &skippy_model_hf::store::local::HuggingFaceModelIdentity,
     file: &str,
     build_client: &mut impl FnMut() -> Result<HFClientSync>,
 ) -> Result<(String, u64)> {
@@ -229,7 +229,7 @@ fn snapshot_source_paths(model_path: &Path) -> Result<Vec<std::path::PathBuf>> {
             model_path.display()
         );
     };
-    let Some(shard) = model_ref::split_gguf_shard_info(file_name) else {
+    let Some(shard) = skippy_model_ref::split_gguf_shard_info(file_name) else {
         return Ok(vec![model_path.to_path_buf()]);
     };
     anyhow::ensure!(
@@ -270,7 +270,7 @@ fn managed_hf_snapshot_blob(path: &Path) -> Result<Option<ManagedHfSnapshotBlob>
     let Some(cache_root) = repo_dir.parent() else {
         return Ok(None);
     };
-    if model_hf::huggingface_identity_for_path_in_cache(path, cache_root).is_none() {
+    if skippy_model_hf::huggingface_identity_for_path_in_cache(path, cache_root).is_none() {
         return Ok(None);
     }
     let blob_root = repo_dir
@@ -500,7 +500,7 @@ pub(super) fn validate_source_set(model_path: &Path) -> Result<()> {
             model_path.display()
         );
     };
-    let Some(shard) = model_ref::split_gguf_shard_info(file_name) else {
+    let Some(shard) = skippy_model_ref::split_gguf_shard_info(file_name) else {
         return Ok(());
     };
     anyhow::ensure!(

@@ -18,8 +18,8 @@ fn model_identity_matches(left: &str, right: &str) -> bool {
         return true;
     }
     let (Ok(left), Ok(right)) = (
-        model_ref::ModelRef::parse(left),
-        model_ref::ModelRef::parse(right),
+        skippy_model_ref::ModelRef::parse(left),
+        skippy_model_ref::ModelRef::parse(right),
     ) else {
         return false;
     };

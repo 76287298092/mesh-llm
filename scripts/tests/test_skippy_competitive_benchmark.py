@@ -709,7 +709,7 @@ class CompetitiveBenchmarkTest(unittest.TestCase):
                 "--mesh-root",
                 "mesh",
                 "--mesh-binary",
-                "skippy-server",
+                "skippy-serving",
                 "--native-dir",
                 "native",
                 "--llama-root",

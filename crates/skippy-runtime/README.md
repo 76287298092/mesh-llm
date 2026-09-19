@@ -15,7 +15,7 @@ It does not own TCP transport, mesh lifecycle, or telemetry export.
 flowchart TB
     Mesh["mesh-llm<br/>embedded serving + lifecycle"] --> R["skippy-runtime"]
     P["bench / prompt / correctness<br/>tokenization and local checks"] --> R
-    S["skippy-server<br/>prefill/decode requests"] --> R
+    S["skippy-serving<br/>prefill/decode requests"] --> R
     ST["HF SafeTensors checkpoint<br/>config + tokenizer + shards"] --> M["skippy-model<br/>mapping + transforms"]
     M --> R
     R --> PS["package selector<br/>manifest + selected parts<br/>direct GGUF fake packages"]

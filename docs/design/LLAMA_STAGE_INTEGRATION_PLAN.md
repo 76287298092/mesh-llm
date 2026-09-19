@@ -135,7 +135,7 @@ llama-stage/
     llama-stage-runtime/
     llama-stage-protocol/
     llama-stage-server/
-    skippy-model-package/
+    skippy-package-builder/
     llama-stage-correctness/
     llama-stage-metrics/
     llama-stage-bench/

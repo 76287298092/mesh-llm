@@ -2,7 +2,7 @@
 
 `skippy-cache` owns the cache model for staged serving. It does not talk to
 llama.cpp, open sockets, route OpenAI requests, or plan topology. Those
-responsibilities stay in `skippy-server`, `skippy-runtime`, and mesh.
+responsibilities stay in `skippy-serving`, `skippy-runtime`, and mesh.
 
 The crate answers cache questions:
 
@@ -19,7 +19,7 @@ layer range, runtime layout, position, and token prefix all match.
 
 ```mermaid
 flowchart LR
-    OpenAI["openai-frontend"] --> Server["skippy-server"]
+    OpenAI["skippy-openai-frontend"] --> Server["skippy-serving"]
     Server --> Runtime["skippy-runtime"]
     Runtime --> ABI["llama.cpp stage ABI"]
 
@@ -32,7 +32,7 @@ flowchart LR
     Cache -. no runtime calls .- Runtime
 ```
 
-`skippy-server` remains the adapter. It turns protocol messages into cache
+`skippy-serving` remains the adapter. It turns protocol messages into cache
 lookups, performs the runtime save/restore/import/export calls, and records
 telemetry. `skippy-cache` only owns pure data structures and policies.
 
@@ -64,12 +64,12 @@ flowchart TD
 ## Resident Cache Flow
 
 The current resident path keeps reusable state inside the live llama.cpp
-session. `skippy-cache` chooses candidates and tracks entries; `skippy-server`
+session. `skippy-cache` chooses candidates and tracks entries; `skippy-serving`
 does the native sequence copy/drop calls.
 
 ```mermaid
 sequenceDiagram
-    participant S as skippy-server
+    participant S as skippy-serving
     participant C as skippy-cache
     participant R as skippy-runtime
 
@@ -225,8 +225,8 @@ flowchart LR
 
 ```mermaid
 sequenceDiagram
-    participant O as openai-frontend
-    participant S as skippy-server
+    participant O as skippy-openai-frontend
+    participant S as skippy-serving
     participant C as skippy-cache
     participant R as skippy-runtime
 
@@ -409,5 +409,5 @@ supported family can be inferred and emits the expected recurrent/sticky and
 sideband policy signals. Activation transport is fixed raw f32 and is not a
 family capability.
 
-Server/runtime integration tests belong in `skippy-server`,
+Server/runtime integration tests belong in `skippy-serving`,
 `skippy-runtime`, and `skippy-correctness`.

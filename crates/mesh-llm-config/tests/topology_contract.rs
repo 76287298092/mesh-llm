@@ -182,9 +182,9 @@ fn topology_schema_exports_typed_leaf_paths() {
         "defaults.topology.mode",
         "defaults.topology.manifest_sha256",
         "defaults.topology.stages",
-        "models.<model-ref>.topology.mode",
-        "models.<model-ref>.topology.manifest_sha256",
-        "models.<model-ref>.topology.stages",
+        "models.<skippy-model-ref>.topology.mode",
+        "models.<skippy-model-ref>.topology.manifest_sha256",
+        "models.<skippy-model-ref>.topology.stages",
     ] {
         assert!(paths.contains(path), "missing topology schema path {path}");
     }

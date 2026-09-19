@@ -101,7 +101,7 @@ async fn mesh_guardrails_runtime_mode_accepts_loopback_callers() {
     let control_handle = tokio::spawn(async move {
         match control_rx.recv().await {
             Some(RuntimeControlRequest::SetOpenAiGuardrailMode { mode, resp }) => {
-                assert_eq!(mode, openai_frontend::GuardrailMode::Enforce);
+                assert_eq!(mode, skippy_openai_frontend::GuardrailMode::Enforce);
                 let _ = resp.send(Ok(OpenAiGuardrailModeUpdateResponse {
                     mode: "enforce",
                     updated_models: 1,

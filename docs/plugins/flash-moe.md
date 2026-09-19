@@ -4,7 +4,7 @@ The external `flash-moe` plugin connects mesh-llm to a Flash-MoE OpenAI-compatib
 
 Use it for the SSD expert streaming roadmap path: a giant MoE model fits on one node's local NVMe, but not in RAM. The plugin owns Flash-MoE process lifecycle when configured for managed mode. Mesh-llm only launches the plugin through the plugin API, consumes its declared endpoint, and routes requests. Flash-MoE owns model execution.
 
-This is intentionally a single-node backend adapter. It does not change the mesh protocol, Skippy stage protocol, model-package format, or llama.cpp patch queue.
+This is intentionally a single-node backend adapter. It does not change the mesh protocol, Skippy stage protocol, skippy-model-package format, or llama.cpp patch queue.
 
 ## Prerequisites
 

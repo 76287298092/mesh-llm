@@ -13,7 +13,7 @@ use std::{
 };
 
 use mesh_native_serving_plugin_api as abi;
-use skippy_server::frontend::LinearProposalQuery;
+use skippy_serving::frontend::LinearProposalQuery;
 
 use crate::{ActivePlugin, LoadedDefinition, MAX_NATIVE_PLUGIN_PROPOSAL_TOKENS};
 

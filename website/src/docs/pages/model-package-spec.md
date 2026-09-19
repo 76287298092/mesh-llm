@@ -2,9 +2,9 @@
 title: Model Package Specification
 ---
 
-# `model-package.json` specification
+# `skippy-model-package.json` specification
 
-`model-package.json` is the root manifest for a Skippy package-v2 repository. It binds an immutable source-model identity to a catalog of GGUF artifacts. Stage ownership is not encoded by filenames or fixed layer ranges: the planner selects an exact tensor closure, and package admission resolves those tensor IDs to their declared storage.
+`skippy-model-package.json` is the root manifest for a Skippy package-v2 repository. It binds an immutable source-model identity to a catalog of GGUF artifacts. Stage ownership is not encoded by filenames or fixed layer ranges: the planner selects an exact tensor closure, and package admission resolves those tensor IDs to their declared storage.
 
 The current manifest schema is version `2`. The root manifest is intentionally small. The metadata artifact named by `source_model.metadata_artifact_id` carries the normalized model metadata and complete tensor catalog used after its bytes have been verified.
 
@@ -13,7 +13,7 @@ The current manifest schema is version `2`. The root manifest is intentionally s
 The manifest must be at the repository root. A typical package has this shape:
 
 ```text
-model-package.json
+skippy-model-package.json
 shared/
   metadata.gguf
   common.gguf
@@ -208,18 +208,18 @@ Production configurations should use an immutable commit or tag rather than a mo
 Create and validate a v2 package with the package tool:
 
 ```sh
-skippy-model-package write-package org/repo:distribution --out-dir model-package/
-skippy-model-package verify-package-v2 model-package/ --source /path/to/source.gguf
+skippy-package-builder write-package org/repo:distribution --out-dir skippy-model-package/
+skippy-package-builder verify-package-v2 skippy-model-package/ --source /path/to/source.gguf
 ```
 
 For multimodal packages, declare each independent projector source when writing and verifying the package:
 
 ```sh
-skippy-model-package write-package org/repo:distribution \
+skippy-package-builder write-package org/repo:distribution \
   --projector mmproj-model-f16.gguf \
-  --out-dir model-package/
+  --out-dir skippy-model-package/
 
-skippy-model-package verify-package-v2 model-package/ \
+skippy-package-builder verify-package-v2 skippy-model-package/ \
   --source /path/to/source.gguf \
   --source-projector /path/to/mmproj-model-f16.gguf
 ```

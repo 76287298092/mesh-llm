@@ -233,7 +233,7 @@ async fn write_progress_response_created(
     stream: &mut ClientStream,
     completion_id: &str,
 ) -> std::io::Result<i64> {
-    use openai_frontend::responses as resp;
+    use skippy_openai_frontend::responses as resp;
     let created_at = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs() as i64)

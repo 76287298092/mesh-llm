@@ -19,7 +19,7 @@ Three timers interact; the split lane path uses the slow ones:
    survive relay hiccups — do **not** tighten blindly.
 2. New split requests trust that stale peer state and open lanes to the dead
    stage.
-3. `skippy-server/frontend.rs`: `connect_lane_once` bounds the ready handshake at
+3. `skippy-serving/frontend.rs`: `connect_lane_once` bounds the ready handshake at
    `LANE_READY_READ_TIMEOUT = 20s`, and `connect_binary_downstream` retries the
    TCP connect `timeout_secs * 2` times × 500ms sleep. Combined worst case ≈ the
    observed ~30s stall.
@@ -28,7 +28,7 @@ Three timers interact; the split lane path uses the slow ones:
 
 ### Layer 1 — shorter first-attempt lane-open deadline (contained, unit-testable)
 
-`crates/skippy-server/src/frontend.rs`
+`crates/skippy-serving/src/frontend.rs`
 
 - Distinguish **cold-start / pool warmup** (where a longer wait is legitimate:
   peer still loading) from **steady-state re-dial of a live split** (where a

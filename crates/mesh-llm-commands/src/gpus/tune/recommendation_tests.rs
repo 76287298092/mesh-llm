@@ -16,7 +16,7 @@ pub(crate) fn sample_metadata(
     expert_count: u32,
 ) -> TuneGgufMetadata {
     TuneGgufMetadata {
-        compact_meta: model_artifact::gguf::GgufCompactMeta {
+        compact_meta: skippy_model_artifact::gguf::GgufCompactMeta {
             architecture: "llama".to_string(),
             context_length,
             head_count: 32,
@@ -26,14 +26,16 @@ pub(crate) fn sample_metadata(
             value_length: 128,
             ..Default::default()
         },
-        tensor_profile: TuneTensorProfile::Exact(model_artifact::gguf::GgufTensorByteProfile {
-            expert_count,
-            expert_used_count: expert_count.min(2),
-            full_model_bytes: model_bytes,
-            base_resident_bytes: model_bytes,
-            expert_tensor_bytes: 0,
-            file_overhead_bytes: 0,
-        }),
+        tensor_profile: TuneTensorProfile::Exact(
+            skippy_model_artifact::gguf::GgufTensorByteProfile {
+                expert_count,
+                expert_used_count: expert_count.min(2),
+                full_model_bytes: model_bytes,
+                base_resident_bytes: model_bytes,
+                expert_tensor_bytes: 0,
+                file_overhead_bytes: 0,
+            },
+        ),
         model_bytes,
     }
 }

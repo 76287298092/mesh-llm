@@ -24,7 +24,7 @@ patched llama.cpp ABI without owning policy:
 ```mermaid
 flowchart TB
     Mesh["mesh-llm<br/>embedded runtime owner"] --> Runtime
-    Server["skippy-server<br/>lifecycle + transport"] --> Runtime["skippy-runtime<br/>safe model/session API"]
+    Server["skippy-serving<br/>lifecycle + transport"] --> Runtime["skippy-runtime<br/>safe model/session API"]
     Runtime --> FFI["skippy-ffi<br/>raw ABI declarations"]
     FFI --> Llama["third_party/llama.cpp<br/>skippy.h stage execution"]
 ```

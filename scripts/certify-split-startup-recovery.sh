@@ -2,7 +2,7 @@
 # certify-split-startup-recovery.sh - certify split startup and worker-loss recovery.
 #
 # Usage:
-#   scripts/certify-split-startup-recovery.sh <mesh-llm-binary> <model-ref-or-path>
+#   scripts/certify-split-startup-recovery.sh <mesh-llm-binary> <skippy-model-ref-or-path>
 #
 # The harness starts one seed plus worker processes on localhost, waits for a
 # multi-node split topology, kills an active downstream stage worker, and
@@ -14,7 +14,7 @@ set -euo pipefail
 usage() {
     cat <<'EOF'
 Usage:
-  scripts/certify-split-startup-recovery.sh <mesh-llm-binary> <model-ref-or-path>
+  scripts/certify-split-startup-recovery.sh <mesh-llm-binary> <skippy-model-ref-or-path>
 
 Environment:
   MESH_SPLIT_CERT_WORKERS=2                 number of worker processes; recovery requires at least 2

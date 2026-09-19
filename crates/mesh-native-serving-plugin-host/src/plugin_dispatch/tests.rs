@@ -7,7 +7,7 @@ use std::{
 };
 
 use mesh_native_serving_plugin_api as abi;
-use skippy_server::frontend::{
+use skippy_serving::frontend::{
     GenerationAbort, GenerationCommit, GenerationLifecycleIngress, GenerationLifecycleObservation,
     GenerationStart, LinearProposalDiscardReason, LinearProposalIngress, LinearProposalQuery,
     LinearProposalReceipt, LinearProposalSourceOutcome, OpaqueProposalDecisionId,
