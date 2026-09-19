@@ -57,11 +57,11 @@ From a controlling node authenticated as the same owner:
 
 ```sh
 mesh-llm runtime load-model \
-  --endpoint '<control-endpoint>' --model '<canonical-skippy-model-ref>'
+  --endpoint '<control-endpoint>' --model '<canonical-model-ref>'
 mesh-llm runtime ensure-model \
-  --endpoint '<control-endpoint>' --model '<canonical-skippy-model-ref>'
+  --endpoint '<control-endpoint>' --model '<canonical-model-ref>'
 mesh-llm runtime unload-model \
-  --endpoint '<control-endpoint>' --model '<canonical-skippy-model-ref>'
+  --endpoint '<control-endpoint>' --model '<canonical-model-ref>'
 mesh-llm runtime drain-model \
   --endpoint '<control-endpoint>' --instance-id '<instance-id>'
 ```

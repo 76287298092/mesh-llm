@@ -286,7 +286,7 @@ candidates instead of inventing a model id:
 
 ```sh
 mesh-llm models search coding --catalog --json
-mesh-llm models show '<exact-skippy-model-ref>' --json
+mesh-llm models show '<exact-model-ref>' --json
 ```
 
 For a coding-agent goal, require advertised tool-use capability where the CLI
@@ -306,7 +306,7 @@ bootstrap. Start either model in a supervised foreground terminal and use JSON
 events so the assistant can capture exact values:
 
 ```sh
-mesh-llm serve --model '<selected-skippy-model-ref>' --name '<main-node-name>' --log-format json
+mesh-llm serve --model '<selected-model-ref>' --name '<main-node-name>' --log-format json
 ```
 
 Do not detach a TUI process with `nohup`. Keep it in a terminal or a supervised
@@ -341,7 +341,7 @@ MESH="$(command -v mesh-llm)"
 "$MESH" setup --yes --no-service
 "$MESH" doctor --json
 exec "$MESH" serve --join '<complete-invite-token>' \
-  --model '<exact-cached-skippy-model-ref>' --name '<node-name>' --log-format json
+  --model '<exact-cached-model-ref>' --name '<node-name>' --log-format json
 ```
 
 For Windows x64 PowerShell:
@@ -355,7 +355,7 @@ $MESHPATH = (Get-Command mesh-llm.exe -ErrorAction Stop).Source
 & $MESHPATH setup --yes --no-service
 & $MESHPATH doctor --json
 & $MESHPATH serve --join '<complete-invite-token>' `
-  --model '<exact-cached-skippy-model-ref>' --name '<node-name>' --log-format json
+  --model '<exact-cached-model-ref>' --name '<node-name>' --log-format json
 ```
 
 The templates show the preferred preflighted final-model path. Resolve the
@@ -479,7 +479,7 @@ For each candidate, query current evidence:
 
 ```sh
 mesh-llm models search '<family-or-use-case>' --catalog --json
-mesh-llm models show '<exact-skippy-model-ref>' --json
+mesh-llm models show '<exact-model-ref>' --json
 ```
 
 Do not equate parameter count with resident bytes. Compare the exact artifact
@@ -508,7 +508,7 @@ For independent models, the main node can add a model to its active serving
 runtime with the supported local lifecycle command:
 
 ```sh
-mesh-llm load '<exact-skippy-model-ref>'
+mesh-llm load '<exact-model-ref>'
 ```
 
 A standby remote node is not a general remote-execution target. To change what
@@ -543,7 +543,7 @@ items unique to splits:
 Restart the relevant nodes with the generated exact commands, then run:
 
 ```sh
-mesh-llm doctor split --skippy-model-ref '<exact-layer-package-ref>' --port 3131 --json
+mesh-llm doctor split --model-ref '<exact-layer-package-ref>' --port 3131 --json
 ```
 
 Require all intended stages to be ready and a real completion to succeed. If a
@@ -552,7 +552,7 @@ ready alone, or inference hangs, treat the split as failed and collect a doctor
 bundle rather than waiting indefinitely:
 
 ```sh
-mesh-llm doctor split --skippy-model-ref '<exact-layer-package-ref>' \
+mesh-llm doctor split --model-ref '<exact-layer-package-ref>' \
   --port 3131 --output-dir '<diagnostic-directory>'
 ```
 
