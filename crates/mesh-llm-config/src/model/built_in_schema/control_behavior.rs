@@ -36,53 +36,38 @@ pub(super) fn apply_built_in_control_behavior(setting: &mut ConfigSettingSchema)
                 apply_logging_behavior(setting, rendered.as_str());
             } else if let Some(suffix) = rendered.strip_prefix("defaults.model_fit.") {
                 apply_model_fit_behavior(setting, "defaults.model_fit", suffix);
-            } else if let Some(suffix) =
-                rendered.strip_prefix("models.<skippy-model-ref>.model_fit.")
-            {
-                apply_model_fit_behavior(setting, "models.<skippy-model-ref>.model_fit", suffix);
+            } else if let Some(suffix) = rendered.strip_prefix("models.<model-ref>.model_fit.") {
+                apply_model_fit_behavior(setting, "models.<model-ref>.model_fit", suffix);
             } else if let Some(suffix) = rendered.strip_prefix("defaults.hardware.") {
                 apply_hardware_behavior(setting, "defaults.hardware", suffix);
-            } else if let Some(suffix) =
-                rendered.strip_prefix("models.<skippy-model-ref>.hardware.")
-            {
-                apply_hardware_behavior(setting, "models.<skippy-model-ref>.hardware", suffix);
+            } else if let Some(suffix) = rendered.strip_prefix("models.<model-ref>.hardware.") {
+                apply_hardware_behavior(setting, "models.<model-ref>.hardware", suffix);
             } else if let Some(suffix) = rendered.strip_prefix("defaults.throughput.") {
                 apply_throughput_behavior(setting, "defaults.throughput", suffix);
-            } else if let Some(suffix) =
-                rendered.strip_prefix("models.<skippy-model-ref>.throughput.")
-            {
-                apply_throughput_behavior(setting, "models.<skippy-model-ref>.throughput", suffix);
+            } else if let Some(suffix) = rendered.strip_prefix("models.<model-ref>.throughput.") {
+                apply_throughput_behavior(setting, "models.<model-ref>.throughput", suffix);
             } else if let Some(suffix) = rendered.strip_prefix("defaults.skippy.") {
                 apply_skippy_behavior(setting, "defaults.skippy", suffix);
-            } else if let Some(suffix) = rendered.strip_prefix("models.<skippy-model-ref>.skippy.")
-            {
-                apply_skippy_behavior(setting, "models.<skippy-model-ref>.skippy", suffix);
+            } else if let Some(suffix) = rendered.strip_prefix("models.<model-ref>.skippy.") {
+                apply_skippy_behavior(setting, "models.<model-ref>.skippy", suffix);
             } else if let Some(suffix) = rendered.strip_prefix("defaults.speculative.") {
                 apply_speculative_behavior(setting, "defaults.speculative", suffix);
-            } else if let Some(suffix) =
-                rendered.strip_prefix("models.<skippy-model-ref>.speculative.")
-            {
-                apply_speculative_behavior(
-                    setting,
-                    "models.<skippy-model-ref>.speculative",
-                    suffix,
-                );
+            } else if let Some(suffix) = rendered.strip_prefix("models.<model-ref>.speculative.") {
+                apply_speculative_behavior(setting, "models.<model-ref>.speculative", suffix);
             } else if let Some(suffix) = rendered.strip_prefix("defaults.request_defaults.") {
                 apply_request_defaults_behavior(setting, "defaults.request_defaults", suffix);
             } else if let Some(suffix) =
-                rendered.strip_prefix("models.<skippy-model-ref>.request_defaults.")
+                rendered.strip_prefix("models.<model-ref>.request_defaults.")
             {
                 apply_request_defaults_behavior(
                     setting,
-                    "models.<skippy-model-ref>.request_defaults",
+                    "models.<model-ref>.request_defaults",
                     suffix,
                 );
             } else if let Some(suffix) = rendered.strip_prefix("defaults.multimodal.") {
                 apply_multimodal_behavior(setting, "defaults.multimodal", suffix);
-            } else if let Some(suffix) =
-                rendered.strip_prefix("models.<skippy-model-ref>.multimodal.")
-            {
-                apply_multimodal_behavior(setting, "models.<skippy-model-ref>.multimodal", suffix);
+            } else if let Some(suffix) = rendered.strip_prefix("models.<model-ref>.multimodal.") {
+                apply_multimodal_behavior(setting, "models.<model-ref>.multimodal", suffix);
             } else {
                 apply_runtime_controls_behavior(setting, rendered.as_str());
             }

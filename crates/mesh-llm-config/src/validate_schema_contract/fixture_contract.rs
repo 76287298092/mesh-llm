@@ -100,73 +100,73 @@ fn validate_schema_contract_fixture_reports_stable_canonical_signatures() {
             ),
             DiagnosticSignature::new(
                 "models[0].hardware.device",
-                "models.<skippy-model-ref>.hardware.device",
+                "models.<model-ref>.hardware.device",
                 "error",
                 "invalid_value",
             ),
             DiagnosticSignature::new(
                 "models[1].hardware.hf_file",
-                "models.<skippy-model-ref>.hardware.hf_file",
+                "models.<model-ref>.hardware.hf_file",
                 "error",
                 "invalid_value",
             ),
             DiagnosticSignature::new(
                 "models[2].hardware.stage_layer_start",
-                "models.<skippy-model-ref>.hardware.stage_layer_start",
+                "models.<model-ref>.hardware.stage_layer_start",
                 "error",
                 "invalid_value",
             ),
             DiagnosticSignature::new(
                 "models[3].model_fit.keep_tokens",
-                "models.<skippy-model-ref>.model_fit.keep_tokens",
+                "models.<model-ref>.model_fit.keep_tokens",
                 "error",
                 "unsupported_field",
             ),
             DiagnosticSignature::new(
                 "models[4].model_fit.cache_idle_slots",
-                "models.<skippy-model-ref>.model_fit.cache_idle_slots",
+                "models.<model-ref>.model_fit.cache_idle_slots",
                 "error",
                 "invalid_value",
             ),
             DiagnosticSignature::new(
                 "models[5].skippy.prefill_chunk_schedule",
-                "models.<skippy-model-ref>.skippy.prefill_chunk_schedule",
+                "models.<model-ref>.skippy.prefill_chunk_schedule",
                 "error",
                 "invalid_value",
             ),
             DiagnosticSignature::new(
                 "models[6].speculative.draft_hf_file",
-                "models.<skippy-model-ref>.speculative.draft_hf_file",
+                "models.<model-ref>.speculative.draft_hf_file",
                 "error",
                 "invalid_value",
             ),
             DiagnosticSignature::new(
                 "models[7].speculative.draft_min_tokens",
-                "models.<skippy-model-ref>.speculative.draft_min_tokens",
+                "models.<model-ref>.speculative.draft_min_tokens",
                 "error",
                 "invalid_value",
             ),
             DiagnosticSignature::new(
                 "models[8].speculative.ngram_max",
-                "models.<skippy-model-ref>.speculative.ngram_max",
+                "models.<model-ref>.speculative.ngram_max",
                 "error",
                 "invalid_value",
             ),
             DiagnosticSignature::new(
                 "models[9].request_defaults.mirostat_mode",
-                "models.<skippy-model-ref>.request_defaults.mirostat_mode",
+                "models.<model-ref>.request_defaults.mirostat_mode",
                 "error",
                 "invalid_value",
             ),
             DiagnosticSignature::new(
                 "models[10].multimodal.mmproj",
-                "models.<skippy-model-ref>.multimodal.mmproj",
+                "models.<model-ref>.multimodal.mmproj",
                 "error",
                 "invalid_value",
             ),
             DiagnosticSignature::new(
                 "models[11].hardware.rpc_backend",
-                "models.<skippy-model-ref>.hardware.rpc_backend",
+                "models.<model-ref>.hardware.rpc_backend",
                 "error",
                 "rejected_field",
             ),
@@ -180,10 +180,8 @@ fn validate_schema_contract_fixture_reports_stable_canonical_signatures() {
     );
 
     let diagnostics = diagnostics_from_toml(INVALID_FIXTURE);
-    let rejected = diagnostic_for_canonical(
-        &diagnostics,
-        "models.<skippy-model-ref>.hardware.rpc_backend",
-    );
+    let rejected =
+        diagnostic_for_canonical(&diagnostics, "models.<model-ref>.hardware.rpc_backend");
     assert_eq!(rejected.severity, ConfigDiagnosticSeverity::Error);
     assert_eq!(rejected.code, ConfigDiagnosticCode::RejectedField);
 }

@@ -1,6 +1,6 @@
 # skippy-model-ref
 
-Pure skippy-model-reference parsing and formatting helpers.
+Pure model-reference parsing and formatting helpers.
 
 `skippy-model-ref` owns the small, dependency-light rules for turning public model
 coordinates into structured identity. It deliberately has no network, cache,

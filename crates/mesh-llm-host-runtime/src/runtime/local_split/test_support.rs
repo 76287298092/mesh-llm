@@ -693,7 +693,7 @@ async fn runtime_resolver_uses_config_identity_and_honors_device_override() {
     let mesh_config: plugin::MeshConfig = toml::from_str(&format!(
         r#"
 [[models]]
-model = "other/skippy-model-ref"
+model = "other/model-ref"
 
 [models.hardware]
 model_path = {model_path}
@@ -704,7 +704,7 @@ threads = 17
 threads_batch = 13
 
 [[models]]
-model = "configured/skippy-model-ref"
+model = "configured/model-ref"
 
 [models.hardware]
 model_path = {model_path}
@@ -722,7 +722,7 @@ max_tokens = 222
     let model_bytes = fs::metadata(&model_path).unwrap().len();
     let spec = LocalOpenAiModelStartSpec {
         mesh_config: &mesh_config,
-        config_model_id: Some("configured/skippy-model-ref"),
+        config_model_id: Some("configured/model-ref"),
         model_path: &model_path,
         model_bytes,
         mmproj_override: None,
@@ -798,7 +798,7 @@ max_tokens = 222
     };
     let cli_resolved = resolve_local_openai_skippy_config(
         &cli_spec,
-        "configured/skippy-model-ref",
+        "configured/model-ref",
         cli_model_bytes,
         4096,
         3,

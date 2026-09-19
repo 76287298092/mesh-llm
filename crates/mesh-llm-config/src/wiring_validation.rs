@@ -120,7 +120,7 @@ fn diagnostic_for_behavior(
 
 /// Normalize a triggering scope path (`defaults.X`, `models[N].X`, or
 /// `plugin[N].X`) into the canonical placeholder form
-/// (`defaults.X`, `models.<skippy-model-ref>.X`, `plugin.<plugin-name>.X`) used
+/// (`defaults.X`, `models.<model-ref>.X`, `plugin.<plugin-name>.X`) used
 /// across the rest of the built-in schema.
 fn canonical_scope_path(scope_path: &str, manifest_path: &str) -> ConfigPath {
     if scope_path.starts_with("defaults.") {

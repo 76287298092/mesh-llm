@@ -739,7 +739,7 @@ fn skippy_multimodal_presentation(rendered: &str) -> Option<SettingPresentation>
 
 fn model_and_plugin_presentation(rendered: &str) -> Option<SettingPresentation> {
     match rendered {
-        "models.<skippy-model-ref>.model" => Some(
+        "models.<model-ref>.model" => Some(
             sp(
                 "Model",
                 "Model reference for this local placement.",
@@ -748,7 +748,7 @@ fn model_and_plugin_presentation(rendered: &str) -> Option<SettingPresentation> 
             )
             .renderer("model-placement-model"),
         ),
-        "models.<skippy-model-ref>.model_fit.ctx_size" => Some(
+        "models.<model-ref>.model_fit.ctx_size" => Some(
             sp(
                 "Context window size",
                 "Context window size for this local placement.",
@@ -758,7 +758,7 @@ fn model_and_plugin_presentation(rendered: &str) -> Option<SettingPresentation> 
             .unit("tokens")
             .renderer("model-placement-context"),
         ),
-        "models.<skippy-model-ref>.hardware.device" => Some(
+        "models.<model-ref>.hardware.device" => Some(
             sp(
                 "GPU device",
                 "Device assignment for this local placement.",
@@ -768,7 +768,7 @@ fn model_and_plugin_presentation(rendered: &str) -> Option<SettingPresentation> 
             .placeholder("cuda:0")
             .renderer("model-placement-device"),
         ),
-        "models.<skippy-model-ref>.hardware.gpu_layers" => Some(
+        "models.<model-ref>.hardware.gpu_layers" => Some(
             sp(
                 "GPU layers",
                 "GPU layer count for this local placement.",
@@ -1010,13 +1010,13 @@ fn fallback_category_for_path(rendered: &str) -> Option<CategoryPresentation> {
     if rendered.starts_with("plugin.<plugin-name>.") {
         return Some(PLUGIN_HOST_CATEGORY);
     }
-    if rendered.starts_with("models.<skippy-model-ref>.model_fit.") {
+    if rendered.starts_with("models.<model-ref>.model_fit.") {
         return Some(MEMORY_CATEGORY);
     }
-    if rendered.starts_with("models.<skippy-model-ref>.hardware.") {
+    if rendered.starts_with("models.<model-ref>.hardware.") {
         return Some(RUNTIME_CATEGORY);
     }
-    if rendered.starts_with("models.<skippy-model-ref>.") {
+    if rendered.starts_with("models.<model-ref>.") {
         return Some(RUNTIME_CATEGORY);
     }
     if rendered.starts_with("defaults.speculative.") {

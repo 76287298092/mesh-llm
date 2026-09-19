@@ -10,88 +10,63 @@ impl TuneField {
     pub fn spec(self) -> TuneFieldSpec {
         let (config_path, support) = match self {
             Self::CacheTypeK => (
-                ConfigPath::from_fields([
-                    "models",
-                    "<skippy-model-ref>",
-                    "model_fit",
-                    "cache_type_k",
-                ]),
+                ConfigPath::from_fields(["models", "<model-ref>", "model_fit", "cache_type_k"]),
                 TuneFieldSupport::Writable,
             ),
             Self::CacheTypeV => (
-                ConfigPath::from_fields([
-                    "models",
-                    "<skippy-model-ref>",
-                    "model_fit",
-                    "cache_type_v",
-                ]),
+                ConfigPath::from_fields(["models", "<model-ref>", "model_fit", "cache_type_v"]),
                 TuneFieldSupport::Writable,
             ),
             Self::FlashAttention => (
-                ConfigPath::from_fields([
-                    "models",
-                    "<skippy-model-ref>",
-                    "model_fit",
-                    "flash_attention",
-                ]),
+                ConfigPath::from_fields(["models", "<model-ref>", "model_fit", "flash_attention"]),
                 TuneFieldSupport::Writable,
             ),
             Self::CtxSize => (
-                ConfigPath::from_fields(["models", "<skippy-model-ref>", "model_fit", "ctx_size"]),
+                ConfigPath::from_fields(["models", "<model-ref>", "model_fit", "ctx_size"]),
                 TuneFieldSupport::Writable,
             ),
             Self::Batch => (
-                ConfigPath::from_fields(["models", "<skippy-model-ref>", "model_fit", "batch"]),
+                ConfigPath::from_fields(["models", "<model-ref>", "model_fit", "batch"]),
                 TuneFieldSupport::Writable,
             ),
             Self::Ubatch => (
-                ConfigPath::from_fields(["models", "<skippy-model-ref>", "model_fit", "ubatch"]),
+                ConfigPath::from_fields(["models", "<model-ref>", "model_fit", "ubatch"]),
                 TuneFieldSupport::Writable,
             ),
             Self::GpuLayers => (
-                ConfigPath::from_fields(["models", "<skippy-model-ref>", "hardware", "gpu_layers"]),
+                ConfigPath::from_fields(["models", "<model-ref>", "hardware", "gpu_layers"]),
                 TuneFieldSupport::Writable,
             ),
             Self::FitTargetMib => (
-                ConfigPath::from_fields([
-                    "models",
-                    "<skippy-model-ref>",
-                    "hardware",
-                    "fit_target_mib",
-                ]),
+                ConfigPath::from_fields(["models", "<model-ref>", "hardware", "fit_target_mib"]),
                 TuneFieldSupport::Writable,
             ),
             Self::Device => (
-                ConfigPath::from_fields(["models", "<skippy-model-ref>", "hardware", "device"]),
+                ConfigPath::from_fields(["models", "<model-ref>", "hardware", "device"]),
                 TuneFieldSupport::PreserveOnly,
             ),
             Self::Mmap => (
-                ConfigPath::from_fields(["models", "<skippy-model-ref>", "hardware", "mmap"]),
+                ConfigPath::from_fields(["models", "<model-ref>", "hardware", "mmap"]),
                 TuneFieldSupport::Writable,
             ),
             Self::Mlock => (
-                ConfigPath::from_fields(["models", "<skippy-model-ref>", "hardware", "mlock"]),
+                ConfigPath::from_fields(["models", "<model-ref>", "hardware", "mlock"]),
                 TuneFieldSupport::Writable,
             ),
             Self::CpuMoe => (
-                ConfigPath::from_fields(["models", "<skippy-model-ref>", "hardware", "cpu_moe"]),
+                ConfigPath::from_fields(["models", "<model-ref>", "hardware", "cpu_moe"]),
                 TuneFieldSupport::Unsupported,
             ),
             Self::NCpuMoe => (
-                ConfigPath::from_fields(["models", "<skippy-model-ref>", "hardware", "n_cpu_moe"]),
+                ConfigPath::from_fields(["models", "<model-ref>", "hardware", "n_cpu_moe"]),
                 TuneFieldSupport::Unsupported,
             ),
             Self::TensorSplit => (
-                ConfigPath::from_fields([
-                    "models",
-                    "<skippy-model-ref>",
-                    "hardware",
-                    "tensor_split",
-                ]),
+                ConfigPath::from_fields(["models", "<model-ref>", "hardware", "tensor_split"]),
                 TuneFieldSupport::Unsupported,
             ),
             Self::Placement => (
-                ConfigPath::from_fields(["models", "<skippy-model-ref>", "hardware", "placement"]),
+                ConfigPath::from_fields(["models", "<model-ref>", "hardware", "placement"]),
                 TuneFieldSupport::Unsupported,
             ),
             Self::Defaults => (

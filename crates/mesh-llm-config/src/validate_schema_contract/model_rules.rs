@@ -9,7 +9,7 @@ use crate::{
 
 #[test]
 fn validate_schema_contract_keeps_gpu_assignment_validation_authoritative() {
-    let setting = schema_setting("models.<skippy-model-ref>.hardware.device");
+    let setting = schema_setting("models.<model-ref>.hardware.device");
     let behavior = setting
         .control_behavior
         .as_ref()
@@ -57,8 +57,7 @@ model = "Qwen3-4B-Q4_K_M"
 device = "metal:0"
 "#,
     );
-    let diagnostic =
-        diagnostic_for_canonical(&diagnostics, "models.<skippy-model-ref>.hardware.device");
+    let diagnostic = diagnostic_for_canonical(&diagnostics, "models.<model-ref>.hardware.device");
 
     assert_eq!(diagnostic.code, ConfigDiagnosticCode::InvalidValue);
     assert_eq!(
@@ -96,17 +95,17 @@ fn validate_schema_contract_aligns_pairing_and_relative_bound_rules() {
         Some("defaults.model_fit.batch"),
     );
     assert_requires(
-        &schema_setting("models.<skippy-model-ref>.hardware.stage_layer_end"),
-        "models.<skippy-model-ref>.hardware.stage_layer_start",
+        &schema_setting("models.<model-ref>.hardware.stage_layer_end"),
+        "models.<model-ref>.hardware.stage_layer_start",
     );
     assert_range(
-        &schema_setting("models.<skippy-model-ref>.hardware.stage_layer_end"),
-        Some("models.<skippy-model-ref>.hardware.stage_layer_start"),
+        &schema_setting("models.<model-ref>.hardware.stage_layer_end"),
+        Some("models.<model-ref>.hardware.stage_layer_start"),
         None,
     );
     assert_requires(
-        &schema_setting("models.<skippy-model-ref>.hardware.hf_file"),
-        "models.<skippy-model-ref>.hardware.hf_repo",
+        &schema_setting("models.<model-ref>.hardware.hf_file"),
+        "models.<model-ref>.hardware.hf_repo",
     );
     assert_requires(
         &schema_setting("defaults.speculative.draft_hf_file"),
@@ -135,11 +134,11 @@ fn validate_schema_contract_aligns_pairing_and_relative_bound_rules() {
         ),
         (
             "[[models]]\nmodel = \"Qwen3-4B-Q4_K_M\"\n[models.hardware]\nstage_layer_start = 8\n",
-            "models.<skippy-model-ref>.hardware.stage_layer_end",
+            "models.<model-ref>.hardware.stage_layer_end",
         ),
         (
             "[[models]]\nmodel = \"Qwen3-4B-Q4_K_M\"\n[models.hardware]\nhf_repo = \"mesh/test\"\n",
-            "models.<skippy-model-ref>.hardware.hf_file",
+            "models.<model-ref>.hardware.hf_file",
         ),
         (
             "[defaults.speculative]\ndraft_hf_repo = \"mesh/test\"\n",

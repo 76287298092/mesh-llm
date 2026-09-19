@@ -921,7 +921,7 @@ gpu_id = "metal:0"
             .iter()
             .find(|diagnostic| {
                 diagnostic.canonical_path.as_ref().map(ConfigPath::render)
-                    == Some("models.<skippy-model-ref>.hardware.device".to_string())
+                    == Some("models.<model-ref>.hardware.device".to_string())
             })
             .expect("legacy gpu_id path should yield a canonical device diagnostic");
 
@@ -937,7 +937,7 @@ gpu_id = "metal:0"
         );
         assert_eq!(
             diagnostic.canonical_path.as_ref().map(ConfigPath::render),
-            Some("models.<skippy-model-ref>.hardware.device".to_string())
+            Some("models.<model-ref>.hardware.device".to_string())
         );
         assert_eq!(
             diagnostic.message,

@@ -3,56 +3,56 @@ use super::*;
 #[test]
 fn built_in_schema_preserves_union_typed_fields() {
     for path in [
-        "models.<skippy-model-ref>.model_fit.kv_offload",
-        "models.<skippy-model-ref>.model_fit.kv_unified",
-        "models.<skippy-model-ref>.model_fit.prompt_cache",
-        "models.<skippy-model-ref>.model_fit.context_shift",
-        "models.<skippy-model-ref>.hardware.cpu_moe",
-        "models.<skippy-model-ref>.hardware.fit_context",
-        "models.<skippy-model-ref>.hardware.mmproj_offload",
-        "models.<skippy-model-ref>.hardware.mmap",
-        "models.<skippy-model-ref>.hardware.warmup",
-        "models.<skippy-model-ref>.throughput.continuous_batching",
-        "models.<skippy-model-ref>.speculative.spec_default",
-        "models.<skippy-model-ref>.multimodal.mmproj_offload",
+        "models.<model-ref>.model_fit.kv_offload",
+        "models.<model-ref>.model_fit.kv_unified",
+        "models.<model-ref>.model_fit.prompt_cache",
+        "models.<model-ref>.model_fit.context_shift",
+        "models.<model-ref>.hardware.cpu_moe",
+        "models.<model-ref>.hardware.fit_context",
+        "models.<model-ref>.hardware.mmproj_offload",
+        "models.<model-ref>.hardware.mmap",
+        "models.<model-ref>.hardware.warmup",
+        "models.<model-ref>.throughput.continuous_batching",
+        "models.<model-ref>.speculative.spec_default",
+        "models.<model-ref>.multimodal.mmproj_offload",
     ] {
         assert_eq!(schema_value(path), bool_or_auto_schema());
     }
 
     assert_eq!(
-        schema_value("models.<skippy-model-ref>.hardware.gpu_layers"),
+        schema_value("models.<model-ref>.hardware.gpu_layers"),
         integer_or_auto_schema()
     );
     assert_eq!(
-        schema_value("models.<skippy-model-ref>.hardware.tensor_split"),
+        schema_value("models.<model-ref>.hardware.tensor_split"),
         tensor_split_schema()
     );
     assert_eq!(
-        schema_value("models.<skippy-model-ref>.throughput.priority"),
+        schema_value("models.<model-ref>.throughput.priority"),
         integer_or_string_schema()
     );
     assert_eq!(
-        schema_value("models.<skippy-model-ref>.throughput.poll"),
+        schema_value("models.<model-ref>.throughput.poll"),
         bool_or_string_enum(["auto", "busy", "sleep"])
     );
     assert_eq!(
-        schema_value("models.<skippy-model-ref>.throughput.cpu_affinity"),
+        schema_value("models.<model-ref>.throughput.cpu_affinity"),
         string_or_list_schema()
     );
     assert_eq!(
-        schema_value("models.<skippy-model-ref>.request_defaults.stop"),
+        schema_value("models.<model-ref>.request_defaults.stop"),
         string_or_list_schema()
     );
     assert_eq!(
-        schema_value("models.<skippy-model-ref>.request_defaults.mirostat_mode"),
+        schema_value("models.<model-ref>.request_defaults.mirostat_mode"),
         integer_or_string_enum(["disabled", "1", "2"])
     );
     assert_eq!(
-        schema_value("models.<skippy-model-ref>.request_defaults.reasoning_enabled"),
+        schema_value("models.<model-ref>.request_defaults.reasoning_enabled"),
         bool_or_string_enum(["auto", "off", "on"])
     );
     assert_eq!(
-        schema_value("models.<skippy-model-ref>.request_defaults.reasoning_budget"),
+        schema_value("models.<model-ref>.request_defaults.reasoning_budget"),
         integer_or_string_enum(["auto", "low", "medium", "high"])
     );
 }
@@ -148,7 +148,7 @@ fn startup_runtime_settings_require_process_restart() {
 fn built_in_schema_exports_model_fit_numeric_controls_and_relative_bounds() {
     let defaults_batch = schema_setting("defaults.model_fit.batch");
     let defaults_ubatch = schema_setting("defaults.model_fit.ubatch");
-    let model_ubatch = schema_setting("models.<skippy-model-ref>.model_fit.ubatch");
+    let model_ubatch = schema_setting("models.<model-ref>.model_fit.ubatch");
 
     assert_eq!(numeric_control(&defaults_batch).min, Some(1.0));
     assert_eq!(numeric_control(&defaults_batch).step, Some(1.0));
@@ -165,14 +165,14 @@ fn built_in_schema_exports_model_fit_numeric_controls_and_relative_bounds() {
     assert_has_range_constraint(
         &model_ubatch,
         None,
-        Some("models.<skippy-model-ref>.model_fit.batch"),
+        Some("models.<model-ref>.model_fit.batch"),
     );
 }
 
 #[test]
 fn built_in_schema_keeps_defaults_and_model_hardware_device_semantics_in_sync() {
     let defaults_device = schema_setting("defaults.hardware.device");
-    let model_device = schema_setting("models.<skippy-model-ref>.hardware.device");
+    let model_device = schema_setting("models.<model-ref>.hardware.device");
 
     assert_eq!(
         control_behavior(&defaults_device).options_source,
@@ -197,7 +197,7 @@ fn built_in_schema_keeps_defaults_and_model_hardware_device_semantics_in_sync() 
 
 #[test]
 fn built_in_schema_marks_rejected_hardware_escape_hatches_non_editable() {
-    let setting = schema_setting("models.<skippy-model-ref>.hardware.rpc_backend");
+    let setting = schema_setting("models.<model-ref>.hardware.rpc_backend");
     let behavior = control_behavior(&setting);
 
     assert_eq!(setting.support, ConfigSupportState::Rejected);

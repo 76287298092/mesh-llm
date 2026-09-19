@@ -125,7 +125,7 @@ mod tests {
     }
 
     /// Convert a schema-rendered canonical path (e.g.
-    /// `models.<skippy-model-ref>.model_fit.ctx_size` or
+    /// `models.<model-ref>.model_fit.ctx_size` or
     /// `defaults.model_fit.ctx_size`) into the short form the website
     /// reference documents once per field (e.g. `model_fit.ctx_size`).
     fn normalize_schema_path(rendered: &str) -> String {

@@ -156,7 +156,7 @@ fn wiring_manifest_covers_every_builtin_schema_path_in_both_directions() {
                 .render()
                 .replace("plugin.<plugin-name>", "plugin.<name>");
             path.strip_prefix("defaults.")
-                .or_else(|| path.strip_prefix("models.<skippy-model-ref>."))
+                .or_else(|| path.strip_prefix("models.<model-ref>."))
                 .unwrap_or(&path)
                 .trim_end_matches(".*")
                 .to_string()
@@ -195,7 +195,7 @@ fn builtin_schema_support_matches_structured_wiring_status() {
                 .replace("plugin.<plugin-name>", "plugin.<name>");
             let path = rendered
                 .strip_prefix("defaults.")
-                .or_else(|| rendered.strip_prefix("models.<skippy-model-ref>."))
+                .or_else(|| rendered.strip_prefix("models.<model-ref>."))
                 .unwrap_or(&rendered);
             let entry = WIRING_MANIFEST
                 .iter()

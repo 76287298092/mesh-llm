@@ -16,7 +16,7 @@ mesh-llm serve --discover my-private-mesh --model unsloth/gemma-4-E4B-it-GGUF:UD
 Install Mesh on the second machine, then use the same mesh name:
 
 ```sh
-mesh-llm serve --discover my-private-mesh --model <skippy-model-ref>
+mesh-llm serve --discover my-private-mesh --model <model-ref>
 ```
 
 ## Join as an API-only client

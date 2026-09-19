@@ -1229,12 +1229,12 @@ def main() -> int:
     parser.add_argument("--skip-llama-server", action="store_true")
     parser.add_argument("--llama-server-bin", type=Path, default=REPO / ".deps/llama-build/build-stage-abi-cpu/bin/llama-server")
     parser.add_argument(
-        "--old-skippy-serving-bin",
+        "--old-skippy-server-bin",
         type=Path,
         help="Old-serving-path skippy-server binary used for the cutover comparison.",
     )
     parser.add_argument(
-        "--new-skippy-serving-bin",
+        "--new-skippy-server-bin",
         type=Path,
         help="New scheduler-serving-path skippy-server binary used for the cutover comparison.",
     )
@@ -1300,7 +1300,7 @@ def main() -> int:
 
     if (args.old_skippy_server_bin is None) != (args.new_skippy_server_bin is None):
         raise SystemExit(
-            "--old-skippy-serving-bin and --new-skippy-serving-bin must be provided together"
+            "--old-skippy-server-bin and --new-skippy-server-bin must be provided together"
         )
     for label, binary in (
         ("old", args.old_skippy_server_bin),

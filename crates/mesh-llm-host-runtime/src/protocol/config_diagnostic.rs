@@ -184,7 +184,7 @@ mod tests {
 
     #[test]
     fn config_diagnostic_proto_roundtrip_preserves_structured_fields() {
-        let canonical_path = "models.<skippy-model-ref>.hardware.device";
+        let canonical_path = "models.<model-ref>.hardware.device";
         let parsed_canonical_path =
             ConfigPath::parse_rendered(canonical_path).expect("canonical path should parse");
         assert_eq!(parsed_canonical_path.render(), canonical_path);
@@ -197,7 +197,7 @@ mod tests {
         .with_schema_source(ConfigDiagnosticSchemaSource::BuiltIn)
         .at_path(ConfigPath::parse_rendered("models[0].gpu_id").expect("valid path"))
         .with_canonical_path(parsed_canonical_path)
-        .with_help("use models.<skippy-model-ref>.hardware.device instead");
+        .with_help("use models.<model-ref>.hardware.device instead");
 
         let proto = config_diagnostic_to_proto(&diagnostic);
         assert_eq!(proto.canonical_path.as_deref(), Some(canonical_path));

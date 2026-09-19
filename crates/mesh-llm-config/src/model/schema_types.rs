@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::iter::Peekable;
 use std::str::Chars;
 
-pub const CANONICAL_MODEL_REF_SEGMENT: &str = "<skippy-model-ref>";
+pub const CANONICAL_MODEL_REF_SEGMENT: &str = "<model-ref>";
 pub const CANONICAL_PLUGIN_NAME_SEGMENT: &str = "<plugin-name>";
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
@@ -681,7 +681,7 @@ mod tests {
 
     #[test]
     fn parse_rendered_accepts_canonical_placeholder_path() {
-        let rendered = "models.<skippy-model-ref>.hardware.device";
+        let rendered = "models.<model-ref>.hardware.device";
         let path = ConfigPath::parse_rendered(rendered).expect("canonical path should parse");
 
         assert_eq!(path.render(), rendered);
@@ -847,7 +847,7 @@ mod tests {
     #[test]
     fn control_condition_roundtrips_canonical_path_serialization() {
         let condition = ConfigControlCondition {
-            path: ConfigPath::parse_rendered("models.<skippy-model-ref>.hardware.device")
+            path: ConfigPath::parse_rendered("models.<model-ref>.hardware.device")
                 .expect("path should parse"),
             operator: ConfigConditionOperator::In,
             values: vec![ConfigConditionValue::String("auto".to_string())],
@@ -869,14 +869,14 @@ mod tests {
         assert_eq!(segments.len(), 4);
         assert_eq!(
             condition.path.render(),
-            "models.<skippy-model-ref>.hardware.device"
+            "models.<model-ref>.hardware.device"
         );
 
         let roundtrip: ConfigControlCondition =
             serialized.try_into().expect("condition should deserialize");
         assert_eq!(
             roundtrip.path.render(),
-            "models.<skippy-model-ref>.hardware.device"
+            "models.<model-ref>.hardware.device"
         );
     }
 
