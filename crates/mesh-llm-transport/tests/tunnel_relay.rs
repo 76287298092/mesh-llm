@@ -1,5 +1,5 @@
-use mesh_client::network::transport::MockTransportIo;
-use mesh_client::network::tunnel::relay_with_rewrite;
+use mesh_llm_transport::transport::MockTransportIo;
+use mesh_llm_transport::tunnel::relay_with_rewrite;
 
 #[tokio::test]
 async fn relay_transfers_bytes() {

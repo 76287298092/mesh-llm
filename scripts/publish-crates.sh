@@ -382,6 +382,7 @@ publish_crates=(
     skippy-events
     skippy-tokenizer
     mesh-llm-protocol
+    mesh-llm-transport
     mesh-llm-routing
     mesh-llm-types
     skippy-guardrails

@@ -998,3 +998,10 @@ The release-bound recipe build script and admission checks move with this neutra
 owner; canary generation/check commands and enforcement policy are unchanged.
 
 The standalone command now lives in `skippy-cli` (binary `skippy`); `skippy-serving` is the Clap-free embedded service library. CLI source is included in Docker prechecks, affected-crate selection, split-serving ownership and the publish roster after its server dependency. Certification, benchmark, smoke and WAN lab launches use the new binary. `just skippy-build` and `just skippy-release-build` select the dynamic-runtime CLI.
+
+Mesh raw byte-stream interfaces and TCP/QUIC relay are owned by
+`mesh-llm-transport`, consumed by the host and client. The runtime-product
+ownership row, publish order, affected-crate fallback and Docker source lists
+include it. The host retains admission/routing and supplies its existing
+first-response timeout; no protocol, runner, permissions or artifact-policy
+change accompanies this extraction.

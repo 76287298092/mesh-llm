@@ -21,6 +21,7 @@ WORKSPACE_MEMBERS=(
   "mesh-llm-log-store"
   "skippy-native-runtime"
   "mesh-llm-protocol"
+  "mesh-llm-transport"
   "mesh-llm-release-footer"
   "mesh-llm-routing"
   "mesh-llm-runtime-event-contracts"

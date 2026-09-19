@@ -1,4 +1,4 @@
-use mesh_client::network::transport::{MockTransportIo, TransportIo};
+use mesh_llm_transport::transport::{MockTransportIo, TransportIo};
 
 #[tokio::test]
 async fn mock_transport_roundtrip() {

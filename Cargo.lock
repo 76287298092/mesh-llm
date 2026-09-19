@@ -3681,6 +3681,7 @@ dependencies = [
  "mesh-llm-identity",
  "mesh-llm-protocol",
  "mesh-llm-routing",
+ "mesh-llm-transport",
  "mesh-llm-types",
  "nostr-sdk",
  "prost",
@@ -3837,6 +3838,7 @@ dependencies = [
  "mesh-llm-routing",
  "mesh-llm-runtime-event-contracts",
  "mesh-llm-system",
+ "mesh-llm-transport",
  "mesh-llm-types",
  "mesh-llm-ui",
  "mesh-mixture-of-agents",
@@ -4099,6 +4101,17 @@ dependencies = [
  "reqwest",
  "serde_json",
  "thiserror 2.0.20",
+]
+
+[[package]]
+name = "mesh-llm-transport"
+version = "0.76.1"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "iroh",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

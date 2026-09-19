@@ -531,3 +531,12 @@ Opt-in mesh advertisement via Nostr relays (NIP-89, kind 31990):
 - Publish watchdog: if publisher dies, another node takes over
 - `score_mesh()`: region match (+200), capacity, node count, VRAM, sticky preference (+500)
 - `smart_auto()`: picks best mesh or recommends starting new one with models for your VRAM
+
+### Mesh transport ownership
+
+`mesh-llm-transport` owns raw byte-stream interfaces, the Iroh bidirectional
+stream adapter and TCP/QUIC relay. Both client and host consume these primitives.
+The host tunnel manager retains peer admission, stage authorization, endpoint
+selection and the five-minute first-response timeout policy. Model routing and
+HTTP request handling remain outside the transport crate. This is the first
+transport extraction; endpoint/discovery composition remains in the host.
