@@ -6,7 +6,6 @@ use std::path::PathBuf;
 mod certification;
 mod deployment;
 pub(crate) mod diagnostics;
-use mesh_llm_skippy_adapter::hash_cache;
 mod hooks;
 mod loading;
 mod local_source;

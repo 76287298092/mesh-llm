@@ -5,6 +5,7 @@ pub mod config;
 pub mod hash_cache;
 mod kv_cache;
 mod load_options;
+pub mod package;
 mod stage;
 pub use kv_cache::{KvCachePolicy, KvCacheType};
 pub use load_options::{SkippyDeviceDescriptor, SkippyModelLoadOptions, SkippyTelemetryOptions};
