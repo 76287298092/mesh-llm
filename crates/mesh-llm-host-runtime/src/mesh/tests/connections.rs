@@ -1,9 +1,3 @@
-use super::heartbeat::{
-    HomeRelayStatusTransition, RELAY_DEGRADED_RTT_MS, RELAY_MISSING_GRACE_SECS,
-    RELAY_ONLY_DIRECT_RESCUE_SECS, RELAY_ONLY_RECONNECT_SECS, RELAY_RECONNECT_COOLDOWN_SECS,
-    RelayPathSnapshot, RelayPeerHealth, RelayPeerObservation, RelayReconnectController,
-    RelayReconnectReason, SelectedPathKind, relay_reconnect_reason, should_remove_connection,
-};
 use super::*;
 use crate::api;
 use crate::network::affinity;

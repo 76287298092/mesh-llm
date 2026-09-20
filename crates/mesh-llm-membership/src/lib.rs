@@ -24,12 +24,15 @@
 //! boundary (see the remaining-boundary list in this crate's `README.md`).
 
 pub mod address;
+#[cfg(feature = "host-io")]
+pub mod adopted_membership;
 pub mod advertised_throughput;
 pub mod cache_affinity_gossip;
 #[cfg(feature = "host-io")]
 pub mod identity_persistence;
 pub mod lan_bootstrap;
 pub mod model_identity;
+pub mod peer_health;
 #[cfg(feature = "host-io")]
 pub mod peer_state;
 pub mod release_attestation;

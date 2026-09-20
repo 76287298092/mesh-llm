@@ -33,7 +33,7 @@ pub(crate) fn assert_expired_bootstrap_token_requires_matching_adopted_membershi
             "a fresh node must not use an expired bearer token"
         );
 
-        let adopted = crate::mesh::node::RequirementAwareMeshState {
+        let adopted = mesh_llm_membership::adopted_membership::RequirementAwareMeshState {
             mesh_id: expired.mesh_id.clone(),
             policy_hash: expired.policy_hash.clone(),
             policy: policy.clone(),
@@ -41,7 +41,7 @@ pub(crate) fn assert_expired_bootstrap_token_requires_matching_adopted_membershi
             bootstrap_token: Some(expired.clone()),
         };
         let saved_addr = node.endpoint_addr_for_advertisement();
-        crate::mesh::node_requirements::persist_adopted_mesh_membership(
+        mesh_llm_membership::adopted_membership::persist_adopted_mesh_membership(
             &membership_file,
             &adopted,
             vec![saved_addr.clone()],
@@ -53,7 +53,7 @@ pub(crate) fn assert_expired_bootstrap_token_requires_matching_adopted_membershi
 
         assert_direct_join_restores_policy(&membership_file, &policy, &expired, &adopted).await;
 
-        crate::mesh::node_requirements::persist_adopted_mesh_membership(
+        mesh_llm_membership::adopted_membership::persist_adopted_mesh_membership(
             &membership_file,
             &adopted,
             vec![saved_addr.clone()],
@@ -182,14 +182,14 @@ pub(crate) fn assert_fresh_single_invite_with_persisted_membership_joins_new_mes
                 &owner,
             )
             .expect("expired old token");
-            let adopted = crate::mesh::node::RequirementAwareMeshState {
+            let adopted = mesh_llm_membership::adopted_membership::RequirementAwareMeshState {
                 mesh_id: expired_old.mesh_id.clone(),
                 policy_hash: expired_old.policy_hash.clone(),
                 policy: policy.clone(),
                 signed_policy: Some(signed_policy.clone()),
                 bootstrap_token: Some(expired_old.clone()),
             };
-            crate::mesh::node_requirements::persist_adopted_mesh_membership(
+            mesh_llm_membership::adopted_membership::persist_adopted_mesh_membership(
             &membership_file,
                 &adopted,
                 vec![seed_node.endpoint_addr_for_advertisement()],
@@ -259,7 +259,7 @@ async fn assert_direct_join_restores_policy(
     membership_file: &std::path::Path,
     policy: &crate::MeshGenesisPolicy,
     token: &crate::SignedBootstrapToken,
-    adopted: &crate::mesh::node::RequirementAwareMeshState,
+    adopted: &mesh_llm_membership::adopted_membership::RequirementAwareMeshState,
 ) {
     for retry in [false, true] {
         let mut node = make_test_node_with_requirements(
@@ -269,7 +269,7 @@ async fn assert_direct_join_restores_policy(
         .await
         .expect("direct joiner");
         node.adopted_membership_file = Some(membership_file.to_path_buf());
-        crate::mesh::node_requirements::persist_adopted_mesh_membership(membership_file, adopted, vec![])
+        mesh_llm_membership::adopted_membership::persist_adopted_mesh_membership(membership_file, adopted, vec![])
             .expect("reset persisted fixture for each independent join");
         let encoded = super::super::super::encode_signed_bootstrap_token(token);
         let attempt = async {

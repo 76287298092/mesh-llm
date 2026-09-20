@@ -56,6 +56,26 @@ See `crates/mesh-llm-host-runtime/tests/membership_test_home_isolation.rs` for
 the executable cross-crate proof. Production builds never enable
 `test-support`, so the env-var override stays out of library consumers.
 
+## Peer health orchestration
+
+`peer_health` owns heartbeat failure thresholds, relay health observations,
+reconnect selection/cooldowns, home-relay status transitions and peer-down
+report/removal decisions. It is available without `host-io`: callers provide
+path observations, request activity and time; the controller returns decisions
+without opening connections, emitting product events or invoking plugins.
+The host heartbeat loop uses these decisions and retains transport effects,
+peer snapshots, logging and plugin notifications. Existing policy tests live
+beside the controller in `peer_health/tests.rs`.
+
+## Adopted membership
+
+`adopted_membership` owns the requirement-aware membership state, conflict
+checks, signed-policy enrichment and persisted adopted-membership format.
+The host supplies the path and retains locking, bootstrap orchestration and
+plugin notifications. Loading and persistence verify signed policy identity;
+writes use the existing identity crate's atomic keystore writer. This module
+is gated behind `host-io`.
+
 ## Remaining boundary (not yet moved)
 
 The heavier membership modules still live in `mesh-llm-host-runtime/src/mesh/`
@@ -76,7 +96,7 @@ host surface it reaches today:
   abstraction.
 - `node_requirements.rs` (remaining) — the `impl Node` / plugin-side of the
   admission policy (`MeshConfig`, `GpuAssignment`, `mesh_event` projection,
-  `crate::system::hardware`). The pure policy itself (`requirements`) moved.
+  `crate::system::hardware`). The policy (`requirements`), adopted persistence and state transitions moved.
 - `node_identity.rs` — node/admission identity; `merge_public_addr_into_advertisement`
   plus release-attestation + plugin `MeshPeer`/`MeshEvent` projection.
 - `model_identity.rs` (remaining) — `identity_from_model_source` and
@@ -85,7 +105,8 @@ host surface it reaches today:
   actual blocker — not the `ModelCapabilities` mapping, which already resolves
   to `mesh_llm_types::models::capabilities::ModelCapabilities`. Moving them
   needs an injected model-ref parse operation across the Skippy boundary.
-- `gossip.rs` / `heartbeat.rs` / `announcements.rs` — reach the plugin
+- `gossip.rs` / `heartbeat.rs` / `announcements.rs` — the heartbeat policy and
+  relay controller have moved; the remaining host effects reach the plugin
   `mesh_event` projection and the release-attestation verifier; also depend on
   `peer_state` types above.
 - `stun.rs` / `connection_reservation.rs` / `capacity.rs` / `connectivity.rs` /

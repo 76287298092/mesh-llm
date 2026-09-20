@@ -1,5 +1,5 @@
 use super::*;
-use crate::mesh::node::RequirementAwareMeshState;
+use mesh_llm_membership::adopted_membership::RequirementAwareMeshState;
 
 /// Merge the startup-discovered public address into an advertisement set.
 ///

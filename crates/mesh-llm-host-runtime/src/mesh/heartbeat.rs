@@ -8,52 +8,21 @@ use super::direct_rescue::DirectRescueEndpoint;
 use super::node::startup_transport_config;
 use super::{
     ConnectionCaptureEvent, ControlProtocol, DEAD_PEER_TTL, DEPARTED_PEER_TRANSITIVE_BLOCK_TTL,
-    MeshPeerRemovalReason, ModelRuntimeDescriptor, Node, PEER_DOWN_REPORTER_COOLDOWN_SECS,
-    PEER_STALE_SECS, PeerInfo, PeerLifecycleCaptureEvent, ServedModelDescriptor, connect_mesh,
-    connection_protocol, endpoint_id_hex, selected_path_observation,
+    MeshPeerRemovalReason, Node, PEER_DOWN_REPORTER_COOLDOWN_SECS, PEER_STALE_SECS, PeerInfo,
+    PeerLifecycleCaptureEvent, connect_mesh, connection_protocol, selected_path_observation,
 };
 use crate::protocol::{
     NODE_PROTOCOL_GENERATION, STREAM_PEER_DOWN, STREAM_PEER_LEAVING, write_len_prefixed,
 };
 use iroh::{Endpoint, EndpointAddr, EndpointId, TransportAddr, endpoint::Connection};
+use mesh_llm_membership::peer_health::{
+    HeartbeatFailurePolicy, HomeRelayStatusTransition, RELAY_HEALTH_CHECK_SECS, RelayPathSnapshot,
+    RelayPeerObservation, RelayReconnectController, RelayReconnectReason, SelectedPathKind,
+    classify_relay_only_for_policy, default_heartbeat_failure_policy, heartbeat_failure_policy,
+    is_relay_only_path_set, should_remove_connection,
+};
 use prost::Message;
-use std::collections::HashMap;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) struct HeartbeatFailurePolicy {
-    pub(super) allow_recent_inbound_grace: bool,
-    pub(super) failure_threshold: u32,
-}
-
-pub(super) fn heartbeat_failure_policy_for_peer(
-    _local_descriptors: &[ServedModelDescriptor],
-    _local_runtime: &[ModelRuntimeDescriptor],
-    peer: &PeerInfo,
-    is_relay_only: bool,
-) -> HeartbeatFailurePolicy {
-    let _ = peer;
-    HeartbeatFailurePolicy {
-        allow_recent_inbound_grace: true,
-        // Relay-only peers are far more prone to transient timeouts.
-        // Observed behaviour: a Sydney<->Sydney relay-only path (mini's VPN
-        // extension blocking the LAN UDP hole-punch) can spike from 200ms
-        // to 10s+ RTT during a single relay hiccup. With 60s heartbeat
-        // intervals, two such cycles is ~2min — not enough grace for the
-        // public mesh's relay to recover. Five cycles = 5min grace, which
-        // covers the typical iroh relay path-renegotiation window.
-        //
-        // Direct paths stay at 2 — when the LAN/internet path is up at
-        // all, two consecutive cycles of silence is a real failure signal.
-        failure_threshold: if is_relay_only { 5 } else { 2 },
-    }
-}
-
-pub(super) const RELAY_HEALTH_CHECK_SECS: u64 = 30;
-pub(super) const RELAY_MISSING_GRACE_SECS: u64 = 180;
-pub(super) const RELAY_ONLY_RECONNECT_SECS: u64 = 1800;
-pub(super) const RELAY_ONLY_DIRECT_RESCUE_SECS: u64 = 60;
-pub(super) const RELAY_RECONNECT_COOLDOWN_SECS: u64 = 600;
-pub(super) const RELAY_DEGRADED_RTT_MS: u32 = 1500;
 const DIRECT_RESCUE_CONNECT_TIMEOUT_SECS: u64 = 10;
 
 pub(crate) fn selected_connection_is_direct(conn: &Connection) -> bool {
@@ -66,184 +35,6 @@ pub(crate) fn direct_only_addr(mut addr: EndpointAddr) -> Option<EndpointAddr> {
     addr.addrs
         .retain(|candidate| matches!(candidate, TransportAddr::Ip(_)));
     (!addr.addrs.is_empty()).then_some(addr)
-}
-
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub(super) enum SelectedPathKind {
-    Direct,
-    Relay,
-    #[default]
-    Unknown,
-}
-
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub(super) struct RelayPathSnapshot {
-    pub(super) kind: SelectedPathKind,
-    pub(super) rtt_ms: Option<u32>,
-}
-
-#[derive(Clone, Copy, Debug, Default)]
-pub(super) struct RelayPeerHealth {
-    pub(super) relay_since: Option<std::time::Instant>,
-    pub(super) last_reconnect_at: Option<std::time::Instant>,
-}
-
-impl RelayPeerHealth {
-    pub(super) fn observe(&mut self, snapshot: RelayPathSnapshot, now: std::time::Instant) {
-        match snapshot.kind {
-            SelectedPathKind::Direct => {
-                self.relay_since = None;
-            }
-            SelectedPathKind::Relay => {
-                if self.relay_since.is_none() {
-                    self.relay_since = Some(now);
-                }
-            }
-            SelectedPathKind::Unknown => {}
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum RelayReconnectReason {
-    RelayRttDegraded,
-    RelayOnlyTooLong,
-}
-
-impl RelayReconnectReason {
-    pub(crate) fn label(self) -> &'static str {
-        match self {
-            RelayReconnectReason::RelayRttDegraded => "relay RTT degraded",
-            RelayReconnectReason::RelayOnlyTooLong => "relay path aged out",
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(super) enum HomeRelayStatusTransition {
-    Missing { missing_secs: u64 },
-    Restored,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(super) struct RelayPeerObservation {
-    pub(super) peer_id: EndpointId,
-    pub(super) snapshot: RelayPathSnapshot,
-    pub(super) has_direct_candidate: bool,
-}
-
-#[derive(Default)]
-pub(super) struct RelayReconnectController {
-    peer_health: HashMap<EndpointId, RelayPeerHealth>,
-    relay_missing_since: Option<std::time::Instant>,
-    relay_missing_reported: bool,
-}
-
-impl RelayReconnectController {
-    pub(super) fn observe_home_relay(
-        &mut self,
-        has_home_relay: bool,
-        now: std::time::Instant,
-    ) -> Option<HomeRelayStatusTransition> {
-        if has_home_relay {
-            self.relay_missing_reported = false;
-            return self
-                .relay_missing_since
-                .take()
-                .map(|_| HomeRelayStatusTransition::Restored);
-        }
-
-        let missing_since = *self.relay_missing_since.get_or_insert(now);
-        if self.relay_missing_reported {
-            return None;
-        }
-
-        let missing_secs = now.duration_since(missing_since).as_secs();
-        if missing_secs >= RELAY_MISSING_GRACE_SECS {
-            self.relay_missing_reported = true;
-            return Some(HomeRelayStatusTransition::Missing { missing_secs });
-        }
-        None
-    }
-
-    pub(super) fn plan_reconnect<I>(
-        &mut self,
-        observations: I,
-        now: std::time::Instant,
-        inflight_requests: u64,
-        has_home_relay: bool,
-    ) -> Option<(EndpointId, RelayReconnectReason)>
-    where
-        I: IntoIterator<Item = RelayPeerObservation>,
-    {
-        let mut observations: Vec<RelayPeerObservation> = observations.into_iter().collect();
-        observations.sort_by_key(|observation| endpoint_id_hex(observation.peer_id));
-
-        if observations.is_empty() {
-            self.peer_health.clear();
-            return None;
-        }
-
-        let active_peers: std::collections::HashSet<EndpointId> = observations
-            .iter()
-            .map(|observation| observation.peer_id)
-            .collect();
-        self.peer_health
-            .retain(|peer_id, _| active_peers.contains(peer_id));
-
-        let mut stale_candidate: Option<(EndpointId, RelayReconnectReason)> = None;
-        for observation in observations {
-            let health = self.peer_health.entry(observation.peer_id).or_default();
-            health.observe(observation.snapshot, now);
-
-            let Some(reason) = relay_reconnect_reason(
-                health,
-                observation.snapshot,
-                observation.has_direct_candidate,
-                now,
-                inflight_requests,
-                has_home_relay,
-            ) else {
-                continue;
-            };
-
-            if reason == RelayReconnectReason::RelayRttDegraded {
-                return Some((observation.peer_id, reason));
-            }
-            if stale_candidate.is_none() {
-                stale_candidate = Some((observation.peer_id, reason));
-            }
-        }
-
-        stale_candidate
-    }
-
-    pub(super) fn record_reconnect_attempt(
-        &mut self,
-        peer_id: EndpointId,
-        _reason: RelayReconnectReason,
-        now: std::time::Instant,
-    ) {
-        let health = self.peer_health.entry(peer_id).or_default();
-        health.last_reconnect_at = Some(now);
-    }
-
-    pub(super) fn record_reconnect_result(
-        &mut self,
-        peer_id: EndpointId,
-        succeeded: bool,
-        now: std::time::Instant,
-    ) {
-        if succeeded {
-            let health = self.peer_health.entry(peer_id).or_default();
-            health.relay_since = Some(now);
-        }
-    }
-
-    #[cfg(test)]
-    pub(super) fn peer_health(&self, peer_id: EndpointId) -> Option<&RelayPeerHealth> {
-        self.peer_health.get(&peer_id)
-    }
 }
 
 pub(super) fn selected_path_snapshot(conn: &Connection) -> RelayPathSnapshot {
@@ -281,124 +72,6 @@ pub(super) fn selected_path_snapshot(conn: &Connection) -> RelayPathSnapshot {
 /// connection as relay-only for failure-tolerance purposes.
 pub(super) fn is_relay_only_connection(conn: &Connection) -> bool {
     is_relay_only_path_set(conn.paths().iter().map(|p| p.is_ip()))
-}
-
-/// Shape of `is_relay_only_connection` extracted for testability — takes
-/// the `is_ip()` flag for each path. See above for rationale.
-pub(super) fn is_relay_only_path_set<I: IntoIterator<Item = bool>>(path_is_ip_flags: I) -> bool {
-    let mut iter = path_is_ip_flags.into_iter();
-    let Some(first) = iter.next() else {
-        // No path info at all — be lenient (likely a brand-new or
-        // already-failing connection). Treat as relay-only so we don't
-        // prematurely declare the peer dead before the path negotiator
-        // has had a chance to settle.
-        return true;
-    };
-    !first && !iter.any(|is_ip| is_ip)
-}
-
-/// Classify a peer as relay-only for failure-tolerance purposes.
-///
-/// `had_relay_only_connection` is `Some(true)` when we hold a live
-/// `Connection` and `is_relay_only_connection` returned true,
-/// `Some(false)` when we hold a Connection with at least one IP path,
-/// and `None` when no Connection object is present at all (cleanly
-/// closed, QUIC idle-expired, never opened).
-///
-/// When Connection is gone (`None`) we default to STRICT (not
-/// relay-only). The lenient threshold exists to absorb mid-flap path
-/// renegotiation, which only happens while iroh still holds the
-/// Connection. Once the Connection is gone, a previously-direct peer
-/// should not silently inherit the lenient grace and keep stale model
-/// routes alive an extra few minutes.
-pub(super) fn classify_relay_only_for_policy(had_relay_only_connection: Option<bool>) -> bool {
-    had_relay_only_connection.unwrap_or(false)
-}
-
-pub(super) fn relay_reconnect_reason(
-    health: &RelayPeerHealth,
-    snapshot: RelayPathSnapshot,
-    has_direct_candidate: bool,
-    now: std::time::Instant,
-    inflight_requests: u64,
-    has_home_relay: bool,
-) -> Option<RelayReconnectReason> {
-    if inflight_requests > 0 || !has_home_relay {
-        return None;
-    }
-    if health.last_reconnect_at.is_some_and(|last| {
-        now.duration_since(last) < std::time::Duration::from_secs(RELAY_RECONNECT_COOLDOWN_SECS)
-    }) {
-        return None;
-    }
-    if snapshot.kind != SelectedPathKind::Relay {
-        return None;
-    }
-    if snapshot
-        .rtt_ms
-        .is_some_and(|rtt_ms| rtt_ms >= RELAY_DEGRADED_RTT_MS)
-    {
-        return Some(RelayReconnectReason::RelayRttDegraded);
-    }
-    let relay_only_limit_secs = if has_direct_candidate {
-        RELAY_ONLY_DIRECT_RESCUE_SECS
-    } else {
-        RELAY_ONLY_RECONNECT_SECS
-    };
-    if health.relay_since.is_some_and(|started| {
-        now.duration_since(started) >= std::time::Duration::from_secs(relay_only_limit_secs)
-    }) {
-        return Some(RelayReconnectReason::RelayOnlyTooLong);
-    }
-    None
-}
-
-pub(super) fn should_remove_connection(
-    current_stable_id: Option<usize>,
-    closing_stable_id: usize,
-) -> bool {
-    current_stable_id == Some(closing_stable_id)
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum PeerDownReportDisposition {
-    SuppressReporterCooldown,
-    RejectRecentlySeen,
-    ProbeReachability,
-}
-
-pub(crate) fn peer_down_report_disposition(
-    reporter_cooled: bool,
-    recently_seen: bool,
-) -> PeerDownReportDisposition {
-    if reporter_cooled {
-        PeerDownReportDisposition::SuppressReporterCooldown
-    } else if recently_seen {
-        PeerDownReportDisposition::RejectRecentlySeen
-    } else {
-        PeerDownReportDisposition::ProbeReachability
-    }
-}
-
-/// Applies the reachability-confirmation rule for a `PeerDown` claim.
-/// Returns `Some(dead_id)` if `dead_id != self_id` AND `should_remove` is `true` (peer confirmed gone).
-/// Returns `None` if `dead_id == self_id` (never self-evict) or `should_remove` is `false` (peer still reachable).
-pub(crate) fn resolve_peer_down(
-    self_id: EndpointId,
-    dead_id: EndpointId,
-    should_remove: bool,
-) -> Option<EndpointId> {
-    if dead_id == self_id {
-        return None;
-    }
-    if should_remove { Some(dead_id) } else { None }
-}
-
-pub(crate) fn default_heartbeat_failure_policy() -> HeartbeatFailurePolicy {
-    HeartbeatFailurePolicy {
-        allow_recent_inbound_grace: true,
-        failure_threshold: 2,
-    }
 }
 
 pub(crate) fn select_heartbeat_gossip_peers(
@@ -1027,7 +700,7 @@ impl Node {
         if let Some(previous_failures) = fail_counts.remove(&peer_id) {
             // Show the actual threshold this peer was being judged
             // against, not a hardcoded "/2". Relay-only peers get a
-            // higher threshold (see heartbeat_failure_policy_for_peer),
+            // higher threshold (see heartbeat_failure_policy),
             // so "(was 3/5)" reads correctly instead of misleading "3/2".
             let (_, failure_policy) = self.heartbeat_failure_context(peer_id).await;
             super::emit_mesh_info(format!(
@@ -1107,12 +780,10 @@ impl Node {
         peer: Option<&PeerInfo>,
         is_relay_only: bool,
     ) -> HeartbeatFailurePolicy {
-        let Some(peer) = peer else {
+        let Some(_) = peer else {
             return default_heartbeat_failure_policy();
         };
-        let local_descriptors = self.served_model_descriptors.lock().await.clone();
-        let local_runtime = self.model_runtime_descriptors.lock().await.clone();
-        heartbeat_failure_policy_for_peer(&local_descriptors, &local_runtime, peer, is_relay_only)
+        heartbeat_failure_policy(is_relay_only)
     }
 
     pub(crate) fn clear_inbound_alive_failure(

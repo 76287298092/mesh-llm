@@ -775,7 +775,7 @@ impl Node {
         closing_stable_id: usize,
     ) -> ClosedConnectionRecovery {
         let mut state = self.state.lock().await;
-        if !heartbeat::should_remove_connection(
+        if !mesh_llm_membership::peer_health::should_remove_connection(
             state.connections.get(&remote).map(|conn| conn.stable_id()),
             closing_stable_id,
         ) {

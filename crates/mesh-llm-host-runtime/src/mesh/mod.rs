@@ -197,10 +197,8 @@ pub(crate) use weights_digest::{file_fingerprint, weights_digest_for_file};
 
 #[cfg(test)]
 use announcements::{apply_transitive_ann, peer_meaningfully_changed};
-#[cfg(test)]
-use heartbeat::heartbeat_failure_policy_for_peer;
-pub(crate) use heartbeat::resolve_peer_down;
-use heartbeat::{PeerDownReportDisposition, peer_down_report_disposition};
+pub(crate) use mesh_llm_membership::peer_health::resolve_peer_down;
+use mesh_llm_membership::peer_health::{PeerDownReportDisposition, peer_down_report_disposition};
 pub(crate) use stage_proto::stage_status_from_load;
 use stage_proto::*;
 

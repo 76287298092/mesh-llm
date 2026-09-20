@@ -1,4 +1,5 @@
 use super::*;
+use mesh_llm_membership::adopted_membership::RequirementAwareMeshState;
 use mesh_llm_types::mesh::{DEMAND_TTL_SECS, merge_demand};
 use serde_json::json;
 use std::net::SocketAddr;
@@ -191,15 +192,6 @@ pub struct Node {
     /// Set during runtime initialization; None when running outside the control loop.
     pub(crate) model_intent_tx:
         Arc<tokio::sync::Mutex<Option<tokio::sync::mpsc::Sender<crate::runtime::ModelIntent>>>>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct RequirementAwareMeshState {
-    pub(crate) mesh_id: String,
-    pub(crate) policy_hash: String,
-    pub(crate) policy: crate::MeshGenesisPolicy,
-    pub(crate) signed_policy: Option<crate::SignedMeshGenesisPolicy>,
-    pub(crate) bootstrap_token: Option<crate::SignedBootstrapToken>,
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]

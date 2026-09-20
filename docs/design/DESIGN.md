@@ -76,9 +76,12 @@ Both products select local execution when stage zero has no downstream peer,
 including preservation of the recurrent-prefix token input. Split stage zero
 retains its downstream lane and prediction-return behavior.
 
-This remains an intermediate extraction: the dedicated Mesh
-adapter/transport/membership crates and physical `mesh/` and `skippy/` ownership
-trees are not yet in place.
+This remains an intermediate extraction. Dedicated Mesh adapter, transport,
+membership and control-API crates now own extracted capabilities; host
+composition and the physical `mesh/` and `skippy/` ownership trees remain open.
+Membership owns the relay reconnect controller and heartbeat/removal policy.
+The host supplies connection observations and applies the returned decisions,
+retaining transport I/O, product logging and plugin notifications.
 
 ## Topology Roles
 
