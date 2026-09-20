@@ -313,10 +313,18 @@ impl StageOpenAiBackend {
                     prefill_forward_activation_bytes =
                         prefill_forward_activation_bytes.saturating_add(forwarded.activation.len());
                     let write_timer = PhaseTimer::start();
-                    write_stage_message_conditioned(
-                        &mut *downstream,
-                        &forwarded,
-                        request.downstream_wire_condition,
+                    crate::frontend::backend::write_downstream_or_emit_forward_error(
+                        &self.telemetry,
+                        request.config,
+                        request.ids,
+                        write_timer.start_unix_nanos,
+                        || {
+                            write_stage_message_conditioned(
+                                &mut *downstream,
+                                &forwarded,
+                                request.downstream_wire_condition,
+                            )
+                        },
                     )
                     .map_err(openai_io_error)?;
                     let chunk_forward_write_ms = write_timer.elapsed_ms();
@@ -639,10 +647,19 @@ impl StageOpenAiBackend {
                 wire_sampling.clone(),
                 request.chat_sampling_metadata,
             )?;
-            write_stage_message_conditioned(
-                &mut *downstream,
-                &message,
-                request.downstream_wire_condition,
+            let config_write_timer = PhaseTimer::start();
+            crate::frontend::backend::write_downstream_or_emit_forward_error(
+                &self.telemetry,
+                request.config,
+                request.ids,
+                config_write_timer.start_unix_nanos,
+                || {
+                    write_stage_message_conditioned(
+                        &mut *downstream,
+                        &message,
+                        request.downstream_wire_condition,
+                    )
+                },
             )
             .map_err(openai_io_error)?;
             let reply = recv_reply(&mut *downstream).map_err(openai_io_error)?;
@@ -1061,6 +1078,7 @@ impl StageOpenAiBackend {
                             verify_window_forwarder = Some(
                                 AsyncForwarder::new(
                                     &*downstream,
+                                    request.config.downstream.clone(),
                                     self.telemetry.clone(),
                                     verify_window_scheduler.depth(),
                                 )
@@ -1848,10 +1866,18 @@ impl StageOpenAiBackend {
                 decode_forward_activation_bytes = decode_forward_activation_bytes
                     .saturating_add(forwarded.message.activation.len());
                 let write_timer = PhaseTimer::start();
-                write_stage_message_conditioned(
-                    &mut *downstream,
-                    &forwarded.message,
-                    request.downstream_wire_condition,
+                crate::frontend::backend::write_downstream_or_emit_forward_error(
+                    &self.telemetry,
+                    request.config,
+                    request.ids,
+                    write_timer.start_unix_nanos,
+                    || {
+                        write_stage_message_conditioned(
+                            &mut *downstream,
+                            &forwarded.message,
+                            request.downstream_wire_condition,
+                        )
+                    },
                 )
                 .map_err(openai_io_error)?;
                 let forward_write_ms = write_timer.elapsed_ms();

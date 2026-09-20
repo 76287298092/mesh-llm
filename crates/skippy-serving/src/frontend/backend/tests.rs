@@ -1666,3 +1666,264 @@ fn generation_ids_leaves_frontend_request_id_absent_for_a_non_frontend_context()
     let ids = generation_ids(OpenAiCacheHints::default(), None, &context);
     assert_eq!(ids.frontend_request_id, None);
 }
+
+fn identity_config() -> skippy_protocol::StageConfig {
+    serde_json::from_value(json!({
+        "run_id": "run",
+        "topology_id": "topology",
+        "model_id": "org/model:Q4_K_M",
+        "stage_id": "stage-0",
+        "stage_index": 0,
+        "layer_start": 0,
+        "layer_end": 4,
+        "load_mode": "runtime-slice",
+        "bind_addr": "127.0.0.1:0",
+    }))
+    .expect("minimal stage config for identity attrs")
+}
+
+/// The frontend UUID join: when a generation entered through the OpenAI HTTP
+/// boundary, the identity attrs carry `openai.frontend_request_id` (UUID
+/// string) next to the native numeric ids, so the same event joins both.
+#[test]
+fn openai_identity_attrs_carry_the_frontend_request_uuid_when_present() {
+    let expected = uuid::Uuid::new_v4();
+    let ids = OpenAiGenerationIds::new_with_trust(
+        OpenAiCacheHints::default(),
+        None,
+        false,
+        Some(*expected.as_bytes()),
+    );
+
+    let attrs = openai_identity_attrs(&identity_config(), "test-backend", &ids);
+
+    let parsed = uuid::Uuid::parse_str(attrs["openai.frontend_request_id"].as_str().unwrap())
+        .expect("frontend request id must be a UUID string");
+    assert_eq!(parsed, expected);
+    assert_eq!(attrs["llama_stage.openai_backend"], json!("test-backend"));
+    assert!(!attrs["skippy.request_id"].as_str().unwrap().is_empty());
+    assert!(!attrs["skippy.session_id"].as_str().unwrap().is_empty());
+    assert_eq!(attrs["skippy.run_id"], json!("run"));
+    assert_eq!(attrs["skippy.stage_id"], json!("stage-0"));
+}
+
+/// Non-frontend callers have no frontend UUID; the key must stay absent so
+/// log consumers can distinguish HTTP-admitted generations from embedded
+/// ones.
+#[test]
+fn openai_identity_attrs_omit_the_frontend_request_uuid_without_one() {
+    let ids = OpenAiGenerationIds::new_with_trust(OpenAiCacheHints::default(), None, false, None);
+
+    let attrs = openai_identity_attrs(&identity_config(), "test-backend", &ids);
+
+    assert!(!attrs.contains_key("openai.frontend_request_id"));
+    assert!(!attrs["skippy.request_id"].as_str().unwrap().is_empty());
+}
+
+/// The embedded sync-forward seam emits exactly one downstream forward-error
+/// event with the OpenAI request identity (numeric + frontend UUID) and the
+/// intended downstream identity, and propagates the original io error
+/// unchanged.
+#[test]
+fn embedded_forward_seam_emits_error_event_on_write_failure() {
+    let mut config = identity_config();
+    config.downstream = Some(skippy_protocol::PeerConfig {
+        stage_id: "stage-2".to_string(),
+        stage_index: 2,
+        endpoint: "10.0.0.3:50052".to_string(),
+    });
+    let expected = uuid::Uuid::new_v4();
+    let ids = OpenAiGenerationIds::new_with_trust(
+        OpenAiCacheHints::default(),
+        None,
+        false,
+        Some(*expected.as_bytes()),
+    );
+    let (telemetry, rx) = crate::telemetry::Telemetry::captured(
+        config.clone(),
+        crate::telemetry::TelemetryLevel::Summary,
+    );
+
+    let result = write_downstream_or_emit_forward_error(&telemetry, &config, &ids, 1234, || {
+        Err(std::io::Error::new(std::io::ErrorKind::BrokenPipe, "boom"))
+    });
+
+    let error = result.unwrap_err();
+    assert_eq!(error.kind(), std::io::ErrorKind::BrokenPipe);
+    assert_eq!(error.to_string(), "boom");
+
+    let event = rx
+        .try_recv()
+        .expect("exactly one forward error event on failure");
+    assert_eq!(event.event, "stage.binary_downstream_forward_error");
+    assert_eq!(
+        event.attributes["skippy.request_id"],
+        json!(ids.request_id_string())
+    );
+    assert_eq!(
+        event.attributes["skippy.session_id"],
+        json!(ids.session_id_string())
+    );
+    let parsed = uuid::Uuid::parse_str(
+        event.attributes["openai.frontend_request_id"]
+            .as_str()
+            .unwrap(),
+    )
+    .expect("frontend uuid present on the embedded failure event");
+    assert_eq!(parsed, expected);
+    assert_eq!(
+        event.attributes["llama_stage.downstream_stage_id"],
+        json!("stage-2")
+    );
+    assert_eq!(
+        event.attributes["llama_stage.downstream_endpoint"],
+        json!("10.0.0.3:50052")
+    );
+    assert!(
+        event.attributes["llama_stage.error"]
+            .as_str()
+            .unwrap()
+            .contains("boom")
+    );
+    assert_eq!(event.start_time_unix_nanos, 1234);
+    assert!(rx.try_recv().is_err(), "no additional events on failure");
+}
+
+#[test]
+fn embedded_forward_seam_emits_nothing_on_success() {
+    let mut config = identity_config();
+    config.downstream = Some(skippy_protocol::PeerConfig {
+        stage_id: "stage-2".to_string(),
+        stage_index: 2,
+        endpoint: "10.0.0.3:50052".to_string(),
+    });
+    let ids = OpenAiGenerationIds::new_with_trust(OpenAiCacheHints::default(), None, false, None);
+    let (telemetry, rx) = crate::telemetry::Telemetry::captured(
+        config.clone(),
+        crate::telemetry::TelemetryLevel::Summary,
+    );
+
+    let result = write_downstream_or_emit_forward_error(&telemetry, &config, &ids, 1234, || Ok(()));
+
+    assert!(result.is_ok());
+    assert!(rx.try_recv().is_err(), "success must not emit");
+}
+
+/// The live embedded A→B route's lane checkout is a production connect
+/// boundary: a refused downstream connection emits exactly one
+/// `stage.binary_downstream_connect_error` carrying the request identity and
+/// the intended downstream, and the checkout still fails with an OpenAI
+/// backend error.
+#[test]
+fn lane_checkout_connect_failure_emits_connect_event() {
+    // Controlled refusal: hold a kernel-assigned loopback port bound
+    // WITHOUT listening for the whole test. The live binding keeps the
+    // port reserved across connect_binary_downstream's retry window (no
+    // other process can take it), and a bound-but-not-listening socket
+    // refuses every connection by construction.
+    let refusal_port = socket2::Socket::new(
+        socket2::Domain::IPV4,
+        socket2::Type::STREAM,
+        Some(socket2::Protocol::TCP),
+    )
+    .unwrap();
+    refusal_port
+        .bind(&socket2::SockAddr::from(
+            "127.0.0.1:0".parse::<std::net::SocketAddr>().unwrap(),
+        ))
+        .unwrap();
+    let mut config = identity_config();
+    config.downstream = Some(skippy_protocol::PeerConfig {
+        stage_id: "stage-2".to_string(),
+        stage_index: 2,
+        endpoint: refusal_port
+            .local_addr()
+            .unwrap()
+            .as_socket()
+            .unwrap()
+            .to_string(),
+    });
+    let expected = uuid::Uuid::new_v4();
+    let ids = OpenAiGenerationIds::new_with_trust(
+        OpenAiCacheHints::default(),
+        None,
+        false,
+        Some(*expected.as_bytes()),
+    );
+    let (telemetry, rx) = crate::telemetry::Telemetry::captured(
+        config.clone(),
+        crate::telemetry::TelemetryLevel::Summary,
+    );
+
+    let pool = crate::frontend::generation::PersistentStageLanePool {
+        config: config.clone(),
+        timeout_secs: 1,
+        telemetry,
+        lanes: std::sync::Mutex::new(Vec::new()),
+        prefill_transport: std::sync::Mutex::new(
+            crate::frontend::generation::PrefillTransportEstimate::default(),
+        ),
+        next_lane_id: std::sync::atomic::AtomicU64::new(0),
+        capacity: 1,
+    };
+
+    let result = pool.checkout(&ids);
+
+    // PersistentStageLane has no Debug impl; extract the error without
+    // widening production traits for this test.
+    let error = match result {
+        Ok(lane) => panic!(
+            "checkout must fail against the refused endpoint, got lane {}",
+            lane.id
+        ),
+        Err(error) => error,
+    };
+    assert!(
+        error.to_string().to_lowercase().contains("connect")
+            || error.to_string().to_lowercase().contains("refused")
+            || error.to_string().to_lowercase().contains("handshake")
+            || error.to_string().to_lowercase().contains("downstream"),
+        "checkout surfaces an OpenAI backend error: {error}"
+    );
+
+    let event = rx
+        .try_recv()
+        .expect("exactly one connect event on checkout failure");
+    assert_eq!(event.event, "stage.binary_downstream_connect_error");
+    assert_eq!(
+        event.attributes["skippy.request_id"],
+        json!(ids.request_id_string())
+    );
+    assert_eq!(
+        event.attributes["skippy.session_id"],
+        json!(ids.session_id_string())
+    );
+    let parsed = uuid::Uuid::parse_str(
+        event.attributes["openai.frontend_request_id"]
+            .as_str()
+            .unwrap(),
+    )
+    .expect("frontend uuid present on the connect failure event");
+    assert_eq!(parsed, expected);
+    assert_eq!(event.attributes["skippy.run_id"], json!("run"));
+    assert_eq!(event.attributes["skippy.topology_id"], json!("topology"));
+    assert_eq!(
+        event.attributes["llama_stage.downstream_stage_id"],
+        json!("stage-2")
+    );
+    assert_eq!(
+        event.attributes["llama_stage.downstream_stage_index"],
+        json!(2)
+    );
+    assert_eq!(
+        event.attributes["llama_stage.downstream_endpoint"],
+        json!(config.downstream.as_ref().unwrap().endpoint.as_str())
+    );
+    assert!(
+        !event.attributes["llama_stage.error"]
+            .as_str()
+            .unwrap()
+            .is_empty()
+    );
+    assert!(rx.try_recv().is_err(), "no additional events on failure");
+}

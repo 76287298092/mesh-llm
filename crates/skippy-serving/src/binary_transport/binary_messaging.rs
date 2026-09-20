@@ -12,10 +12,12 @@ use std::{
 };
 
 use super::stage_execution::{
-    consume_optional_client_ready_hello, prepare_binary_stage_connection, take_ready_downstream,
-    warm_downstream_preconnect_enabled,
+    binary_message_attrs, binary_message_session_id, consume_optional_client_ready_hello,
+    prepare_binary_stage_connection, take_ready_downstream, warm_downstream_preconnect_enabled,
 };
+use super::wire::write_stage_message_conditioned;
 use super::{
+    WireCondition,
     direct_return::{PredictionReturnHub, PredictionReturnSinks},
     options::BinaryStageOptions,
     preconnect::DownstreamPreconnector,
@@ -32,7 +34,11 @@ use crate::{
 use anyhow::{Context, Result, anyhow, bail};
 use serde_json::json;
 use skippy_config::validate_config;
-use skippy_protocol::binary::{WireMessageKind, read_stage_message_for_codec_policy, send_ready};
+use skippy_protocol::PeerConfig;
+use skippy_protocol::StageConfig;
+use skippy_protocol::binary::{
+    StageWireMessage, WireMessageKind, read_stage_message_for_codec_policy, send_ready,
+};
 use skippy_runtime::ActivationBoundaryDesc;
 
 pub(in crate::binary_transport) mod async_forwarder;
@@ -56,6 +62,121 @@ const WORKER_SHUTDOWN_POLL: Duration = Duration::from_millis(100);
 
 /// Darwin `recv`/`peek` error for an expired `SO_RCVTIMEO` (os error 22).
 const EINVAL: i32 = 22;
+
+/// Per-request downstream activation-forward write failure, emitted at both
+/// forward sites (the sync write in `connection` and the async writer thread
+/// in `async_forwarder`). Normal telemetry level (visible at `Summary` and
+/// above) and timed to the write window, carrying the request/session
+/// identity of the frame that failed plus the intended downstream identity.
+pub(crate) const STAGE_BINARY_DOWNSTREAM_FORWARD_ERROR: &str =
+    "stage.binary_downstream_forward_error";
+
+/// Downstream acquisition failure between reading the first upstream message
+/// and the first forward. The first message's request/session identity is
+/// real (the connection-level session id is not assigned yet, so the wire
+/// session wins when present); the configured downstream identity is the
+/// *intended* target the connection was trying to acquire, emitted exactly
+/// when that acquisition failed.
+pub(crate) const STAGE_BINARY_DOWNSTREAM_CONNECT_ERROR: &str =
+    "stage.binary_downstream_connect_error";
+
+/// Attributes for [`STAGE_BINARY_DOWNSTREAM_FORWARD_ERROR`]: the caller's
+/// identity map (request/session, lifecycle) plus the intended downstream
+/// identity and the formatted error chain.
+pub(crate) fn downstream_forward_error_attrs(
+    mut identity: BTreeMap<String, serde_json::Value>,
+    downstream: Option<&PeerConfig>,
+    error: &str,
+) -> BTreeMap<String, serde_json::Value> {
+    if let Some(downstream) = downstream {
+        insert_downstream_identity(&mut identity, downstream);
+    }
+    identity.insert("llama_stage.error".to_string(), json!(error));
+    identity
+}
+
+/// Attributes for [`STAGE_BINARY_DOWNSTREAM_CONNECT_ERROR`]: the first
+/// message's request/session identity plus the intended downstream identity
+/// and the formatted error chain. Fallback wire identities (session `0`,
+/// request `prompt-<seq>`) are *uncorrelated*: the harness must not promote
+/// them to an exact request/UUID join.
+pub(crate) fn downstream_connect_error_attrs(
+    config: &StageConfig,
+    first_message: &StageWireMessage,
+    error: &str,
+) -> BTreeMap<String, serde_json::Value> {
+    let session_id = binary_message_session_id(0, first_message);
+    let mut attrs = binary_message_attrs(config, session_id, first_message);
+    if let Some(downstream) = &config.downstream {
+        insert_downstream_identity(&mut attrs, downstream);
+    }
+    attrs.insert("llama_stage.error".to_string(), json!(error));
+    attrs
+}
+
+/// Production downstream-acquisition boundary: run `acquire` and, on failure,
+/// emit [`STAGE_BINARY_DOWNSTREAM_CONNECT_ERROR`] exactly once with the first
+/// message's identity before propagating the error unchanged. The event
+/// proves acquisition failed — including shutdown/cancellation of the
+/// acquisition — not necessarily a remote refusal.
+pub(crate) fn acquire_downstream_or_emit_connect_error(
+    config: &StageConfig,
+    first_message: &StageWireMessage,
+    telemetry: &Telemetry,
+    acquire: impl FnOnce() -> Result<Option<TcpStream>>,
+) -> Result<Option<TcpStream>> {
+    acquire().map_err(|error| {
+        telemetry.emit(
+            STAGE_BINARY_DOWNSTREAM_CONNECT_ERROR,
+            downstream_connect_error_attrs(config, first_message, &format!("{error:#}")),
+        );
+        error
+    })
+}
+
+/// Production sync-forward boundary: write the forwarded frame downstream
+/// and, on failure, emit [`STAGE_BINARY_DOWNSTREAM_FORWARD_ERROR`] with the
+/// identity of the frame in flight, timed to the write window, before
+/// propagating the error. Success emits nothing here — the caller owns the
+/// success-path write span.
+pub(crate) fn write_forwarded_stage_or_emit_forward_error(
+    downstream: &mut TcpStream,
+    message: &StageWireMessage,
+    condition: WireCondition,
+    identity: BTreeMap<String, serde_json::Value>,
+    downstream_config: Option<&PeerConfig>,
+    telemetry: &Telemetry,
+    write_start_unix_nanos: u64,
+) -> Result<()> {
+    if let Err(error) = write_stage_message_conditioned(downstream, message, condition) {
+        telemetry.emit_span(
+            STAGE_BINARY_DOWNSTREAM_FORWARD_ERROR,
+            downstream_forward_error_attrs(identity, downstream_config, &format!("{error:#}")),
+            write_start_unix_nanos,
+            crate::telemetry::now_unix_nanos() as u64,
+        );
+        return Err(anyhow::Error::new(error).context("forward activation frame downstream"));
+    }
+    Ok(())
+}
+
+pub(crate) fn insert_downstream_identity(
+    attrs: &mut BTreeMap<String, serde_json::Value>,
+    downstream: &PeerConfig,
+) {
+    attrs.insert(
+        "llama_stage.downstream_stage_id".to_string(),
+        json!(downstream.stage_id),
+    );
+    attrs.insert(
+        "llama_stage.downstream_stage_index".to_string(),
+        json!(downstream.stage_index),
+    );
+    attrs.insert(
+        "llama_stage.downstream_endpoint".to_string(),
+        json!(downstream.endpoint),
+    );
+}
 
 #[derive(Default)]
 struct ConnectionWorkerControl {
@@ -578,11 +699,25 @@ fn run_binary_stage(
                         }
                         return prediction_return_sinks.insert_opened_sink(first_message, upstream);
                     }
-                    let downstream = take_ready_downstream(
+                    // Dedicated connect-failure event at the fallible
+                    // boundary (see acquire_downstream_or_emit_connect_error):
+                    // the first message's request/session ids are real, the
+                    // configured downstream is the intended target. The outer
+                    // connection error below stays generic — it also catches
+                    // upstream/protocol/processing failures, so downstream
+                    // fields there would imply causality this event does not.
+                    let downstream = acquire_downstream_or_emit_connect_error(
                         &config,
-                        &warm_downstream,
-                        downstream_connect_timeout_secs,
-                        &worker_shutdown,
+                        &first_message,
+                        &telemetry,
+                        || {
+                            take_ready_downstream(
+                                &config,
+                                &warm_downstream,
+                                downstream_connect_timeout_secs,
+                                &worker_shutdown,
+                            )
+                        },
                     )?;
                     if let Some(stream) = downstream.as_ref() {
                         task_control
@@ -988,5 +1123,302 @@ mod shutdown_tests {
         assert_eq!(workers.0.len(), 1, "a running worker must not be reaped");
         stop_tx.send(()).unwrap();
         workers.shutdown().unwrap();
+    }
+}
+
+#[cfg(test)]
+mod downstream_error_telemetry_tests {
+    use super::super::stage_execution::prefix_cache_test_config;
+    use super::*;
+    use crate::telemetry::{Telemetry, TelemetryLevel};
+    use skippy_protocol::binary::{StageStateHeader, WireMessageKind};
+
+    fn first_message() -> StageWireMessage {
+        StageWireMessage {
+            kind: WireMessageKind::VerifyWindow,
+            pos_start: 0,
+            token_count: 0,
+            state: StageStateHeader::new(WireMessageKind::VerifyWindow),
+            request_id: 77,
+            session_id: 9,
+            sampling: None,
+            chat_sampling_metadata: None,
+            tokens: Vec::new(),
+            positions: Vec::new(),
+            activation: Vec::new(),
+            raw_bytes: Vec::new(),
+        }
+    }
+
+    fn downstream_peer() -> PeerConfig {
+        PeerConfig {
+            stage_id: "stage-2".to_string(),
+            stage_index: 2,
+            endpoint: "10.0.0.3:50052".to_string(),
+        }
+    }
+
+    fn config_with_downstream() -> StageConfig {
+        let mut config = prefix_cache_test_config();
+        config.downstream = Some(downstream_peer());
+        config
+    }
+
+    /// The connect-failure event's identity comes from the real first message
+    /// (request/session/epoch), carries the intended downstream identity and
+    /// the topology/run lifecycle, and reports the error chain.
+    #[test]
+    fn connect_error_attrs_carry_first_message_identity_and_intended_downstream() {
+        let config = config_with_downstream();
+
+        let attrs = downstream_connect_error_attrs(&config, &first_message(), "connect refused");
+
+        assert_eq!(attrs["skippy.request_id"], json!("77"));
+        assert_eq!(attrs["skippy.session_id"], json!("9"));
+        assert_eq!(attrs["llama_stage.downstream_stage_id"], json!("stage-2"));
+        assert_eq!(attrs["llama_stage.downstream_stage_index"], json!(2));
+        assert_eq!(
+            attrs["llama_stage.downstream_endpoint"],
+            json!("10.0.0.3:50052")
+        );
+        assert_eq!(attrs["llama_stage.error"], json!("connect refused"));
+        assert_eq!(attrs["skippy.run_id"], json!("run"));
+        assert_eq!(attrs["skippy.topology_id"], json!("topology"));
+        assert_eq!(attrs["skippy.stage_id"], json!("stage-0"));
+    }
+
+    /// Without a configured downstream there is no downstream identity to
+    /// report: the keys must stay absent rather than carry placeholder values.
+    #[test]
+    fn connect_error_attrs_omit_downstream_identity_without_a_downstream() {
+        // The shared fixture may carry a downstream; clear it explicitly so
+        // this test pins the no-downstream attribute contract.
+        let mut config = prefix_cache_test_config();
+        config.downstream = None;
+
+        let attrs = downstream_connect_error_attrs(&config, &first_message(), "connect refused");
+
+        assert!(!attrs.contains_key("llama_stage.downstream_stage_id"));
+        assert!(!attrs.contains_key("llama_stage.downstream_stage_index"));
+        assert!(!attrs.contains_key("llama_stage.downstream_endpoint"));
+        assert_eq!(attrs["skippy.request_id"], json!("77"));
+        assert_eq!(attrs["llama_stage.error"], json!("connect refused"));
+    }
+
+    /// Fallback wire identities (missing request/session on the wire) must
+    /// stay uncorrelated placeholders: a harness must not be able to mistake
+    /// them for an exact request join.
+    #[test]
+    fn fallback_wire_ids_stay_uncorrelated_placeholders() {
+        let config = config_with_downstream();
+        let mut frame = first_message();
+        frame.request_id = 0;
+        frame.session_id = 0;
+
+        let attrs = downstream_connect_error_attrs(&config, &frame, "connect refused");
+
+        assert_eq!(attrs["skippy.session_id"], json!("0"));
+        let request = attrs["skippy.request_id"].as_str().unwrap().to_string();
+        assert!(
+            request.starts_with("prompt-"),
+            "fallback request id must keep its prompt-* shape: {request}"
+        );
+        assert!(
+            request.parse::<u64>().is_err(),
+            "fallback request id must not look like an exact numeric request id: {request}"
+        );
+    }
+
+    /// The production acquisition boundary emits exactly one connect event on
+    /// failure, with the first message's identity, and propagates the error
+    /// unchanged.
+    #[test]
+    fn connect_boundary_emits_once_on_acquisition_failure_and_propagates() {
+        let config = config_with_downstream();
+        let frame = first_message();
+        let (telemetry, rx) =
+            Telemetry::captured(prefix_cache_test_config(), TelemetryLevel::Summary);
+
+        let result = acquire_downstream_or_emit_connect_error(&config, &frame, &telemetry, || {
+            Err(anyhow!("downstream connect refused"))
+        });
+
+        let error = result.unwrap_err();
+        assert!(error.to_string().contains("downstream connect refused"));
+
+        let event = rx
+            .try_recv()
+            .expect("exactly one connect event on acquisition failure");
+        assert_eq!(event.event, "stage.binary_downstream_connect_error");
+        assert_eq!(event.attributes["skippy.request_id"], json!("77"));
+        assert_eq!(event.attributes["skippy.session_id"], json!("9"));
+        assert_eq!(
+            event.attributes["llama_stage.downstream_stage_id"],
+            json!("stage-2")
+        );
+        assert_eq!(
+            event.attributes["llama_stage.error"],
+            json!("downstream connect refused")
+        );
+        assert!(rx.try_recv().is_err(), "no additional events on failure");
+    }
+
+    /// Success through the same boundary emits nothing and returns the
+    /// acquisition result unchanged.
+    #[test]
+    fn connect_boundary_emits_nothing_on_acquisition_success() {
+        let config = config_with_downstream();
+        let frame = first_message();
+        let (telemetry, rx) =
+            Telemetry::captured(prefix_cache_test_config(), TelemetryLevel::Summary);
+
+        let result =
+            acquire_downstream_or_emit_connect_error(&config, &frame, &telemetry, || Ok(None));
+
+        assert!(result.unwrap().is_none());
+        assert!(rx.try_recv().is_err(), "success must not emit");
+    }
+
+    /// The production sync-forward boundary emits the failure event with the
+    /// frame's identity when the write fails against a reset peer.
+    #[test]
+    fn sync_forward_boundary_emits_error_event_on_write_failure() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let mut client = TcpStream::connect(address).unwrap();
+        let (server, _) = listener.accept().unwrap();
+        socket2::SockRef::from(&server)
+            .set_linger(Some(Duration::from_secs(0)))
+            .unwrap();
+        drop(server);
+        use std::io::Write as _;
+        let mut reset_observed = false;
+        for _ in 0..200 {
+            if client.write_all(&[0]).is_err() {
+                reset_observed = true;
+                break;
+            }
+            thread::sleep(Duration::from_millis(5));
+        }
+        assert!(reset_observed, "precondition: peer reset must be observed");
+
+        let config = config_with_downstream();
+        let frame = first_message();
+        let identity = binary_message_attrs(&config, binary_message_session_id(0, &frame), &frame);
+        let (telemetry, rx) =
+            Telemetry::captured(prefix_cache_test_config(), TelemetryLevel::Summary);
+
+        let result = write_forwarded_stage_or_emit_forward_error(
+            &mut client,
+            &frame,
+            WireCondition::new(0.0, None).unwrap(),
+            identity,
+            Some(&downstream_peer()),
+            &telemetry,
+            crate::telemetry::now_unix_nanos() as u64,
+        );
+
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("forward activation frame downstream")
+        );
+
+        let event = rx
+            .try_recv()
+            .expect("exactly one forward error event on write failure");
+        assert_eq!(event.event, "stage.binary_downstream_forward_error");
+        assert_eq!(event.attributes["skippy.request_id"], json!("77"));
+        assert_eq!(event.attributes["skippy.session_id"], json!("9"));
+        assert_eq!(
+            event.attributes["llama_stage.downstream_stage_id"],
+            json!("stage-2")
+        );
+        assert!(
+            !event.attributes["llama_stage.error"]
+                .as_str()
+                .unwrap()
+                .is_empty(),
+            "the error attribute carries the raw write failure chain; the \
+             propagated error adds the boundary context"
+        );
+        assert!(rx.try_recv().is_err(), "no additional events on failure");
+    }
+
+    /// Success through the same boundary emits nothing and delivers the frame
+    /// to the peer.
+    #[test]
+    fn sync_forward_boundary_emits_nothing_on_success() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let mut client = TcpStream::connect(address).unwrap();
+        let (mut server, _) = listener.accept().unwrap();
+
+        let config = config_with_downstream();
+        let frame = first_message();
+        let identity = binary_message_attrs(&config, binary_message_session_id(0, &frame), &frame);
+        let (telemetry, rx) =
+            Telemetry::captured(prefix_cache_test_config(), TelemetryLevel::Summary);
+
+        let result = write_forwarded_stage_or_emit_forward_error(
+            &mut client,
+            &frame,
+            WireCondition::new(0.0, None).unwrap(),
+            identity,
+            Some(&downstream_peer()),
+            &telemetry,
+            crate::telemetry::now_unix_nanos() as u64,
+        );
+
+        assert!(result.is_ok());
+        let delivered = skippy_protocol::binary::read_stage_message(&mut server, 4).unwrap();
+        assert_eq!(delivered.kind, WireMessageKind::VerifyWindow);
+        assert!(rx.try_recv().is_err(), "success must not emit");
+    }
+
+    /// The shared forward-failure attr builder preserves the caller's
+    /// identity map verbatim and adds the intended downstream plus error.
+    #[test]
+    fn forward_error_attrs_extend_the_caller_identity_map() {
+        let config = config_with_downstream();
+        let frame = first_message();
+        let identity = binary_message_attrs(&config, binary_message_session_id(0, &frame), &frame);
+
+        let attrs =
+            downstream_forward_error_attrs(identity, Some(&downstream_peer()), "write reset");
+
+        assert_eq!(attrs["skippy.request_id"], json!("77"));
+        assert_eq!(attrs["skippy.session_id"], json!("9"));
+        assert_eq!(attrs["llama_stage.downstream_stage_id"], json!("stage-2"));
+        assert_eq!(
+            attrs["llama_stage.downstream_endpoint"],
+            json!("10.0.0.3:50052")
+        );
+        assert_eq!(attrs["llama_stage.error"], json!("write reset"));
+        assert!(attrs.contains_key("skippy.kv_layer_count"));
+    }
+
+    /// Emission at normal level: the connect event is observable at
+    /// `Summary` telemetry and lands exactly once with its attributes.
+    #[test]
+    fn connect_error_event_emits_once_at_summary_level() {
+        let config = config_with_downstream();
+        let (telemetry, rx) =
+            Telemetry::captured(prefix_cache_test_config(), TelemetryLevel::Summary);
+
+        telemetry.emit(
+            STAGE_BINARY_DOWNSTREAM_CONNECT_ERROR,
+            downstream_connect_error_attrs(&config, &first_message(), "connect refused"),
+        );
+
+        let event = rx.try_recv().expect("connect event captured");
+        assert_eq!(event.event, "stage.binary_downstream_connect_error");
+        assert_eq!(
+            event.attributes["llama_stage.downstream_stage_id"],
+            json!("stage-2")
+        );
+        assert!(rx.try_recv().is_err());
     }
 }

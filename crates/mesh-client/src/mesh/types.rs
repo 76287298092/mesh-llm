@@ -4,18 +4,9 @@ pub use mesh_llm_types::mesh::{
     ServedModelIdentity, infer_available_model_descriptors, infer_local_served_model_descriptor,
     infer_served_model_descriptors, merge_demand,
 };
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
-pub enum NodeRole {
-    #[default]
-    Worker,
-    Host {
-        http_port: u16,
-    },
-    Client,
-}
+pub use mesh_llm_membership::NodeRole;
 
 #[derive(Debug, Clone)]
 pub struct PeerInfo {

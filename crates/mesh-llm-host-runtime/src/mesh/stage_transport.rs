@@ -17,12 +17,9 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::sync::watch;
 
-#[derive(Debug, Clone, Copy)]
-pub(crate) struct SelectedPathObservation {
-    pub(crate) path_type: &'static str,
-    pub(crate) rtt_ms: Option<u32>,
-    pub(crate) observed_direct_remote_addr: Option<SocketAddr>,
-}
+pub use mesh_llm_membership::selected_path::{
+    SelectedPathObservation, SplitStagePathSnapshot, split_stage_path_snapshot_from_observation,
+};
 
 pub(crate) struct ConnectionCaptureEvent<'a> {
     pub(crate) event: &'a str,
@@ -58,70 +55,6 @@ pub(crate) struct HttpCaptureEvent<'a> {
     pub(crate) stream: Option<bool>,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum SplitStagePathKind {
-    Direct,
-    Relay,
-    Unknown,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct SplitStagePathSnapshot {
-    pub(crate) kind: SplitStagePathKind,
-    pub(crate) rtt_ms: Option<u32>,
-}
-
-impl SplitStagePathSnapshot {
-    pub(crate) const fn direct(rtt_ms: Option<u32>) -> Self {
-        Self {
-            kind: SplitStagePathKind::Direct,
-            rtt_ms,
-        }
-    }
-
-    pub(crate) const fn relay(rtt_ms: Option<u32>) -> Self {
-        Self {
-            kind: SplitStagePathKind::Relay,
-            rtt_ms,
-        }
-    }
-
-    pub(crate) const fn unknown() -> Self {
-        Self {
-            kind: SplitStagePathKind::Unknown,
-            rtt_ms: None,
-        }
-    }
-
-    pub(crate) const fn with_direct_rtt_fallback(self, fallback_rtt_ms: Option<u32>) -> Self {
-        match (self.kind, self.rtt_ms, fallback_rtt_ms) {
-            (SplitStagePathKind::Direct, None, Some(rtt_ms)) => Self::direct(Some(rtt_ms)),
-            _ => self,
-        }
-    }
-
-    pub(crate) fn with_peer_path_fallback(self, fallback: Option<SelectedPathObservation>) -> Self {
-        match (self.kind, fallback) {
-            (SplitStagePathKind::Direct, Some(observation)) => {
-                self.with_direct_rtt_fallback(observation.rtt_ms)
-            }
-            (SplitStagePathKind::Unknown, Some(observation)) => {
-                split_stage_path_snapshot_from_observation(observation)
-            }
-            _ => self,
-        }
-    }
-
-    /// Wire/doctor name for the path kind: "direct" | "relay" | "unknown".
-    pub(crate) fn kind_name(self) -> &'static str {
-        match self.kind {
-            SplitStagePathKind::Direct => "direct",
-            SplitStagePathKind::Relay => "relay",
-            SplitStagePathKind::Unknown => "unknown",
-        }
-    }
-}
-
 pub(crate) fn selected_path_observation(conn: &Connection) -> Option<SelectedPathObservation> {
     let path_list = conn.paths();
     for path_info in &path_list {
@@ -149,16 +82,6 @@ pub(crate) fn selected_path_observation(conn: &Connection) -> Option<SelectedPat
     }
 
     None
-}
-
-pub(crate) fn split_stage_path_snapshot_from_observation(
-    observation: SelectedPathObservation,
-) -> SplitStagePathSnapshot {
-    match observation.path_type {
-        "direct" => SplitStagePathSnapshot::direct(observation.rtt_ms),
-        "relay" => SplitStagePathSnapshot::relay(observation.rtt_ms),
-        _ => SplitStagePathSnapshot::unknown(),
-    }
 }
 
 pub(crate) fn split_stage_path_snapshot_from_connection(

@@ -567,7 +567,7 @@ async fn collect_actually_serving_models(
     }
     for peer in peers {
         if matches!(peer.role, crate::mesh::NodeRole::Host { .. }) {
-            extend_unique(&mut serving, peer.routable_models());
+            extend_unique(&mut serving, crate::mesh::routable_models(peer));
         }
     }
     serving

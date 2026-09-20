@@ -3679,6 +3679,7 @@ dependencies = [
  "httparse",
  "iroh",
  "mesh-llm-identity",
+ "mesh-llm-membership",
  "mesh-llm-protocol",
  "mesh-llm-routing",
  "mesh-llm-transport",
@@ -3846,6 +3847,7 @@ dependencies = [
  "mesh-llm-events",
  "mesh-llm-identity",
  "mesh-llm-log-store",
+ "mesh-llm-membership",
  "mesh-llm-node",
  "mesh-llm-plugin",
  "mesh-llm-plugin-manager",
@@ -3948,6 +3950,29 @@ dependencies = [
  "tempfile",
  "uuid",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "mesh-llm-membership"
+version = "0.76.1"
+dependencies = [
+ "anyhow",
+ "dirs",
+ "ed25519-dalek",
+ "hex",
+ "iroh",
+ "mesh-llm-identity",
+ "mesh-llm-protocol",
+ "mesh-llm-routing",
+ "mesh-llm-types",
+ "rand 0.10.2",
+ "semver",
+ "serde",
+ "serde_json",
+ "serial_test 4.0.1",
+ "sha2 0.11.0",
+ "tempfile",
+ "tracing",
 ]
 
 [[package]]
@@ -4117,6 +4142,7 @@ dependencies = [
  "mesh-llm-build-info",
  "mesh-llm-events",
  "mesh-llm-release-footer",
+ "mesh-llm-types",
  "reqwest",
  "semver",
  "serde",

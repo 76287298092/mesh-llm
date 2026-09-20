@@ -347,7 +347,10 @@ pub(super) async fn pick_model_assignment(
 
     if demand.is_empty() {
         // No API requests yet — log what the mesh is serving for visibility
-        let served: Vec<String> = peers.iter().flat_map(|p| p.routable_models()).collect();
+        let served: Vec<String> = peers
+            .iter()
+            .flat_map(crate::mesh::routable_models)
+            .collect();
         if !served.is_empty() {
             let _ = emit_event(OutputEvent::Info {
                 message: format!(
@@ -374,7 +377,7 @@ pub(super) async fn pick_model_assignment(
     let mut serving_count: std::collections::HashMap<String, usize> =
         std::collections::HashMap::new();
     for p in &peers {
-        for served_model in p.routable_models() {
+        for served_model in crate::mesh::routable_models(p) {
             *serving_count.entry(served_model).or_default() += 1;
         }
     }
@@ -612,7 +615,7 @@ pub(super) async fn check_unserved_model(
     let mut serving_count: std::collections::HashMap<String, usize> =
         std::collections::HashMap::new();
     for p in &peers {
-        for served_model in p.routable_models() {
+        for served_model in crate::mesh::routable_models(p) {
             *serving_count.entry(served_model).or_default() += 1;
         }
     }

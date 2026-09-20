@@ -107,7 +107,7 @@ async fn model_routing_hints(
             }
             _ => AvailabilityRank::Healthy,
         };
-        for model in peer.http_routable_models() {
+        for model in crate::mesh::http_routable_models(&peer) {
             if !workload_admission::model_supports_committee(&model, &peer.served_model_descriptors)
             {
                 continue;

@@ -9,15 +9,19 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+#[cfg(test)]
+use mesh_llm_membership::advertised_throughput::MAX_ADVERTISED_MODEL_NAME_BYTES;
+
+pub(crate) use mesh_llm_membership::advertised_throughput::{
+    MAX_ADVERTISED_MODEL_THROUGHPUT_HINTS, MAX_ADVERTISED_THROUGHPUT_SAMPLES,
+    MAX_ADVERTISED_TPS_MILLI, ModelThroughputHint, THROUGHPUT_SCALE_MILLI,
+    sanitize_model_throughput_hints,
+};
+
 const METRICS_TTL: Duration = Duration::from_secs(60 * 60);
 const MAX_TRACKED_MODELS: usize = 128;
 const MAX_TARGETS_PER_MODEL: usize = 16;
 const DEFAULT_MODEL_SHARDS: usize = 32;
-const THROUGHPUT_SCALE_MILLI: u64 = 1000;
-pub(crate) const MAX_ADVERTISED_MODEL_THROUGHPUT_HINTS: usize = 64;
-pub(crate) const MAX_ADVERTISED_MODEL_NAME_BYTES: usize = 256;
-pub(crate) const MAX_ADVERTISED_TPS_MILLI: u64 = 100_000 * THROUGHPUT_SCALE_MILLI;
-pub(crate) const MAX_ADVERTISED_THROUGHPUT_SAMPLES: u64 = 256;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum MetricLayer {
@@ -213,48 +217,6 @@ pub struct ModelRoutingMetricsSnapshot {
 pub(crate) struct RoutingCollectorSnapshot {
     pub status: RoutingMetricsStatusSnapshot,
     pub models: HashMap<String, ModelRoutingMetricsSnapshot>,
-}
-
-/// Soft peer-advertised model throughput hint.
-///
-/// Values are fixed-point milli tokens/second to keep gossip deterministic and
-/// avoid protobuf floating-point edge cases. They are advisory only; routing
-/// clamps and local observations take precedence.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-pub(crate) struct ModelThroughputHint {
-    pub(crate) model_name: String,
-    pub(crate) avg_tokens_per_second_milli: u64,
-    pub(crate) throughput_samples: u64,
-}
-
-pub(crate) fn sanitize_model_throughput_hints<I>(hints: I) -> Vec<ModelThroughputHint>
-where
-    I: IntoIterator<Item = ModelThroughputHint>,
-{
-    let mut seen = HashSet::new();
-    let mut sanitized = Vec::new();
-    for mut hint in hints {
-        hint.model_name = hint.model_name.trim().to_string();
-        if hint.model_name.is_empty()
-            || hint.model_name.len() > MAX_ADVERTISED_MODEL_NAME_BYTES
-            || hint.avg_tokens_per_second_milli == 0
-            || hint.throughput_samples == 0
-            || !seen.insert(hint.model_name.clone())
-        {
-            continue;
-        }
-        hint.avg_tokens_per_second_milli = hint
-            .avg_tokens_per_second_milli
-            .min(MAX_ADVERTISED_TPS_MILLI);
-        hint.throughput_samples = hint
-            .throughput_samples
-            .min(MAX_ADVERTISED_THROUGHPUT_SAMPLES);
-        sanitized.push(hint);
-        if sanitized.len() >= MAX_ADVERTISED_MODEL_THROUGHPUT_HINTS {
-            break;
-        }
-    }
-    sanitized
 }
 
 /// Local-only per-target routing outcome memory exposed on `/api/models`.

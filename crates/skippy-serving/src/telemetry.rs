@@ -71,6 +71,22 @@ pub struct Telemetry {
     stats: Arc<TelemetryCounters>,
     config: Arc<StageConfig>,
     level: TelemetryLevel,
+    /// Test-only in-process capture channel; `None` in production. Sibling
+    /// tests receive events here instead of the private stderr sink, so
+    /// `StderrTelemetryEvent` and its fields stay module-private.
+    #[cfg(test)]
+    capture: Option<std_mpsc::SyncSender<CapturedEvent>>,
+}
+
+/// Test-only emission shape handed to sibling-module tests. Mirrors
+/// `StderrTelemetryEvent` without exposing the production struct or its
+/// fields beyond this module.
+#[cfg(test)]
+pub(crate) struct CapturedEvent {
+    pub event: String,
+    pub attributes: BTreeMap<String, Value>,
+    pub start_time_unix_nanos: u64,
+    pub end_time_unix_nanos: u64,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -206,6 +222,8 @@ impl Telemetry {
             stats,
             config,
             level,
+            #[cfg(test)]
+            capture: None,
         }
     }
 
@@ -262,6 +280,18 @@ impl Telemetry {
         start_time_unix_nanos: u64,
         end_time_unix_nanos: u64,
     ) {
+        // Test-only capture takes precedence so sibling tests observe exact
+        // emissions without a collector or the env-gated stderr sink.
+        #[cfg(test)]
+        if let Some(capture) = self.capture.as_ref() {
+            let _ = capture.try_send(CapturedEvent {
+                event: name.to_string(),
+                attributes,
+                start_time_unix_nanos,
+                end_time_unix_nanos,
+            });
+            return;
+        }
         if let (Some(stderr), None) = (self.stderr.as_ref(), self.tx.as_ref()) {
             if !stderr.try_send(StderrTelemetryEvent {
                 event: name.to_string(),
@@ -336,6 +366,89 @@ impl Telemetry {
             dropped: self.stats.dropped.load(Ordering::Relaxed),
             export_errors: self.stats.export_errors.load(Ordering::Relaxed),
         }
+    }
+}
+
+#[cfg(test)]
+impl Telemetry {
+    /// Test-only: wire a `Telemetry` to an in-process capture receiver.
+    ///
+    /// Bypasses both the collector channel and the env-gated stderr sink so
+    /// tests can assert exact emissions and level gating deterministically,
+    /// without subprocess or stderr capture. The returned receiver yields
+    /// [`CapturedEvent`]s in emission order; drain it with `try_recv`.
+    pub(crate) fn captured(
+        config: StageConfig,
+        level: TelemetryLevel,
+    ) -> (Self, std_mpsc::Receiver<CapturedEvent>) {
+        let (tx, rx) = std_mpsc::sync_channel(256);
+        (
+            Self {
+                tx: None,
+                stderr: None,
+                stats: Arc::new(TelemetryCounters::default()),
+                config: Arc::new(config),
+                level,
+                #[cfg(test)]
+                capture: Some(tx),
+            },
+            rx,
+        )
+    }
+}
+
+#[cfg(test)]
+mod capture_tests {
+    use super::{BTreeMap, StageConfig, Telemetry, TelemetryLevel};
+    use serde_json::json;
+
+    fn capture_config() -> StageConfig {
+        serde_json::from_value(json!({
+            "run_id": "run",
+            "topology_id": "topology",
+            "model_id": "org/model:Q4_K_M",
+            "stage_id": "stage-0",
+            "stage_index": 0,
+            "layer_start": 0,
+            "layer_end": 4,
+            "load_mode": "runtime-slice",
+            "bind_addr": "127.0.0.1:0",
+        }))
+        .expect("minimal stage config for telemetry capture")
+    }
+
+    #[test]
+    fn captured_sink_reports_normal_events_with_common_attributes_at_summary_level() {
+        let (telemetry, rx) = Telemetry::captured(capture_config(), TelemetryLevel::Summary);
+        telemetry.emit("stage.test_normal", BTreeMap::new());
+        telemetry.emit_debug("stage.test_debug", BTreeMap::new());
+
+        let event = rx.try_recv().expect("normal-level event captured");
+        assert_eq!(event.event, "stage.test_normal");
+        assert_eq!(event.attributes["skippy.run_id"], json!("run"));
+        assert_eq!(event.attributes["skippy.stage_id"], json!("stage-0"));
+        assert!(rx.try_recv().is_err(), "debug-level event must not fire");
+    }
+
+    #[test]
+    fn captured_sink_reports_debug_spans_only_at_debug_level() {
+        let (telemetry, rx) = Telemetry::captured(capture_config(), TelemetryLevel::Debug);
+        telemetry.emit_debug_span("stage.test_span", BTreeMap::new(), 1, 2);
+
+        let event = rx.try_recv().expect("debug span captured at debug level");
+        assert_eq!(event.event, "stage.test_span");
+        assert_eq!(event.start_time_unix_nanos, 1);
+        assert_eq!(event.end_time_unix_nanos, 2);
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn captured_sink_emits_nothing_at_off_level() {
+        let (telemetry, rx) = Telemetry::captured(capture_config(), TelemetryLevel::Off);
+        telemetry.emit("stage.test_normal", BTreeMap::new());
+        telemetry.emit_debug("stage.test_debug", BTreeMap::new());
+
+        assert!(rx.try_recv().is_err(), "off level must suppress everything");
     }
 }
 

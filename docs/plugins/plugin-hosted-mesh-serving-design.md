@@ -45,7 +45,7 @@ present on current `main`:
 ### 1. Host-role eligibility
 
 Other peers only consider a node as a candidate host for model X if
-`PeerInfo::routes_http_model` returns true, which requires
+`routes_http_model(peer, model)` returns true, which requires
 `accepts_http_inference()` — `matches!(self.role, NodeRole::Host { .. })`
 (`mesh/peer_state.rs`).
 

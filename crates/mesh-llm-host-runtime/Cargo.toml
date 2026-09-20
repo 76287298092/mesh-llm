@@ -38,6 +38,7 @@ mesh-llm-config = { path = "../mesh-llm-config", version = "0.76.1"  }
 mesh-llm-runtime-event-contracts = { path = "../mesh-llm-runtime-event-contracts", version = "0.76.1" }
 mesh-llm-events = { path = "../mesh-llm-events", version = "0.76.1"  }
 mesh-llm-log-store = { path = "../mesh-llm-log-store", version = "0.76.1"  }
+mesh-llm-membership = { path = "../mesh-llm-membership", version = "0.76.1", features = ["host-io"] }
 mesh-llm-plugin = { path = "../mesh-llm-plugin", version = "0.76.1"  }
 mesh-llm-plugin-manager = { path = "../mesh-llm-plugin-manager", version = "0.76.1"  }
 mesh-llm-identity = { path = "../mesh-llm-identity", version = "0.76.1", features = ["host-io"]  }
@@ -126,6 +127,11 @@ serial_test = "4"
 skippy-serving = { path = "../skippy-serving", version = "0.76.1", features = ["test-support"] }
 opentelemetry_sdk = { version = "0.32.1", default-features = false, features = ["metrics", "testing"] }
 mesh-client = { package = "mesh-llm-client", path = "../mesh-client", version = "0.76.1"  }
+# Enables the membership crate's `test-support` home override during the host's
+# own test build, so cross-crate callers (where the membership crate's
+# `cfg(test)` is false) still honor `MESH_LLM_TEST_HOME`. Not in
+# `[dependencies]`: a library consumer must never get the env-var override.
+mesh-llm-membership = { path = "../mesh-llm-membership", version = "0.76.1", features = ["test-support"] }
 # Used by the gated-relay regression test to spawn an in-process iroh-relay
 # with AccessConfig::Restricted, then build a real iroh::Endpoint from our
 # relay_map_from_urls output and verify --relay-auth tokens reach the relay

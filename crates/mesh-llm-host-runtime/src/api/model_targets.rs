@@ -221,7 +221,7 @@ fn collect_serving_counts(
         record_serving_model(model_name, index, &mut serving_count_by_ref);
     }
     for peer in peers {
-        for model_name in peer.http_routable_models() {
+        for model_name in crate::mesh::http_routable_models(peer) {
             record_serving_model(&model_name, index, &mut serving_count_by_ref);
         }
     }

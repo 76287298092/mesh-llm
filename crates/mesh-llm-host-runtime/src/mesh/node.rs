@@ -1410,7 +1410,7 @@ impl Node {
             .await
             .peers
             .get(&peer_id)
-            .and_then(|peer| peer.advertised_context_length(model_name))
+            .and_then(|peer| advertised_context_length(peer, model_name))
     }
 
     pub(crate) async fn peer_model_throughput_hint(

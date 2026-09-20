@@ -6,7 +6,7 @@ use mesh_llm_routing::cache_inventory::{
     CacheAffinityAdvertisement, CacheInventory, rotating_salt,
 };
 
-pub(super) fn advertised_state_changed(
+pub fn advertised_state_changed(
     old: &Option<CacheAffinityAdvertisement>,
     new: &Option<CacheAffinityAdvertisement>,
 ) -> bool {
@@ -17,7 +17,7 @@ pub(super) fn advertised_state_changed(
     }
 }
 
-pub(super) fn merge_advertisement(
+pub fn merge_advertisement(
     existing: &mut Option<CacheAffinityAdvertisement>,
     incoming: Option<&CacheAffinityAdvertisement>,
     clear_on_absence: bool,
@@ -32,7 +32,7 @@ pub(super) fn merge_advertisement(
     }
 }
 
-pub(super) fn local_advertisement(
+pub fn local_advertisement(
     inventory: &Mutex<CacheInventory>,
     endpoint_id: &[u8],
     now_unix_ms: u64,

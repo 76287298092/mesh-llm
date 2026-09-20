@@ -1178,8 +1178,7 @@ fn derive_peer_state(peer: &mesh::PeerInfo) -> NodeState {
                 || has_nonempty_models(&peer.hosted_models);
             let has_legacy_serving_signal = has_nonempty_models(&peer.hosted_models)
                 || has_nonempty_models(&peer.serving_models)
-                || peer
-                    .routable_models()
+                || crate::mesh::routable_models(peer)
                     .iter()
                     .any(|model| !model.trim().is_empty());
 
@@ -1419,7 +1418,7 @@ fn http_route_stats(
     }
 
     for peer in peers {
-        if !peer.routes_http_model(model_name) {
+        if !crate::mesh::routes_http_model(peer, model_name) {
             continue;
         }
         node_count += 1;

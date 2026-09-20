@@ -151,16 +151,6 @@ fn mesh_requirements_rejects_local_policy_mutation_on_existing_mesh() {
 }
 
 #[test]
-fn mesh_requirements_direct_proof_rejects_stale_timestamp() {
-    mesh::requirements::tests::assert_mesh_requirements_direct_proof_rejects_stale_timestamp();
-}
-
-#[test]
-fn mesh_requirements_direct_proof_rejects_sender_id_mismatch() {
-    mesh::requirements::tests::assert_mesh_requirements_direct_proof_rejects_sender_id_mismatch();
-}
-
-#[test]
 fn mesh_requirements_status_excludes_rejected_peers_from_admitted_list() {
     api::tests::assert_mesh_requirements_status_excludes_rejected_peers_from_admitted_list();
 }

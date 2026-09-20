@@ -174,7 +174,12 @@ fn handle_binary_connection_messages(
         downstream
             .as_ref()
             .map(|downstream| {
-                AsyncForwarder::new(downstream, telemetry.clone(), max_inflight.max(1))
+                AsyncForwarder::new(
+                    downstream,
+                    config.downstream.clone(),
+                    telemetry.clone(),
+                    max_inflight.max(1),
+                )
             })
             .transpose()
             .context("create async activation forwarder")?
@@ -862,9 +867,13 @@ fn handle_binary_connection_messages(
                 forwarded_stage_message_timed(config, &message, &output, output_activation_width)?;
             forward_activation_encode_ms += forwarded.activation_encode_ms;
             forward_activation_bytes = forwarded.message.activation.len();
-            let mut downstream_write_attrs = BTreeMap::new();
+            // Identity attrs are built unconditionally: the async writer's
+            // failure event (`stage.binary_downstream_forward_error`) fires at
+            // normal telemetry level and must carry request/session identity
+            // even when the debug spans are suppressed. The heavier byte/timing
+            // annotations stay debug-only.
+            let mut downstream_write_attrs = binary_message_attrs(config, session_id, &message);
             if telemetry.is_debug_enabled() {
-                downstream_write_attrs = binary_message_attrs(config, session_id, &message);
                 downstream_write_attrs.insert(
                     "llama_stage.forward_activation_bytes".to_string(),
                     json!(forward_activation_bytes),
@@ -914,12 +923,18 @@ fn handle_binary_connection_messages(
                 }
                 let downstream_write_start_unix_nanos = now_unix_nanos() as u64;
                 let downstream_write_started = Instant::now();
-                write_stage_message_conditioned(
+                // Failure event + error propagation live in the shared
+                // boundary (write_forwarded_stage_or_emit_forward_error); the
+                // success-path write span below is unchanged.
+                super::write_forwarded_stage_or_emit_forward_error(
                     &mut *downstream,
                     &forwarded.message,
                     downstream_wire_condition,
-                )
-                .context("forward activation frame downstream")?;
+                    binary_message_attrs(config, session_id, &message),
+                    config.downstream.as_ref(),
+                    telemetry,
+                    downstream_write_start_unix_nanos,
+                )?;
                 let downstream_write_end_unix_nanos = now_unix_nanos() as u64;
                 if telemetry.is_debug_enabled() {
                     downstream_write_attrs.insert(

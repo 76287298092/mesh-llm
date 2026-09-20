@@ -1168,7 +1168,7 @@ pub(crate) fn assert_mesh_requirements_unrestricted_legacy_mesh_join_stays_compa
 
 pub(crate) fn assert_named_mesh_id_uses_documented_sha256_derivation() {
     let mesh_id =
-        crate::mesh::identity_persistence::generate_mesh_id(Some("alpha"), Some("nostr-pubkey"))
+        mesh_llm_membership::generate_mesh_id(Some("alpha"), Some("nostr-pubkey"))
             .expect("named mesh id should derive");
 
     assert_eq!(
@@ -1229,7 +1229,7 @@ pub(crate) fn assert_persisted_random_mesh_id_is_preserved() {
     std::fs::create_dir_all(&mesh_dir).expect("mesh dir");
     std::fs::write(mesh_dir.join("mesh-id"), persisted).expect("persist mesh id");
 
-    let mesh_id = crate::mesh::identity_persistence::generate_mesh_id(None, None)
+    let mesh_id = mesh_llm_membership::generate_mesh_id(None, None)
         .expect("persisted id should load");
 
     assert_eq!(mesh_id, persisted);

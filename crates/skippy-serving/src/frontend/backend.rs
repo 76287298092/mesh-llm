@@ -82,7 +82,9 @@ use skippy_runtime::{
     MediaInput, ModelWorkload, SamplingConfig, SpeechOutputFormat, SpeechSynthesisConfig,
     WorkloadInfo,
 };
+use skippy_protocol::StageConfig;
 use std::collections::BTreeMap;
+use std::io;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::atomic::AtomicBool;
@@ -777,6 +779,93 @@ fn insert_generation_admission_attrs(
     }
 }
 
+/// Shared OpenAI request-identity attribute set: lifecycle identity, the
+/// native numeric session/request ids, and the frontend request UUID when the
+/// generation entered through the OpenAI HTTP boundary.
+///
+/// Emitted by `stage.openai_request_summary` (success path, normal level) and
+/// by the debug-level `stage.openai_generation_admit` phase, which is the
+/// pre-failure event carrying this identity: on failed requests the success
+/// summary is absent, so a normal-level UUID join before failure does not
+/// exist without debug telemetry.
+fn openai_identity_attrs(
+    config: &StageConfig,
+    backend_label: &str,
+    ids: &OpenAiGenerationIds,
+) -> BTreeMap<String, Value> {
+    let mut attrs = lifecycle_attrs(config);
+    attrs.insert(
+        attr_key::SESSION_ID.to_string(),
+        json!(ids.session_id_string()),
+    );
+    attrs.insert(
+        attr_key::REQUEST_ID.to_string(),
+        json!(ids.request_id_string()),
+    );
+    attrs.insert(
+        "llama_stage.openai_backend".to_string(),
+        json!(backend_label),
+    );
+    if let Some(frid) = ids.frontend_request_id {
+        attrs.insert(
+            "openai.frontend_request_id".to_string(),
+            json!(uuid::Uuid::from_bytes(frid).to_string()),
+        );
+    }
+    if let Some(cache_key) = ids.cache.prompt_cache_key.as_deref() {
+        attrs.insert("openai.prompt_cache_key".to_string(), json!(cache_key));
+    }
+    if let Some(retention) = ids.cache.prompt_cache_retention.as_deref() {
+        attrs.insert(
+            "openai.prompt_cache_retention".to_string(),
+            json!(retention),
+        );
+    }
+    attrs
+}
+
+/// Embedded-route flavor of the downstream failure contract: the OpenAI
+/// request identity (native numeric ids + frontend UUID) instead of binary
+/// wire ids, plus the same intended-downstream identity and error chain.
+pub(super) fn openai_downstream_error_attrs(
+    config: &StageConfig,
+    ids: &OpenAiGenerationIds,
+    error: &str,
+) -> BTreeMap<String, Value> {
+    let mut attrs =
+        openai_identity_attrs(config, OpenAiBackendMode::EMBEDDED_STAGE_ZERO_LABEL, ids);
+    if let Some(downstream) = &config.downstream {
+        crate::binary_transport::binary_messaging::insert_downstream_identity(
+            &mut attrs, downstream,
+        );
+    }
+    attrs.insert("llama_stage.error".to_string(), json!(error));
+    attrs
+}
+
+/// Embedded sync-forward boundary: run `write`, and on failure emit
+/// `stage.binary_downstream_forward_error` exactly once with the OpenAI
+/// request identity and the intended downstream identity before propagating
+/// the original `io::Error` unchanged. Reply reads are NOT routed through
+/// this boundary — they are a separate failure class, never labeled as
+/// connect or forward errors.
+pub(super) fn write_downstream_or_emit_forward_error(
+    telemetry: &Telemetry,
+    config: &StageConfig,
+    ids: &OpenAiGenerationIds,
+    write_start_unix_nanos: u64,
+    write: impl FnOnce() -> io::Result<()>,
+) -> io::Result<()> {
+    write().inspect_err(|error| {
+        telemetry.emit_span(
+            crate::binary_transport::binary_messaging::STAGE_BINARY_DOWNSTREAM_FORWARD_ERROR,
+            openai_downstream_error_attrs(config, ids, &error.to_string()),
+            write_start_unix_nanos,
+            now_unix_nanos() as u64,
+        );
+    })
+}
+
 fn generation_ids(
     cache: OpenAiCacheHints,
     agent_session_id: Option<&str>,
@@ -1432,29 +1521,7 @@ impl StageOpenAiBackend {
     }
 
     pub(super) fn openai_attrs(&self, ids: &OpenAiGenerationIds) -> BTreeMap<String, Value> {
-        let mut attrs = lifecycle_attrs(&self.config);
-        attrs.insert(
-            attr_key::SESSION_ID.to_string(),
-            json!(ids.session_id_string()),
-        );
-        attrs.insert(
-            attr_key::REQUEST_ID.to_string(),
-            json!(ids.request_id_string()),
-        );
-        attrs.insert(
-            "llama_stage.openai_backend".to_string(),
-            json!(self.mode.label()),
-        );
-        if let Some(cache_key) = ids.cache.prompt_cache_key.as_deref() {
-            attrs.insert("openai.prompt_cache_key".to_string(), json!(cache_key));
-        }
-        if let Some(retention) = ids.cache.prompt_cache_retention.as_deref() {
-            attrs.insert(
-                "openai.prompt_cache_retention".to_string(),
-                json!(retention),
-            );
-        }
-        attrs
+        openai_identity_attrs(&self.config, self.mode.label(), ids)
     }
 
     pub(super) fn insert_runtime_session_stats(

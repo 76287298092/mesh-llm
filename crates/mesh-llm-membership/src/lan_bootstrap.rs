@@ -1,9 +1,9 @@
 #[cfg(test)]
-use super::is_public_ipv4_candidate;
+use crate::address::is_public_ipv4_candidate;
 use iroh::{EndpointAddr, TransportAddr};
 use std::net::{Ipv4Addr, SocketAddr};
 
-pub(super) fn lan_ipv4_candidates(addr: &EndpointAddr) -> Vec<std::net::SocketAddrV4> {
+pub fn lan_ipv4_candidates(addr: &EndpointAddr) -> Vec<std::net::SocketAddrV4> {
     addr.addrs
         .iter()
         .filter_map(|addr| match addr {
@@ -13,7 +13,7 @@ pub(super) fn lan_ipv4_candidates(addr: &EndpointAddr) -> Vec<std::net::SocketAd
         .collect()
 }
 
-pub(crate) fn is_private_lan_ipv4(ip: &Ipv4Addr) -> bool {
+pub fn is_private_lan_ipv4(ip: &Ipv4Addr) -> bool {
     ip.is_private()
 }
 

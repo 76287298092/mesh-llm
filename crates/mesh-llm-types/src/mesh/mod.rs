@@ -150,6 +150,36 @@ impl ModelRuntimeDescriptor {
     }
 }
 
+/// Itemized view of the capacity a node advertises. The announcement's
+/// `vram_bytes` stays the placement budget; this block explains how that
+/// number was derived. Invariant: `total_bytes == reserved_bytes +
+/// platform_reserve_bytes + configured_reserve_bytes + usable_bytes`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct AdvertisedMemory {
+    /// Enumerated accelerator memory: the sum of device VRAM, or the unified
+    /// working set on SoCs.
+    pub total_bytes: u64,
+    /// Driver/runtime reserved or unavailable bytes when the platform reports
+    /// a true value.
+    pub reserved_bytes: u64,
+    /// Withheld by platform policy before the owner configures anything: the
+    /// share of unified memory the platform keeps for the system (the Tegra
+    /// collector budgets 90% of physical RAM). Zero for discrete GPUs, whose
+    /// budget is the device memory minus the driver reserve, and zero on
+    /// Metal while the survey reports the working set as the device memory.
+    pub platform_reserve_bytes: u64,
+    /// Withheld by the node owner: the effective safety margin plus whatever
+    /// a `max_vram_gb` cap leaves out.
+    pub configured_reserve_bytes: u64,
+    /// What remains for mesh placement after both reserves.
+    pub usable_bytes: u64,
+    /// Total system RAM when the platform reports it.
+    pub system_ram_bytes: Option<u64>,
+    /// Portion of the local fit budget backed by system RAM, after any
+    /// `max_vram_gb` cap. Never advertised as accelerator capacity.
+    pub ram_offload_bytes: u64,
+}
+
 pub fn merge_demand(
     ours: &mut HashMap<String, ModelDemand>,
     theirs: &HashMap<String, ModelDemand>,

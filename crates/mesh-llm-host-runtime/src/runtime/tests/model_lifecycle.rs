@@ -447,7 +447,9 @@ async fn test_runtime_load_unload_regossips_across_nodes() {
         let host_id = host.id();
         async move {
             observer.peers().await.iter().any(|peer| {
-                peer.id == host_id && peer.routes_model("Primary") && !peer.routes_model("Runtime")
+                peer.id == host_id
+                    && crate::mesh::routes_model(peer, "Primary")
+                    && !crate::mesh::routes_model(peer, "Runtime")
             })
         }
     })
@@ -464,8 +466,9 @@ async fn test_runtime_load_unload_regossips_across_nodes() {
             observer.peers().await.iter().any(|peer| {
                 peer.id == host_id
                     && peer.is_assigned_model("Runtime")
-                    && peer.routes_model("Runtime")
-                    && peer.routable_models() == vec!["Primary".to_string(), "Runtime".to_string()]
+                    && crate::mesh::routes_model(peer, "Runtime")
+                    && crate::mesh::routable_models(peer)
+                        == vec!["Primary".to_string(), "Runtime".to_string()]
             })
         }
     })
@@ -481,10 +484,10 @@ async fn test_runtime_load_unload_regossips_across_nodes() {
         async move {
             observer.peers().await.iter().any(|peer| {
                 peer.id == host_id
-                    && peer.routes_model("Primary")
+                    && crate::mesh::routes_model(peer, "Primary")
                     && !peer.is_assigned_model("Runtime")
-                    && !peer.routes_model("Runtime")
-                    && peer.routable_models() == vec!["Primary".to_string()]
+                    && !crate::mesh::routes_model(peer, "Runtime")
+                    && crate::mesh::routable_models(peer) == vec!["Primary".to_string()]
             })
         }
     })

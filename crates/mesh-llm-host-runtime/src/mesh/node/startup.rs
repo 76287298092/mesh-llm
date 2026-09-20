@@ -1,5 +1,5 @@
 use super::*;
-use crate::mesh::identity_persistence::load_or_create_key;
+use mesh_llm_membership::load_or_create_key;
 
 pub fn detect_vram_bytes_capped(max_vram_gb: Option<f64>) -> u64 {
     let mut detected = crate::system::hardware::survey().vram_bytes;

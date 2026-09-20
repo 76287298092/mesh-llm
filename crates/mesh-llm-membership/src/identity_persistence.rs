@@ -1,4 +1,5 @@
-use super::*;
+use anyhow::{Context, Result};
+use iroh::SecretKey;
 
 /// Generate a mesh ID for a new mesh.
 /// Named meshes: `sha256("mesh-llm:" + name + ":" + nostr_pubkey)` — deterministic, unique per creator.
@@ -48,12 +49,11 @@ pub(crate) fn mesh_id_path() -> Result<std::path::PathBuf> {
     Ok(identity_state_dir()?.join("mesh-id"))
 }
 
-pub(crate) fn mesh_genesis_policy_path() -> Result<std::path::PathBuf> {
+pub fn mesh_genesis_policy_path() -> Result<std::path::PathBuf> {
     Ok(identity_state_dir()?.join("mesh-genesis-policy.json"))
 }
 
-#[cfg(not(test))]
-pub(crate) fn adopted_mesh_membership_path() -> Result<std::path::PathBuf> {
+pub fn adopted_mesh_membership_path() -> Result<std::path::PathBuf> {
     Ok(identity_state_dir()?.join("mesh-adopted-membership.json"))
 }
 
@@ -101,14 +101,14 @@ pub fn load_last_mesh_id() -> Option<String> {
 /// `MESH_LLM_NODE_KEY_PATH` when the working directory is gone) is an error
 /// rather than a fallback to the default namespace, so a custom-key process
 /// never reads or rotates the default identity's state by accident.
-pub(crate) fn identity_state_dir() -> Result<std::path::PathBuf> {
+pub fn identity_state_dir() -> Result<std::path::PathBuf> {
     let home = identity_home_dir();
     let active_key_path = default_node_key_path()?;
     Ok(identity_state_dir_for(&home, &active_key_path))
 }
 
-pub(crate) fn identity_home_dir() -> std::path::PathBuf {
-    #[cfg(test)]
+pub fn identity_home_dir() -> std::path::PathBuf {
+    #[cfg(any(test, feature = "test-support"))]
     if let Some(home) = std::env::var_os("MESH_LLM_TEST_HOME") {
         return home.into();
     }
@@ -251,7 +251,7 @@ fn clear_public_identity_at(
 }
 
 /// Load secret key from ~/.mesh-llm/key, or create a new one and save it.
-pub(crate) async fn load_or_create_key() -> Result<SecretKey> {
+pub async fn load_or_create_key() -> Result<SecretKey> {
     let key_path = default_node_key_path()?;
     if key_path.exists() {
         let key = load_node_key_from_path(&key_path)?;
@@ -266,7 +266,7 @@ pub(crate) async fn load_or_create_key() -> Result<SecretKey> {
 }
 
 pub fn default_node_key_path() -> Result<std::path::PathBuf> {
-    #[cfg(test)]
+    #[cfg(any(test, feature = "test-support"))]
     if std::env::var_os("MESH_LLM_TEST_HOME").is_some()
         && std::env::var_os("MESH_LLM_NODE_KEY_PATH").is_none_or(|path| path.is_empty())
     {

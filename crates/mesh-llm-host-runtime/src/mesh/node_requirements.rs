@@ -1,8 +1,8 @@
 use super::*;
-#[cfg(not(test))]
-use crate::mesh::identity_persistence::adopted_mesh_membership_path;
-use crate::mesh::identity_persistence::mesh_genesis_policy_path;
 use crate::mesh::node::RequirementAwareMeshState;
+#[cfg(not(test))]
+use mesh_llm_membership::adopted_mesh_membership_path;
+use mesh_llm_membership::mesh_genesis_policy_path;
 
 fn same_requirement_mesh(
     left: &RequirementAwareMeshState,

@@ -10,7 +10,6 @@ use super::{
     DisplayLatencySource, ModelDemand, ModelRuntimeDescriptor, Node, NodeRole, PeerAnnouncement,
     PeerInfo, ServedModelDescriptor, SignedNodeOwnership, infer_remote_served_descriptors,
 };
-use crate::mesh::cache_affinity_gossip;
 use crate::mesh::peer_state::PropagatedLatencyObservation;
 use crate::mesh::requirements::current_time_unix_ms;
 use crate::models::append_external_inference_models;
@@ -196,7 +195,7 @@ pub(super) fn peer_meaningfully_changed(old: &PeerInfo, new: &PeerInfo) -> bool 
         || old.stage_protocol_generation_supported != new.stage_protocol_generation_supported
         || old.stage_status_list_supported != new.stage_status_list_supported
         || old.local_gguf_content_id_supported != new.local_gguf_content_id_supported
-        || cache_affinity_gossip::advertised_state_changed(&old.cache_affinity, &new.cache_affinity)
+        || mesh_llm_membership::advertised_state_changed(&old.cache_affinity, &new.cache_affinity)
         || old.version != new.version
         || old.owner_summary != new.owner_summary
         || old.gpu_reserved_bytes != new.gpu_reserved_bytes
@@ -293,7 +292,7 @@ pub(super) fn apply_transitive_ann(
     // direction, so it may neither promote nor clear this support bit. Direct
     // announcements in `add_peer` update it authoritatively.
     existing.advertised_model_throughput = ann.advertised_model_throughput.clone();
-    cache_affinity_gossip::merge_advertisement(
+    mesh_llm_membership::merge_advertisement(
         &mut existing.cache_affinity,
         ann.cache_affinity.as_ref(),
         false,
@@ -384,7 +383,7 @@ impl Node {
             .routing_metrics
             .advertisable_model_throughput(&hosted_models);
         let now_unix_ms = current_time_unix_ms();
-        let cache_affinity = cache_affinity_gossip::local_advertisement(
+        let cache_affinity = mesh_llm_membership::local_advertisement(
             &self.cache_affinity_inventory,
             self.endpoint.id().as_bytes(),
             now_unix_ms,

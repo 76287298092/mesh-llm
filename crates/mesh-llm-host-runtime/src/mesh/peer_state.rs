@@ -1,5 +1,15 @@
 use super::*;
 
+pub(crate) use mesh_llm_membership::peer_state::{
+    ClaimedLogHead, DEAD_PEER_TTL, PEER_DOWN_REPORTER_COOLDOWN_SECS, PEER_STALE_SECS,
+    ingest_tunnel_map, model_identity_score, policy_accepts_peer, resolve_peer_leaving,
+    stream_allowed_before_admission,
+};
+pub use mesh_llm_membership::peer_state::{
+    DirectLatencyObservation, DisplayLatency, DisplayLatencySource, MeshCatalogEntry,
+    PeerAnnouncement, PeerInfo, PropagatedLatencyObservation,
+};
+
 pub(crate) fn peer_info_to_mesh_peer(peer: &PeerInfo) -> crate::plugin::proto::MeshPeer {
     crate::plugin::proto::MeshPeer {
         peer_id: endpoint_id_hex(peer.id),
@@ -15,15 +25,6 @@ pub(crate) fn peer_info_to_mesh_peer(peer: &PeerInfo) -> crate::plugin::proto::M
         model_source: peer.model_source.clone().unwrap_or_default(),
         hosted_models: peer.hosted_models.clone(),
         hosted_models_known: Some(peer.hosted_models_known),
-    }
-}
-
-pub(crate) fn policy_accepts_peer(policy: TrustPolicy, owner_summary: &OwnershipSummary) -> bool {
-    match policy {
-        TrustPolicy::Off | TrustPolicy::PreferOwned => true,
-        TrustPolicy::RequireOwned | TrustPolicy::Allowlist => {
-            owner_summary.status == OwnershipStatus::Verified
-        }
     }
 }
 
@@ -46,23 +47,6 @@ pub(crate) fn load_or_refresh_owner_attestation(
     )?;
     save_node_ownership(&path, &ownership)?;
     Ok(ownership)
-}
-
-pub(crate) fn model_identity_score(identity: &ServedModelIdentity) -> u8 {
-    let kind_score = match identity.source_kind {
-        ModelSourceKind::HuggingFace => 4,
-        ModelSourceKind::Catalog => 3,
-        ModelSourceKind::DirectUrl => 2,
-        ModelSourceKind::LocalGguf => 1,
-        ModelSourceKind::Unknown => 0,
-    };
-    let canonical_bonus = if identity.canonical_ref.is_some() {
-        2
-    } else {
-        0
-    };
-    let revision_bonus = if identity.revision.is_some() { 1 } else { 0 };
-    kind_score + canonical_bonus + revision_bonus
 }
 
 pub(crate) fn model_descriptor_score(descriptor: &ServedModelDescriptor) -> u8 {
@@ -100,200 +84,8 @@ pub(crate) fn upsert_mesh_catalog_descriptor(
     }
 }
 
-/// Merge two demand maps. For each model, take max of last_active and request_count.
-/// Role a node plays in the mesh.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
-pub enum NodeRole {
-    /// Provides staged GPU compute for a specific model.
-    #[default]
-    Worker,
-    /// Runs the local serving runtime for a specific model and provides the HTTP API.
-    Host { http_port: u16 },
-    /// Lite client — no compute, accesses the API via tunnel.
-    Client,
-}
-
-/// Gossip payload — extends EndpointAddr with role metadata.
-/// Internal mesh gossip model. Legacy JSON v0 is adapted at the boundary.
-#[derive(Debug, Clone)]
-pub struct PeerAnnouncement {
-    pub(crate) addr: EndpointAddr,
-    pub(crate) role: NodeRole,
-    pub(crate) first_joined_mesh_ts: Option<u64>,
-    pub(crate) models: Vec<String>,
-    pub(crate) vram_bytes: u64,
-    pub(crate) model_source: Option<String>,
-    pub(crate) serving_models: Vec<String>,
-    pub(crate) hosted_models: Option<Vec<String>>,
-    /// All GGUF filenames on disk in managed or legacy local storage (for mesh catalog)
-    pub(crate) available_models: Vec<String>,
-    pub(crate) requested_models: Vec<String>,
-    /// Advisory canonical refs this node wants the mesh to consider.
-    pub(crate) explicit_model_interests: Vec<String>,
-    pub(crate) version: Option<String>,
-    pub(crate) model_demand: HashMap<String, ModelDemand>,
-    pub(crate) mesh_id: Option<String>,
-    pub(crate) mesh_policy_hash: Option<String>,
-    pub(crate) gpu_name: Option<String>,
-    pub(crate) hostname: Option<String>,
-    pub(crate) is_soc: Option<bool>,
-    pub(crate) gpu_vram: Option<String>,
-    pub(crate) gpu_reserved_bytes: Option<String>,
-    /// Itemized view of `vram_bytes`; absent from peers that predate it or
-    /// that do not enumerate their hardware.
-    pub(crate) memory: Option<AdvertisedMemory>,
-    pub(crate) gpu_mem_bandwidth_gbps: Option<String>,
-    pub(crate) gpu_compute_tflops_fp32: Option<String>,
-    pub(crate) gpu_compute_tflops_fp16: Option<String>,
-    pub(crate) available_model_metadata: Vec<crate::proto::node::CompactModelMetadata>,
-    pub(crate) experts_summary: Option<crate::proto::node::ExpertsSummary>,
-    pub(crate) available_model_sizes: HashMap<String, u64>,
-    pub(crate) served_model_descriptors: Vec<ServedModelDescriptor>,
-    pub(crate) served_model_runtime: Vec<ModelRuntimeDescriptor>,
-    pub(crate) owner_attestation: Option<SignedNodeOwnership>,
-    pub(crate) genesis_policy: Option<crate::SignedMeshGenesisPolicy>,
-    pub(crate) release_attestation: Option<crate::ReleaseBuildAttestation>,
-    pub(crate) direct_admission_proof: Option<crate::DirectNodeAdmissionProof>,
-    pub(crate) artifact_transfer_supported: bool,
-    pub(crate) stage_protocol_generation_supported: bool,
-    pub(crate) stage_status_list_supported: bool,
-    pub(crate) local_gguf_content_id_supported: bool,
-    pub(crate) advertised_model_throughput: Vec<crate::network::metrics::ModelThroughputHint>,
-    pub(crate) cache_affinity:
-        Option<mesh_llm_routing::cache_inventory::CacheAffinityAdvertisement>,
-    pub(crate) latency_ms: Option<u32>,
-    pub(crate) latency_source: Option<crate::proto::node::LatencySource>,
-    pub(crate) latency_age_ms: Option<u64>,
-    pub(crate) latency_observer_id: Option<EndpointId>,
-    pub(crate) inference_admission_state: Option<crate::proto::node::InferenceAdmissionState>,
-    /// An optional, self-reported claim this peer MAY advertise about the
-    /// head of its own append-only history. Carried opaquely; never verified
-    /// by mesh-llm.
-    pub(crate) claimed_log_head: Option<ClaimedLogHead>,
-}
-
-/// A peer's latest self-reported claim about the head of its append-only log
-/// — see `ClaimedLogHead` in `node.proto` for the wire shape and the
-/// signing-scope note. Carried opaquely: mesh-llm never verifies
-/// `claimed_signature` itself, hence the name — a consumer that does verify
-/// it may define its own `VerifiedLogHead` type; none exists here. `pub(crate)`
-/// to match `PeerAnnouncement::claimed_log_head`, which is also `pub(crate)`.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct ClaimedLogHead {
-    pub(crate) log_id: String,
-    pub(crate) size: u64,
-    pub(crate) root: Vec<u8>,
-    pub(crate) timestamp_unix_ms: u64,
-    pub(crate) claimed_signature: Vec<u8>,
-    pub(crate) signature_algorithm: String,
-}
-
-/// A single direct RTT measurement (e.g. from gossip exchange).
-#[derive(Debug, Clone)]
-pub struct DirectLatencyObservation {
-    pub rtt_ms: u32,
-    pub observed_at: std::time::Instant,
-}
-
-/// Latency propagated via transitive gossip (not measured directly).
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PropagatedLatencyObservation {
-    pub latency_ms: u32,
-    pub age_ms_at_received: u64,
-    pub received_at: std::time::Instant,
-    pub observer_id: Option<EndpointId>,
-}
-
-/// Which source a display latency value came from.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum DisplayLatencySource {
-    Direct,
-    Estimated,
-    Unknown,
-}
-
-/// Computed display latency for UI/API consumption.
-#[derive(Debug, Clone)]
-pub struct DisplayLatency {
-    pub latency_ms: Option<u32>,
-    pub source: DisplayLatencySource,
-    pub age_ms: u64,
-    pub observer_id: Option<EndpointId>,
-}
-
-#[derive(Debug, Clone)]
-pub struct PeerInfo {
-    pub id: EndpointId,
-    pub addr: EndpointAddr,
-    pub mesh_id: Option<String>,
-    pub mesh_policy_hash: Option<String>,
-    pub genesis_policy: Option<crate::SignedMeshGenesisPolicy>,
-    pub role: NodeRole,
-    pub first_joined_mesh_ts: Option<u64>,
-    pub models: Vec<String>,
-    pub vram_bytes: u64,
-    pub rtt_ms: Option<u32>,
-    pub model_source: Option<String>,
-    pub admitted: bool,
-    /// All models assigned to this peer, even if not yet healthy.
-    pub serving_models: Vec<String>,
-    /// Models this node is actively routing inference for.
-    pub hosted_models: Vec<String>,
-    /// True when this peer explicitly advertised `hosted_models`.
-    pub hosted_models_known: bool,
-    /// All GGUFs on disk
-    pub available_models: Vec<String>,
-    /// Models this node has requested the mesh to serve
-    pub requested_models: Vec<String>,
-    /// Advisory canonical refs this peer wants the mesh to consider.
-    pub explicit_model_interests: Vec<String>,
-    /// Last time we directly communicated with this peer (gossip, heartbeat, tunnel).
-    /// Only updated by direct bi-directional gossip exchanges, heartbeat probes,
-    /// and inbound connections — never by transitive mentions.
-    /// Used by PeerDown silencing to require independent proof-of-life.
-    pub last_seen: std::time::Instant,
-    /// Last time a bridge peer mentioned this peer in gossip.
-    /// Updated on every transitive gossip update. Used together with `last_seen`
-    /// for pruning and `collect_announcements`: a peer is included/kept as long
-    /// as either timestamp is fresh.
-    pub last_mentioned: std::time::Instant,
-    /// mesh-llm version (e.g. "0.23.0")
-    pub version: Option<String>,
-    /// GPU name/model (e.g. "NVIDIA A100", "Apple M4 Max")
-    pub gpu_name: Option<String>,
-    /// Hostname of the node
-    pub hostname: Option<String>,
-    pub is_soc: Option<bool>,
-    pub gpu_vram: Option<String>,
-    pub gpu_reserved_bytes: Option<String>,
-    /// Itemized view of `vram_bytes` when the peer advertised one.
-    pub memory: Option<AdvertisedMemory>,
-    pub gpu_mem_bandwidth_gbps: Option<String>,
-    pub gpu_compute_tflops_fp32: Option<String>,
-    pub gpu_compute_tflops_fp16: Option<String>,
-    pub available_model_metadata: Vec<crate::proto::node::CompactModelMetadata>,
-    pub experts_summary: Option<crate::proto::node::ExpertsSummary>,
-    pub available_model_sizes: HashMap<String, u64>,
-    pub served_model_descriptors: Vec<ServedModelDescriptor>,
-    pub served_model_runtime: Vec<ModelRuntimeDescriptor>,
-    pub owner_attestation: Option<SignedNodeOwnership>,
-    pub release_attestation_summary: crate::ReleaseAttestationSummary,
-    pub artifact_transfer_supported: bool,
-    pub stage_protocol_generation_supported: bool,
-    pub stage_status_list_supported: bool,
-    pub local_gguf_content_id_supported: bool,
-    pub(crate) advertised_model_throughput: Vec<crate::network::metrics::ModelThroughputHint>,
-    pub(crate) cache_affinity:
-        Option<mesh_llm_routing::cache_inventory::CacheAffinityAdvertisement>,
-    /// Most recent direct RTT sample for display purposes (refreshed periodically).
-    pub display_rtt: Option<DirectLatencyObservation>,
-    /// Last selected path observed on the mesh control connection to this peer.
-    pub(crate) selected_path: Option<SelectedPathObservation>,
-    /// Latency propagated via transitive gossip.
-    pub propagated_latency: Option<PropagatedLatencyObservation>,
-    pub owner_summary: OwnershipSummary,
-    pub inference_admission_state: Option<crate::proto::node::InferenceAdmissionState>,
-}
+/// Role a node plays in the mesh (moved to `mesh-llm-membership`).
+pub use mesh_llm_membership::NodeRole;
 
 #[derive(Debug)]
 pub struct OwnerRuntimeConfig {
@@ -316,211 +108,81 @@ pub(crate) struct ControlListenerLifecycle {
     pub(crate) shutdown: Arc<tokio::sync::Notify>,
     pub(crate) task: tokio::task::JoinHandle<()>,
 }
-#[derive(Debug, Clone)]
-pub struct MeshCatalogEntry {
-    pub model_name: String,
-    pub descriptor: Option<ServedModelDescriptor>,
+
+/// Host-owned serving-routing projections over the neutral membership
+/// `PeerInfo`.
+///
+/// Resolving a peer's advertised raw model ids to the mesh's public model ids
+/// needs `skippy_model_ref` and the host model catalog, so these stay in the
+/// host as free functions over `&PeerInfo` instead of methods on the
+/// membership type.
+pub(crate) fn routable_models(peer: &PeerInfo) -> Vec<String> {
+    let raw = if peer.hosted_models_known {
+        &peer.hosted_models
+    } else {
+        &peer.serving_models
+    };
+    let mut models = raw
+        .iter()
+        .map(|model| public_model_id_for_routable_model(peer, model))
+        .collect::<Vec<_>>();
+    models.sort();
+    models.dedup();
+    models
 }
 
-impl PeerInfo {
-    pub(crate) fn from_announcement(
-        id: EndpointId,
-        addr: EndpointAddr,
-        ann: &PeerAnnouncement,
-        owner_summary: OwnershipSummary,
-    ) -> Self {
-        Self {
-            id,
-            addr,
-            mesh_id: ann.mesh_id.clone(),
-            mesh_policy_hash: ann.mesh_policy_hash.clone(),
-            genesis_policy: ann.genesis_policy.clone(),
-            role: ann.role.clone(),
-            first_joined_mesh_ts: ann.first_joined_mesh_ts,
-            models: ann.models.clone(),
-            vram_bytes: ann.vram_bytes,
-            rtt_ms: None,
-            model_source: ann.model_source.clone(),
-            admitted: false,
-            serving_models: ann.serving_models.clone(),
-            hosted_models: ann.hosted_models.clone().unwrap_or_default(),
-            hosted_models_known: ann.hosted_models.is_some(),
-            available_models: ann.available_models.clone(),
-            requested_models: ann.requested_models.clone(),
-            explicit_model_interests: ann.explicit_model_interests.clone(),
-            last_seen: std::time::Instant::now(),
-            last_mentioned: std::time::Instant::now(),
-            version: ann.version.clone(),
-            gpu_name: ann.gpu_name.clone(),
-            hostname: ann.hostname.clone(),
-            is_soc: ann.is_soc,
-            gpu_vram: ann.gpu_vram.clone(),
-            gpu_reserved_bytes: ann.gpu_reserved_bytes.clone(),
-            memory: ann.memory,
-            gpu_mem_bandwidth_gbps: ann.gpu_mem_bandwidth_gbps.clone(),
-            gpu_compute_tflops_fp32: ann.gpu_compute_tflops_fp32.clone(),
-            gpu_compute_tflops_fp16: ann.gpu_compute_tflops_fp16.clone(),
-            available_model_metadata: ann.available_model_metadata.clone(),
-            experts_summary: ann.experts_summary.clone(),
-            available_model_sizes: ann.available_model_sizes.clone(),
-            served_model_descriptors: ann.served_model_descriptors.clone(),
-            served_model_runtime: ann.served_model_runtime.clone(),
-            owner_attestation: ann.owner_attestation.clone(),
-            release_attestation_summary: crate::verify_release_attestation(
-                ann.release_attestation.as_ref(),
-                &crate::ReleaseSignerTrustStore::default(),
-            ),
-            artifact_transfer_supported: ann.artifact_transfer_supported,
-            stage_protocol_generation_supported: ann.stage_protocol_generation_supported,
-            stage_status_list_supported: ann.stage_status_list_supported,
-            local_gguf_content_id_supported: ann.local_gguf_content_id_supported,
-            advertised_model_throughput: ann.advertised_model_throughput.clone(),
-            cache_affinity: ann.cache_affinity.clone(),
-            display_rtt: None,
-            selected_path: None,
-            propagated_latency: None,
-            owner_summary,
-            inference_admission_state: ann.inference_admission_state,
-        }
-    }
+pub(crate) fn routes_model(peer: &PeerInfo, model: &str) -> bool {
+    let raw = if peer.hosted_models_known {
+        &peer.hosted_models
+    } else {
+        &peer.serving_models
+    };
+    raw.iter().any(|candidate| {
+        candidate == model || public_model_id_for_routable_model(peer, candidate) == model
+    })
+}
 
-    pub fn is_admitted(&self) -> bool {
-        self.admitted
+pub(crate) fn http_routable_models(peer: &PeerInfo) -> Vec<String> {
+    if peer.accepts_http_inference() {
+        routable_models(peer)
+    } else {
+        Vec::new()
     }
+}
 
-    /// Return the most recent direct RTT sample for display, falling back to best-seen RTT.
-    pub fn current_direct_rtt_ms(&self) -> Option<u32> {
-        self.display_rtt.as_ref().map(|d| d.rtt_ms).or(self.rtt_ms)
-    }
+pub(crate) fn routes_http_model(peer: &PeerInfo, model: &str) -> bool {
+    peer.accepts_http_inference() && routes_model(peer, model)
+}
 
-    pub(crate) fn split_stage_path_fallback(&self) -> Option<SelectedPathObservation> {
-        let observation = self.selected_path?;
-        if observation.path_type != "direct" {
-            return Some(observation);
-        }
-        Some(SelectedPathObservation {
-            rtt_ms: self.rtt_ms.or(observation.rtt_ms),
-            ..observation
-        })
-    }
+fn public_model_id_for_routable_model(peer: &PeerInfo, model: &str) -> String {
+    peer.served_model_descriptors
+        .iter()
+        .find(|descriptor| descriptor.identity.model_name == model)
+        .and_then(|descriptor| public_model_id_from_identity(&descriptor.identity))
+        .unwrap_or_else(|| canonical_demand_model_ref(model))
+}
 
-    /// Compute display latency from direct sample or propagated data.
-    pub fn display_latency(&self) -> DisplayLatency {
-        if let Some(ref direct) = self.display_rtt {
-            return DisplayLatency {
-                latency_ms: Some(direct.rtt_ms),
-                source: DisplayLatencySource::Direct,
-                age_ms: direct.observed_at.elapsed().as_millis() as u64,
-                observer_id: None,
-            };
-        }
-        if let Some(ref propagated) = self.propagated_latency {
-            return DisplayLatency {
-                latency_ms: Some(propagated.latency_ms),
-                source: DisplayLatencySource::Estimated,
-                age_ms: propagated.age_ms_at_received
-                    + propagated.received_at.elapsed().as_millis() as u64,
-                observer_id: propagated.observer_id,
-            };
-        }
-        DisplayLatency {
-            latency_ms: self.rtt_ms,
-            source: DisplayLatencySource::Unknown,
-            age_ms: 0,
-            observer_id: None,
-        }
-    }
-
-    #[cfg(test)]
-    pub fn is_assigned_model(&self, model: &str) -> bool {
-        self.serving_models.iter().any(|m| m == model)
-    }
-
-    pub fn routable_models(&self) -> Vec<String> {
-        let raw = if self.hosted_models_known {
-            &self.hosted_models
-        } else {
-            &self.serving_models
-        };
-        let mut models = raw
+pub(crate) fn advertised_context_length(peer: &PeerInfo, model: &str) -> Option<u32> {
+    advertised_context_length_for_runtime_model(peer, model).or_else(|| {
+        peer.served_model_descriptors
             .iter()
-            .map(|model| self.public_model_id_for_routable_model(model))
-            .collect::<Vec<_>>();
-        models.sort();
-        models.dedup();
-        models
-    }
-
-    pub fn routes_model(&self, model: &str) -> bool {
-        let raw = if self.hosted_models_known {
-            &self.hosted_models
-        } else {
-            &self.serving_models
-        };
-        raw.iter().any(|candidate| {
-            candidate == model || self.public_model_id_for_routable_model(candidate) == model
-        })
-    }
-
-    pub fn accepts_http_inference(&self) -> bool {
-        matches!(self.role, NodeRole::Host { .. })
-    }
-
-    pub fn http_routable_models(&self) -> Vec<String> {
-        if self.accepts_http_inference() {
-            self.routable_models()
-        } else {
-            Vec::new()
-        }
-    }
-
-    pub fn routes_http_model(&self, model: &str) -> bool {
-        self.accepts_http_inference() && self.routes_model(model)
-    }
-
-    pub(crate) fn public_model_id_for_routable_model(&self, model: &str) -> String {
-        self.served_model_descriptors
-            .iter()
-            .find(|descriptor| descriptor.identity.model_name == model)
-            .and_then(|descriptor| public_model_id_from_identity(&descriptor.identity))
-            .unwrap_or_else(|| canonical_demand_model_ref(model))
-    }
-
-    pub fn advertised_context_length(&self, model: &str) -> Option<u32> {
-        self.advertised_context_length_for_runtime_model(model)
-            .or_else(|| {
-                self.served_model_descriptors
-                    .iter()
-                    .filter(|descriptor| {
-                        let runtime_name = descriptor.identity.model_name.as_str();
-                        runtime_name != model
-                            && self.public_model_id_for_routable_model(runtime_name) == model
-                    })
-                    .find_map(|descriptor| {
-                        self.advertised_context_length_for_runtime_model(
-                            &descriptor.identity.model_name,
-                        )
-                    })
+            .filter(|descriptor| {
+                let runtime_name = descriptor.identity.model_name.as_str();
+                runtime_name != model
+                    && public_model_id_for_routable_model(peer, runtime_name) == model
             })
-    }
-
-    pub(crate) fn advertised_context_length_for_runtime_model(&self, model: &str) -> Option<u32> {
-        self.served_model_runtime
-            .iter()
-            .find(|runtime| runtime.model_name == model)
-            .and_then(ModelRuntimeDescriptor::advertised_context_length)
-    }
+            .find_map(|descriptor| {
+                advertised_context_length_for_runtime_model(peer, &descriptor.identity.model_name)
+            })
+    })
 }
 
-/// Peers not directly verified within this window are considered stale
-/// and excluded from gossip propagation. After 2x this duration they're removed entirely.
-pub(crate) const PEER_STALE_SECS: u64 = 180; // 3 minutes
-
-/// How long a dead-peer entry blocks transitive re-learning and outbound
-/// reconnection. After this period the entry expires silently and the peer
-/// can be re-discovered through normal gossip propagation. If the peer is
-/// genuinely gone, no bridge peer will mention it and it stays forgotten.
-pub(crate) const DEAD_PEER_TTL: std::time::Duration = std::time::Duration::from_secs(300); // 5 minutes
+fn advertised_context_length_for_runtime_model(peer: &PeerInfo, model: &str) -> Option<u32> {
+    peer.served_model_runtime
+        .iter()
+        .find(|runtime| runtime.model_name == model)
+        .and_then(ModelRuntimeDescriptor::advertised_context_length)
+}
 
 /// How long a confirmed-departed peer id stays barred from transitive
 /// re-admission. [`DEAD_PEER_TTL`] expires quickly so reconnection attempts
@@ -531,7 +193,6 @@ pub(crate) const DEAD_PEER_TTL: std::time::Duration = std::time::Duration::from_
 /// itself) clears this record early; otherwise it expires silently.
 pub(crate) const DEPARTED_PEER_TRANSITIVE_BLOCK_TTL: std::time::Duration =
     std::time::Duration::from_secs(3600); // 1 hour
-pub(crate) const PEER_DOWN_REPORTER_COOLDOWN_SECS: u64 = 600; // 10 minutes
 
 pub(crate) struct MeshState {
     pub(crate) peers: HashMap<EndpointId, PeerInfo>,
@@ -599,105 +260,6 @@ impl MeshState {
 #[cfg(test)]
 pub(crate) fn is_peer_admitted(peers: &HashMap<EndpointId, PeerInfo>, id: &EndpointId) -> bool {
     peers.get(id).is_some_and(PeerInfo::is_admitted)
-}
-
-/// Returns `true` if the given stream type is permitted before a peer has
-/// been admitted through gossip, under the node's trust policy.
-///
-/// With a non-enforcing trust policy (`Off` or `PreferOwned`), three streams
-/// bypass the quarantine gate:
-/// - `STREAM_GOSSIP (0x01)`: the admission handshake itself.
-/// - `STREAM_ROUTE_REQUEST (0x05)`: passive/client request-only path — caller
-///   is NEVER promoted to `state.peers`.
-/// - `STREAM_TUNNEL_HTTP (0x04)`: passive SDK inference path for callers that
-///   have an invite token but should not need a local `/v1` HTTP listener.
-///
-/// When a trust policy enforces ownership (`RequireOwned` or `Allowlist`), only
-/// `STREAM_GOSSIP` bypasses the gate. Otherwise a leaked invite token is a
-/// bearer credential for inference: a caller rejected by the trust gate (e.g.
-/// `UntrustedOwner` under `Allowlist`) could still route requests via the
-/// passive paths without ever being admitted. If a node enforces who may join,
-/// the same enforcement must cover who may consume. `PreferOwned` remains
-/// advisory and therefore preserves the passive-client behavior of `Off`.
-///
-/// Every other stream — including raw tunnel (0x02) — always requires the
-/// remote to have completed gossip first.
-pub(crate) fn stream_allowed_before_admission(stream_type: u8, trust_policy: TrustPolicy) -> bool {
-    if stream_type == STREAM_GOSSIP {
-        return true;
-    }
-    if matches!(
-        trust_policy,
-        TrustPolicy::RequireOwned | TrustPolicy::Allowlist
-    ) {
-        return false;
-    }
-    stream_type == STREAM_ROUTE_REQUEST || stream_type == STREAM_TUNNEL_HTTP
-}
-
-pub(crate) fn ingest_tunnel_map(
-    remote: EndpointId,
-    frame: &crate::proto::node::TunnelMap,
-    remote_tunnel_maps: &mut HashMap<EndpointId, HashMap<EndpointId, u16>>,
-) -> Result<()> {
-    if frame.owner_peer_id.as_slice() != remote.as_bytes() {
-        anyhow::bail!(
-            "TunnelMap owner_peer_id mismatch: frame claims owner {}, but connected peer is {}",
-            hex::encode(&frame.owner_peer_id),
-            remote.fmt_short()
-        );
-    }
-
-    let mut tunnel_map: HashMap<EndpointId, u16> = HashMap::new();
-    for entry in &frame.entries {
-        if entry.target_peer_id.len() != 32 {
-            anyhow::bail!(
-                "TunnelMap entry has invalid target_peer_id length: {} (expected 32)",
-                entry.target_peer_id.len()
-            );
-        }
-        if entry.tunnel_port > u16::MAX as u32 {
-            anyhow::bail!(
-                "TunnelMap entry has out-of-range tunnel_port: {} (max {})",
-                entry.tunnel_port,
-                u16::MAX
-            );
-        }
-        let arr: [u8; 32] = entry.target_peer_id.as_slice().try_into().unwrap();
-        let eid = EndpointId::from(
-            iroh::PublicKey::from_bytes(&arr)
-                .map_err(|e| anyhow::anyhow!("Invalid target_peer_id bytes: {e}"))?,
-        );
-        tunnel_map.insert(eid, entry.tunnel_port as u16);
-    }
-
-    remote_tunnel_maps.insert(remote, tunnel_map);
-    Ok(())
-}
-
-/// Validates the sender-identity rule for a validated `PeerLeaving` frame.
-/// Returns `Ok(leaving_id)` if `frame.peer_id == remote` (sender is announcing its own departure).
-/// Returns `Err(ForgedSender)` if `frame.peer_id != remote` — no peer should be removed.
-pub(crate) fn resolve_peer_leaving(
-    remote: EndpointId,
-    frame: &crate::proto::node::PeerLeaving,
-) -> Result<EndpointId, ControlFrameError> {
-    if frame.peer_id.as_slice() != remote.as_bytes() {
-        return Err(ControlFrameError::ForgedSender);
-    }
-    let arr: [u8; 32] =
-        frame
-            .peer_id
-            .as_slice()
-            .try_into()
-            .map_err(|_| ControlFrameError::InvalidEndpointId {
-                got: frame.peer_id.len(),
-            })?;
-    let pk =
-        iroh::PublicKey::from_bytes(&arr).map_err(|_| ControlFrameError::InvalidEndpointId {
-            got: frame.peer_id.len(),
-        })?;
-    Ok(EndpointId::from(pk))
 }
 
 impl Node {
@@ -797,7 +359,7 @@ impl Node {
             served.insert(s.clone());
         }
         for peer in &peer_data {
-            for m in peer.http_routable_models() {
+            for m in http_routable_models(peer) {
                 served.insert(m.clone());
             }
         }
@@ -814,7 +376,7 @@ impl Node {
             .peers
             .values()
             .filter(|p| p.is_admitted())
-            .filter(|p| p.routes_http_model(model))
+            .filter(|p| routes_http_model(p, model))
             .filter_map(|p| {
                 use crate::proto::node::InferenceAdmissionState;
                 match p.inference_admission_state {
@@ -863,7 +425,7 @@ impl Node {
             .peers
             .values()
             .filter(|p| p.is_admitted())
-            .find(|p| !p.http_routable_models().is_empty())
+            .find(|p| !http_routable_models(p).is_empty())
             .cloned()
     }
 
@@ -896,7 +458,7 @@ impl Node {
 
         // Include peers that are serving through their local API proxies
         for peer in &peer_data {
-            for model in peer.http_routable_models() {
+            for model in http_routable_models(peer) {
                 hosts.push(RouteEntry {
                     model,
                     node_id: format!("{}", peer.id.fmt_short()),

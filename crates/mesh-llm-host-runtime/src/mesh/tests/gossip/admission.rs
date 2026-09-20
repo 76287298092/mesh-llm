@@ -92,7 +92,7 @@ pub(crate) async fn legacy_peer_admission_and_known_empty_withdrawal() {
         .expect("legacy-style peer should be admitted");
     assert_eq!(peer.version, None);
     assert!(!peer.hosted_models_known);
-    assert!(peer.routes_http_model("legacy-model"));
+    assert!(crate::mesh::routes_http_model(peer, "legacy-model"));
     drop(state);
 
     let mut legacy_withdrawal = test_announcement(Some(100));
@@ -111,7 +111,7 @@ pub(crate) async fn legacy_peer_admission_and_known_empty_withdrawal() {
         .expect("legacy-withdrawal update should be applied");
     assert_eq!(peer.hosted_models, Vec::<String>::new());
     assert!(peer.hosted_models_known);
-    assert!(!peer.routes_http_model("legacy-model"));
+    assert!(!crate::mesh::routes_http_model(peer, "legacy-model"));
 }
 
 #[test]

@@ -57,7 +57,7 @@ async fn handle_general_diagnostics(stream: &mut TcpStream, state: &MeshApi) -> 
             peer_id: p.id.fmt_short().to_string(),
             endpoint: format!("{:?}", p.addr),
             last_seen_secs_ago: p.last_seen.elapsed().as_secs(),
-            models: p.routable_models(),
+            models: crate::mesh::routable_models(&p),
         })
         .collect();
 

@@ -1,6 +1,14 @@
-//! Public routing names derived from served identity and the loaded catalog.
-
 use super::*;
+
+// Pure model-identity helpers moved to `mesh-llm-membership`; re-exported here
+// so the host prelude (`use model_identity::*`) keeps exposing them to sibling
+// modules and tests unchanged. The two functions below stay in host because
+// they reach `skippy_model_ref::ModelRef` (a Skippy crate) and
+// `ModelCapabilities` — the remaining Skippy-boundary deps of this module.
+pub(crate) use mesh_llm_membership::{
+    format_hf_canonical_ref, identity_hash_for, local_gguf_identity_from_source,
+    parse_hf_ref_parts, parse_hf_resolve_url_parts, unknown_identity,
+};
 
 pub(crate) fn infer_remote_served_descriptors(
     primary_model_name: &str,
@@ -37,21 +45,6 @@ pub(crate) fn infer_remote_served_descriptors(
             }
         })
         .collect()
-}
-
-pub(crate) fn unknown_identity(model_name: &str) -> ServedModelIdentity {
-    ServedModelIdentity {
-        model_name: model_name.to_string(),
-        is_primary: false,
-        source_kind: ModelSourceKind::Unknown,
-        canonical_ref: None,
-        repository: None,
-        revision: None,
-        artifact: None,
-        local_file_name: Some(format!("{model_name}.gguf")),
-        identity_hash: None,
-        weights_digest: None,
-    }
 }
 
 pub(crate) fn identity_from_model_source(source: &str) -> Option<ServedModelIdentity> {
@@ -147,77 +140,6 @@ pub(crate) fn identity_from_model_source(source: &str) -> Option<ServedModelIden
     })
 }
 
-pub(crate) fn local_gguf_identity_from_source(source: &str) -> ServedModelIdentity {
-    let local_file_name = std::path::Path::new(source)
-        .file_name()
-        .and_then(|value| value.to_str())
-        .map(str::to_string);
-    ServedModelIdentity {
-        model_name: String::new(),
-        is_primary: false,
-        source_kind: ModelSourceKind::LocalGguf,
-        canonical_ref: None,
-        repository: None,
-        revision: None,
-        artifact: None,
-        local_file_name,
-        identity_hash: None,
-        weights_digest: None,
-    }
-}
-
-pub(crate) fn parse_hf_ref_parts(input: &str) -> Option<(String, Option<String>, String)> {
-    if input.starts_with('/') || input.starts_with("./") || input.starts_with("../") {
-        return None;
-    }
-    let parts: Vec<&str> = input.splitn(3, '/').collect();
-    if parts.len() != 3 {
-        return None;
-    }
-    let (repo_tail, revision) = match parts[1].split_once('@') {
-        Some((repo, revision)) => (repo, Some(revision.to_string())),
-        None => (parts[1], None),
-    };
-    if parts[0].is_empty() || repo_tail.is_empty() || parts[2].is_empty() {
-        return None;
-    }
-    Some((
-        format!("{}/{}", parts[0], repo_tail),
-        revision,
-        parts[2].to_string(),
-    ))
-}
-
-pub(crate) fn parse_hf_resolve_url_parts(url: &str) -> Option<(String, Option<String>, String)> {
-    let path = url
-        .strip_prefix("https://huggingface.co/")
-        .or_else(|| url.strip_prefix("http://huggingface.co/"))?;
-    let (repo, rest) = path.split_once("/resolve/")?;
-    let (revision, file) = rest.split_once('/')?;
-    if repo.is_empty() || revision.is_empty() || file.is_empty() {
-        return None;
-    }
-    Some((
-        repo.to_string(),
-        Some(revision.to_string()),
-        file.to_string(),
-    ))
-}
-
-pub(crate) fn format_hf_canonical_ref(repo: &str, revision: Option<&str>, file: &str) -> String {
-    match revision {
-        Some(revision) => format!("{repo}@{revision}/{file}"),
-        None => format!("{repo}/{file}"),
-    }
-}
-
-pub(crate) fn identity_hash_for(input: &str) -> String {
-    use sha2::{Digest, Sha256};
-    let mut hasher = Sha256::new();
-    hasher.update(input.as_bytes());
-    hex::encode(hasher.finalize())
-}
-
 /// Expose only remotely resolvable model identities as public catalog IDs.
 pub(crate) fn public_model_id_from_identity(identity: &ServedModelIdentity) -> Option<String> {
     match identity.source_kind {
@@ -228,21 +150,25 @@ pub(crate) fn public_model_id_from_identity(identity: &ServedModelIdentity) -> O
                 let selector = identity
                     .artifact
                     .as_deref()
-                    .and_then(model_ref::quant_selector_from_gguf_file)
+                    .and_then(skippy_model_ref::quant_selector_from_gguf_file)
                     .or_else(|| identity.artifact.clone());
-                model_ref::format_model_ref(repo, identity.revision.as_deref(), selector.as_deref())
+                skippy_model_ref::format_model_ref(
+                    repo,
+                    identity.revision.as_deref(),
+                    selector.as_deref(),
+                )
             })
             .or_else(|| {
                 identity
                     .canonical_ref
                     .as_deref()
-                    .and_then(|model_ref| model_ref::ModelRef::parse(model_ref).ok())
+                    .and_then(|model_ref| skippy_model_ref::ModelRef::parse(model_ref).ok())
                     .map(|model_ref| model_ref.display_id())
             }),
         ModelSourceKind::Catalog => identity
             .canonical_ref
             .as_deref()
-            .and_then(|model_ref| model_ref::ModelRef::parse(model_ref).ok())
+            .and_then(|model_ref| skippy_model_ref::ModelRef::parse(model_ref).ok())
             .map(|model_ref| model_ref.display_id()),
         ModelSourceKind::LocalGguf | ModelSourceKind::DirectUrl | ModelSourceKind::Unknown => None,
     }
@@ -250,7 +176,7 @@ pub(crate) fn public_model_id_from_identity(identity: &ServedModelIdentity) -> O
 
 /// Normalize demand references without converting local paths into remote model identities.
 pub(crate) fn canonical_demand_model_ref(model: &str) -> String {
-    if let Ok(model_ref) = model_ref::ModelRef::parse(model) {
+    if let Ok(model_ref) = skippy_model_ref::ModelRef::parse(model) {
         return model_ref.display_id();
     }
     crate::models::find_loaded_remote_catalog_model_exact(model)
@@ -269,28 +195,4 @@ pub(crate) fn descriptor_matches_routable_name(
         || public_model_id_from_identity(identity)
             .unwrap_or_else(|| canonical_demand_model_ref(&identity.model_name))
             == name
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn resolve_url_supports_top_level_hugging_face_repository() {
-        // Given: a resolve URL for a top-level Hugging Face repository.
-        let url = "https://huggingface.co/gpt2/resolve/main/model.safetensors";
-
-        // When: the URL identity is parsed.
-        let parts = parse_hf_resolve_url_parts(url);
-
-        // Then: the repository, revision, and artifact are preserved.
-        assert_eq!(
-            parts,
-            Some((
-                "gpt2".to_string(),
-                Some("main".to_string()),
-                "model.safetensors".to_string(),
-            ))
-        );
-    }
 }

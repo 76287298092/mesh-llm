@@ -79,7 +79,6 @@ pub(crate) fn elapsed_ms_u64(duration: std::time::Duration) -> u64 {
 mod advertisement;
 mod announcements;
 mod artifact_transfer_io;
-mod cache_affinity_gossip;
 mod capacity;
 mod connection_reservation;
 mod connections;
@@ -89,8 +88,6 @@ mod direct_rescue;
 mod gossip;
 mod heartbeat;
 mod host_role_claims;
-mod identity_persistence;
-mod lan_bootstrap;
 pub(crate) mod model_identity;
 mod node;
 mod node_identity;
@@ -147,7 +144,7 @@ pub use connections::{QuicBindSelection, RelayConfig, RelayPolicy};
     unused_imports,
     reason = "public compatibility re-export for existing mesh identity callers"
 )]
-pub use identity_persistence::{
+pub use mesh_llm_membership::{
     clear_public_identity, default_node_key_path, generate_mesh_id, load_last_mesh_id,
     load_node_key_from_path, mark_was_public, save_last_mesh_id, save_node_key_to_path,
     was_previously_public,
@@ -156,7 +153,12 @@ pub use identity_persistence::{
     unused_imports,
     reason = "test-only home resolver used by environment-isolated identity tests"
 )]
-pub(crate) use identity_persistence::{identity_home_dir, identity_state_dir};
+pub(crate) use mesh_llm_membership::{identity_home_dir, identity_state_dir};
+#[expect(
+    unused_imports,
+    reason = "shared discovery address classification moved to mesh-llm-membership"
+)]
+pub(crate) use mesh_llm_membership::{is_global_ipv4_candidate, is_public_ipv4_candidate};
 #[expect(
     unused_imports,
     reason = "public compatibility re-export for existing mesh node callers"
@@ -167,7 +169,8 @@ pub use node::{
 pub(crate) use node::{PeerDownReport, peer_down_endpoint_id};
 pub(crate) use peer_state::{
     ClaimedLogHead, ControlListenerLifecycle, DEAD_PEER_TTL, MeshState,
-    PEER_DOWN_REPORTER_COOLDOWN_SECS, PEER_STALE_SECS, resolve_peer_leaving,
+    PEER_DOWN_REPORTER_COOLDOWN_SECS, PEER_STALE_SECS, http_routable_models, resolve_peer_leaving,
+    routable_models, routes_http_model, routes_model,
 };
 #[expect(
     unused_imports,

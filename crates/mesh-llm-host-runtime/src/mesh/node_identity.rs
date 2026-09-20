@@ -353,7 +353,7 @@ impl Node {
         let state = self.state.lock().await;
         let mut out = Vec::new();
         for peer in state.peers.values() {
-            out.extend(lan_bootstrap::lan_ipv4_candidates(&peer.addr));
+            out.extend(mesh_llm_membership::lan_ipv4_candidates(&peer.addr));
         }
         out
     }
@@ -552,7 +552,7 @@ impl Node {
         let targets = self.join_targets.lock().await;
         let mut out = Vec::new();
         for addr in targets.iter() {
-            out.extend(lan_bootstrap::lan_ipv4_candidates(addr));
+            out.extend(mesh_llm_membership::lan_ipv4_candidates(addr));
         }
         out
     }

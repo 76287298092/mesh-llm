@@ -673,7 +673,7 @@ pub(super) fn split_peer_wants_model(
     peer.requested_models
         .iter()
         .any(|model| model == model_name)
-        || peer.routes_model(model_ref)
+        || crate::mesh::routes_model(peer, model_ref)
         || peer.serving_models.iter().any(|model| model == model_name)
         || peer
             .available_models

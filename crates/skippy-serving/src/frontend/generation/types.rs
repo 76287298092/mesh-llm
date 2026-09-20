@@ -95,10 +95,12 @@ pub(in crate::frontend) enum OpenAiBackendMode {
 }
 
 impl OpenAiBackendMode {
+    pub(in crate::frontend) const EMBEDDED_STAGE_ZERO_LABEL: &'static str = "embedded-stage0";
+
     pub(in crate::frontend) fn label(&self) -> &'static str {
         match self {
             Self::LocalRuntime => "local-runtime",
-            Self::EmbeddedStageZero { .. } => "embedded-stage0",
+            Self::EmbeddedStageZero { .. } => Self::EMBEDDED_STAGE_ZERO_LABEL,
         }
     }
 }

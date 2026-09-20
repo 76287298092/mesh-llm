@@ -1,5 +1,5 @@
 use super::*;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::net::{IpAddr, SocketAddr};
 
 mod inbound;
 mod tunnel;
@@ -120,30 +120,6 @@ pub(crate) fn quic_bind_addr(bind: QuicBindSelection) -> Option<SocketAddr> {
 
 pub(crate) fn default_control_bind_addr() -> std::net::SocketAddr {
     std::net::SocketAddr::from(([127, 0, 0, 1], 0))
-}
-
-pub(crate) fn is_public_ipv4_candidate(socket: &SocketAddr) -> bool {
-    match socket.ip() {
-        IpAddr::V4(ip) => is_global_ipv4_candidate(ip),
-        IpAddr::V6(_) => false,
-    }
-}
-
-pub(crate) fn is_global_ipv4_candidate(ip: Ipv4Addr) -> bool {
-    let [a, b, c, _] = ip.octets();
-    !(ip.is_private()
-        || ip.is_loopback()
-        || ip.is_link_local()
-        || ip.is_multicast()
-        || ip.is_broadcast()
-        || ip.is_unspecified()
-        || (a == 100 && (64..=127).contains(&b))
-        || (a == 192 && b == 0 && c == 0)
-        || (a == 192 && b == 0 && c == 2)
-        || (a == 198 && (b == 18 || b == 19))
-        || (a == 198 && b == 51 && c == 100)
-        || (a == 203 && b == 0 && c == 113)
-        || a >= 240)
 }
 
 pub(crate) fn endpoint_addr_has_public_ipv4(addr: &EndpointAddr) -> bool {

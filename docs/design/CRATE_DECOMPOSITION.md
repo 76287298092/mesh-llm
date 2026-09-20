@@ -28,6 +28,15 @@ The app crate is now decomposed into the following owned crates:
   flavor/device helpers, process liveness validation, benchmark fingerprinting,
   benchmark prompt import support, release target modeling, and self-update
   plumbing.
+- `mesh-llm-membership` owns admission policy, neutral peer state, identity
+  persistence, discovery helpers, release-attestation contracts, throughput
+  hints, and selected-path snapshots. Its direct workspace dependencies are
+  `mesh-llm-identity`, `mesh-llm-protocol`, `mesh-llm-routing`, and
+  `mesh-llm-types`; it also uses iroh and utility crates. It has no direct
+  Skippy or host-runtime dependency. Feature gating alone does not establish
+  dependency purity. `Node`, `MeshState`, gossip/heartbeat orchestration,
+  serving-routing projections, and plugin event projection remain in the host;
+  see [the remaining boundary](../../crates/mesh-llm-membership/README.md#remaining-boundary-not-yet-moved).
 - `mesh-llm-host-runtime` owns the remaining host runtime implementation behind
   the binary: CLI, management API, mesh orchestration, host-local protocol
   conversion, gateway/proxy glue, plugin host, runtime-data aggregation, and
@@ -45,6 +54,7 @@ flowchart TD
     types["mesh-llm-types"]
     client["mesh-client"]
     identity["mesh-llm-identity"]
+    membership["mesh-llm-membership"]
     host_runtime["mesh-llm-host-runtime"]
     app["mesh-llm"]
     system["mesh-llm-system"]
@@ -55,6 +65,12 @@ flowchart TD
     ui["mesh-llm-ui"]
     api_assets["mesh-llm API asset routes"]
 
+    types --> membership
+    identity --> membership
+    protocol --> membership
+    routing --> membership
+    membership --> client
+    membership --> host_runtime
     types --> client
     types --> host_runtime
     identity --> client
@@ -85,7 +101,7 @@ flowchart TD
     identity["mesh-llm-identity"]
     protocol["mesh-llm-protocol"]
     client["mesh-client / mesh-llm-api-server"]
-    control_plane["mesh-llm-control-plane"]
+    control_plane["mesh-llm-membership"]
     routing["mesh-llm-routing"]
     system["mesh-llm-system"]
     plugins["mesh-llm-plugin-host"]
@@ -131,10 +147,10 @@ flowchart TD
 | Node proto schema, generated proto, ALPN and stream IDs, frame validation, frame helpers, legacy tunnel-map decoding | `mesh-llm-protocol` | Implemented as the shared wire-protocol crate consumed by the host and `mesh-client`. |
 | Host protocol conversion between proto and runtime structs | Host `protocol/convert.rs` for now | These conversions still depend on host-owned mesh, ownership, plugin config, and runtime structs; move them after control-plane/runtime boundaries are smaller. |
 | Pure shared mesh/client model types such as capabilities, topology, model demand, served-model identity, and descriptors | `mesh-llm-types` | Implemented first because these types are protocol-facing but do not need QUIC, protobuf, ownership, CLI, or runtime dependencies. |
-| Runtime peer state such as `PeerAnnouncement`, `PeerInfo`, and `NodeRole` | Later `mesh-llm-control-plane` or `mesh-llm-protocol` boundary after decoupling | These still carry `iroh`, protobuf summaries, ownership attestation, timestamps, and gossip semantics, so moving them before protocol/control-plane cleanup would smear dependencies into `mesh-llm-types`. |
+| Runtime peer state such as `PeerAnnouncement`, `PeerInfo`, and `NodeRole` | `mesh-llm-membership` | Neutral peer state and non-routing accessors have moved. Ownership-bearing state requires `host-io`; serving-routing projections and `MeshState` remain host-owned. |
 | Shared signing and envelope crypto | `mesh-llm-identity` | Implemented as a dependency-light shared crate for owner keypairs, owner IDs, signed encrypted envelopes, and key-provider traits. |
 | Host ownership persistence, keystore files, trust-store files, OS keychain integration | Host crypto modules for now | These are local machine and CLI/runtime policy concerns; they can move later behind host-oriented crate boundaries. |
-| `mesh/` gossip, heartbeat, membership, peer state, config sync | New `mesh-llm-control-plane` | This avoids the self-referential `mesh-llm-mesh` name and describes the subsystem's actual role: control-plane membership and coordination, not model execution. |
+| `mesh/` gossip, heartbeat, membership, peer state, config sync | `mesh-llm-membership` | Admission policy and neutral peer state have moved; gossip/heartbeat orchestration still requires removal of host runtime and plugin dependencies. |
 | `network/router.rs`, `network/affinity.rs`, route scoring, request placement, election-adjacent logic | New `mesh-llm-routing` | Routing and placement should be reusable without pulling in process runtime or CLI UI. |
 | `network/proxy.rs`, `network/tunnel.rs`, HTTP ingress glue | New `mesh-llm-gateway` | This is the network edge around OpenAI/API traffic. |
 | `network/openai/*` | Existing `skippy-openai-frontend` | Request/response adapter shims, stream-chunk schema parsing, response stream usage conversion, and upstream error mapping belong in `skippy-openai-frontend`; host networking keeps ingress and mesh transport glue. |

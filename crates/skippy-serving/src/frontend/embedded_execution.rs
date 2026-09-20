@@ -279,10 +279,18 @@ impl StageOpenAiBackend {
                     .map_err(openai_backend_error)?,
             )
         } else {
-            write_stage_message_conditioned(
-                &mut *downstream,
-                &forwarded.message,
-                request.downstream_wire_condition,
+            crate::frontend::backend::write_downstream_or_emit_forward_error(
+                &self.telemetry,
+                request.config,
+                request.ids,
+                write_timer.start_unix_nanos,
+                || {
+                    write_stage_message_conditioned(
+                        &mut *downstream,
+                        &forwarded.message,
+                        request.downstream_wire_condition,
+                    )
+                },
             )
             .map_err(openai_io_error)?;
             None

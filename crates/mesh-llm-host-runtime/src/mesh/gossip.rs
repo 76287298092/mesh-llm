@@ -13,7 +13,6 @@ use crate::mesh::announcements::{
     RebroadcastAnnouncements, apply_transitive_ann, merge_first_joined_mesh_ts,
     peer_is_idle_transitive_client, peer_meaningfully_changed, version_allowed_for_rebroadcast,
 };
-use crate::mesh::cache_affinity_gossip;
 use crate::mesh::peer_state::policy_accepts_peer;
 use crate::mesh::requirements::current_time_unix_ms;
 use crate::mesh::stage_transport::PeerLifecycleCaptureEvent;
@@ -543,7 +542,7 @@ impl Node {
         existing.stage_status_list_supported = ann.stage_status_list_supported;
         existing.local_gguf_content_id_supported = ann.local_gguf_content_id_supported;
         existing.advertised_model_throughput = ann.advertised_model_throughput.clone();
-        cache_affinity_gossip::merge_advertisement(
+        mesh_llm_membership::merge_advertisement(
             &mut existing.cache_affinity,
             ann.cache_affinity.as_ref(),
             true,

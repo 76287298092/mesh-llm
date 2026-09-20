@@ -846,7 +846,7 @@ async fn lan_served_models(
     }
     for peer in peers {
         if matches!(peer.role, crate::mesh::NodeRole::Host { .. }) {
-            for model in peer.routable_models() {
+            for model in crate::mesh::routable_models(peer) {
                 push_unique(&mut actually_serving, model);
             }
         }

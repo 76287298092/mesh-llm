@@ -124,7 +124,21 @@ impl PersistentStageLanePool {
             Some(lane) => lane,
             None => self
                 .connect_lane(LANE_STEADY_CONNECT_TIMEOUT, LANE_STEADY_CONNECT_TIMEOUT)
-                .map_err(openai_backend_error)?,
+                .map_err(|error| {
+                    // Causal connect event for the embedded A→B route:
+                    // acquisition failed for THIS request (identity from
+                    // `ids`), downstream is the intended target. Reply-read
+                    // failures are never routed through here.
+                    self.telemetry.emit(
+                        crate::binary_transport::binary_messaging::STAGE_BINARY_DOWNSTREAM_CONNECT_ERROR,
+                        crate::frontend::backend::openai_downstream_error_attrs(
+                            &self.config,
+                            ids,
+                            &format!("{error:#}"),
+                        ),
+                    );
+                    openai_backend_error(error)
+                })?,
         };
         let mut attrs = BTreeMap::from([
             (

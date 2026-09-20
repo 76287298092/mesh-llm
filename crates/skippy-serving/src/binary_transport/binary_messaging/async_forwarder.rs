@@ -1,3 +1,5 @@
+use super::STAGE_BINARY_DOWNSTREAM_FORWARD_ERROR;
+use super::downstream_forward_error_attrs;
 use crate::binary_transport::WireCondition;
 use crate::binary_transport::stage_execution::elapsed_ms;
 use crate::binary_transport::write_stage_message_after_propagation;
@@ -8,6 +10,7 @@ use anyhow::Result;
 use anyhow::anyhow;
 use serde_json::Value;
 use serde_json::json;
+use skippy_protocol::PeerConfig;
 use skippy_protocol::binary::StageWireMessage;
 use std::collections::BTreeMap;
 use std::collections::VecDeque;
@@ -58,6 +61,7 @@ struct AsyncForwardJob {
 impl AsyncForwarder {
     pub(crate) fn new(
         downstream: &TcpStream,
+        downstream_config: Option<PeerConfig>,
         telemetry: Telemetry,
         queue_capacity: usize,
     ) -> Result<Self> {
@@ -68,8 +72,9 @@ impl AsyncForwarder {
             .set_write_timeout(Some(ASYNC_FORWARD_TERMINAL_TIMEOUT))
             .context("set async activation forward write timeout")?;
         let (sender, receiver) = mpsc::sync_channel::<AsyncForwardJob>(queue_capacity.max(1));
-        let writer_thread =
-            thread::spawn(move || run_forwarder(&mut writer, &receiver, &telemetry));
+        let writer_thread = thread::spawn(move || {
+            run_forwarder(&mut writer, &receiver, &telemetry, &downstream_config)
+        });
         Ok(Self {
             sender: Some(sender),
             pending: VecDeque::new(),
@@ -141,13 +146,14 @@ fn run_forwarder(
     writer: &mut TcpStream,
     receiver: &mpsc::Receiver<AsyncForwardJob>,
     telemetry: &Telemetry,
+    downstream_config: &Option<PeerConfig>,
 ) {
     while let Ok(job) = receiver.recv() {
         let wait = time_until_ready(&job);
         if !wait.is_zero() {
             thread::sleep(wait);
         }
-        forward_job(writer, telemetry, job);
+        forward_job(writer, telemetry, job, downstream_config.as_ref());
     }
 }
 
@@ -156,23 +162,40 @@ fn time_until_ready(job: &AsyncForwardJob) -> std::time::Duration {
     ready_at.saturating_duration_since(Instant::now())
 }
 
-fn forward_job(writer: &mut TcpStream, telemetry: &Telemetry, job: AsyncForwardJob) {
+fn forward_job(
+    writer: &mut TcpStream,
+    telemetry: &Telemetry,
+    job: AsyncForwardJob,
+    downstream: Option<&PeerConfig>,
+) {
     let result = write_stage_message_after_propagation(writer, &job.message, job.condition)
         .context("async forward activation frame downstream")
         .map(|()| elapsed_ms(job.enqueued_at))
         .map_err(|error| format!("{error:#}"));
     let write_end_unix_nanos = now_unix_nanos() as u64;
-    let mut attrs = job.attrs;
-    attrs.insert(
+    // The write span keeps its original name and timing on both outcomes;
+    // the failure event is additive and fires at normal telemetry level
+    // (identity attrs are built at the enqueue site, outside any debug
+    // guard) so failures are observable without debug telemetry.
+    let mut span_attrs = job.attrs.clone();
+    span_attrs.insert(
         "llama_stage.forward_write_ms".to_string(),
         json!(elapsed_ms(job.enqueued_at)),
     );
     telemetry.emit_debug_span(
         "stage.binary_downstream_write",
-        attrs,
+        span_attrs,
         job.enqueued_unix_nanos,
         write_end_unix_nanos,
     );
+    if let Err(error) = &result {
+        telemetry.emit_span(
+            STAGE_BINARY_DOWNSTREAM_FORWARD_ERROR,
+            downstream_forward_error_attrs(job.attrs, downstream, error),
+            job.enqueued_unix_nanos,
+            write_end_unix_nanos,
+        );
+    }
     let _ = job.done.send(result);
 }
 
@@ -213,6 +236,9 @@ mod tests {
 
     use super::*;
     use crate::binary_transport::stage_execution::prefix_cache_test_config;
+    use crate::binary_transport::stage_execution::{
+        binary_message_attrs, binary_message_session_id,
+    };
     use crate::telemetry::TelemetryLevel;
 
     fn message(kind: WireMessageKind, pos_start: i32) -> StageWireMessage {
@@ -246,7 +272,7 @@ mod tests {
         let mut client = TcpStream::connect(address).unwrap();
         let (mut server, _) = listener.accept().unwrap();
         let telemetry = Telemetry::new(None, 1, prefix_cache_test_config(), TelemetryLevel::Off);
-        let mut forwarder = AsyncForwarder::new(&client, telemetry, 8).unwrap();
+        let mut forwarder = AsyncForwarder::new(&client, None, telemetry, 8).unwrap();
         // 250ms of simulated propagation: without the drop-time join, the
         // teardown write below wins the race and the frames interleave.
         let condition = WireCondition::new(250.0, None).unwrap();
@@ -289,7 +315,7 @@ mod tests {
         let mut lane = TcpStream::connect(address).unwrap();
         let (mut server, _) = listener.accept().unwrap();
         let telemetry = Telemetry::new(None, 1, prefix_cache_test_config(), TelemetryLevel::Off);
-        let mut forwarder = AsyncForwarder::new(&lane, telemetry, 8).unwrap();
+        let mut forwarder = AsyncForwarder::new(&lane, None, telemetry, 8).unwrap();
         let delayed = WireCondition::new(250.0, None).unwrap();
         let immediate = WireCondition::new(0.0, None).unwrap();
 
@@ -343,7 +369,7 @@ mod tests {
         let client = TcpStream::connect(address).unwrap();
         let (mut server, _) = listener.accept().unwrap();
         let telemetry = Telemetry::new(None, 1, prefix_cache_test_config(), TelemetryLevel::Off);
-        let mut forwarder = AsyncForwarder::new(&client, telemetry, 3).unwrap();
+        let mut forwarder = AsyncForwarder::new(&client, None, telemetry, 3).unwrap();
         let condition = WireCondition::new(0.0, None).unwrap();
 
         forwarder
@@ -391,5 +417,142 @@ mod tests {
             .unwrap_err();
 
         assert!(error.to_string().contains("timed out"));
+    }
+
+    fn failing_write_pair() -> TcpStream {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let mut client = TcpStream::connect(address).unwrap();
+        let (server, _) = listener.accept().unwrap();
+        // Linger-0 close sends a TCP RST immediately. std `tcp_linger` is
+        // unstable on the pinned 1.98 toolchain, so this goes through
+        // socket2 (already a dependency).
+        socket2::SockRef::from(&server)
+            .set_linger(Some(Duration::from_secs(0)))
+            .unwrap();
+        drop(server);
+        // Poke until the kernel surfaces the reset, then ASSERT the
+        // precondition instead of assuming it: a write that still succeeds
+        // would silently invalidate the test's premise.
+        use std::io::Write as _;
+        let mut reset_observed = false;
+        for _ in 0..200 {
+            if client.write_all(&[0]).is_err() {
+                reset_observed = true;
+                break;
+            }
+            thread::sleep(Duration::from_millis(5));
+        }
+        assert!(
+            reset_observed,
+            "precondition: client socket must observe the peer reset before the forward under test"
+        );
+        client
+    }
+
+    fn forward_error_peer() -> PeerConfig {
+        PeerConfig {
+            stage_id: "stage-1".to_string(),
+            stage_index: 1,
+            endpoint: "10.0.0.2:50051".to_string(),
+        }
+    }
+
+    fn run_forward_job(
+        client: &mut TcpStream,
+        telemetry: &Telemetry,
+    ) -> std::result::Result<f64, String> {
+        let frame = message(WireMessageKind::VerifyWindow, 7);
+        let attrs = binary_message_attrs(
+            &prefix_cache_test_config(),
+            binary_message_session_id(0, &frame),
+            &frame,
+        );
+        let (done, receiver) = mpsc::channel();
+        let job = AsyncForwardJob {
+            message: frame,
+            condition: WireCondition::new(0.0, None).unwrap(),
+            attrs,
+            done,
+            enqueued_at: Instant::now(),
+            enqueued_unix_nanos: now_unix_nanos() as u64,
+        };
+        forward_job(client, telemetry, job, Some(&forward_error_peer()));
+        receiver.recv().unwrap()
+    }
+
+    /// A failed activation forward must preserve the original debug write
+    /// span (same name and timing semantics) and additively emit the
+    /// normal-level failure event carrying the frame's request/session
+    /// identity, the intended downstream identity and the error chain.
+    #[test]
+    fn forward_failure_preserves_write_span_and_emits_identity_error_event() {
+        let mut client = failing_write_pair();
+        let config = prefix_cache_test_config();
+        let (telemetry, rx) = Telemetry::captured(config.clone(), TelemetryLevel::Debug);
+
+        let result = run_forward_job(&mut client, &telemetry);
+        let error = result.unwrap_err();
+        assert!(error.contains("async forward activation frame downstream"));
+
+        let mut write_span = None;
+        let mut error_event = None;
+        while let Ok(event) = rx.try_recv() {
+            match event.event.as_str() {
+                "stage.binary_downstream_write" => write_span = Some(event),
+                "stage.binary_downstream_forward_error" => error_event = Some(event),
+                _ => {}
+            }
+        }
+
+        let write_span = write_span.expect("write span preserved on error at debug level");
+        assert!(
+            write_span
+                .attributes
+                .contains_key("llama_stage.forward_write_ms")
+        );
+        assert_eq!(write_span.attributes["skippy.request_id"], json!("1"));
+
+        let error_event = error_event.expect("failure event emitted");
+        let attrs = &error_event.attributes;
+        assert_eq!(attrs["llama_stage.downstream_stage_id"], json!("stage-1"));
+        assert_eq!(attrs["llama_stage.downstream_stage_index"], json!(1));
+        assert_eq!(
+            attrs["llama_stage.downstream_endpoint"],
+            json!("10.0.0.2:50051")
+        );
+        assert_eq!(attrs["skippy.request_id"], json!("1"));
+        assert_eq!(attrs["skippy.session_id"], json!("2"));
+        assert!(
+            attrs["llama_stage.error"]
+                .as_str()
+                .unwrap()
+                .contains("async forward")
+        );
+        assert_eq!(attrs["skippy.run_id"], json!("run"));
+        assert_eq!(attrs["skippy.stage_id"], json!("stage-0"));
+        assert!(error_event.end_time_unix_nanos >= error_event.start_time_unix_nanos);
+    }
+
+    /// At `Summary` telemetry the failure event still fires with full
+    /// identity, while the debug-only write span stays suppressed — that is
+    /// the documented level contract for downstream forward failures.
+    #[test]
+    fn forward_failure_event_fires_at_summary_level_without_debug_span() {
+        let mut client = failing_write_pair();
+        let (telemetry, rx) =
+            Telemetry::captured(prefix_cache_test_config(), TelemetryLevel::Summary);
+
+        run_forward_job(&mut client, &telemetry).unwrap_err();
+
+        let mut names = Vec::new();
+        while let Ok(event) = rx.try_recv() {
+            names.push(event.event);
+        }
+        assert_eq!(
+            names,
+            vec!["stage.binary_downstream_forward_error"],
+            "only the normal-level failure event fires at Summary"
+        );
     }
 }

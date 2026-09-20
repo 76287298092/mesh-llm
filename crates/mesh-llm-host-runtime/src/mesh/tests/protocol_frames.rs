@@ -715,12 +715,12 @@ fn worker_only_legacy_models_are_excluded_from_http_routes() {
     assert!(legacy_host.accepts_http_inference());
     assert!(!legacy_worker.accepts_http_inference());
     assert_eq!(
-        legacy_host.http_routable_models(),
+        http_routable_models(&legacy_host),
         vec!["legacy-host-model".to_string()]
     );
-    assert!(legacy_host.routes_http_model("legacy-host-model"));
-    assert!(legacy_worker.http_routable_models().is_empty());
-    assert!(!legacy_worker.routes_http_model("worker-only-model"));
+    assert!(routes_http_model(&legacy_host, "legacy-host-model"));
+    assert!(http_routable_models(&legacy_worker).is_empty());
+    assert!(!routes_http_model(&legacy_worker, "worker-only-model"));
 }
 
 #[test]
