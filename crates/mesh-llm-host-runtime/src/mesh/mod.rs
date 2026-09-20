@@ -19,7 +19,7 @@ use iroh::{Endpoint, EndpointAddr, EndpointId, SecretKey, TransportAddr};
 use mesh_llm_events::OutputEvent;
 use prost::Message;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 
 use tokio::sync::{Mutex, watch};
@@ -30,8 +30,8 @@ use self::requirements::{
     evaluate_direct_peer_admission, peer_release_attestation_status,
 };
 use crate::crypto::{
-    DEFAULT_NODE_CERT_LIFETIME_SECS, OwnershipStatus, OwnershipSummary, SignedNodeOwnership,
-    TrustPolicy, TrustStore, default_node_ownership_path, save_node_ownership, sign_node_ownership,
+    DEFAULT_NODE_CERT_LIFETIME_SECS, OwnershipSummary, SignedNodeOwnership, TrustPolicy,
+    TrustStore, default_node_ownership_path, save_node_ownership, sign_node_ownership,
     verify_node_ownership,
 };
 use crate::protocol::*;
@@ -80,7 +80,6 @@ mod advertisement;
 mod announcements;
 mod artifact_transfer_io;
 mod capacity;
-mod connection_reservation;
 mod connections;
 mod connectivity;
 mod direct_path;
@@ -108,9 +107,10 @@ mod stage_transport_bridge;
 mod stun;
 mod weights_digest;
 
-use connection_reservation::*;
 use connections::*;
 pub(crate) use host_role_claims::{HostRoleClaim, HostRoleClaims};
+use mesh_llm_membership::connection_reservation::*;
+use mesh_llm_membership::state::MembershipState;
 use model_identity::*;
 // Main's openai::model_names calls this through the mesh:: path; keep the
 // pub(crate) surface stable across the model_identity move.
@@ -168,9 +168,9 @@ pub use node::{
 };
 pub(crate) use node::{PeerDownReport, peer_down_endpoint_id};
 pub(crate) use peer_state::{
-    ClaimedLogHead, ControlListenerLifecycle, DEAD_PEER_TTL, MeshState,
-    PEER_DOWN_REPORTER_COOLDOWN_SECS, PEER_STALE_SECS, http_routable_models, resolve_peer_leaving,
-    routable_models, routes_http_model, routes_model,
+    ClaimedLogHead, ControlListenerLifecycle, DEAD_PEER_TTL, PEER_DOWN_REPORTER_COOLDOWN_SECS,
+    PEER_STALE_SECS, http_routable_models, resolve_peer_leaving, routable_models,
+    routes_http_model, routes_model,
 };
 #[expect(
     unused_imports,
@@ -196,7 +196,7 @@ pub(crate) use stage_transport_bridge::{StageTransportBridge, StageTransportBrid
 pub(crate) use weights_digest::{file_fingerprint, weights_digest_for_file};
 
 #[cfg(test)]
-use announcements::{apply_transitive_ann, peer_meaningfully_changed};
+use mesh_llm_membership::announcements::{apply_transitive_ann, peer_meaningfully_changed};
 pub(crate) use mesh_llm_membership::peer_health::resolve_peer_down;
 use mesh_llm_membership::peer_health::{PeerDownReportDisposition, peer_down_report_disposition};
 pub(crate) use stage_proto::stage_status_from_load;

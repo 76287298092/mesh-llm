@@ -1203,31 +1203,7 @@ impl Node {
         &self,
         peer_id: EndpointId,
     ) -> PendingConnectionReservation {
-        let mut state = self.state.lock().await;
-        if let Some(pending) = state
-            .pending_connection_is_active(peer_id)
-            .then(|| state.pending_connections.get(&peer_id))
-            .flatten()
-        {
-            return PendingConnectionReservation::Waiter(pending.waiter(peer_id));
-        }
-
-        let attempt_id = PendingConnectionAttemptId(state.next_pending_connection_attempt);
-        state.next_pending_connection_attempt =
-            state.next_pending_connection_attempt.wrapping_add(1);
-        let (outcome_tx, outcome_rx) = watch::channel(None);
-        state.pending_connections.insert(
-            peer_id,
-            PendingConnectionHandshake {
-                attempt_id,
-                outcome_rx,
-            },
-        );
-        PendingConnectionReservation::Owner(PendingConnectionAttemptOwner {
-            peer_id,
-            attempt_id,
-            outcome_tx,
-        })
+        self.state.lock().await.reserve_pending_connection(peer_id)
     }
 
     pub(crate) async fn finish_pending_connection(
@@ -1235,50 +1211,20 @@ impl Node {
         owner: PendingConnectionAttemptOwner,
         outcome: PendingConnectionOutcome,
     ) {
-        owner.outcome_tx.send_replace(Some(outcome));
-        let mut state = self.state.lock().await;
-        if state
-            .pending_connections
-            .get(&owner.peer_id)
-            .is_some_and(|pending| pending.attempt_id == owner.attempt_id)
-        {
-            state.pending_connections.remove(&owner.peer_id);
-        }
-    }
-
-    pub(crate) async fn remove_pending_connection_if_attempt(
-        &self,
-        peer_id: EndpointId,
-        attempt_id: PendingConnectionAttemptId,
-    ) {
-        let mut state = self.state.lock().await;
-        if state
-            .pending_connections
-            .get(&peer_id)
-            .is_some_and(|pending| pending.attempt_id == attempt_id)
-        {
-            state.pending_connections.remove(&peer_id);
-        }
+        mesh_llm_membership::connection_reservation::finish_pending_connection(
+            &self.state,
+            owner,
+            outcome,
+        )
+        .await;
     }
 
     pub(crate) async fn await_pending_connection(
         &self,
-        mut waiter: PendingConnectionWaiter,
+        waiter: PendingConnectionWaiter,
     ) -> Result<()> {
-        loop {
-            let outcome = waiter.outcome_rx.borrow().clone();
-            if let Some(outcome) = outcome {
-                return outcome.into_result(waiter.peer_id);
-            }
-            if waiter.outcome_rx.changed().await.is_err() {
-                self.remove_pending_connection_if_attempt(waiter.peer_id, waiter.attempt_id)
-                    .await;
-                anyhow::bail!(
-                    "connection attempt to {} ended without a terminal result",
-                    waiter.peer_id.fmt_short()
-                )
-            }
-        }
+        mesh_llm_membership::connection_reservation::await_pending_connection(&self.state, waiter)
+            .await
     }
 
     async fn close_connection_after_failed_gossip(

@@ -9,10 +9,6 @@ use super::{
     record_mesh_operational_event_with_context,
 };
 use crate::crypto::{OwnershipSummary, verify_node_ownership};
-use crate::mesh::announcements::{
-    RebroadcastAnnouncements, apply_transitive_ann, merge_first_joined_mesh_ts,
-    peer_is_idle_transitive_client, peer_meaningfully_changed, version_allowed_for_rebroadcast,
-};
 use crate::mesh::peer_state::policy_accepts_peer;
 use crate::mesh::requirements::current_time_unix_ms;
 use crate::mesh::stage_transport::PeerLifecycleCaptureEvent;
@@ -22,6 +18,10 @@ use crate::protocol::{
 };
 use anyhow::Result;
 use iroh::{EndpointAddr, EndpointId, endpoint::Connection};
+use mesh_llm_membership::announcements::{
+    RebroadcastAnnouncements, apply_transitive_ann, peer_is_idle_transitive_client,
+    peer_meaningfully_changed, update_existing_direct_peer, version_allowed_for_rebroadcast,
+};
 
 /// Minimum peer version we accept into the local mesh table and re-broadcast.
 ///
@@ -477,102 +477,6 @@ impl Node {
         }
     }
 
-    pub(crate) fn peer_hardware_changed(old_peer: &PeerInfo, updated_peer: &PeerInfo) -> bool {
-        old_peer.gpu_name != updated_peer.gpu_name
-            || old_peer.hostname != updated_peer.hostname
-            || old_peer.is_soc != updated_peer.is_soc
-            || old_peer.gpu_vram != updated_peer.gpu_vram
-            || old_peer.gpu_reserved_bytes != updated_peer.gpu_reserved_bytes
-            || old_peer.gpu_mem_bandwidth_gbps != updated_peer.gpu_mem_bandwidth_gbps
-            || old_peer.gpu_compute_tflops_fp32 != updated_peer.gpu_compute_tflops_fp32
-            || old_peer.gpu_compute_tflops_fp16 != updated_peer.gpu_compute_tflops_fp16
-    }
-
-    pub(crate) fn update_existing_direct_peer(
-        existing: &mut PeerInfo,
-        addr: EndpointAddr,
-        ann: &PeerAnnouncement,
-        owner_summary: OwnershipSummary,
-        now: std::time::Instant,
-    ) -> (PeerInfo, bool, bool, bool) {
-        let old_peer = existing.clone();
-        let role_changed = existing.role != ann.role;
-        let ann_hosted_models = ann.hosted_models.clone().unwrap_or_default();
-        let serving_changed = existing.serving_models != ann.serving_models
-            || existing.hosted_models != ann_hosted_models
-            || existing.hosted_models_known != ann.hosted_models.is_some();
-        existing.admitted = true;
-        existing.mesh_id = ann.mesh_id.clone();
-        existing.mesh_policy_hash = ann.mesh_policy_hash.clone();
-        existing.genesis_policy = ann.genesis_policy.clone();
-        if role_changed {
-            tracing::info!(
-                "Peer {} role updated: {:?} → {:?}",
-                existing.id.fmt_short(),
-                existing.role,
-                ann.role
-            );
-            existing.role = ann.role.clone();
-        }
-        if !addr.addrs.is_empty() {
-            existing.addr = addr;
-        }
-        existing.models = ann.models.clone();
-        merge_first_joined_mesh_ts(&mut existing.first_joined_mesh_ts, ann.first_joined_mesh_ts);
-        existing.vram_bytes = ann.vram_bytes;
-        if ann.model_source.is_some() {
-            existing.model_source = ann.model_source.clone();
-        }
-        existing.serving_models = ann.serving_models.clone();
-        existing.hosted_models = ann_hosted_models;
-        existing.hosted_models_known = ann.hosted_models.is_some();
-        existing.available_models.clear();
-        existing
-            .available_models
-            .extend(ann.available_models.clone());
-        existing.requested_models = ann.requested_models.clone();
-        existing.explicit_model_interests = ann.explicit_model_interests.clone();
-        existing.last_seen = now;
-        existing.owner_attestation = ann.owner_attestation.clone();
-        existing.owner_summary = owner_summary;
-        existing.served_model_descriptors = ann.served_model_descriptors.clone();
-        existing.served_model_runtime = ann.served_model_runtime.clone();
-        existing.artifact_transfer_supported = ann.artifact_transfer_supported;
-        existing.stage_protocol_generation_supported = ann.stage_protocol_generation_supported;
-        existing.stage_status_list_supported = ann.stage_status_list_supported;
-        existing.local_gguf_content_id_supported = ann.local_gguf_content_id_supported;
-        existing.advertised_model_throughput = ann.advertised_model_throughput.clone();
-        mesh_llm_membership::merge_advertisement(
-            &mut existing.cache_affinity,
-            ann.cache_affinity.as_ref(),
-            true,
-        );
-        existing.inference_admission_state = ann.inference_admission_state;
-        if ann.version.is_some() {
-            existing.version = ann.version.clone();
-        }
-        existing.gpu_name = ann.gpu_name.clone();
-        existing.hostname = ann.hostname.clone();
-        existing.is_soc = ann.is_soc;
-        existing.gpu_vram = ann.gpu_vram.clone();
-        existing.gpu_reserved_bytes = ann.gpu_reserved_bytes.clone();
-        existing.memory = ann.memory;
-        existing.gpu_mem_bandwidth_gbps = ann.gpu_mem_bandwidth_gbps.clone();
-        existing.gpu_compute_tflops_fp32 = ann.gpu_compute_tflops_fp32.clone();
-        existing.gpu_compute_tflops_fp16 = ann.gpu_compute_tflops_fp16.clone();
-        if ann.experts_summary.is_some() {
-            existing.experts_summary = ann.experts_summary.clone();
-        }
-        existing.release_attestation_summary = crate::verify_release_attestation(
-            ann.release_attestation.as_ref(),
-            &crate::ReleaseSignerTrustStore::default(),
-        );
-        let updated_peer = existing.clone();
-        let changed = peer_meaningfully_changed(&old_peer, &updated_peer)
-            || Self::peer_hardware_changed(&old_peer, &updated_peer);
-        (updated_peer, changed, role_changed, serving_changed)
-    }
-
     pub(crate) async fn remove_disallowed_peer(&self, id: EndpointId) {
         let mut state = self.state.lock().await;
         if state.peers.remove(&id).is_some() {
@@ -683,7 +587,7 @@ impl Node {
             return false;
         };
         let (updated_peer, changed, role_changed, serving_changed) =
-            Self::update_existing_direct_peer(existing, addr, ann, owner_summary, now);
+            update_existing_direct_peer(existing, addr, ann, owner_summary, now);
         let count = state
             .peers
             .values()

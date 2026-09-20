@@ -251,7 +251,7 @@ fn peer_info_announcement_adapter_preserves_legacy_hardware_fields() {
     peer.gpu_vram = Some("51539607552".to_string());
     peer.gpu_mem_bandwidth_gbps = Some("1948.70".to_string());
 
-    let ann = Node::announcement_from_peer(&peer);
+    let ann = mesh_llm_membership::announcements::announcement_from_peer(&peer);
     let proto = local_ann_to_proto_ann(&ann);
     let hardware = proto.hardware.as_ref().expect("hardware must be encoded");
     let (_, decoded) = proto_ann_to_local(&proto).expect("production proto adapter must decode");

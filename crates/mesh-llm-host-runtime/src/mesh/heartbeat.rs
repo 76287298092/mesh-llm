@@ -296,7 +296,7 @@ impl Node {
         peer_id: EndpointId,
         new_conn: &Connection,
         rescue_endpoint: Option<Endpoint>,
-        state: &mut tokio::sync::MutexGuard<'_, super::MeshState>,
+        state: &mut tokio::sync::MutexGuard<'_, super::MembershipState>,
     ) -> Result<Option<Endpoint>, ()> {
         let displaced = match rescue_endpoint {
             Some(endpoint) => self

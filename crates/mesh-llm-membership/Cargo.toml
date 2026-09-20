@@ -13,7 +13,7 @@ default = []
 # Host-side identity persistence (node key/keystore/ownership file I/O). The
 # pure peer/address/cache-affinity modules are available without it so the
 # embedded client can consume them without pulling keyring/dirs/rand.
-host-io = ["mesh-llm-identity/host-io", "dep:rand", "dep:dirs"]
+host-io = ["mesh-llm-identity/host-io", "dep:rand", "dep:dirs", "dep:tokio"]
 # Test-only override for the `MESH_LLM_TEST_HOME` home resolver. Enabled only
 # by the host crate's dev-dependency, so library consumers (the embedded
 # client) never observe the env-var override in production code. Implies
@@ -41,6 +41,7 @@ dirs = { version = "6.0.0", optional = true }
 tracing = "0.1"
 sha2 = "0.11"
 serde_json = "1"
+tokio = { version = "1", features = ["sync"], optional = true }
 
 [dev-dependencies]
 tempfile = "3"

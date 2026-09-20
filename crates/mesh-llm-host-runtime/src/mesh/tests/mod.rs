@@ -1,3 +1,4 @@
+use crate::crypto::OwnershipStatus;
 use crate::mesh::artifact_transfer_io::{PartialArtifactGuard, write_artifact_transfer_chunk};
 use crate::mesh::node::LocalRequestMetricsSampler;
 use mesh_llm_types::mesh::{DEMAND_TTL_SECS, merge_demand};

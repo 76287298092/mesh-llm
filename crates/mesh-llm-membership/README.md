@@ -33,7 +33,7 @@ small utility crates — never a `skippy-*` crate and never
 | `advertised_throughput` | `ModelThroughputHint`, `sanitize_model_throughput_hints`, `THROUGHPUT_SCALE_MILLI` + `MAX_ADVERTISED_*` bounds | host `network/metrics.rs` re-exports; gossip `PeerAnnouncement` field now references the moved type |
 | `selected_path` | `SelectedPathObservation`, `SplitStagePathKind`, `SplitStagePathSnapshot` (+ constructors/fallbacks), `split_stage_path_snapshot_from_observation` | host `stage_transport.rs` re-exports and keeps the `iroh::endpoint::Connection` walk (`selected_path_observation`), which is a serving-transport effect |
 | `requirements` | the full admission policy — `MeshGenesisPolicy`, `SignedMeshGenesisPolicy`, `SignedBootstrapToken`, `DirectNodeAdmissionProof`, `MeshRequirements`, `NodeVersionBounds`, `ProtocolGenerationBounds`, `ReleaseAttestationRequirement`, `MeshRequirementDecision`/`MeshRequirementRejectReason`, rejection taxonomy/event types, `Normalized*` bounds, `peer_release_attestation_status`, `evaluate_direct_peer_admission`, and the direct-proof encoding tests | host `mesh/requirements.rs` shim re-exports; `announcements.rs`/`gossip.rs` reach `current_time_unix_ms` through that re-export |
-| `peer_state` | `PeerAnnouncement`; the neutral `PeerInfo` state and its non-routing accessors (`from_announcement`, `is_admitted`, `current_direct_rtt_ms`, `split_stage_path_fallback`, `display_latency`, `is_assigned_model`, `accepts_http_inference`); `DirectLatencyObservation`/`PropagatedLatencyObservation`/`DisplayLatency`/`DisplayLatencySource`; `MeshCatalogEntry`; the pure admission helpers `policy_accepts_peer`, `model_identity_score`, `stream_allowed_before_admission`, `ingest_tunnel_map`, `resolve_peer_leaving`; and the `PEER_STALE_SECS`/`DEAD_PEER_TTL`/`PEER_DOWN_REPORTER_COOLDOWN_SECS` constants. Gated behind `host-io` (it holds `SignedNodeOwnership`) | host `mesh/peer_state.rs` re-exports `PeerInfo` and keeps the serving-routing projections as free functions over `&PeerInfo` (`routable_models`, `routes_model`, `http_routable_models`, `routes_http_model`, `public_model_id_for_routable_model`, `advertised_context_length`), plus `MeshState`, `OwnerRuntimeConfig`, `ControlListenerLifecycle`, and all `impl Node` blocks |
+| `peer_state` | `PeerAnnouncement`; the neutral `PeerInfo` state and its non-routing accessors (`from_announcement`, `is_admitted`, `current_direct_rtt_ms`, `split_stage_path_fallback`, `display_latency`, `is_assigned_model`, `accepts_http_inference`); `DirectLatencyObservation`/`PropagatedLatencyObservation`/`DisplayLatency`/`DisplayLatencySource`; `MeshCatalogEntry`; the pure admission helpers `policy_accepts_peer`, `model_identity_score`, `stream_allowed_before_admission`, `ingest_tunnel_map`, `resolve_peer_leaving`; and the `PEER_STALE_SECS`/`DEAD_PEER_TTL`/`PEER_DOWN_REPORTER_COOLDOWN_SECS` constants. Gated behind `host-io` (it holds `SignedNodeOwnership`) | host `mesh/peer_state.rs` re-exports `PeerInfo` and keeps the serving-routing projections as free functions over `&PeerInfo` (`routable_models`, `routes_model`, `http_routable_models`, `routes_http_model`, `public_model_id_for_routable_model`, `advertised_context_length`), plus `OwnerRuntimeConfig`, `ControlListenerLifecycle`, and host `impl Node` blocks |
 
 `release_attestation`, `advertised_throughput`, `selected_path`, and
 `requirements` are available without `host-io`. `peer_state` is gated behind
@@ -76,6 +76,28 @@ plugin notifications. Loading and persistence verify signed policy identity;
 writes use the existing identity crate's atomic keystore writer. This module
 is gated behind `host-io`.
 
+## Live membership state and connection admission
+
+`state::MembershipState` owns peer records, control connections, pending
+handshakes, tunnel maps, peer-death/reporter cooldowns and admission rejection
+history. `connection_reservation` owns single-owner handshake reservations,
+waiter completion and owner-scoped cleanup. Both are gated behind `host-io`;
+Tokio synchronization is enabled only with that feature.
+
+The host `Node` composes this state under its existing mutex and delegates
+handshake lifecycle operations. Mesh plugin duplicate suppression has a separate
+host-owned state and mutex; neither plugin state nor plugin types cross into
+membership. The host still performs gossip I/O and admission-side effects.
+
+## Gossip state transitions
+
+`announcements` owns direct and transitive peer updates, advertised-version
+and idle-client filters, meaningful-change detection, peer rebroadcast projection
+and stale-peer selection over `MembershipState`. Existing host integration tests
+still exercise these operations through real `Node` gossip; version-policy tests
+live with membership. The host composes its local model/plugin advertisement,
+backfills legacy model descriptors and retains network I/O and notifications.
+
 ## Remaining boundary (not yet moved)
 
 The heavier membership modules still live in `mesh-llm-host-runtime/src/mesh/`
@@ -83,7 +105,7 @@ until their host-service dependencies are injected. Each is listed with the
 host surface it reaches today:
 
 - `peer_state.rs` (remaining) — the neutral `PeerInfo` state moved; host keeps
-  `MeshState`, `OwnerRuntimeConfig`, `ControlListenerLifecycle`, and the
+  `OwnerRuntimeConfig`, `ControlListenerLifecycle`, and the
   `impl Node` blocks. `PeerInfo`'s serving-routing projections
   (`routable_models`, `routes_model`, `http_routable_models`,
   `routes_http_model`, `public_model_id_for_routable_model`,
@@ -109,10 +131,10 @@ host surface it reaches today:
   relay controller have moved; the remaining host effects reach the plugin
   `mesh_event` projection and the release-attestation verifier; also depend on
   `peer_state` types above.
-- `stun.rs` / `connection_reservation.rs` / `capacity.rs` / `connectivity.rs` /
+- `stun.rs` / `capacity.rs` / `connectivity.rs` /
   `direct_path.rs` / `direct_rescue.rs` / `host_role_claims.rs` — `stun` tests
-  depend on `node_identity::merge_public_addr_into_advertisement`; the rest add
-  `impl Node` / `impl MeshState` blocks and move only once `Node` moves.
+  depend on `node_identity::merge_public_addr_into_advertisement`; the remaining host modules add `impl Node` blocks. Connection reservation
+  state and lifecycle have moved into membership.
 - `node.rs` — the `Node` struct. Reaches runtime orchestration
   (`crate::runtime`, `crate::runtime_data`, `crate::inference::skippy`,
   `crate::network::metrics`, `crate::capture`, `crate::plugin::PluginManager`).

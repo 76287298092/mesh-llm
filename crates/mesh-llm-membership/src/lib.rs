@@ -4,7 +4,8 @@
 //! and mesh identity persistence, discovery address classification,
 //! cache-affinity gossip, the dependency-neutral release-attestation and
 //! throughput-hint contracts, the mesh genesis/requirements admission policy,
-//! and the peer-announcement/latency state model — independent of
+//! peer-announcement/latency state, peer health and connection admission
+//! lifecycle — independent of
 //! inference/split policy (which stays in Skippy) and of the serving transport
 //! and owner/plugin surfaces (which stay in `mesh-llm-host-runtime` for their
 //! own later extractions).
@@ -13,7 +14,8 @@
 //! `lan_bootstrap`, `cache_affinity_gossip`, the pure leaves of
 //! `model_identity`, `weights_digest` (with an injected cache directory),
 //! `release_attestation`, `advertised_throughput`, `selected_path`,
-//! `requirements`, and the `PeerAnnouncement`/latency half of `peer_state`.
+//! `requirements`, `peer_state`, `peer_health`, `adopted_membership`,
+//! `state`, and `connection_reservation`.
 //!
 //! `peer_state` carries the neutral `PeerInfo` state and its non-routing
 //! accessors. The serving-routing projections over `PeerInfo`
@@ -27,7 +29,11 @@ pub mod address;
 #[cfg(feature = "host-io")]
 pub mod adopted_membership;
 pub mod advertised_throughput;
+#[cfg(feature = "host-io")]
+pub mod announcements;
 pub mod cache_affinity_gossip;
+#[cfg(feature = "host-io")]
+pub mod connection_reservation;
 #[cfg(feature = "host-io")]
 pub mod identity_persistence;
 pub mod lan_bootstrap;
@@ -38,6 +44,8 @@ pub mod peer_state;
 pub mod release_attestation;
 pub mod requirements;
 pub mod selected_path;
+#[cfg(feature = "host-io")]
+pub mod state;
 pub mod types;
 pub mod weights_digest;
 

@@ -1,3 +1,6 @@
+mod message_history;
+pub(super) use message_history::PluginMessageHistory;
+
 use super::*;
 use crate::mesh::node::default_plugin_event_source;
 
@@ -124,43 +127,11 @@ impl Node {
     }
 
     pub(crate) async fn remember_plugin_message(&self, message_id: String) -> bool {
-        /// How long to remember a message ID. Any duplicate arriving within
-        /// this window is suppressed. This must be longer than the worst-case
-        /// propagation delay across alternate mesh paths — 120s is generous.
-        const DEDUP_TTL: std::time::Duration = std::time::Duration::from_secs(120);
-        /// Hard cap to bound memory even if message volume is extreme.
-        const DEDUP_HARD_CAP: usize = 100_000;
-
         let now = std::time::Instant::now();
-        let mut state = self.state.lock().await;
-
-        // Evict entries older than the TTL
-        while let Some((ts, _)) = state.seen_plugin_message_order.front() {
-            if now.duration_since(*ts) >= DEDUP_TTL {
-                if let Some((_, id)) = state.seen_plugin_message_order.pop_front() {
-                    state.seen_plugin_messages.remove(&id);
-                }
-            } else {
-                break;
-            }
-        }
-
-        // Already seen?
-        if state.seen_plugin_messages.contains_key(&message_id) {
-            return false;
-        }
-
-        // Hard cap: if under extreme load we still accumulate too many,
-        // evict the oldest regardless of TTL.
-        while state.seen_plugin_message_order.len() >= DEDUP_HARD_CAP {
-            if let Some((_, id)) = state.seen_plugin_message_order.pop_front() {
-                state.seen_plugin_messages.remove(&id);
-            }
-        }
-
-        state.seen_plugin_messages.insert(message_id.clone(), now);
-        state.seen_plugin_message_order.push_back((now, message_id));
-        true
+        self.plugin_message_history
+            .lock()
+            .await
+            .remember(message_id, now)
     }
 
     pub(crate) async fn broadcast_plugin_channel_frame(

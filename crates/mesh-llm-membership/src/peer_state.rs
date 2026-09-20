@@ -7,9 +7,9 @@
 //! `advertised_context_length`, …) stay in `mesh-llm-host-runtime` as free
 //! functions over `&PeerInfo`: they resolve raw model ids through
 //! `public_model_id_from_identity`/`canonical_demand_model_ref`, which depend
-//! on `skippy_model_ref` and the host `models` catalog. `MeshState`, the
-//! `OwnerRuntimeConfig`/`ControlListenerLifecycle` state, and the `impl Node`
-//! admission machinery also stay in the host (see the crate README).
+//! on `skippy_model_ref` and the host `models` catalog. Live membership maps and pending handshakes live in this crate
+//! (`state` and `connection_reservation`). Host ownership/control listener state
+//! and `impl Node` admission side effects remain in the host (see the README).
 
 use std::collections::HashMap;
 
@@ -184,6 +184,16 @@ pub const PEER_STALE_SECS: u64 = 180; // 3 minutes
 /// can be re-discovered through normal gossip propagation. If the peer is
 /// genuinely gone, no bridge peer will mention it and it stays forgotten.
 pub const DEAD_PEER_TTL: std::time::Duration = std::time::Duration::from_secs(300); // 5 minutes
+/// How long a confirmed-departed peer id stays barred from transitive
+/// re-admission. [`DEAD_PEER_TTL`] expires quickly so reconnection attempts
+/// can resume, but gossip bridges can keep carrying the departed id's final
+/// announcement long after that (issue #1756): re-admitting it transitively
+/// resurrects a ghost `state: serving` entry with no direct connection.
+/// Only direct proof of life (a gossip exchange or connection with the id
+/// itself) clears this record early; otherwise it expires silently.
+pub const DEPARTED_PEER_TRANSITIVE_BLOCK_TTL: std::time::Duration =
+    std::time::Duration::from_secs(3600); // 1 hour
+
 pub const PEER_DOWN_REPORTER_COOLDOWN_SECS: u64 = 600; // 10 minutes
 
 /// Returns `true` if the given stream type is permitted before a peer has

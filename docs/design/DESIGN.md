@@ -79,7 +79,9 @@ retains its downstream lane and prediction-return behavior.
 This remains an intermediate extraction. Dedicated Mesh adapter, transport,
 membership and control-API crates now own extracted capabilities; host
 composition and the physical `mesh/` and `skippy/` ownership trees remain open.
-Membership owns the relay reconnect controller and heartbeat/removal policy.
+Membership owns live peer/admission state, pending handshake reservations,
+waiter cancellation, the relay reconnect controller and heartbeat/removal policy.
+Plugin message deduplication remains in host-owned state under a separate mutex.
 The host supplies connection observations and applies the returned decisions,
 retaining transport I/O, product logging and plugin notifications.
 
