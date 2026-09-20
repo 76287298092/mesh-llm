@@ -1,9 +1,9 @@
 use std::path::{Path, PathBuf};
 
-use crate::models::find_model_path;
 use anyhow::{Result, bail};
-use mesh_llm_system::util::validate_draft_min_max;
+use skippy_config::speculative::validate_draft_min_max;
 use skippy_model_artifact::gguf::{scan_gguf_compact_meta, scan_gguf_tensor_names_any};
+use skippy_model_hf::store::local::find_model_path;
 use skippy_runtime::package::{
     PackageExtensionPolicyInfo, PackageGenerationInfo, PackageSpeculativeDecodingInfo,
     PackageSpeculativeProposerInfo, PackageSpeculativeStrategyInfo, PackageWindowPolicyInfo,
@@ -15,7 +15,7 @@ use skippy_serving::{
 
 use super::support::{pick_owned, pick_string, pick_string_owned};
 use super::types::ResolvedSpeculativeConfig;
-use crate::plugin::{BoolOrAuto, SpeculativeConfig};
+use mesh_llm_config::{BoolOrAuto, SpeculativeConfig};
 
 pub(super) fn resolve_speculative_config(
     model_config: Option<&SpeculativeConfig>,

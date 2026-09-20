@@ -3768,6 +3768,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "mesh-llm-control-api"
+version = "0.76.1"
+dependencies = [
+ "anyhow",
+ "http",
+ "httparse",
+ "mesh-llm-events",
+ "serde",
+ "serde_json",
+ "tokio",
+ "url",
+]
+
+[[package]]
 name = "mesh-llm-embedded-runtime"
 version = "0.76.1"
 dependencies = [
@@ -3828,6 +3842,7 @@ dependencies = [
  "mesh-llm-build-info",
  "mesh-llm-client",
  "mesh-llm-config",
+ "mesh-llm-control-api",
  "mesh-llm-events",
  "mesh-llm-identity",
  "mesh-llm-log-store",
@@ -3837,6 +3852,7 @@ dependencies = [
  "mesh-llm-protocol",
  "mesh-llm-routing",
  "mesh-llm-runtime-event-contracts",
+ "mesh-llm-skippy-adapter",
  "mesh-llm-system",
  "mesh-llm-transport",
  "mesh-llm-types",
@@ -4065,6 +4081,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "mesh-llm-skippy-adapter"
+version = "0.76.1"
+dependencies = [
+ "anyhow",
+ "dirs",
+ "mesh-llm-config",
+ "mesh-llm-events",
+ "serde_json",
+ "skippy-api",
+ "skippy-config",
+ "skippy-model",
+ "skippy-model-artifact",
+ "skippy-model-hf",
+ "skippy-openai-frontend",
+ "skippy-protocol",
+ "skippy-runtime",
+ "skippy-serving",
+ "tempfile",
+ "toml 1.1.5+spec-1.1.0",
+ "tracing",
+]
+
+[[package]]
 name = "mesh-llm-system"
 version = "0.76.1"
 dependencies = [
@@ -4084,6 +4123,7 @@ dependencies = [
  "serde_json",
  "serial_test 4.0.1",
  "sha2 0.11.0",
+ "skippy-config",
  "skippy-gpu-bench",
  "skippy-native-runtime",
  "skippy-runtime",

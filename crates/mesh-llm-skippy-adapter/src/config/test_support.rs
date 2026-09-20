@@ -2,8 +2,8 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use tempfile::NamedTempFile;
 
-use crate::inference::skippy::SkippyPackageIdentity;
-use crate::plugin::MeshConfig;
+use crate::SkippyPackageIdentity;
+use mesh_llm_config::MeshConfig;
 
 pub(super) fn push_gguf_string(bytes: &mut Vec<u8>, value: &str) {
     bytes.extend_from_slice(&(value.len() as u64).to_le_bytes());
@@ -101,4 +101,16 @@ pub(super) fn fake_hf_package_identity(layer_count: u32) -> SkippyPackageIdentit
     let mut package = fake_package_identity(layer_count);
     package.package_ref = "hf://meshllm/Qwen3-8B-Q4_K_M-layers".to_string();
     package
+}
+
+/// JSON representation of a stage config with time-varying identifiers
+/// removed, so two configs built moments apart can be compared for
+/// deterministic content differences.
+pub(super) fn stage_config_stable_json(config: &skippy_protocol::StageConfig) -> serde_json::Value {
+    let mut json = serde_json::to_value(config).expect("stage config json");
+    if let Some(object) = json.as_object_mut() {
+        object.remove("run_id");
+        object.remove("topology_id");
+    }
+    json
 }

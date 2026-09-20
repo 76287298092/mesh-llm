@@ -7,7 +7,7 @@ use skippy_serving::{
 
 use super::support::string_list_value;
 use super::types::ResolvedRequestDefaultsConfig;
-use crate::plugin::{
+use mesh_llm_config::{
     ModelConfigDefaults, ModelConfigEntry, ReasoningBudget, ReasoningEnabled, RequestDefaultsConfig,
 };
 

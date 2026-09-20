@@ -1,18 +1,23 @@
 #![allow(dead_code)]
 
+#[cfg(test)]
+use std::path::PathBuf;
+
 mod certification;
-mod checkpoint;
 mod deployment;
 pub(crate) mod diagnostics;
-mod hash_cache;
+use mesh_llm_skippy_adapter::hash_cache;
 mod hooks;
-mod kv_cache;
 mod loading;
 mod local_source;
 mod materialization;
 pub(crate) mod metal_pipeline_cache;
 mod package;
-mod resolver;
+mod projector;
+#[cfg(test)]
+mod resolver_host_tests;
+use mesh_llm_skippy_adapter::config as resolver;
+pub(crate) use projector::materialize_projector_url;
 pub(crate) mod runtime_events;
 mod split_certification;
 mod stage;
@@ -23,7 +28,7 @@ use crate::runtime::{
 };
 use std::{
     env,
-    path::{Path, PathBuf},
+    path::Path,
     sync::{Arc, Mutex},
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -38,21 +43,19 @@ use skippy_openai_frontend::{
     GuardrailPolicyHandle, ModelObject, OpenAiBackend, OpenAiHookPolicy, OpenAiRequestContext,
     OpenAiResult,
 };
-use skippy_protocol::{FlashAttentionType, LoadMode, StageConfig, StageDevice, StageKvCacheConfig};
+use skippy_protocol::{FlashAttentionType, LoadMode, StageConfig};
 use skippy_runtime::{ModelInfo, MtpSource};
 use skippy_serving::serving_hooks::SharedModelServingHooksFactory;
 use skippy_serving::{
-    DEFAULT_EMBEDDED_MAX_TOKENS, EmbeddedRuntimeOptions, EmbeddedRuntimeStatus,
-    EmbeddedServerHandle, EmbeddedState, OpenAiGuardrailsConfig, OpenAiGuardrailsStatus,
-    OpenAiGuardrailsTarget, SkippyRuntimeHandle, binary_transport::PredictionReturnListener,
-    binary_transport::WireCondition,
+    EmbeddedRuntimeOptions, EmbeddedRuntimeStatus, EmbeddedServerHandle, EmbeddedState,
+    OpenAiGuardrailsConfig, OpenAiGuardrailsStatus, OpenAiGuardrailsTarget, SkippyRuntimeHandle,
+    binary_transport::PredictionReturnListener, binary_transport::WireCondition,
 };
 
 pub use certification::{
     CertificationGateStatus, SkippyCertificationRequest, certify_layer_package,
 };
 pub(crate) use hooks::MeshAutoHookPolicy;
-pub(crate) use kv_cache::KvCachePolicy;
 #[cfg(test)]
 pub(crate) use local_source::local_source_required_for_model;
 pub(crate) use local_source::{
@@ -68,6 +71,10 @@ pub use materialization::{
     prune_unpinned_materialized_stages, remove_materialized_stages_for_sources,
     resolve_hf_package_to_local, resolve_package_v2_full_model_to_local,
     resolve_stage_load_package,
+};
+pub(crate) use mesh_llm_skippy_adapter::{
+    KvCachePolicy, SkippyDeviceDescriptor, SkippyModelLoadOptions, SkippyTelemetryOptions,
+    single_stage_config,
 };
 #[cfg(test)]
 pub(crate) use package::write_test_package_v2_fixture;
@@ -85,7 +92,7 @@ pub(crate) use resolver::{
 };
 pub(crate) use skippy_api::family_policy;
 pub(crate) use skippy_api::family_policy::{
-    family_policy_for_compact_meta, family_policy_for_model_path, family_policy_for_stage_config,
+    family_policy_for_compact_meta, family_policy_for_stage_config,
 };
 pub(crate) use skippy_serving::OpenAiGuardrailsStatus as SkippyOpenAiGuardrailsStatus;
 pub(crate) use split_certification::{SplitCertificationAdmission, require_split_certification};
@@ -190,66 +197,6 @@ pub(crate) struct SkippySessionLaneStatus {
     pub(crate) token_count: Option<u64>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct SkippyDeviceDescriptor {
-    pub(crate) backend_device: String,
-    pub(crate) stable_id: Option<String>,
-    pub(crate) index: Option<usize>,
-    pub(crate) vram_bytes: Option<u64>,
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct SkippyModelLoadOptions {
-    pub(crate) model_id: String,
-    pub(crate) model_path: PathBuf,
-    pub(crate) ctx_size: u32,
-    pub(crate) n_gpu_layers: i32,
-    pub(crate) mmap: Option<bool>,
-    pub(crate) mlock: bool,
-    pub(crate) repack: bool,
-    pub(crate) op_offload: Option<bool>,
-    pub(crate) no_host_buffer: bool,
-    pub(crate) check_tensors: bool,
-    pub(crate) checkpoint_quantization: Option<String>,
-    pub(crate) checkpoint_imatrix: Option<String>,
-    pub(crate) direct_io: bool,
-    pub(crate) main_gpu: Option<u32>,
-    pub(crate) split_mode: skippy_protocol::SplitMode,
-    pub(crate) cache_type_k: String,
-    pub(crate) cache_type_v: String,
-    pub(crate) n_batch: Option<u32>,
-    pub(crate) n_ubatch: Option<u32>,
-    pub(crate) n_threads: Option<usize>,
-    pub(crate) n_threads_batch: Option<usize>,
-    pub(crate) flash_attn_type: FlashAttentionType,
-    pub(crate) kv_offload: Option<bool>,
-    pub(crate) kv_unified: Option<bool>,
-    pub(crate) swa_full: Option<bool>,
-    pub(crate) cache_idle_slots: Option<u32>,
-    pub(crate) generation_concurrency: usize,
-    pub(crate) default_max_tokens: u32,
-    pub(crate) kv_cache: Option<StageKvCacheConfig>,
-    pub(crate) embedded_openai: Option<resolver::ResolvedEmbeddedOpenAiArgs>,
-    pub(crate) layer_start: u32,
-    pub(crate) layer_end: Option<u32>,
-    pub(crate) selected_device: Option<SkippyDeviceDescriptor>,
-    pub(crate) package_identity: Option<SkippyPackageIdentity>,
-    pub(crate) projector_path: Option<PathBuf>,
-    pub(crate) projector_use_gpu: Option<bool>,
-    pub(crate) media_marker: Option<String>,
-    pub(crate) image_min_tokens: Option<u32>,
-    pub(crate) image_max_tokens: Option<u32>,
-    pub(crate) batch_max_tokens: Option<u32>,
-    pub(crate) glm_dsa_policy: skippy_protocol::GlmDsaPolicy,
-    pub(crate) generation_signal_window: Option<u32>,
-    pub(crate) telemetry: SkippyTelemetryOptions,
-    pub(crate) openai_guardrails: Option<OpenAiGuardrailsConfig>,
-    pub(crate) native_mtp_enabled: bool,
-    pub(crate) serving_hooks_factory: Option<SharedModelServingHooksFactory>,
-}
-
-pub(crate) use skippy_api::serving::ServingTelemetryOptions as SkippyTelemetryOptions;
-
 pub(crate) fn default_skippy_openai_guardrails() -> OpenAiGuardrailsConfig {
     skippy_openai_guardrails_for_mode(GuardrailMode::Disabled)
 }
@@ -275,177 +222,6 @@ pub(crate) fn skippy_openai_guardrails_for_policy_handle(
             enabled: true,
             ..CompactionConfig::default()
         }),
-    }
-}
-
-impl SkippyModelLoadOptions {
-    pub(crate) fn for_direct_gguf(
-        model_id: impl Into<String>,
-        model_path: impl Into<PathBuf>,
-    ) -> Self {
-        Self {
-            model_id: model_id.into(),
-            model_path: model_path.into(),
-            ctx_size: 4096,
-            n_gpu_layers: -1,
-            mmap: None,
-            mlock: false,
-            repack: false,
-            op_offload: None,
-            no_host_buffer: false,
-            check_tensors: false,
-            checkpoint_quantization: None,
-            checkpoint_imatrix: None,
-            direct_io: false,
-            main_gpu: None,
-            split_mode: skippy_protocol::SplitMode::Auto,
-            cache_type_k: "f16".to_string(),
-            cache_type_v: "f16".to_string(),
-            n_batch: None,
-            n_ubatch: None,
-            n_threads: None,
-            n_threads_batch: None,
-            flash_attn_type: FlashAttentionType::Auto,
-            kv_offload: None,
-            kv_unified: None,
-            swa_full: None,
-            cache_idle_slots: None,
-            generation_concurrency: 1,
-            default_max_tokens: DEFAULT_EMBEDDED_MAX_TOKENS,
-            kv_cache: None,
-            embedded_openai: None,
-            layer_start: 0,
-            layer_end: None,
-            selected_device: None,
-            package_identity: None,
-            projector_path: None,
-            projector_use_gpu: None,
-            media_marker: None,
-            image_min_tokens: None,
-            image_max_tokens: None,
-            batch_max_tokens: None,
-            glm_dsa_policy: skippy_protocol::GlmDsaPolicy::Auto,
-            generation_signal_window: None,
-            telemetry: SkippyTelemetryOptions::off(),
-            openai_guardrails: Some(OpenAiGuardrailsConfig::disabled_for_skippy()),
-            native_mtp_enabled: true,
-            serving_hooks_factory: None,
-        }
-    }
-
-    pub(crate) fn with_ctx_size(mut self, ctx_size: u32) -> Self {
-        self.ctx_size = ctx_size;
-        self
-    }
-
-    pub(crate) fn with_generation_concurrency(mut self, generation_concurrency: usize) -> Self {
-        self.generation_concurrency = generation_concurrency;
-        self
-    }
-
-    pub(crate) fn with_cache_types(mut self, cache_type_k: &str, cache_type_v: &str) -> Self {
-        self.cache_type_k = cache_type_k.to_string();
-        self.cache_type_v = cache_type_v.to_string();
-        self
-    }
-
-    pub(crate) fn with_batch_sizes(mut self, n_batch: Option<u32>, n_ubatch: Option<u32>) -> Self {
-        self.n_batch = n_batch;
-        self.n_ubatch = n_ubatch;
-        self
-    }
-
-    pub(crate) fn with_thread_counts(
-        mut self,
-        n_threads: Option<usize>,
-        n_threads_batch: Option<usize>,
-    ) -> Self {
-        self.n_threads = n_threads;
-        self.n_threads_batch = n_threads_batch;
-        self
-    }
-
-    pub(crate) fn with_flash_attn_type(mut self, flash_attn_type: FlashAttentionType) -> Self {
-        self.flash_attn_type = flash_attn_type;
-        self
-    }
-
-    pub(crate) fn with_kv_session_controls(
-        mut self,
-        kv_offload: Option<bool>,
-        kv_unified: Option<bool>,
-        swa_full: Option<bool>,
-    ) -> Self {
-        self.kv_offload = kv_offload;
-        self.kv_unified = kv_unified;
-        self.swa_full = swa_full;
-        self
-    }
-
-    pub(crate) fn with_cache_idle_slots(mut self, cache_idle_slots: Option<u32>) -> Self {
-        self.cache_idle_slots = cache_idle_slots;
-        self
-    }
-
-    pub(crate) fn with_layer_end(mut self, layer_end: u32) -> Self {
-        self.layer_end = Some(layer_end);
-        self
-    }
-
-    pub(crate) fn with_layer_range(mut self, layer_start: u32, layer_end: u32) -> Self {
-        self.layer_start = layer_start;
-        self.layer_end = Some(layer_end);
-        self
-    }
-
-    pub(crate) fn with_selected_device(mut self, selected_device: SkippyDeviceDescriptor) -> Self {
-        self.selected_device = Some(selected_device);
-        self
-    }
-
-    pub(crate) fn with_projector_path(mut self, projector_path: impl Into<PathBuf>) -> Self {
-        self.projector_path = Some(projector_path.into());
-        self
-    }
-
-    pub(crate) fn with_telemetry(mut self, telemetry: SkippyTelemetryOptions) -> Self {
-        self.telemetry = telemetry;
-        self
-    }
-
-    pub(crate) fn with_kv_cache(mut self, kv_cache: Option<StageKvCacheConfig>) -> Self {
-        self.kv_cache = kv_cache;
-        self
-    }
-
-    pub(crate) fn with_embedded_openai(
-        mut self,
-        embedded_openai: resolver::ResolvedEmbeddedOpenAiArgs,
-    ) -> Self {
-        self.embedded_openai = Some(embedded_openai);
-        self
-    }
-
-    pub(crate) fn with_openai_guardrails(
-        mut self,
-        openai_guardrails: OpenAiGuardrailsConfig,
-    ) -> Self {
-        self.openai_guardrails = Some(openai_guardrails);
-        self
-    }
-
-    pub(crate) fn with_serving_hooks_factory(
-        mut self,
-        factory: Option<SharedModelServingHooksFactory>,
-    ) -> Self {
-        self.serving_hooks_factory = factory;
-        self
-    }
-
-    #[cfg(test)]
-    pub(crate) fn with_package_identity(mut self, package_identity: SkippyPackageIdentity) -> Self {
-        self.package_identity = Some(package_identity);
-        self
     }
 }
 
@@ -695,92 +471,6 @@ impl OpenAiBackend for SkippyModelHandle {
         context: OpenAiRequestContext,
     ) -> OpenAiResult<AudioTranscriptionResponse> {
         self.backend.audio_translation(request, context).await
-    }
-}
-
-pub(crate) fn single_stage_config(options: &SkippyModelLoadOptions) -> Result<StageConfig> {
-    let prepared_options = skippy_api::SingleStageOptions {
-        ctx_size: options.ctx_size,
-        generation_concurrency: options.generation_concurrency,
-        selected_device: options.selected_device.clone().map(Into::into),
-        model_id: options.model_id.clone(),
-        model_path: options.model_path.clone(),
-        layer_start: options.layer_start,
-        layer_end: options.layer_end,
-        projector_path: options.projector_path.clone(),
-        projector_use_gpu: options.projector_use_gpu,
-        media_marker: options.media_marker.clone(),
-        image_min_tokens: options.image_min_tokens,
-        image_max_tokens: options.image_max_tokens,
-        batch_max_tokens: options.batch_max_tokens,
-        glm_dsa_policy: options.glm_dsa_policy,
-        generation_signal_window: options.generation_signal_window,
-        n_batch: options.n_batch,
-        n_ubatch: options.n_ubatch,
-        n_gpu_layers: options.n_gpu_layers,
-        mmap: options.mmap,
-        mlock: options.mlock,
-        repack: options.repack,
-        op_offload: options.op_offload,
-        no_host_buffer: options.no_host_buffer,
-        check_tensors: options.check_tensors,
-        direct_io: options.direct_io,
-        main_gpu: options.main_gpu,
-        split_mode: options.split_mode,
-        cache_type_k: options.cache_type_k.clone(),
-        cache_type_v: options.cache_type_v.clone(),
-        flash_attn_type: options.flash_attn_type,
-        kv_offload: options.kv_offload,
-        kv_unified: options.kv_unified,
-        swa_full: options.swa_full,
-        cache_idle_slots: options.cache_idle_slots,
-        checkpoint_quantization: options.checkpoint_quantization.clone(),
-        checkpoint_imatrix: options.checkpoint_imatrix.clone(),
-        native_mtp_enabled: options.native_mtp_enabled,
-        kv_cache: options.kv_cache.clone(),
-    };
-    prepared_options.validate()?;
-    let package_identity = match options.package_identity.as_ref() {
-        Some(identity) => identity.clone(),
-        None => synthetic_direct_gguf_package(&options.model_id, &options.model_path)?,
-    };
-    let config = skippy_api::single_stage_config(
-        &prepared_options,
-        package_identity.into(),
-        format!("mesh-skippy-{}", now_unix_nanos()),
-    )?;
-    checkpoint::emit_load_notice(
-        &options.model_path,
-        config
-            .checkpoint_quantization
-            .as_deref()
-            .unwrap_or("preserve")
-            .parse()
-            .map_err(anyhow::Error::msg)?,
-        config.checkpoint_imatrix.is_some(),
-    );
-    Ok(config)
-}
-
-impl From<SkippyDeviceDescriptor> for StageDevice {
-    fn from(device: SkippyDeviceDescriptor) -> Self {
-        Self {
-            backend_device: device.backend_device,
-            stable_id: device.stable_id,
-            index: device.index,
-            vram_bytes: device.vram_bytes,
-        }
-    }
-}
-
-impl From<StageDevice> for SkippyDeviceDescriptor {
-    fn from(device: StageDevice) -> Self {
-        Self {
-            backend_device: device.backend_device,
-            stable_id: device.stable_id,
-            index: device.index,
-            vram_bytes: device.vram_bytes,
-        }
     }
 }
 

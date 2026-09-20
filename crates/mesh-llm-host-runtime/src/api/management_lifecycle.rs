@@ -8,10 +8,10 @@ use std::sync::{
 use mesh_llm_events::logging::identifiers::RequestId;
 
 use crate::logging::ManagementRequestLifecycle;
-
-tokio::task_local! {
-    static MANAGEMENT_LIFECYCLE: Arc<ManagementLifecycleContext>;
-}
+use mesh_llm_control_api::response_scope::{self, ResponseObserver};
+pub(super) use mesh_llm_control_api::response_scope::{
+    record_response_status, response_request_id_header,
+};
 
 pub(super) struct ManagementLifecycleContext {
     lifecycle: ManagementRequestLifecycle,
@@ -26,10 +26,6 @@ impl ManagementLifecycleContext {
         }
     }
 
-    fn record_status(&self, status: u16) {
-        self.status.store(status, Ordering::Release);
-    }
-
     fn finish(&self) {
         let status = self.status.load(Ordering::Acquire);
         if status == 0 {
@@ -37,6 +33,15 @@ impl ManagementLifecycleContext {
         } else {
             self.lifecycle.finish_status(status);
         }
+    }
+}
+
+impl ResponseObserver for ManagementLifecycleContext {
+    fn request_id(&self) -> RequestId {
+        self.lifecycle.request_id()
+    }
+    fn record_status(&self, status: u16) {
+        self.status.store(status, Ordering::Release);
     }
 }
 
@@ -101,21 +106,10 @@ where
     F: std::future::Future<Output = T>,
 {
     let context = Arc::new(ManagementLifecycleContext::new(lifecycle));
-    let result = MANAGEMENT_LIFECYCLE
-        .scope(Arc::clone(&context), future)
-        .await;
+    let observer: Arc<dyn ResponseObserver> = context.clone();
+    let result = response_scope::scope(observer, future).await;
     context.finish();
     result
-}
-
-pub(super) fn record_response_status(status: u16) {
-    let _ = MANAGEMENT_LIFECYCLE.try_with(|context| context.record_status(status));
-}
-
-pub(super) fn response_request_id_header() -> Option<String> {
-    MANAGEMENT_LIFECYCLE
-        .try_with(|context| context.lifecycle.request_id().as_uuid().to_string())
-        .ok()
 }
 
 #[cfg(test)]

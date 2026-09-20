@@ -44,22 +44,7 @@ fn read_chat_template(path: &str) -> Result<String> {
 }
 
 impl ResolvedSkippyConfig {
-    pub(crate) async fn materialize_projector_url(&mut self) -> Result<()> {
-        if self.hardware.projector_path.is_some() {
-            return Ok(());
-        }
-        let Some(projector_url) = self.multimodal.projector_url.as_deref() else {
-            return Ok(());
-        };
-        self.hardware.projector_path = Some(
-            crate::models::resolve::download_direct_ref_with_progress(projector_url, true)
-                .await
-                .with_context(|| format!("download multimodal.mmproj_url {projector_url}"))?,
-        );
-        Ok(())
-    }
-
-    pub(crate) fn to_model_load_options(
+    pub fn to_model_load_options(
         &self,
         telemetry: SkippyTelemetryOptions,
     ) -> Result<SkippyModelLoadOptions> {
@@ -159,7 +144,7 @@ impl ResolvedSkippyConfig {
         options
     }
 
-    pub(crate) fn to_stage_config(
+    pub fn to_stage_config(
         &self,
         package_identity: Option<SkippyPackageIdentity>,
         load_mode: LoadMode,
@@ -194,7 +179,7 @@ impl ResolvedSkippyConfig {
         Ok(stage_config)
     }
 
-    pub(crate) fn to_embedded_runtime_options(
+    pub fn to_embedded_runtime_options(
         &self,
         telemetry: &SkippyTelemetryOptions,
         package_identity: Option<SkippyPackageIdentity>,
@@ -222,7 +207,7 @@ impl ResolvedSkippyConfig {
         })
     }
 
-    pub(crate) fn to_embedded_openai_args(
+    pub fn to_embedded_openai_args(
         &self,
         activation_width: i32,
         staged: bool,

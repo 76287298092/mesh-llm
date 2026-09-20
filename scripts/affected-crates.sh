@@ -16,6 +16,8 @@ WORKSPACE_MEMBERS=(
   "mesh-llm-events"
   "skippy-gpu-bench"
   "mesh-llm-host-runtime"
+  "mesh-llm-control-api"
+  "mesh-llm-skippy-adapter"
   "skippy-hardware-profile"
   "mesh-llm-identity"
   "mesh-llm-log-store"

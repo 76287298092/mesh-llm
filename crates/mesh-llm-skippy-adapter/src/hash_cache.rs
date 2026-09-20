@@ -8,7 +8,7 @@ const CACHE_DIR_ENV: &str = "MESH_LLM_HASH_CACHE_DIR";
 /// 1. `MESH_LLM_HASH_CACHE_DIR` environment variable
 /// 2. `~/.mesh-llm/cache/hashes`
 /// 3. `None` (caching disabled, digests are always recomputed)
-pub(crate) fn open_default() -> Option<SidecarDigestCache> {
+pub fn open_default() -> Option<SidecarDigestCache> {
     if let Some(dir) = std::env::var_os(CACHE_DIR_ENV) {
         return Some(SidecarDigestCache::open_in(PathBuf::from(dir)));
     }
@@ -16,7 +16,7 @@ pub(crate) fn open_default() -> Option<SidecarDigestCache> {
 }
 
 /// The default location, `~/.mesh-llm/cache/hashes`.
-#[cfg(not(test))]
+#[cfg(not(any(test, feature = "test-support")))]
 fn default_dir() -> Option<PathBuf> {
     Some(
         dirs::home_dir()?
@@ -32,7 +32,7 @@ fn default_dir() -> Option<PathBuf> {
 /// run. A test that exercises caching opens an explicit directory through
 /// `open_in`, and `MESH_LLM_HASH_CACHE_DIR` above still redirects the
 /// default for a test that wants it.
-#[cfg(test)]
+#[cfg(any(test, feature = "test-support"))]
 fn default_dir() -> Option<PathBuf> {
     None
 }

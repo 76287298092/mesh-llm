@@ -1,0 +1,7 @@
+# Mesh Skippy adapter
+
+Translates Mesh model/configuration policy into Skippy stage, runtime and OpenAI options. The host supplies model selection, resolved artifact paths, available memory, and request defaults. Skippy owns model preparation, inference, transport execution and serving lifecycle.
+
+The adapter owns Mesh configuration precedence, validation, speculative selection, cache defaults, device/load option translation, advisory digest-cache location and Mesh checkpoint notices. It depends on Skippy APIs and Mesh configuration/event types, never on the host runtime. Host orchestration retains downloads/progress, model handles, operational events, membership and plugin lifetime.
+
+Resolver tests live beside the implementation. Host hook/receipt integration stays in the host runtime. `test-support` disables the implicit home-directory hash cache in dependent host tests; explicit `MESH_LLM_HASH_CACHE_DIR` remains supported.

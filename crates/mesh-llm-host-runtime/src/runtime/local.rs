@@ -945,7 +945,7 @@ async fn start_local_skippy_model(
         fallback_projector_path,
         compact_meta,
     )?;
-    resolved.materialize_projector_url().await?;
+    crate::inference::skippy::materialize_projector_url(&mut resolved).await?;
     tracing::info!(
         model = model_name,
         "KV cache: {} K + {} V, {}K context",
@@ -1078,7 +1078,7 @@ async fn start_local_package_v2_model(
         fallback_projector_path,
         compact_meta,
     )?;
-    resolved.materialize_projector_url().await?;
+    crate::inference::skippy::materialize_projector_url(&mut resolved).await?;
     tracing::info!(
         model = model_name,
         "KV cache: {} K + {} V, {}K context",

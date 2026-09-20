@@ -1,12 +1,12 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum KvCacheType {
+pub enum KvCacheType {
     F16,
     Q8_0,
     Q4_0,
 }
 
 impl KvCacheType {
-    pub(crate) fn as_config_value(self) -> &'static str {
+    pub fn as_config_value(self) -> &'static str {
         match self {
             Self::F16 => "f16",
             Self::Q8_0 => "q8_0",
@@ -14,8 +14,8 @@ impl KvCacheType {
         }
     }
 
-    fn to_gguf(self) -> crate::models::gguf::GgufKvCacheType {
-        use crate::models::gguf::GgufKvCacheType;
+    fn to_gguf(self) -> skippy_model_artifact::gguf::GgufKvCacheType {
+        use skippy_model_artifact::gguf::GgufKvCacheType;
         match self {
             Self::F16 => GgufKvCacheType::F16,
             Self::Q8_0 => GgufKvCacheType::Q8_0,
@@ -23,8 +23,8 @@ impl KvCacheType {
         }
     }
 
-    fn from_gguf(value: crate::models::gguf::GgufKvCacheType) -> Self {
-        use crate::models::gguf::GgufKvCacheType;
+    fn from_gguf(value: skippy_model_artifact::gguf::GgufKvCacheType) -> Self {
+        use skippy_model_artifact::gguf::GgufKvCacheType;
         match value {
             GgufKvCacheType::F16 => Self::F16,
             GgufKvCacheType::Q8_0 => Self::Q8_0,
@@ -34,9 +34,9 @@ impl KvCacheType {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct KvCachePolicy {
-    pub(crate) k_type: KvCacheType,
-    pub(crate) v_type: KvCacheType,
+pub struct KvCachePolicy {
+    pub k_type: KvCacheType,
+    pub v_type: KvCacheType,
 }
 
 impl KvCachePolicy {
@@ -54,7 +54,7 @@ impl KvCachePolicy {
     /// f16 with negligible quality loss.
     ///
     /// Users can override via `--cache-type-k` / `--cache-type-v`.
-    pub(crate) fn for_model_size(model_bytes: u64) -> Self {
+    pub fn for_model_size(model_bytes: u64) -> Self {
         if model_bytes >= Self::LARGE_MODEL_MIN_BYTES {
             Self {
                 k_type: KvCacheType::Q4_0,
@@ -68,8 +68,11 @@ impl KvCachePolicy {
         }
     }
 
-    fn as_gguf_quant(self) -> crate::models::gguf::GgufKvCacheQuant {
-        crate::models::gguf::GgufKvCacheQuant::new(self.k_type.to_gguf(), self.v_type.to_gguf())
+    fn as_gguf_quant(self) -> skippy_model_artifact::gguf::GgufKvCacheQuant {
+        skippy_model_artifact::gguf::GgufKvCacheQuant::new(
+            self.k_type.to_gguf(),
+            self.v_type.to_gguf(),
+        )
     }
 
     /// Downgrade this *default* policy to one the model can actually load.
@@ -87,9 +90,9 @@ impl KvCachePolicy {
     /// incompatibility, so the policy is returned unchanged (documented limit:
     /// a metadata-only guard also cannot see a backend Flash Attention probe
     /// failure).
-    pub(crate) fn guarded_for_model(
+    pub fn guarded_for_model(
         self,
-        meta: Option<&crate::models::gguf::GgufCompactMeta>,
+        meta: Option<&skippy_model_artifact::gguf::GgufCompactMeta>,
     ) -> Self {
         let Some(meta) = meta else {
             return self;
@@ -101,15 +104,15 @@ impl KvCachePolicy {
         }
     }
 
-    pub(crate) fn cache_type_k(self) -> &'static str {
+    pub fn cache_type_k(self) -> &'static str {
         self.k_type.as_config_value()
     }
 
-    pub(crate) fn cache_type_v(self) -> &'static str {
+    pub fn cache_type_v(self) -> &'static str {
         self.v_type.as_config_value()
     }
 
-    pub(crate) fn label(self) -> String {
+    pub fn label(self) -> String {
         format!(
             "{} K + {} V",
             self.cache_type_k().to_ascii_uppercase(),
@@ -136,8 +139,8 @@ mod tests {
         assert_eq!(policy.v_type, KvCacheType::Q4_0);
     }
 
-    fn meta(architecture: &str, head_dim: u32) -> crate::models::gguf::GgufCompactMeta {
-        crate::models::gguf::GgufCompactMeta {
+    fn meta(architecture: &str, head_dim: u32) -> skippy_model_artifact::gguf::GgufCompactMeta {
+        skippy_model_artifact::gguf::GgufCompactMeta {
             architecture: architecture.to_string(),
             head_count: 32,
             kv_head_count: 8,

@@ -143,7 +143,6 @@ pub(crate) use advertisement::AdvertisedCandidate;
 pub use announcements::backfill_legacy_descriptors;
 pub use capacity::AdvertisedMemory;
 pub use connections::{QuicBindSelection, RelayConfig, RelayPolicy};
-pub(crate) use connectivity::MeshConnectivitySnapshot;
 #[expect(
     unused_imports,
     reason = "public compatibility re-export for existing mesh identity callers"

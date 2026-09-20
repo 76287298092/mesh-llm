@@ -19,7 +19,7 @@ use super::types::{
     ResolvedMultimodalConfig, ResolvedSkippyConfig, ResolvedSkippyExecutionConfig,
     ResolvedThroughputConfig, SkippyConfigResolveRequest,
 };
-use crate::plugin::{
+use mesh_llm_config::{
     BoolOrAuto, ModelConfigDefaults, ModelConfigEntry, ModelFitConfig, ThroughputConfig,
 };
 
@@ -31,7 +31,7 @@ pub(crate) fn resolve_skippy_config(
     resolve_skippy_config_for_selector(request, Some(&config_model_id))
 }
 
-pub(crate) fn resolve_skippy_config_for_selector(
+pub fn resolve_skippy_config_for_selector(
     request: SkippyConfigResolveRequest<'_>,
     config_model_id: Option<&str>,
 ) -> Result<ResolvedSkippyConfig> {
@@ -329,7 +329,7 @@ fn guarded_family_default_kv_cache_type(
     family_policy
         .default_kv_cache_type
         .and_then(|default| {
-            crate::models::gguf::GgufKvCacheQuant::from_llama_args(default, default)
+            skippy_model_artifact::gguf::GgufKvCacheQuant::from_llama_args(default, default)
         })
         .map(|quant| {
             context

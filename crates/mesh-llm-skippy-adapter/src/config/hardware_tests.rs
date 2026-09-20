@@ -1,6 +1,6 @@
 use super::test_support::*;
 use super::*;
-use crate::plugin::MeshConfig;
+use mesh_llm_config::MeshConfig;
 use serde_json::Value;
 use skippy_protocol::LoadMode;
 
@@ -56,7 +56,7 @@ placement = "auto"
 
 #[test]
 fn effective_safety_margin_bytes_mirrors_the_fit_margin_rounding() {
-    use crate::plugin::{HardwareConfig, ModelConfigDefaults};
+    use mesh_llm_config::{HardwareConfig, ModelConfigDefaults};
 
     // Nothing configured: the built-in 2 GiB default the fit already applies.
     assert_eq!(effective_safety_margin_bytes(None), 2 * 1024 * 1024 * 1024);
@@ -85,7 +85,7 @@ fn effective_safety_margin_bytes_mirrors_the_fit_margin_rounding() {
 
 #[test]
 fn effective_safety_margin_bytes_saturates_on_absurd_margins() {
-    use crate::plugin::{HardwareConfig, ModelConfigDefaults};
+    use mesh_llm_config::{HardwareConfig, ModelConfigDefaults};
 
     let absurd = ModelConfigDefaults {
         hardware: Some(HardwareConfig {

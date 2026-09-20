@@ -24,9 +24,10 @@ mod exact_head_tests;
 mod hardware_tests;
 
 #[cfg(test)]
+mod hardware_translation_tests;
+
+#[cfg(test)]
 pub(crate) use resolution::resolve_skippy_config;
-pub(crate) use resolution::resolve_skippy_config_for_selector;
-pub(crate) use support::effective_safety_margin_bytes;
-pub(crate) use types::{
-    ResolvedEmbeddedOpenAiArgs, ResolvedSkippyConfig, SkippyConfigResolveRequest,
-};
+pub use resolution::resolve_skippy_config_for_selector;
+pub use support::effective_safety_margin_bytes;
+pub use types::{ResolvedEmbeddedOpenAiArgs, ResolvedSkippyConfig, SkippyConfigResolveRequest};

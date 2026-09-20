@@ -1,6 +1,6 @@
 use super::test_support::toml_path;
 use super::*;
-use crate::plugin::MeshConfig;
+use mesh_llm_config::MeshConfig;
 
 fn colliding_selector_config() -> (MeshConfig, tempfile::TempDir, String) {
     let profile_source: MeshConfig = toml::from_str(

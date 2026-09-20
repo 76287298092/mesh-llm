@@ -253,16 +253,7 @@ pub fn identity_from_package_v2(package_dir: &Path) -> Result<SkippyPackageIdent
 pub use skippy_api::source::planning::direct_gguf_planning_manifest_from_identity;
 pub use skippy_api::source::{direct_gguf_source_paths, synthetic_content_addressed_gguf_package};
 
-pub fn synthetic_direct_gguf_package(
-    model_id: &str,
-    model_path: &Path,
-) -> Result<SkippyPackageIdentity> {
-    skippy_api::source::synthetic_direct_gguf_package(
-        model_id,
-        model_path,
-        hash_cache::open_default().as_ref(),
-    )
-}
+pub use mesh_llm_skippy_adapter::synthetic_direct_gguf_package;
 
 pub fn synthetic_huggingface_gguf_package(
     model_id: &str,

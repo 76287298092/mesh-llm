@@ -15,6 +15,7 @@ default = ["web-ui", "dynamic-native-runtime"]
 # Propagates to `mesh-llm-ui/embed-assets`.
 web-ui = ["mesh-llm-ui/embed-assets"]
 dynamic-native-runtime = [
+    "mesh-llm-skippy-adapter/dynamic-native-runtime",
     "skippy-api/dynamic-native-runtime",
     "mesh-llm-system/dynamic-native-runtime",
     "skippy-runtime/dynamic-native-runtime",
@@ -25,6 +26,8 @@ dynamic-native-runtime = [
 workspace = true
 
 [dependencies]
+mesh-llm-control-api = { path = "../mesh-llm-control-api", version = "0.76.1" }
+mesh-llm-skippy-adapter = { path = "../mesh-llm-skippy-adapter", version = "0.76.1" }
 mesh-llm-transport = { path = "../mesh-llm-transport", version = "0.76.1" }
 skippy-api = { path = "../skippy-api", version = "0.76.1" }
 skippy-events = { path = "../skippy-events", version = "0.76.1" }
@@ -118,6 +121,7 @@ windows-sys = { version = "0.61", features = [
 ] }
 
 [dev-dependencies]
+mesh-llm-skippy-adapter = { path = "../mesh-llm-skippy-adapter", version = "0.76.1", features = ["test-support"] }
 serial_test = "4"
 skippy-serving = { path = "../skippy-serving", version = "0.76.1", features = ["test-support"] }
 opentelemetry_sdk = { version = "0.32.1", default-features = false, features = ["metrics", "testing"] }

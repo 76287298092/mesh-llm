@@ -8,3 +8,7 @@ mod config;
 pub use config::{example_config, load_json, validate_config};
 
 pub mod paths;
+
+pub mod speculative;
+
+pub mod capacity;

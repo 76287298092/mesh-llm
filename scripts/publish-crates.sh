@@ -404,6 +404,7 @@ publish_crates=(
     mesh-llm-client
     mesh-llm-api-client
     mesh-llm-events
+    mesh-llm-control-api
     mesh-llm-runtime-event-contracts
     mesh-llm-log-store
     mesh-llm-build-info
@@ -427,6 +428,7 @@ publish_crates=(
     skippy-config
     skippy-serving
     skippy-api
+    mesh-llm-skippy-adapter
     skippy-commands
     skippy-cli
     mesh-native-serving-plugin-host

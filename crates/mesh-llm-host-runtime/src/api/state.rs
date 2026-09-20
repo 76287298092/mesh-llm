@@ -96,35 +96,7 @@ pub struct OpenAiGuardrailModeUpdateResponse {
     pub status: Option<OpenAiGuardrailsPayload>,
 }
 
-#[derive(Clone, Debug, Serialize)]
-pub struct RuntimeModelPayload {
-    pub name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub instance_id: Option<String>,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub profile: String,
-    pub backend: String,
-    pub status: String,
-    pub port: Option<u16>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub context_length: Option<u32>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-pub struct RuntimeProcessPayload {
-    pub name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub instance_id: Option<String>,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub profile: String,
-    pub backend: String,
-    pub status: String,
-    pub port: u16,
-    pub pid: u32,
-    pub slots: usize,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub context_length: Option<u32>,
-}
+pub use mesh_llm_control_api::status::processes::{RuntimeModelPayload, RuntimeProcessPayload};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct ControlBootstrapPayload {

@@ -468,9 +468,11 @@ runtime producers are not duplicated.
   toolchain epoch. Batches that exercise Skippy correctness tests restore an
   exact revision- and SHA-256-pinned model cache, verify the file before use,
   and leave publication to one trusted-main batch. Related Skippy crate changes
-  on pull requests also compile one fully qualified runtime test, fail if that
+  on pull requests also compile the adapter-owned
+  `config::hardware_translation_tests::safetensors_checkpoint_reaches_mesh_host_runtime`
+  library test in `mesh-llm-skippy-adapter`, fail if that
   test is absent, then run its binary against an immutable SmolLM2 revision
-  through the complete Mesh config/resolver/server/native SafeTensors path
+  through the Mesh config/adapter/Skippy serving/native SafeTensors path
   through tokenizer, sampled prefill, and decode with every supported load-time
   quantization. Its compiler-cache evidence is observational: a restored seed
   is marked warm with a zero hit-rate floor, and a no-request result warns
@@ -1197,3 +1199,5 @@ ownership row, publish order, affected-crate fallback and Docker source lists
 include it. The host retains admission/routing and supplies its existing
 first-response timeout; no protocol, runner, permissions or artifact-policy
 change accompanies this extraction.
+
+The adapter/control-API extraction also adds both packages to the affected-crate fallback list and the dependency-ordered publish chain. Workspace test coverage remains automatic; both packages stay in the default test graph. Explicit runtime-product catalog admission is carried by the additive protected-default-branch catalog prerequisite, preserving the source-catalog byte comparison.

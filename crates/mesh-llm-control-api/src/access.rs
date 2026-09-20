@@ -1,6 +1,16 @@
 use std::net::{IpAddr, SocketAddr};
 
-pub(crate) fn requires_trusted_local_access(method: &str, path: &str) -> bool {
+/// A security header cannot be read from an incomplete or malformed request.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct HeaderParseError;
+impl std::fmt::Display for HeaderParseError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("invalid management request header")
+    }
+}
+impl std::error::Error for HeaderParseError {}
+
+pub fn requires_trusted_local_access(method: &str, path: &str) -> bool {
     // Log history is local operator data. Keep this broad path classification
     // at the server boundary so all current and future `/api/logs/**` routes
     // are rejected before dispatch can touch the query facade or store.
@@ -48,7 +58,7 @@ pub(crate) fn requires_trusted_local_access(method: &str, path: &str) -> bool {
             || path.starts_with("/api/model-interests/")))
 }
 
-pub(crate) fn is_trusted_local_request(
+pub fn is_trusted_local_request(
     peer_addr: Option<SocketAddr>,
     origin: Option<&str>,
     host: Option<&str>,
@@ -63,26 +73,29 @@ pub(crate) fn is_trusted_local_request(
     host.is_none_or(is_trusted_local_authority) && origin.is_none_or(is_trusted_local_origin)
 }
 
-pub(crate) fn request_origin(raw_request: &[u8]) -> Result<Option<&str>, ()> {
+pub fn request_origin(raw_request: &[u8]) -> Result<Option<&str>, HeaderParseError> {
     request_header(raw_request, "origin")
 }
 
-pub(crate) fn request_host(raw_request: &[u8]) -> Result<Option<&str>, ()> {
+pub fn request_host(raw_request: &[u8]) -> Result<Option<&str>, HeaderParseError> {
     request_header(raw_request, "host")
 }
 
-pub(crate) fn request_header<'a>(raw_request: &'a [u8], name: &str) -> Result<Option<&'a str>, ()> {
+fn request_header<'a>(
+    raw_request: &'a [u8],
+    name: &str,
+) -> Result<Option<&'a str>, HeaderParseError> {
     let mut headers = [httparse::EMPTY_HEADER; 64];
     let mut request = httparse::Request::new(&mut headers);
-    match request.parse(raw_request).map_err(|_| ())? {
+    match request.parse(raw_request).map_err(|_| HeaderParseError)? {
         httparse::Status::Complete(_) => {}
-        httparse::Status::Partial => return Err(()),
+        httparse::Status::Partial => return Err(HeaderParseError),
     }
     request
         .headers
         .iter()
         .find(|header| header.name.eq_ignore_ascii_case(name))
-        .map(|header| std::str::from_utf8(header.value).map_err(|_| ()))
+        .map(|header| std::str::from_utf8(header.value).map_err(|_| HeaderParseError))
         .transpose()
 }
 
@@ -212,7 +225,7 @@ mod tests {
     #[test]
     fn malformed_security_header_is_rejected() {
         let request = b"POST /mcp HTTP/1.1\r\nHost: localhost\r\nOrigin: https://local\xff\r\n\r\n";
-        assert_eq!(request_origin(request), Err(()));
+        assert_eq!(request_origin(request), Err(HeaderParseError));
     }
 
     #[test]

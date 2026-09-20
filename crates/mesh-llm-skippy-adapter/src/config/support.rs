@@ -6,7 +6,7 @@ use super::types::{
     BUILTIN_BATCH, BUILTIN_PARALLEL, BUILTIN_UBATCH, ResolvedStageKvCache,
     ResolvedStageKvCacheTemplate,
 };
-use crate::plugin::{
+use mesh_llm_config::{
     BoolOrAuto, HardwareConfig, IntegerOrString, ModelConfigDefaults, ModelFitConfig, SkippyConfig,
     StringOrStringList,
 };
@@ -20,7 +20,7 @@ pub(super) fn derive_fit_target_mib(
 }
 
 fn safety_margin_mib(safety_margin_gb: f64) -> u64 {
-    mesh_llm_system::capacity::safety_margin_mib(safety_margin_gb)
+    skippy_config::capacity::safety_margin_mib(safety_margin_gb)
 }
 
 /// Bytes the local fit withholds on top of the driver reserve: the
@@ -28,8 +28,8 @@ fn safety_margin_mib(safety_margin_gb: f64) -> u64 {
 /// default, rounded the way `derive_fit_target_mib` rounds it. The advertised
 /// capacity breakdown reports this same value as the configured reserve, so
 /// peers see the margin the fit actually applies.
-pub(crate) fn effective_safety_margin_bytes(defaults: Option<&ModelConfigDefaults>) -> u64 {
-    mesh_llm_system::capacity::safety_margin_bytes(
+pub fn effective_safety_margin_bytes(defaults: Option<&ModelConfigDefaults>) -> u64 {
+    skippy_config::capacity::safety_margin_bytes(
         defaults
             .and_then(|defaults| defaults.hardware.as_ref())
             .and_then(|hardware| hardware.safety_margin_gb),

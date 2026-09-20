@@ -6,16 +6,20 @@ use super::{RuntimeModelPayload, RuntimeProcessPayload};
 use crate::crypto::{OwnershipStatus, OwnershipSummary, ReleaseAttestationSummary};
 use crate::mesh::requirements::{MeshRequirementPolicySummary, MeshRequirementRejectionEvent};
 use crate::network::{affinity, metrics};
-use crate::runtime_data;
 use crate::system::hardware::expand_gpu_names;
+pub(crate) use mesh_llm_control_api::status::processes::{
+    RuntimeProcessesPayload, build_runtime_processes_payload,
+};
 mod memory;
 mod runtime;
 
 pub(crate) use memory::MemoryPayload;
-pub(crate) use runtime::*;
+pub(crate) use mesh_llm_control_api::status::metrics::{
+    RuntimeLlamaPayload, build_runtime_llama_payload,
+};
+pub(crate) use mesh_llm_control_api::status::runtime::*;
 use serde::Serialize;
 use skippy_serving::OpenAiGuardrailsStatus;
-use std::collections::BTreeMap;
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -153,118 +157,6 @@ pub(crate) struct RuntimeStageDevicePayload {
     pub(crate) index: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) vram_bytes: Option<u64>,
-}
-
-#[derive(Clone, Debug, Serialize)]
-pub(crate) struct RuntimeProcessesPayload {
-    pub(crate) processes: Vec<RuntimeProcessPayload>,
-}
-
-#[derive(Clone, Debug, Serialize)]
-pub(crate) struct RuntimeLlamaPayload {
-    pub(crate) metrics: RuntimeLlamaMetricsPayload,
-    pub(crate) slots: RuntimeLlamaSlotsPayload,
-    pub(crate) items: RuntimeLlamaItemsPayload,
-    #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    pub(crate) instances: Vec<RuntimeLlamaInstancePayload>,
-}
-
-#[derive(Clone, Debug, Serialize)]
-pub(crate) struct RuntimeLlamaInstancePayload {
-    pub(crate) instance_id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) model: Option<String>,
-    pub(crate) metrics: RuntimeLlamaMetricsPayload,
-    pub(crate) slots: RuntimeLlamaSlotsPayload,
-    pub(crate) items: RuntimeLlamaItemsPayload,
-}
-
-#[derive(Clone, Debug, Serialize)]
-pub(crate) struct RuntimeLlamaMetricsPayload {
-    pub(crate) status: &'static str,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) last_attempt_unix_ms: Option<u64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) last_success_unix_ms: Option<u64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) error: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) raw_text: Option<String>,
-    #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    pub(crate) samples: Vec<RuntimeLlamaMetricSamplePayload>,
-}
-
-#[derive(Clone, Debug, Serialize)]
-pub(crate) struct RuntimeLlamaMetricSamplePayload {
-    pub(crate) name: String,
-    #[serde(skip_serializing_if = "BTreeMap::is_empty", default)]
-    pub(crate) labels: BTreeMap<String, String>,
-    pub(crate) value: f64,
-}
-
-#[derive(Clone, Debug, Serialize)]
-pub(crate) struct RuntimeLlamaSlotsPayload {
-    pub(crate) status: &'static str,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) model: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) instance_id: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) last_attempt_unix_ms: Option<u64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) last_success_unix_ms: Option<u64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) error: Option<String>,
-    #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    pub(crate) slots: Vec<RuntimeLlamaSlotPayload>,
-}
-
-#[derive(Clone, Debug, Serialize)]
-pub(crate) struct RuntimeLlamaSlotPayload {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) id: Option<u64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) id_task: Option<u64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) n_ctx: Option<u64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) speculative: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) is_processing: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) next_token: Option<serde_json::Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) params: Option<serde_json::Value>,
-    #[serde(skip_serializing_if = "serde_json::Value::is_null")]
-    pub(crate) extra: serde_json::Value,
-}
-
-#[derive(Clone, Debug, Serialize)]
-pub(crate) struct RuntimeLlamaItemsPayload {
-    pub(crate) metrics: Vec<RuntimeLlamaMetricItemPayload>,
-    pub(crate) slots: Vec<RuntimeLlamaSlotItemPayload>,
-    pub(crate) slots_total: usize,
-    pub(crate) slots_busy: usize,
-}
-
-#[derive(Clone, Debug, Serialize)]
-pub(crate) struct RuntimeLlamaMetricItemPayload {
-    pub(crate) name: String,
-    #[serde(skip_serializing_if = "BTreeMap::is_empty", default)]
-    pub(crate) labels: BTreeMap<String, String>,
-    pub(crate) value: f64,
-}
-
-#[derive(Clone, Debug, Serialize)]
-pub(crate) struct RuntimeLlamaSlotItemPayload {
-    pub(crate) index: usize,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) id: Option<u64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) id_task: Option<u64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) n_ctx: Option<u64>,
-    pub(crate) is_processing: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -876,152 +768,6 @@ pub(crate) fn runtime_stage_state_label(
         crate::inference::skippy::StageRuntimeState::Stopping => "stopping",
         crate::inference::skippy::StageRuntimeState::Stopped => "stopped",
         crate::inference::skippy::StageRuntimeState::Failed => "failed",
-    }
-}
-
-pub(super) fn build_runtime_processes_payload(
-    mut local_processes: Vec<RuntimeProcessPayload>,
-) -> RuntimeProcessesPayload {
-    local_processes.sort_by(|left, right| {
-        (
-            left.name.to_lowercase(),
-            left.instance_id.as_deref().unwrap_or(""),
-            left.port,
-        )
-            .cmp(&(
-                right.name.to_lowercase(),
-                right.instance_id.as_deref().unwrap_or(""),
-                right.port,
-            ))
-    });
-    RuntimeProcessesPayload {
-        processes: local_processes,
-    }
-}
-
-pub(crate) fn build_runtime_llama_payload(
-    snapshot: runtime_data::RuntimeLlamaRuntimeSnapshot,
-    snapshots_by_instance: BTreeMap<String, runtime_data::RuntimeLlamaRuntimeSnapshot>,
-) -> RuntimeLlamaPayload {
-    let instances = snapshots_by_instance
-        .into_iter()
-        .map(|(instance_id, snapshot)| {
-            let model = snapshot.slots.model.clone();
-            let (metrics, slots, items) = build_runtime_llama_snapshot_payload(snapshot);
-            RuntimeLlamaInstancePayload {
-                instance_id,
-                model,
-                metrics,
-                slots,
-                items,
-            }
-        })
-        .collect();
-    let (metrics, slots, items) = build_runtime_llama_snapshot_payload(snapshot);
-    RuntimeLlamaPayload {
-        metrics,
-        slots,
-        items,
-        instances,
-    }
-}
-
-fn build_runtime_llama_snapshot_payload(
-    snapshot: runtime_data::RuntimeLlamaRuntimeSnapshot,
-) -> (
-    RuntimeLlamaMetricsPayload,
-    RuntimeLlamaSlotsPayload,
-    RuntimeLlamaItemsPayload,
-) {
-    (
-        RuntimeLlamaMetricsPayload {
-            status: runtime_llama_endpoint_status(snapshot.metrics.status),
-            last_attempt_unix_ms: snapshot.metrics.last_attempt_unix_ms,
-            last_success_unix_ms: snapshot.metrics.last_success_unix_ms,
-            error: snapshot.metrics.error,
-            raw_text: snapshot.metrics.raw_text,
-            samples: snapshot
-                .metrics
-                .samples
-                .into_iter()
-                .map(|sample| RuntimeLlamaMetricSamplePayload {
-                    name: sample.name,
-                    labels: sample.labels,
-                    value: sample.value,
-                })
-                .collect(),
-        },
-        RuntimeLlamaSlotsPayload {
-            status: runtime_llama_endpoint_status(snapshot.slots.status),
-            model: snapshot.slots.model,
-            instance_id: snapshot.slots.instance_id,
-            last_attempt_unix_ms: snapshot.slots.last_attempt_unix_ms,
-            last_success_unix_ms: snapshot.slots.last_success_unix_ms,
-            error: snapshot.slots.error,
-            slots: snapshot
-                .slots
-                .slots
-                .into_iter()
-                .map(|slot| RuntimeLlamaSlotPayload {
-                    id: slot.id,
-                    id_task: slot.id_task,
-                    n_ctx: slot.n_ctx,
-                    speculative: slot.speculative,
-                    is_processing: slot.is_processing,
-                    next_token: slot.next_token,
-                    params: slot.params,
-                    extra: slot.extra,
-                })
-                .collect(),
-        },
-        RuntimeLlamaItemsPayload {
-            metrics: snapshot
-                .items
-                .metrics
-                .into_iter()
-                .map(|item| RuntimeLlamaMetricItemPayload {
-                    name: item.name,
-                    labels: item.labels,
-                    value: item.value,
-                })
-                .collect(),
-            slots: snapshot
-                .items
-                .slots
-                .into_iter()
-                .map(|item| RuntimeLlamaSlotItemPayload {
-                    index: item.index,
-                    id: item.id,
-                    id_task: item.id_task,
-                    n_ctx: item.n_ctx,
-                    is_processing: item.is_processing,
-                })
-                .collect(),
-            slots_total: snapshot.items.slots_total,
-            slots_busy: snapshot.items.slots_busy,
-        },
-    )
-}
-
-fn runtime_llama_endpoint_status(status: runtime_data::RuntimeLlamaEndpointStatus) -> &'static str {
-    match status {
-        runtime_data::RuntimeLlamaEndpointStatus::Ready => "ready",
-        runtime_data::RuntimeLlamaEndpointStatus::Unavailable => "unavailable",
-    }
-}
-
-pub(crate) fn classify_runtime_error(msg: &str) -> u16 {
-    if msg.contains("not loaded") {
-        404
-    } else if msg.contains("already loaded") || msg.contains("multiple loaded instances") {
-        409
-    } else if msg.contains("fit locally")
-        || msg.contains("runtime load only supports")
-        || msg.contains("runtime capacity")
-    {
-        422
-    } else {
-        400
     }
 }
 

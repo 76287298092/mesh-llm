@@ -855,7 +855,7 @@ pub(super) async fn split_generation_load_settings<'a>(
         },
         spec.config_model_id,
     )?;
-    resolved.materialize_projector_url().await?;
+    crate::inference::skippy::materialize_projector_url(&mut resolved).await?;
     resolved.model_fit.ctx_size = spec.ctx_size;
     resolved.throughput.parallel = spec.slots;
     if let Some(cache_type_k) = spec.cache_type_k_override {

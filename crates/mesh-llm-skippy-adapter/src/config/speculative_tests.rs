@@ -1,15 +1,15 @@
 use super::test_support::*;
 use super::*;
-use crate::inference::skippy::SkippyTelemetryOptions;
-use crate::plugin::{MeshConfig, RequestDefaultsConfig};
+use crate::SkippyTelemetryOptions;
+use mesh_llm_config::{MeshConfig, RequestDefaultsConfig};
 use skippy_protocol::LoadMode;
 use std::path::Path;
 use tempfile::NamedTempFile;
 
 const FULL_SURFACE_VALID_FIXTURE: &str =
-    include_str!("../../../../tests/fixtures/skippy_full_surface_valid.toml");
+    include_str!("../../tests/fixtures/skippy_full_surface_valid.toml");
 const FULL_SURFACE_INVALID_FIXTURE: &str =
-    include_str!("../../../../tests/fixtures/skippy_full_surface_invalid.toml");
+    include_str!("../../tests/fixtures/skippy_full_surface_invalid.toml");
 
 struct FullSurfaceFixture {
     mesh_config: MeshConfig,
@@ -646,7 +646,7 @@ fn integrated_invalid_fixture_accepts_request_defaults_and_rejects_single_stage_
 
 #[test]
 fn explicit_ngram_suffix_strategy_resolves_a_suffix_proposer() {
-    use crate::plugin::SpeculativeConfig;
+    use mesh_llm_config::SpeculativeConfig;
     let model_config: SpeculativeConfig = toml::from_str(
         r#"
 strategy = "ngram-suffix"
@@ -687,7 +687,7 @@ verify_window_pipeline_depth = 2
 
 #[test]
 fn explicit_ngram_suffix_survives_staged_openai_translation() {
-    use crate::plugin::SpeculativeConfig;
+    use mesh_llm_config::SpeculativeConfig;
     let model_config: SpeculativeConfig = toml::from_str(
         r#"
 strategy = "ngram-suffix"
@@ -701,8 +701,8 @@ verify_window_pipeline_depth = 2
 "#,
     )
     .expect("parse speculative config");
-    let mesh_config = crate::plugin::MeshConfig {
-        defaults: Some(crate::plugin::ModelConfigDefaults {
+    let mesh_config = mesh_llm_config::MeshConfig {
+        defaults: Some(mesh_llm_config::ModelConfigDefaults {
             speculative: Some(model_config),
             ..Default::default()
         }),

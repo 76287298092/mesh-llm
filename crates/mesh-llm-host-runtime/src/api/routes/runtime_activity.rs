@@ -13,23 +13,19 @@ use crate::{
 };
 use mesh_llm_system::activity::HostActivity;
 
-impl ActivityOverrideMode {
-    fn into_manual(self) -> ManualActivityOverride {
-        match self {
-            Self::Auto => ManualActivityOverride::Auto,
-            Self::Active => ManualActivityOverride::Active,
-            Self::Idle => ManualActivityOverride::Idle,
-        }
+fn into_manual(mode: ActivityOverrideMode) -> ManualActivityOverride {
+    match mode {
+        ActivityOverrideMode::Auto => ManualActivityOverride::Auto,
+        ActivityOverrideMode::Active => ManualActivityOverride::Active,
+        ActivityOverrideMode::Idle => ManualActivityOverride::Idle,
     }
 }
 
-impl From<ManualActivityOverride> for ActivityOverrideMode {
-    fn from(value: ManualActivityOverride) -> Self {
-        match value {
-            ManualActivityOverride::Auto => Self::Auto,
-            ManualActivityOverride::Active => Self::Active,
-            ManualActivityOverride::Idle => Self::Idle,
-        }
+fn from_manual(value: ManualActivityOverride) -> ActivityOverrideMode {
+    match value {
+        ManualActivityOverride::Auto => ActivityOverrideMode::Auto,
+        ManualActivityOverride::Active => ActivityOverrideMode::Active,
+        ManualActivityOverride::Idle => ActivityOverrideMode::Idle,
     }
 }
 
@@ -49,7 +45,7 @@ pub(super) async fn handle_put(
         return Ok(());
     }
     let override_mode = match serde_json::from_str::<ActivityOverrideMode>(body) {
-        Ok(mode) => mode.into_manual(),
+        Ok(mode) => into_manual(mode),
         Err(error) => {
             return respond_error(stream, 400, &format!("invalid override mode: {error}")).await;
         }
@@ -86,7 +82,7 @@ async fn respond_status(stream: &mut TcpStream, guard: ActivityPolicyGuard) -> a
             ActivityPolicyState::RemotePaused => ActivityPolicyStateLabel::RemotePaused,
             ActivityPolicyState::AllPaused => ActivityPolicyStateLabel::AllPaused,
         },
-        override_mode: guard.manual_override().into(),
+        override_mode: from_manual(guard.manual_override()),
         detector_category: match guard.detector_state() {
             HostActivity::Active => DetectorCategory::Active,
             HostActivity::Idle => DetectorCategory::Idle,

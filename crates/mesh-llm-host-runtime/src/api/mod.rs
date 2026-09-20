@@ -46,9 +46,11 @@
 //! and `/api/models` per-model `routing_metrics.targets` are measured on the
 //! current node only; not mesh-wide aggregates.
 
-mod access;
+use mesh_llm_control_api::access;
 mod assets;
-mod http;
+use mesh_llm_control_api::http;
+#[cfg(test)]
+mod http_tests;
 mod management_lifecycle;
 mod model_target_capacity;
 mod model_targets;
@@ -67,7 +69,6 @@ pub use self::state::{
     PublicationState, RuntimeControlRequest, RuntimeLoadResponse, RuntimeModelPayload,
     RuntimeProcessPayload, RuntimeUnloadResponse,
 };
-pub(crate) use self::status::classify_runtime_error;
 
 use self::state::ApiInner;
 use self::status::{

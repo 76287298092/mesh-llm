@@ -257,7 +257,7 @@ it after the protected-main runner-contract update is active.
 | `ci-web-slice.yml` | Console quality, console Playwright E2E, public website build, and CLI explorer browser validation |
 | `ci-ui-artifact-slice.yml` | Immutable console distribution producer; release callers prepare one source/version-bound UI with complete file checksums, shared by all hosts and SDK resources |
 | `static-abi-artifact.yml` | Typed static llama ABI producer with internal runner policy and an exact toolchain-epoch output |
-| `ci-rust-tests-slice.yml` | Typed deterministic Cargo test batches that verify the producer-owned static ABI toolchain epoch and a pinned, digest-verified Skippy correctness fixture; related PR changes additionally compile one asserted, fully qualified runtime test and smoke an immutable SmolLM2 SafeTensors checkpoint through the complete Mesh config/resolver/server/native path to sampled prefill and decode with every supported load-time quantization |
+| `ci-rust-tests-slice.yml` | Typed deterministic Cargo test batches that verify the producer-owned static ABI toolchain epoch and a pinned, digest-verified Skippy correctness fixture; related PR changes (including `mesh-llm-skippy-adapter`) additionally compile the asserted `mesh-llm-skippy-adapter` library test `config::hardware_translation_tests::safetensors_checkpoint_reaches_mesh_host_runtime` and smoke an immutable SmolLM2 SafeTensors checkpoint through the Mesh config/adapter/Skippy serving/native path to sampled prefill and decode with every supported load-time quantization |
 | `ci-{linux,macos,windows}-host-slice.yml` | Platform-pure neutral host producers; no empty cross-platform jobs |
 | `ci-{linux,macos,windows}-runtime-slice.yml` | Platform-pure native runtime producers. The Linux CPU row also runs the native runtime-event gate against the runtime it just built and uploads its evidence. |
 | `ci-{linux,macos,windows}-product-slice.yml` | Platform-pure composition-only product consumers |
@@ -1005,3 +1005,5 @@ ownership row, publish order, affected-crate fallback and Docker source lists
 include it. The host retains admission/routing and supplies its existing
 first-response timeout; no protocol, runner, permissions or artifact-policy
 change accompanies this extraction.
+
+The adapter/control-API extraction also adds both packages to the affected-crate fallback list and the dependency-ordered publish chain. Workspace test coverage remains automatic; both packages stay in the default test graph. Explicit runtime-product catalog admission is carried by the additive protected-default-branch catalog prerequisite, preserving the source-catalog byte comparison.

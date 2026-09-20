@@ -208,7 +208,7 @@ jobs:
   safetensors_runtime_smoke:
     name: SafeTensors runtime smoke
     needs: runner_policy
-    if: ${{ inputs.original_event_name == 'pull_request' && (contains(inputs.rust_tests_matrix, 'skippy-model') || contains(inputs.rust_tests_matrix, 'skippy-runtime') || contains(inputs.rust_tests_matrix, 'skippy-quantize') || contains(inputs.rust_tests_matrix, 'skippy-ffi') || contains(inputs.rust_tests_matrix, 'skippy-serving') || contains(inputs.rust_tests_matrix, 'skippy-cli') || contains(inputs.rust_tests_matrix, 'skippy-protocol') || contains(inputs.rust_tests_matrix, 'skippy-cache') || contains(inputs.rust_tests_matrix, 'mesh-llm-config') || contains(inputs.rust_tests_matrix, 'mesh-llm-host-runtime') || contains(inputs.rust_tests_matrix, 'mesh-llm-cli')) }}
+    if: ${{ inputs.original_event_name == 'pull_request' && (contains(inputs.rust_tests_matrix, 'skippy-model') || contains(inputs.rust_tests_matrix, 'skippy-runtime') || contains(inputs.rust_tests_matrix, 'skippy-quantize') || contains(inputs.rust_tests_matrix, 'skippy-ffi') || contains(inputs.rust_tests_matrix, 'skippy-serving') || contains(inputs.rust_tests_matrix, 'skippy-cli') || contains(inputs.rust_tests_matrix, 'skippy-protocol') || contains(inputs.rust_tests_matrix, 'skippy-cache') || contains(inputs.rust_tests_matrix, 'mesh-llm-config') || contains(inputs.rust_tests_matrix, 'mesh-llm-host-runtime') || contains(inputs.rust_tests_matrix, 'mesh-llm-skippy-adapter') || contains(inputs.rust_tests_matrix, 'mesh-llm-cli')) }}
     runs-on: ${{ needs.runner_policy.outputs.runner }}
     timeout-minutes: 60
     container:
@@ -284,15 +284,15 @@ jobs:
         id: safetensors_smoke_test
         run: |
           set -euo pipefail
-          test_name="inference::skippy::resolver::tests::safetensors_checkpoint_reaches_mesh_host_runtime"
+          test_name="config::hardware_translation_tests::safetensors_checkpoint_reaches_mesh_host_runtime"
           test_binary="$(
-            cargo test --locked -p mesh-llm-host-runtime --no-default-features \
+            cargo test --locked -p mesh-llm-skippy-adapter --no-default-features \
               --lib --no-run --message-format=json |
               jq -r '
                 if .reason == "compiler-message" then
                   (.message.rendered // empty) | stderr | empty
                 elif .reason == "compiler-artifact" and
-                  .target.name == "mesh_llm_host_runtime" and
+                  .target.name == "mesh_llm_skippy_adapter" and
                   .profile.test == true and
                   .executable != null
                 then
@@ -304,7 +304,7 @@ jobs:
               tail -n 1
           )"
           if [[ -z "$test_binary" || ! -x "$test_binary" ]]; then
-            echo "Unable to locate the mesh-llm-host-runtime library test binary" >&2
+            echo "Unable to locate the mesh-llm-skippy-adapter library test binary" >&2
             exit 1
           fi
           test_listing="$("$test_binary" --list --ignored --format terse)"
