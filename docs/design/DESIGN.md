@@ -81,6 +81,8 @@ membership and control-API crates now own extracted capabilities; host
 composition and the physical `mesh/` and `skippy/` ownership trees remain open.
 Membership owns live peer/admission state, pending handshake reservations,
 waiter cancellation, the relay reconnect controller and heartbeat/removal policy.
+It also owns accepted direct/transitive peer-table transitions, removal rejection
+cleanup, stale-peer selection and heartbeat cooldown retention.
 Plugin message deduplication remains in host-owned state under a separate mutex.
 The host supplies connection observations and applies the returned decisions,
 retaining transport I/O, product logging and plugin notifications.

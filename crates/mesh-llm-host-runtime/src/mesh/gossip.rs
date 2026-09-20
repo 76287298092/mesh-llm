@@ -19,9 +19,10 @@ use crate::protocol::{
 use anyhow::Result;
 use iroh::{EndpointAddr, EndpointId, endpoint::Connection};
 use mesh_llm_membership::announcements::{
-    RebroadcastAnnouncements, apply_transitive_ann, peer_is_idle_transitive_client,
-    peer_meaningfully_changed, update_existing_direct_peer, version_allowed_for_rebroadcast,
+    RebroadcastAnnouncements, peer_is_idle_transitive_client, version_allowed_for_rebroadcast,
 };
+
+use mesh_llm_membership::transitions::TransitivePeerUpdate;
 
 /// Minimum peer version we accept into the local mesh table and re-broadcast.
 ///
@@ -479,12 +480,7 @@ impl Node {
 
     pub(crate) async fn remove_disallowed_peer(&self, id: EndpointId) {
         let mut state = self.state.lock().await;
-        if state.peers.remove(&id).is_some() {
-            let admitted_count = state
-                .peers
-                .values()
-                .filter(|peer| peer.is_admitted())
-                .count();
+        if let Some(admitted_count) = state.remove_disallowed_peer(id) {
             let _ = self.peer_change_tx.send(admitted_count);
         }
     }
@@ -526,12 +522,7 @@ impl Node {
                 .policy_rejected_peers
                 .insert(id, owner_summary.status.clone());
         }
-        if state.peers.remove(&id).is_some() {
-            let admitted_count = state
-                .peers
-                .values()
-                .filter(|peer| peer.is_admitted())
-                .count();
+        if let Some(admitted_count) = state.remove_disallowed_peer(id) {
             let _ = self.peer_change_tx.send(admitted_count);
         }
         drop(state);
@@ -582,21 +573,18 @@ impl Node {
         now: std::time::Instant,
     ) -> bool {
         let mut state = self.state.lock().await;
-        state.policy_rejected_peers.remove(&id);
-        let Some(existing) = state.peers.get_mut(&id) else {
+        let Some(update) = state.upsert_existing_direct_peer(id, addr, ann, owner_summary, now)
+        else {
             return false;
         };
-        let (updated_peer, changed, role_changed, serving_changed) =
-            update_existing_direct_peer(existing, addr, ann, owner_summary, now);
-        let count = state
-            .peers
-            .values()
-            .filter(|peer| peer.is_admitted())
-            .count();
-        let should_publish_count = role_changed || serving_changed;
         drop(state);
-        self.publish_direct_peer_update(updated_peer, changed, should_publish_count, count)
-            .await;
+        self.publish_direct_peer_update(
+            update.peer,
+            update.changed,
+            update.publish_count,
+            update.admitted_count,
+        )
+        .await;
         true
     }
 
@@ -608,7 +596,6 @@ impl Node {
         owner_summary: OwnershipSummary,
     ) {
         let mut state = self.state.lock().await;
-        state.policy_rejected_peers.remove(&id);
         tracing::info!(
             "Peer added: {} role={:?} vram={:.1}GB assigned={:?} catalog={:?} (total: {})",
             id.fmt_short(),
@@ -618,14 +605,7 @@ impl Node {
             ann.available_models,
             state.peers.len() + 1
         );
-        let mut peer = PeerInfo::from_announcement(id, addr, ann, owner_summary);
-        peer.admitted = true;
-        state.peers.insert(id, peer.clone());
-        let count = state
-            .peers
-            .values()
-            .filter(|peer| peer.is_admitted())
-            .count();
+        let (peer, count) = state.insert_new_direct_peer(id, addr, ann, owner_summary);
         drop(state);
         self.capture_peer_observation("peer_direct_add", &peer, "direct", None);
         record_mesh_operational_event_with_context(
@@ -994,11 +974,9 @@ impl Node {
     }
     pub(super) async fn remove_peer(&self, id: EndpointId, reason: MeshPeerRemovalReason) {
         let mut state = self.state.lock().await;
-        // Always clear any rejection-tracking entry so the map stays bounded.
-        state.policy_rejected_peers.remove(&id);
-        let had_connection = state.connections.contains_key(&id);
-        state.requirement_rejected_peers.remove(&id);
-        if let Some(peer) = state.peers.remove(&id) {
+        if let Some(removed) = state.remove_peer(id) {
+            let peer = removed.peer;
+            let had_connection = removed.had_connection;
             let last_seen_age_ms = super::elapsed_ms_u64(peer.last_seen.elapsed());
             let last_mentioned_age_ms = super::elapsed_ms_u64(peer.last_mentioned.elapsed());
             let bridge_id = peer
@@ -1008,13 +986,9 @@ impl Node {
             tracing::info!(
                 "Peer removed: {} (total: {})",
                 id.fmt_short(),
-                state.peers.len()
+                removed.remaining_count
             );
-            let count = state
-                .peers
-                .values()
-                .filter(|peer| peer.is_admitted())
-                .count();
+            let count = removed.admitted_count;
             drop(state);
             self.capture_peer_lifecycle_event(PeerLifecycleCaptureEvent {
                 event: "peer_removed",
@@ -1066,12 +1040,7 @@ impl Node {
             );
             let mut state = self.state.lock().await;
             state.requirement_rejected_peers.insert(id);
-            if state.peers.remove(&id).is_some() {
-                let admitted_count = state
-                    .peers
-                    .values()
-                    .filter(|peer| peer.is_admitted())
-                    .count();
+            if let Some(admitted_count) = state.remove_disallowed_peer(id) {
                 let _ = self.peer_change_tx.send(admitted_count);
             }
             return;
@@ -1164,12 +1133,7 @@ impl Node {
         // /api/status, the UI, and routing all stop seeing them.
         if !version_allowed_for_rebroadcast(ann.version.as_deref()) {
             let mut state = self.state.lock().await;
-            if state.peers.remove(&id).is_some() {
-                let admitted_count = state
-                    .peers
-                    .values()
-                    .filter(|peer| peer.is_admitted())
-                    .count();
+            if let Some(admitted_count) = state.remove_disallowed_peer(id) {
                 let _ = self.peer_change_tx.send(admitted_count);
             }
             return;
@@ -1187,12 +1151,7 @@ impl Node {
         // gets in.
         if peer_is_idle_transitive_client(ann) {
             let mut state = self.state.lock().await;
-            if state.peers.remove(&id).is_some() {
-                let admitted_count = state
-                    .peers
-                    .values()
-                    .filter(|peer| peer.is_admitted())
-                    .count();
+            if let Some(admitted_count) = state.remove_disallowed_peer(id) {
                 let _ = self.peer_change_tx.send(admitted_count);
             }
             return;
@@ -1207,12 +1166,7 @@ impl Node {
         );
         if !policy_accepts_peer(self.trust_policy, &owner_summary) {
             let mut state = self.state.lock().await;
-            if state.peers.remove(&id).is_some() {
-                let admitted_count = state
-                    .peers
-                    .values()
-                    .filter(|peer| peer.is_admitted())
-                    .count();
+            if let Some(admitted_count) = state.remove_disallowed_peer(id) {
                 let _ = self.peer_change_tx.send(admitted_count);
             }
             drop(state);
@@ -1226,106 +1180,53 @@ impl Node {
             );
             return;
         }
-        let mut state = self.state.lock().await;
-        if id == self.endpoint.id() {
-            return;
-        }
-        if state
-            .dead_peers
-            .get(&id)
-            .is_some_and(|t| t.elapsed() < DEAD_PEER_TTL)
-        {
-            return;
-        }
-        // Issue #1756: even after DEAD_PEER_TTL expires, a departed id stays
-        // barred from transitive re-admission so a bridge's stale
-        // announcement cannot resurrect a ghost `state: serving` entry for a
-        // genuinely gone peer. Only direct proof of life clears this early.
-        if state
-            .departed_peers
-            .get(&id)
-            .is_some_and(|t| t.elapsed() < DEPARTED_PEER_TRANSITIVE_BLOCK_TTL)
-        {
-            return;
-        }
-        if let Some(existing) = state.peers.get_mut(&id) {
-            let old_peer = existing.clone();
-            let serving_changed = apply_transitive_ann(existing, addr, ann, bridge_id);
-            existing.owner_summary = owner_summary;
-            // Refresh last_mentioned: the bridge peer vouches for this peer
-            // being alive (collect_announcements already filters stale peers).
-            // We update last_mentioned (not last_seen) so that PeerDown
-            // silencing and collect_announcements use only direct proof-of-life,
-            // while the prune decision considers both timestamps.
-            existing.last_mentioned = std::time::Instant::now();
-            let updated_peer = existing.clone();
-            let changed = peer_meaningfully_changed(&old_peer, &updated_peer);
-            if serving_changed {
-                let count = state
-                    .peers
-                    .values()
-                    .filter(|peer| peer.is_admitted())
-                    .count();
-                drop(state);
+        let update = self.state.lock().await.apply_accepted_transitive_peer(
+            self.endpoint.id(),
+            id,
+            addr,
+            ann,
+            bridge_id,
+            owner_summary,
+        );
+        match update {
+            TransitivePeerUpdate::Ignored => {}
+            TransitivePeerUpdate::Added(peer) => {
                 self.capture_peer_observation(
-                    "peer_transitive_update",
-                    &updated_peer,
+                    "peer_transitive_add",
+                    &peer,
                     "transitive",
                     Some(bridge_id),
                 );
-                let _ = self.peer_change_tx.send(count);
-                if changed {
-                    self.emit_plugin_mesh_event(
-                        crate::plugin::proto::mesh_event::Kind::PeerUpdated,
-                        Some(&updated_peer),
-                        String::new(),
-                    )
-                    .await;
+                self.emit_plugin_mesh_event(
+                    crate::plugin::proto::mesh_event::Kind::PeerUp,
+                    Some(&peer),
+                    String::new(),
+                )
+                .await;
+            }
+            TransitivePeerUpdate::Updated {
+                peer,
+                changed,
+                admitted_count,
+            } => {
+                let event = if admitted_count.is_some() {
+                    "peer_transitive_update"
+                } else {
+                    "peer_transitive_seen"
+                };
+                self.capture_peer_observation(event, &peer, "transitive", Some(bridge_id));
+                if let Some(count) = admitted_count {
+                    let _ = self.peer_change_tx.send(count);
                 }
-            } else {
-                drop(state);
-                self.capture_peer_observation(
-                    "peer_transitive_seen",
-                    &updated_peer,
-                    "transitive",
-                    Some(bridge_id),
-                );
                 if changed {
                     self.emit_plugin_mesh_event(
                         crate::plugin::proto::mesh_event::Kind::PeerUpdated,
-                        Some(&updated_peer),
+                        Some(&peer),
                         String::new(),
                     )
                     .await;
                 }
             }
-        } else {
-            // New transitive peer — not directly verified, so set last_seen to
-            // epoch (not "now") to avoid incorrectly silencing PeerDown reports.
-            // last_mentioned = now keeps the peer alive for the prune window.
-            let mut peer = PeerInfo::from_announcement(id, addr.clone(), ann, owner_summary);
-            // Capability provenance must be direct. A bridge can report that a
-            // peer exists, but it cannot make that peer eligible for strict
-            // local-GGUF election on the peer's behalf.
-            peer.local_gguf_content_id_supported = false;
-            // Mark as never directly seen — only transitively mentioned.
-            peer.admitted = false;
-            peer.last_seen =
-                std::time::Instant::now() - std::time::Duration::from_secs(PEER_STALE_SECS * 2);
-            state.peers.insert(id, peer.clone());
-            drop(state);
-            self.capture_peer_observation(
-                "peer_transitive_add",
-                &peer,
-                "transitive",
-                Some(bridge_id),
-            );
-            self.emit_plugin_mesh_event(
-                crate::plugin::proto::mesh_event::Kind::PeerUp,
-                Some(&peer),
-                String::new(),
-            )
-            .await;
         }
     }
 

@@ -46,6 +46,8 @@ pub mod requirements;
 pub mod selected_path;
 #[cfg(feature = "host-io")]
 pub mod state;
+#[cfg(feature = "host-io")]
+pub mod transitions;
 pub mod types;
 pub mod weights_digest;
 

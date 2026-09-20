@@ -7,9 +7,9 @@
 use super::direct_rescue::DirectRescueEndpoint;
 use super::node::startup_transport_config;
 use super::{
-    ConnectionCaptureEvent, ControlProtocol, DEAD_PEER_TTL, DEPARTED_PEER_TRANSITIVE_BLOCK_TTL,
-    MeshPeerRemovalReason, Node, PEER_DOWN_REPORTER_COOLDOWN_SECS, PEER_STALE_SECS, PeerInfo,
-    PeerLifecycleCaptureEvent, connect_mesh, connection_protocol, selected_path_observation,
+    ConnectionCaptureEvent, ControlProtocol, MeshPeerRemovalReason, Node, PEER_STALE_SECS,
+    PeerInfo, PeerLifecycleCaptureEvent, connect_mesh, connection_protocol,
+    selected_path_observation,
 };
 use crate::protocol::{
     NODE_PROTOCOL_GENERATION, STREAM_PEER_DOWN, STREAM_PEER_LEAVING, write_len_prefixed,
@@ -845,13 +845,7 @@ impl Node {
     pub(crate) async fn stale_heartbeat_peers(&self) -> Vec<EndpointId> {
         let prune_cutoff =
             std::time::Instant::now() - std::time::Duration::from_secs(PEER_STALE_SECS * 2);
-        let state = self.state.lock().await;
-        state
-            .peers
-            .iter()
-            .filter(|(_, peer)| peer.last_seen < prune_cutoff && peer.last_mentioned < prune_cutoff)
-            .map(|(id, _)| *id)
-            .collect()
+        self.state.lock().await.stale_peers(prune_cutoff)
     }
 
     pub(crate) async fn gc_heartbeat_state(&self) {
@@ -871,25 +865,12 @@ impl Node {
     }
 
     pub(crate) async fn retain_live_heartbeat_state(&self) -> Vec<EndpointId> {
-        let mut state = self.state.lock().await;
-        let expired_dead_peers: Vec<EndpointId> = state
-            .dead_peers
-            .iter()
-            .filter_map(|(id, ts)| (ts.elapsed() >= DEAD_PEER_TTL).then_some(*id))
-            .collect();
-        state
-            .dead_peers
-            .retain(|_, ts| ts.elapsed() < DEAD_PEER_TTL);
-        state
-            .departed_peers
-            .retain(|_, ts| ts.elapsed() < DEPARTED_PEER_TRANSITIVE_BLOCK_TTL);
-        state
-            .peer_down_rejections
-            .retain(|_, ts| ts.elapsed().as_secs() < PEER_DOWN_REPORTER_COOLDOWN_SECS);
-        state.direct_path_request_last_at.retain(|_, ts| {
-            ts.elapsed().as_secs() < super::direct_path::DIRECT_PATH_REQUEST_COOLDOWN_SECS
-        });
-        expired_dead_peers
+        self.state
+            .lock()
+            .await
+            .retain_live_heartbeat_state(std::time::Duration::from_secs(
+                super::direct_path::DIRECT_PATH_REQUEST_COOLDOWN_SECS,
+            ))
     }
 
     /// Handle a peer death: remove from state, broadcast to all other peers.

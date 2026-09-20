@@ -1,3 +1,5 @@
+use mesh_llm_membership::announcements::{apply_transitive_ann, peer_meaningfully_changed};
+
 #[test]
 pub(crate) fn test_merge_none_to_some() {
     let mut existing = test_peer(None);

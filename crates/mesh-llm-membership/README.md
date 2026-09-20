@@ -145,3 +145,19 @@ The serving transport (`connections.rs` + `connections/`, `stage_transport*`,
 `stage_proto`, `stage_artifacts`), owner control (`owner_control*`,
 `owner_lifecycle_cache`), plugin host (`plugin_*`), operational logging, and
 `artifact_transfer_io` remain in host-runtime and are not part of this crate.
+
+## Peer table transitions
+
+`transitions` owns accepted direct-peer update/insertion and transitive-peer
+merge/insertion, including admission provenance, dead-peer suppression, mention
+age, and the resulting count/change decisions. The host verifies announcement
+policy, supplies peer identity, and publishes the returned observations and
+plugin events after releasing the membership lock. Announcement-only removals
+preserve connection and rejection state. Broader admission and removal lifecycle
+orchestration remains in the host.
+
+General peer removal also belongs to `transitions`: it clears admission rejection
+history and returns the removed peer/count snapshot while preserving independent
+connection and quarantine lifetimes. Stale-peer selection and heartbeat cooldown
+retention run over membership state; the host supplies the direct-path cooldown
+and handles capture, network cleanup and plugin notifications.
