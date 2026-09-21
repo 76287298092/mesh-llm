@@ -2,9 +2,9 @@
 //! and peer list management (add/remove/update).
 
 use super::{
-    DEAD_PEER_TTL, DEPARTED_PEER_TRANSITIVE_BLOCK_TTL, InviteTokenMaterial, MeshOperationalEvent,
-    MeshPeerRemovalReason, MeshPolicyRejectionReason, Node, PEER_CONNECT_AND_GOSSIP_TIMEOUT,
-    PEER_STALE_SECS, PeerAnnouncement, PeerInfo, connect_mesh, elapsed_ms_u64, emit_mesh_info,
+    DEAD_PEER_TTL, InviteTokenMaterial, MeshOperationalEvent, MeshPeerRemovalReason,
+    MeshPolicyRejectionReason, Node, PEER_CONNECT_AND_GOSSIP_TIMEOUT, PEER_STALE_SECS,
+    PeerAnnouncement, PeerInfo, connect_mesh, elapsed_ms_u64, emit_mesh_info,
     mesh_peer_operational_context, parse_invite_token, record_mesh_operational_event,
     record_mesh_operational_event_with_context,
 };

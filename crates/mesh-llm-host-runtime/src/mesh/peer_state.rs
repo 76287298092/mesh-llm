@@ -1,9 +1,9 @@
 use super::*;
 
 pub(crate) use mesh_llm_membership::peer_state::{
-    ClaimedLogHead, DEAD_PEER_TTL, DEPARTED_PEER_TRANSITIVE_BLOCK_TTL,
-    PEER_DOWN_REPORTER_COOLDOWN_SECS, PEER_STALE_SECS, ingest_tunnel_map, model_identity_score,
-    policy_accepts_peer, resolve_peer_leaving, stream_allowed_before_admission,
+    ClaimedLogHead, DEAD_PEER_TTL, PEER_DOWN_REPORTER_COOLDOWN_SECS, PEER_STALE_SECS,
+    ingest_tunnel_map, model_identity_score, policy_accepts_peer, resolve_peer_leaving,
+    stream_allowed_before_admission,
 };
 pub use mesh_llm_membership::peer_state::{
     DirectLatencyObservation, DisplayLatency, DisplayLatencySource, MeshCatalogEntry,
