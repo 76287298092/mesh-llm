@@ -38,3 +38,5 @@ no downstream peer; split configurations retain embedded stage-zero execution.
 `package::inspection` owns local package inspection results and per-layer tensor/artifact accounting, including metadata-only v2 inspection and legacy offline inspection. The caller supplies a resolved directory, original reference and optional digest cache.
 
 `serving::readiness` exposes Skippy binary-stage bind-address selection, wire readiness probes and size-scaled load deadlines. Probe cancellation joins its worker; Mesh retains coordinator claims, stage registration and shutdown orchestration.
+
+`package::acquisition` owns package reference parsing, local artifact selection/verification and cached-snapshot selection. Callers provide an optional integrity-cache path; metadata-only verification always hashes metadata without that cache. Remote transfers and progress presentation remain caller-owned.

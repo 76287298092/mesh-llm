@@ -9,10 +9,7 @@ use anyhow::{Context, Result};
 
 use super::{manifest_artifact_bytes, safe_manifest_file_path, verify_cached_hf_package_files};
 
-pub(super) fn cached_package_snapshots(
-    cache_dir: &Path,
-    repo_folder: &str,
-) -> Result<Vec<PathBuf>> {
+pub fn cached_package_snapshots(cache_dir: &Path, repo_folder: &str) -> Result<Vec<PathBuf>> {
     let snapshots_dir = cache_dir.join(repo_folder).join("snapshots");
     let Ok(entries) = fs::read_dir(&snapshots_dir) else {
         return Ok(Vec::new());
@@ -30,12 +27,13 @@ pub(super) fn cached_package_snapshots(
     Ok(snapshots)
 }
 
-pub(super) fn resolve_cached_hf_package_snapshot(
+pub fn resolve_cached_hf_package_snapshot(
     package_dir: &Path,
     layer_start: u32,
     layer_end: u32,
     include_embeddings: bool,
     include_output: bool,
+    integrity_cache: Option<&Path>,
 ) -> Result<Option<String>> {
     if !should_prefer_cached_snapshot_for_request(
         package_dir,
@@ -56,6 +54,7 @@ pub(super) fn resolve_cached_hf_package_snapshot(
         layer_end,
         include_embeddings,
         include_output,
+        integrity_cache,
     )
 }
 
@@ -203,12 +202,12 @@ mod tests {
             })
             .collect();
 
-        let manifest = serde_json::json!({
+        let mut manifest = serde_json::json!({
             "schema_version": 1,
             "model_id": "model-a",
             "source_model": {
                 "path": "model-a.gguf",
-                "sha256": "aaaa",
+                "sha256": "a".repeat(64),
                 "files": []
             },
             "format": "layer-package",
@@ -226,6 +225,8 @@ mod tests {
             "layers": layers,
             "skippy_abi_version": "0.1.0",
         });
+        manifest["shared"]["embeddings"] = manifest["shared"]["metadata"].clone();
+        manifest["shared"]["output"] = manifest["shared"]["metadata"].clone();
         fs::write(
             dir.join("model-package.json"),
             serde_json::to_vec_pretty(&manifest).unwrap(),
@@ -319,5 +320,27 @@ mod tests {
         assert!(
             !should_prefer_cached_snapshot_for_request(dir.path(), 0, 4, false, false).unwrap()
         );
+    }
+
+    #[test]
+    fn metadata_probe_bypasses_integrity_cache_and_rechecks_same_size_bytes() {
+        let dir = tempfile::tempdir().unwrap();
+        write_multi_layer_snapshot(dir.path(), 2, &[0]);
+        let cache = dir.path().join("integrity-cache");
+        assert!(
+            resolve_cached_hf_package_snapshot(dir.path(), 0, 0, false, false, Some(&cache),)
+                .unwrap()
+                .is_some()
+        );
+        assert!(!cache.exists());
+        fs::write(dir.path().join("shared/metadata.gguf"), b"badbytes").unwrap();
+        let error =
+            resolve_cached_hf_package_snapshot(dir.path(), 0, 0, false, false, Some(&cache))
+                .unwrap_err();
+        assert!(
+            format!("{error:#}").contains("checksum mismatch"),
+            "{error:#}"
+        );
+        assert!(!cache.exists());
     }
 }

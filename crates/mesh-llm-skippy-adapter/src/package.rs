@@ -30,3 +30,5 @@ pub fn inspect_local_stage_package(
         hash_cache::open_default().as_ref(),
     )
 }
+
+pub mod acquisition;

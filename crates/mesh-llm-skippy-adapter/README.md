@@ -11,3 +11,5 @@ Resolver tests live beside the implementation. Host hook/receipt integration sta
 `package::inspect_local_stage_package` applies the same Mesh cache policy to Skippy inspection; the host resolves remote references once before invoking it.
 
 `readiness` exposes the Skippy startup contract to Mesh stage orchestration; no Mesh load-request or coordinator identity enters the serving probe.
+
+`package::acquisition` supplies the existing Mesh package-integrity cache directory to Skippy local validation and cached-snapshot selection.
