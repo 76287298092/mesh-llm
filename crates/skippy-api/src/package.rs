@@ -1,5 +1,6 @@
 //! Verified local package identity and source-file digests.
 //! Callers choose an advisory digest cache explicitly; None always hashes source bytes.
+pub mod inspection;
 pub mod metadata;
 
 use crate::hash_cache::{self, SidecarDigestCache};

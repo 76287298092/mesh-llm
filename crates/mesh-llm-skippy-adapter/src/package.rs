@@ -17,3 +17,16 @@ pub fn identity_from_package_v2_metadata(
         hash_cache::open_default().as_ref(),
     )
 }
+
+pub use skippy_api::package::inspection::{StagePackageInfo, StagePackageLayerInfo};
+
+pub fn inspect_local_stage_package(
+    package_ref: &str,
+    local_ref: &str,
+) -> anyhow::Result<StagePackageInfo> {
+    skippy_api::package::inspection::inspect_local_stage_package(
+        package_ref,
+        local_ref,
+        hash_cache::open_default().as_ref(),
+    )
+}

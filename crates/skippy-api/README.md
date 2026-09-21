@@ -2,7 +2,7 @@
 
 Shared Skippy model preparation. `SingleStageOptions` and a resolved `StageSourceIdentity` produce the same single-stage configuration for standalone and embedded callers. Model-family cache policy and checkpoint quantization/importance-matrix preparation live here. Product hooks, diagnostics and model discovery remain caller concerns.
 
-`package::identity_from_package_v2` verifies a local package and returns its model identity. It checks the package generation, content-derived package ID, native ABI, confined artifact paths, sizes and digests. Callers pass an optional `SidecarDigestCache` opened at an explicit directory; `None` disables the advisory digest cache. The API does not read environment variables or choose a home/cache directory. Existing v2 cache records keep their format and keys.
+`package::identity_from_package_v2` verifies a local package and returns its model identity. It checks the package generation, content-derived package ID, confined artifact paths, sizes and digests. The producer native ABI is provenance; runtime loading checks host/library ABI compatibility separately. Callers pass an optional `SidecarDigestCache` opened at an explicit directory; `None` disables the advisory digest cache. The API does not read environment variables or choose a home/cache directory. Existing v2 cache records keep their format and keys.
 
 `package::metadata` verifies metadata-only package identity without fetching layer artifacts. It preserves source provenance separately from the generated metadata digest and pins resolved Hugging Face snapshot references. Callers supply the local directory and optional digest cache; acquisition remains outside this API.
 
@@ -34,3 +34,5 @@ preserves explicit queue/adaptive-concurrency/admission settings and loads throu
 resources while HTTP requests drain and propagates listener/serving failures.
 The serving library selects local execution for a stage-zero configuration with
 no downstream peer; split configurations retain embedded stage-zero execution.
+
+`package::inspection` owns local package inspection results and per-layer tensor/artifact accounting, including metadata-only v2 inspection and legacy offline inspection. The caller supplies a resolved directory, original reference and optional digest cache.
