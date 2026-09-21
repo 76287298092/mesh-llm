@@ -257,7 +257,8 @@ mod tests {
         assert_eq!(config.manifest_sha256, Some("ab".repeat(32)));
         assert_eq!((config.layer_start, config.layer_end), (0, 30));
         assert!(config.upstream.is_none() && config.downstream.is_none());
-        assert!(!config.filter_tensors_on_load);
+        assert!(config.resident_tensor_names.is_empty());
+        assert!(config.execution_contract.is_empty());
     }
 
     #[test]

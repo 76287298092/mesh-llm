@@ -283,7 +283,7 @@ class PackageNativeRuntimeTests(unittest.TestCase):
             + 'runtime_os="windows"\n'
             + 'stage_dir="${TMPDIR:-/tmp}/mesh-test-no-windows-tool"\n'
             + "build_model_package_tool\n"
-            + '[[ ! -e "$stage_dir/tools/skippy-model-package" ]]\n'
+            + '[[ ! -e "$stage_dir/tools/skippy-package-builder" ]]\n'
         )
         result = subprocess.run(
             ["/bin/bash", "-s"],
@@ -338,7 +338,7 @@ class PackageNativeRuntimeTests(unittest.TestCase):
             )
             self.assertEqual(
                 set(manifest["runtime"]["tools"]),
-                {"tools/skippy-model-package"},
+                {"tools/skippy-package-builder"},
             )
             archive = (
                 root

@@ -175,7 +175,7 @@ def candidate_test_command(env: dict[str, str]) -> list[str]:
     manifest = env.get("SKIPPY_WORKLOAD_PRODUCER_MANIFEST")
     if not manifest:
         return ["cargo", "test", "--manifest-path", str(ROOT / "Cargo.toml"),
-                "-p", "skippy-server", "--lib", TEST_NAME,
+                "-p", "skippy-serving", "--lib", TEST_NAME,
                 "--", "--exact", "--nocapture", "--test-threads=1"]
     binary_dir = env.get("SKIPPY_WORKLOAD_CANDIDATE_BIN_DIR")
     native_dir = env.get("SKIPPY_WORKLOAD_NATIVE_BUILD_DIR")
@@ -185,7 +185,7 @@ def candidate_test_command(env: dict[str, str]) -> list[str]:
     # executable as the class smoke, without rebuilding the canary's Metal tree.
     subprocess.run(
         [sys.executable, str(ROOT / "scripts/check-skippy-workload-candidate.py"),
-         "--candidate-binary", str(Path(binary_dir) / "skippy-server"),
+         "--candidate-binary", str(Path(binary_dir) / "skippy"),
          "--native-build-dir", native_dir, "--producer-manifest", manifest],
         cwd=ROOT, env=env, check=True,
     )

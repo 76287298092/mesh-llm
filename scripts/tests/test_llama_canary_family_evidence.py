@@ -73,9 +73,9 @@ class FamilyEvidenceTests(unittest.TestCase):
         directory = self.root / 'closure-src'
         directory.mkdir(exist_ok=True)
         files = {
-            'candidate': 'cargo/debug/skippy-server',
+            'candidate': 'cargo/debug/skippy',
             'test_binary': 'cargo/debug/deps/smoke-test',
-            'model_package': 'cargo/debug/skippy-model-package',
+            'model_package': 'cargo/debug/skippy-package-builder',
             'correctness': 'cargo/debug/skippy-correctness',
             'topology_plan': 'cargo/debug/skippy-topology-plan',
             'native_stamp': 'native/.mesh-llm-build-stamp',
@@ -305,8 +305,8 @@ class FamilyEvidenceTests(unittest.TestCase):
         E.restore(SimpleNamespace(package=self.package, identity=self.digest, root=checkout))
         closure = checkout / E.WORKLOAD_CLOSURE_ROOT
         stamp = closure / 'native/.mesh-llm-build-stamp'
-        candidate = closure / 'cargo/debug/skippy-server'
-        self.assertEqual(candidate.read_bytes(), b'closure:cargo/debug/skippy-server')
+        candidate = closure / 'cargo/debug/skippy'
+        self.assertEqual(candidate.read_bytes(), b'closure:cargo/debug/skippy')
         self.assertLess(stamp.stat().st_mtime_ns, candidate.stat().st_mtime_ns,
                         'restored stamp must predate restored executables')
 

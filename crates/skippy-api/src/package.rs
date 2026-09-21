@@ -293,7 +293,7 @@ pub fn warn_if_mtp_without_generation(manifest: &PackageManifestV2) {
         package_id = %manifest.package_id,
         "package contains MTP (nextn) tensors but generation.speculative_decoding is missing; \
          native MTP will not be enabled for this package; republish with a fixed \
-         skippy-model-package writer to enable it"
+         skippy-package-builder writer to enable it"
     );
 }
 

@@ -89,7 +89,7 @@ fi
 CANDIDATE_BUILD_DIR="${SKIPPY_WORKLOAD_NATIVE_BUILD_DIR:-${LLAMA_STAGE_BUILD_DIR:-$(LLAMA_STAGE_BACKEND="${LLAMA_STAGE_BACKEND:-cpu}" LLAMA_STAGE_LINK_MODE=static "$ROOT/scripts/build-llama.sh" --print-build-dir)}}"
 CANDIDATE_BIN_DIR="${SKIPPY_WORKLOAD_CANDIDATE_BIN_DIR:-$ROOT/target/debug}"
 PRODUCER_MANIFEST="${SKIPPY_WORKLOAD_PRODUCER_MANIFEST:-}"
-TEST_COMMAND=(cargo test --manifest-path "$ROOT/Cargo.toml" -p skippy-server --lib)
+TEST_COMMAND=(cargo test --manifest-path "$ROOT/Cargo.toml" -p skippy-serving --lib)
 require_pinned_cpu_oracle() {
   local executable="$1" expected_name="$2" cmake_option="$3"
   local build_dir stamp patched_sha
@@ -178,13 +178,13 @@ fi
 # rebuilding or changing the other family lanes' native/Rust outputs.
 if [[ -n "$PRODUCER_MANIFEST" ]]; then
   python3 "$ROOT/scripts/check-skippy-workload-candidate.py" \
-    --candidate-binary "$CANDIDATE_BIN_DIR/skippy-server" \
+    --candidate-binary "$CANDIDATE_BIN_DIR/skippy" \
     --native-build-dir "$CANDIDATE_BUILD_DIR" --producer-manifest "$PRODUCER_MANIFEST"
   # Producer manifest paths are relative to the manifest's own directory.
   TEST_COMMAND=("$(dirname "$PRODUCER_MANIFEST")/$(jq -er '.files.test_binary.path' "$PRODUCER_MANIFEST")")
 elif (( SKIP_BUILD == 0 )); then
   LLAMA_STAGE_BUILD_DIR="$CANDIDATE_BUILD_DIR" \
-    cargo build -p skippy-server
+    cargo build -p skippy-cli
 elif [[ -n "$ORACLE_SERVER" || -n "$ORACLE_COMPLETION" || -n "$ORACLE_TTS" ]]; then
   echo "--skip-build oracle certification requires a source-bound workload producer manifest" >&2
   exit 1
@@ -192,7 +192,7 @@ fi
 if [[ -n "$ORACLE_SERVER" || -n "$ORACLE_COMPLETION" || -n "$ORACLE_TTS" ]]; then
   require_pinned_cpu_candidate
   python3 "$ROOT/scripts/check-skippy-workload-candidate.py" \
-    --candidate-binary "$CANDIDATE_BIN_DIR/skippy-server" \
+    --candidate-binary "$CANDIDATE_BIN_DIR/skippy" \
     --native-build-dir "$CANDIDATE_BUILD_DIR"
 fi
 
@@ -262,7 +262,7 @@ PY
 
 SERVER_LOG="$WORK_DIR/workload-openai-server.log"
 LLAMA_STAGE_BACKEND="$BACKEND" \
-  "$CANDIDATE_BIN_DIR/skippy-server" serve-openai \
+  "$CANDIDATE_BIN_DIR/skippy" serve-openai \
     --config "$CONFIG_PATH" \
     --bind-addr "127.0.0.1:$PORT" \
     --default-max-tokens 128 \
@@ -385,7 +385,7 @@ if [[ -n "$ORACLE_SERVER" || -n "$ORACLE_COMPLETION" || -n "$ORACLE_TTS" ]]; the
     --smoke-lane "$EXPECTED_LANE"
     --model-id "$MODEL_ID"
     --model-sha256 "$MODEL_SHA256"
-    --candidate-executable "$CANDIDATE_BIN_DIR/skippy-server"
+    --candidate-executable "$CANDIDATE_BIN_DIR/skippy"
     --oracle-executable "$ORACLE_EXECUTABLE"
     --pinned-patch-sha "$(python3 "$ROOT/scripts/llama-oracle-source.py")"
     --work-dir "$WORK_DIR")

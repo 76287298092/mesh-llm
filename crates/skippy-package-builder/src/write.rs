@@ -3,9 +3,9 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, bail};
+use serde::Serialize;
 use skippy_model_artifact::ModelArtifactFile;
 use skippy_model_ref::split_gguf_shard_info;
-use serde::Serialize;
 use skippy_runtime::{ModelInfo, TensorInfo};
 
 pub(crate) struct ModelSource {

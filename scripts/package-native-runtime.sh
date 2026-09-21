@@ -250,7 +250,7 @@ gpu_benchmark_tool_path() {
 }
 
 model_package_tool_path() {
-    printf 'tools/skippy-model-package\n'
+    printf 'tools/skippy-package-builder\n'
 }
 
 hip_offload_arch_args() {

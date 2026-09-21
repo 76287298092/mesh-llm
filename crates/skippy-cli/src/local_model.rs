@@ -165,7 +165,8 @@ mod tests {
         assert_eq!(config.ctx_size, 512);
         assert_eq!(config.lane_count, 2);
         assert_eq!(config.n_gpu_layers, 0);
-        assert!(!config.filter_tensors_on_load);
+        assert!(config.resident_tensor_names.is_empty());
+        assert!(config.execution_contract.is_empty());
         assert!(config.run_id.starts_with("skippy-"));
     }
 }

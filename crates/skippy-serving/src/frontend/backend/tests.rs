@@ -1677,6 +1677,7 @@ fn identity_config() -> skippy_protocol::StageConfig {
         "layer_start": 0,
         "layer_end": 4,
         "load_mode": "runtime-slice",
+        "execution_contract": "",
         "bind_addr": "127.0.0.1:0",
     }))
     .expect("minimal stage config for identity attrs")

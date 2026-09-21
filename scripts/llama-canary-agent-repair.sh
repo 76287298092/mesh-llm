@@ -404,7 +404,7 @@ run_full_build() {
     # The nested shell expands its positional argument, not this shell.
     # shellcheck disable=SC2016
     run_verification_logged "build transferable multimodal test executable" "$BUILD_LOG" \
-      bash -c 'cargo test -p skippy-server --lib --no-run --message-format=json > "$1"' \
+      bash -c 'cargo test -p skippy-serving --lib --no-run --message-format=json > "$1"' \
       build-mm "$STATE_DIR/mm-build.jsonl" || return 1
   fi
 }

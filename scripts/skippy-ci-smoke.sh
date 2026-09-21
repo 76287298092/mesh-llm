@@ -195,7 +195,7 @@ download_model() {
 model_layer_end() {
   local model_path="$1"
   LLAMA_STAGE_BUILD_DIR="$LLAMA_BUILD_DIR" \
-    run_with_timeout "inspect ${model_path}" target/debug/skippy-model-package inspect "$model_path" \
+    run_with_timeout "inspect ${model_path}" target/debug/skippy-package-builder inspect "$model_path" \
       | jq -r '[.tensors[] | select(.role == "layer") | .layer_index] | max + 1'
 }
 

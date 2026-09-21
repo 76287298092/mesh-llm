@@ -52,7 +52,7 @@ either `certified` or `uncertified_override`.
 
 ## Use a published layer package
 
-Layer packages are durable Hugging Face repos with a `skippy-model-package.json`
+Layer packages are durable Hugging Face repos with a `model-package.json`
 manifest and GGUF fragments. Prefer immutable refs for production runs:
 
 ```bash
@@ -211,7 +211,7 @@ fail-closed topology. Create the same JSON file on every serving node:
 {
   "version": 1,
   "model": "hf://meshllm/example-layers@immutable-revision",
-  "manifest_sha256": "<sha256 of skippy-model-package.json>",
+  "manifest_sha256": "<sha256 of model-package.json>",
   "stages": [
     {
       "node": "micstudio.local",

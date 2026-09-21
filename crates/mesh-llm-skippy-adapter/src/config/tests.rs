@@ -1679,7 +1679,7 @@ verify_window_runahead_tokens = 0
 
 #[test]
 fn draft_fallback_without_a_draft_model_is_rejected_not_silently_ignored() {
-    use crate::plugin::SpeculativeConfig;
+    use mesh_llm_config::SpeculativeConfig;
     let config: SpeculativeConfig = toml::from_str(
         r#"
 strategy = "ngram-suffix"
@@ -1710,7 +1710,7 @@ ngram_fallback = "draft"
 
 #[test]
 fn draft_fallback_at_pipeline_depth_one_is_rejected() {
-    use crate::plugin::SpeculativeConfig;
+    use mesh_llm_config::SpeculativeConfig;
     let config: SpeculativeConfig = toml::from_str(
         r#"
 strategy = "ngram-suffix"

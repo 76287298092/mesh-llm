@@ -1201,3 +1201,5 @@ first-response timeout; no protocol, runner, permissions or artifact-policy
 change accompanies this extraction.
 
 The adapter/control-API extraction also adds both packages to the affected-crate fallback list and the dependency-ordered publish chain. Workspace test coverage remains automatic; both packages stay in the default test graph. Explicit runtime-product catalog admission is carried by the additive protected-default-branch catalog prerequisite, preserving the source-catalog byte comparison.
+
+Membership extraction adds `mesh-llm-membership` to the affected-crate fallback and publish chain after its identity/protocol/routing/type dependencies. The Linux test Docker source list includes membership, control API and the Skippy adapter. Canary and workload executable handoffs name `skippy` and `skippy-package-builder`, with prebuilt library tests from `skippy-serving`; artifact verification and protected ownership catalogs remain unchanged.

@@ -70,7 +70,8 @@ pub(crate) fn resolve_package_input(
 
     runtime.block_on(async {
         let repository = HfModelRepository::from_env()?;
-        let artifact = skippy_model_artifact::resolve_model_artifact_ref(&model, &repository).await?;
+        let artifact =
+            skippy_model_artifact::resolve_model_artifact_ref(&model, &repository).await?;
         let paths = repository.download_artifact_files(&artifact).await?;
         let primary_index = artifact
             .files

@@ -763,7 +763,7 @@ curl localhost:3131/api/events   # SSE stream
 curl 'localhost:3131/api/search?q=qwen&catalog=true&artifact=gguf&limit=5' # JSON search results
 curl -X POST localhost:3131/api/model-interests \
   -H 'Content-Type: application/json' \
-  -d '{"skippy_model_ref":"Qwen3-Coder-Next-Q4_K_M","source":"ui"}'
+  -d '{"model_ref":"Qwen3-Coder-Next-Q4_K_M","source":"ui"}'
 curl localhost:3131/api/model-interests
 curl localhost:3131/api/model-targets
 curl localhost:3131/api/discover # Nostr meshes (current mesh marked by mesh_id)

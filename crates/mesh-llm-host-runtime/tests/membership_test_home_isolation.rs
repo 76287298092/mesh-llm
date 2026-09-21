@@ -32,12 +32,10 @@ impl EnvGuard {
     fn install(home: &std::path::Path) -> Self {
         let test_home = std::env::var_os("MESH_LLM_TEST_HOME");
         let node_key_path = std::env::var_os("MESH_LLM_NODE_KEY_PATH");
-        // SAFETY: the owning test is serialized and the guard restores both
-        // values on drop; no other test in this binary reads the environment.
-        unsafe {
-            std::env::set_var("MESH_LLM_TEST_HOME", home.as_os_str());
-            std::env::remove_var("MESH_LLM_NODE_KEY_PATH");
-        }
+        // SAFETY: this serial test's guard restores the value; no concurrent readers.
+        unsafe { std::env::set_var("MESH_LLM_TEST_HOME", home.as_os_str()) };
+        // SAFETY: this serial test's guard restores the value; no concurrent readers.
+        unsafe { std::env::remove_var("MESH_LLM_NODE_KEY_PATH") };
         Self {
             test_home,
             node_key_path,
@@ -47,15 +45,24 @@ impl EnvGuard {
 
 impl Drop for EnvGuard {
     fn drop(&mut self) {
-        // SAFETY: mirror of `install`; restores the prior process state.
-        unsafe {
-            match self.test_home.take() {
-                Some(value) => std::env::set_var("MESH_LLM_TEST_HOME", value),
-                None => std::env::remove_var("MESH_LLM_TEST_HOME"),
+        match self.test_home.take() {
+            Some(value) => {
+                // SAFETY: restore the prior value under the owning serial test's guard.
+                unsafe { std::env::set_var("MESH_LLM_TEST_HOME", value) };
             }
-            match self.node_key_path.take() {
-                Some(value) => std::env::set_var("MESH_LLM_NODE_KEY_PATH", value),
-                None => std::env::remove_var("MESH_LLM_NODE_KEY_PATH"),
+            None => {
+                // SAFETY: restore the prior value under the owning serial test's guard.
+                unsafe { std::env::remove_var("MESH_LLM_TEST_HOME") };
+            }
+        }
+        match self.node_key_path.take() {
+            Some(value) => {
+                // SAFETY: restore the prior value under the owning serial test's guard.
+                unsafe { std::env::set_var("MESH_LLM_NODE_KEY_PATH", value) };
+            }
+            None => {
+                // SAFETY: restore the prior value under the owning serial test's guard.
+                unsafe { std::env::remove_var("MESH_LLM_NODE_KEY_PATH") };
             }
         }
     }

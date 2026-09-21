@@ -267,7 +267,7 @@ pub(crate) struct StageStatusSnapshot {
     pub(crate) coordinator_term: u64,
     pub(crate) coordinator_id: Option<iroh::EndpointId>,
     pub(crate) lease_until_unix_ms: u64,
-    /// Cumulative runtime compute-busy time; see `skippy_server::compute_meter`.
+    /// Cumulative runtime compute-busy time; see `skippy_serving::compute_meter`.
     pub(crate) compute_busy_nanos: u64,
     pub(crate) compute_operations: u64,
 }

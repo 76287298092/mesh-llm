@@ -36,11 +36,10 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 use skippy_openai_frontend::{
     AudioResponse, AudioSpeechRequest, AudioTranscriptionRequest, AudioTranscriptionResponse,
-    EmbeddingResponse, EmbeddingsRequest, RerankRequest, RerankResponse,
     ChatCompletionRequest, ChatCompletionResponse, ChatCompletionStream, CompactionConfig,
-    CompletionRequest, CompletionResponse, CompletionStream, GuardrailMode, GuardrailPolicy,
-    GuardrailPolicyHandle, ModelObject, OpenAiBackend, OpenAiHookPolicy, OpenAiRequestContext,
-    OpenAiResult,
+    CompletionRequest, CompletionResponse, CompletionStream, EmbeddingResponse, EmbeddingsRequest,
+    GuardrailMode, GuardrailPolicy, GuardrailPolicyHandle, ModelObject, OpenAiBackend,
+    OpenAiHookPolicy, OpenAiRequestContext, OpenAiResult, RerankRequest, RerankResponse,
 };
 use skippy_protocol::{FlashAttentionType, LoadMode, StageConfig};
 use skippy_runtime::{ModelInfo, MtpSource};
@@ -297,7 +296,6 @@ impl SkippyModelHandle {
             }
         })
     }
-
 
     pub(crate) fn backend(&self) -> Arc<dyn OpenAiBackend> {
         self.backend.clone()
@@ -603,10 +601,8 @@ pub(crate) fn forget_stage0_compute_meter(run_id: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use skippy_openai_frontend::{
-    AudioResponse, AudioSpeechRequest, AudioTranscriptionRequest, AudioTranscriptionResponse,
-    EmbeddingResponse, EmbeddingsRequest, RerankRequest, RerankResponse,MESH_COMPACT_FIELD, OpenAiError};
     use serde_json::json;
+    use skippy_openai_frontend::{MESH_COMPACT_FIELD, OpenAiError};
     use skippy_serving::runtime_state::RuntimeSessionStats;
     use skippy_serving::telemetry::TelemetryStats;
 

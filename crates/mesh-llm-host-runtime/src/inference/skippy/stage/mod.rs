@@ -705,7 +705,7 @@ pub(crate) fn admitted_resident_tensor_names(
         .unwrap_or(&load.package_ref);
     let manifest: skippy_package_format::PackageManifest = if super::is_package_v2_ref(package_ref)
     {
-        let manifest_path = Path::new(package_ref).join("skippy-model-package.json");
+        let manifest_path = Path::new(package_ref).join("model-package.json");
         let manifest =
             serde_json::from_slice(&std::fs::read(&manifest_path).with_context(|| {
                 format!("read package-v2 manifest {}", manifest_path.display())

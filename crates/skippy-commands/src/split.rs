@@ -282,6 +282,7 @@ mod tests {
             version: skippy_protocol::STAGE_ADMISSION_DESCRIPTOR_VERSION,
             package_id: "package".into(),
             plan_id: "plan".into(),
+            execution_contract: String::new(),
             layer_start: 0,
             layer_end: 1,
             resident_tensor_ids: vec![],

@@ -224,7 +224,7 @@ struct QuantizeLayerPackageArgs {
     package_source_revision: String,
     #[arg(long)]
     package_source_file: Option<String>,
-    #[arg(long, default_value = "target/release/skippy-model-package")]
+    #[arg(long, default_value = "target/release/skippy-package-builder")]
     skippy_model_package_bin: PathBuf,
     #[arg(long)]
     stages: Option<usize>,
@@ -702,7 +702,7 @@ fn quantize_layer_package(args: QuantizeLayerPackageArgs) -> Result<()> {
     );
     ensure!(
         args.skippy_model_package_bin.is_file(),
-        "missing skippy-model-package binary {}; build it with `cargo build --release --locked -p skippy-package-builder` or pass --skippy-model-package-bin",
+        "missing skippy-package-builder binary {}; build it with `cargo build --release --locked -p skippy-package-builder` or pass --skippy-model-package-bin",
         args.skippy_model_package_bin.display()
     );
     if args.package_dir.exists() && !args.resume_package {

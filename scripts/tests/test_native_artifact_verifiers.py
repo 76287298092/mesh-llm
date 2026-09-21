@@ -777,7 +777,7 @@ class NativeArtifactVerifierTests(unittest.TestCase):
 
         The package ships executables as well as libraries:
         `package-native-runtime.sh` builds the GPU benchmark and
-        `skippy-model-package`, and the host runs the benchmark from
+        `skippy-package-builder`, and the host runs the benchmark from
         `crates/mesh-llm-system/src/benchmark.rs`. Enumerating only
         `runtime.libraries` let a tool needing a newer glibc than the floor
         pass here and then fail on a supported host.

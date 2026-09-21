@@ -42,7 +42,7 @@ skippy-package-builder validate-glm-dsa-contract skippy-model-package/
 the coordinate through `skippy-model-ref`, `skippy-model-artifact`, and the `huggingface-hub`
 backed `skippy-model-hf` adapter, downloads the resolved source artifact, and records
 the resolved repo, revision, primary file, canonical ref, distribution id, and
-artifact file set in `skippy-model-package.json`.
+artifact file set in `model-package.json`.
 
 ### Package v2 writer
 
@@ -133,7 +133,7 @@ expected inventory from transformed or incomplete output.
 as before, an upload hook may delete that verified local copy. If it leaves a copy,
 that copy is checked again. Remote upload verification remains the hook's duty.
 `--resume-existing-artifacts` verifies existing copies against the original source
-before reuse; source files remain mandatory. An existing `skippy-model-package.json` is
+before reuse; source files remain mandatory. An existing `model-package.json` is
 never overwritten; use a new output directory. The manifest completion marker is
 written only after all artifact checks succeed.
 

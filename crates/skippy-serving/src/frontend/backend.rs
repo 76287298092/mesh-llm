@@ -45,6 +45,9 @@ use crate::telemetry::now_unix_nanos;
 use async_trait::async_trait;
 use futures_util::StreamExt;
 use futures_util::stream;
+use serde_json::Value;
+use serde_json::json;
+use skippy_metrics::attr as attr_key;
 use skippy_openai_frontend::AudioFormat;
 use skippy_openai_frontend::AudioResponse;
 use skippy_openai_frontend::AudioSpeechRequest;
@@ -75,14 +78,11 @@ use skippy_openai_frontend::TerminalGuardedChatStream;
 use skippy_openai_frontend::apply_chat_hook_outcome;
 use skippy_openai_frontend::capsule_id_is_valid;
 use skippy_openai_frontend::chat_mesh_hooks_enabled;
-use serde_json::Value;
-use serde_json::json;
-use skippy_metrics::attr as attr_key;
+use skippy_protocol::StageConfig;
 use skippy_runtime::{
     MediaInput, ModelWorkload, SamplingConfig, SpeechOutputFormat, SpeechSynthesisConfig,
     WorkloadInfo,
 };
-use skippy_protocol::StageConfig;
 use std::collections::BTreeMap;
 use std::io;
 use std::sync::Arc;

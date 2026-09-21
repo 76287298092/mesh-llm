@@ -142,7 +142,7 @@ fn public_alias_does_not_bypass_non_chat_admission() {
     descriptor.identity.source_kind = mesh::ModelSourceKind::HuggingFace;
     descriptor.identity.repository = Some("fixture/embedding-GGUF".into());
     descriptor.identity.artifact = Some("embedding.Q8_0.gguf".into());
-    let alias = peer.public_model_id_for_routable_model(BIG_MODELS[0].name);
+    let alias = mesh::public_model_id_from_identity(&descriptor.identity).unwrap();
     assert_ne!(alias, BIG_MODELS[0].name);
     assert!(!model_supports_committee(
         &alias,

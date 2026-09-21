@@ -427,7 +427,7 @@ async fn responses_flat_function_tools_reach_shared_backend_in_both_modes() {
     for streaming in [false, true] {
         let backend = Arc::new(GuardedBenchyBackend::default());
         let response = request_with_app(
-            openai_frontend::router_for(backend.clone()), "POST", "/v1/responses",
+            skippy_openai_frontend::router_for(backend.clone()), "POST", "/v1/responses",
             json!({"model":BENCHY_MODEL_ID,"input":"weather","stream":streaming,
                 "tools":[{"type":"function","name":"lookup","description":"weather","parameters":{"type":"object","properties":{}},"strict":true}],
                 "tool_choice":{"type":"function","name":"lookup"}}), None,
@@ -478,7 +478,7 @@ async fn flat_tools_remain_invalid_on_chat_and_malformed_responses_are_rejected(
 async fn responses_flat_function_names_are_trimmed_before_the_backend() {
     let backend = Arc::new(GuardedBenchyBackend::default());
     let response = request_with_app(
-        openai_frontend::router_for(backend.clone()), "POST", "/v1/responses",
+        skippy_openai_frontend::router_for(backend.clone()), "POST", "/v1/responses",
         json!({"model":BENCHY_MODEL_ID,"input":"weather",
             "tools":[{"type":"function","name":"  lookup  ","description":"weather","parameters":{"type":"object","properties":{}}}],
             "tool_choice":{"type":"function","name":" lookup "}}), None,

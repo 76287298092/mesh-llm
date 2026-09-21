@@ -63,7 +63,7 @@ flowchart LR
     S2 -.->|control ACK / stats<br/>cold path| S1
     S1 -.->|control ACK / stats<br/>cold path| S0
 
-    P["layer package<br/>skippy-model-package.json + GGUF parts"] --> S0
+    P["layer package<br/>model-package.json + GGUF parts"] --> S0
     P --> S1
 ```
 
@@ -279,7 +279,7 @@ deadline handling.
   package-v2 catalog and executes the matching normalized graph slice.
 - `artifact-slice` opens an explicitly supplied GGUF artifact without applying
   any implicit layer, embedding, or output ownership rules.
-- `layer-package` loads a local `skippy-model-package.json` directory, validates the
+- `layer-package` loads a local `model-package.json` directory, validates the
   manifest and selected part files, then opens those GGUF parts directly through
   the stage ABI.
 - Package selection validates manifest schema, ABI version, selected part sizes,

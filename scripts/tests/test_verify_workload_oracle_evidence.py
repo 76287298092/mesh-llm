@@ -26,7 +26,7 @@ class WorkloadOracleEvidenceTests(unittest.TestCase):
         root = Path(self.temp_dir.name)
         self.model = root / "model.gguf"
         self.model.write_bytes(b"pinned-model")
-        self.candidate = root / "skippy-server"
+        self.candidate = root / "skippy"
         self.candidate.write_bytes(b"candidate")
         self.oracle = root / "llama-server"
         self.oracle.write_bytes(b"monolithic")

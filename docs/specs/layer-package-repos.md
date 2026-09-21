@@ -3,7 +3,7 @@
 Status: draft
 
 Layer package repositories are durable model artifacts for skippy-backed stage
-serving. A repository contains one `skippy-model-package.json` manifest plus GGUF
+serving. A repository contains one `model-package.json` manifest plus GGUF
 fragments that can be selected by layer range and loaded by a stage without
 requiring every peer to store or materialize the full source model.
 
@@ -34,7 +34,7 @@ meshllm/DeepSeek-V3.2-UD-Q4_K_XL-layers
 ```
 
 The repository identity is not enough to prove compatibility. Consumers MUST
-read `skippy-model-package.json` and use the manifest fields below as the source of
+read `model-package.json` and use the manifest fields below as the source of
 truth.
 
 Package references use `hf://` so runtime code can distinguish package repos
@@ -51,12 +51,12 @@ not a moving branch.
 
 ## Repository Layout
 
-The root of the repository MUST contain `skippy-model-package.json`.
+The root of the repository MUST contain `model-package.json`.
 
 Recommended layout:
 
 ```text
-skippy-model-package.json
+model-package.json
 shared/
   metadata.gguf
   embeddings.gguf
@@ -123,7 +123,7 @@ Privacy and compatibility boundaries:
   needed by the requesting node's assigned stage range. Stage 0 may fetch input
   boundary files and projector artifacts; final stages may fetch output boundary
   files.
-- `skippy-model-package.json` is capped at 16 MiB for peer transfer.
+- `model-package.json` is capped at 16 MiB for peer transfer.
 - Non-manifest artifacts must match the manifest-declared relative path, byte
   size, and SHA-256 digest.
 - Received artifacts are written to a fresh hidden partial file and installed
@@ -851,7 +851,7 @@ skippy-package-builder write-package org/repo:distribution \
 ```
 
 The package writer copies declared projectors into `projectors/`, records their
-checksums and sizes in `skippy-model-package.json`, and keeps them as durable package
+checksums and sizes in `model-package.json`, and keeps them as durable package
 artifacts.
 
 Local source GGUF paths are allowed only with explicit provenance:
@@ -888,7 +888,7 @@ A published repository SHOULD include a short `README.md` with:
 
 Before a stage starts, consumers MUST validate:
 
-- `skippy-model-package.json` parses as schema version `1`;
+- `model-package.json` parses as schema version `1`;
 - `format` is `layer-package`;
 - `skippy_abi_version` is compatible with the runtime ABI;
 - `model_id` and source identity fields are non-empty;

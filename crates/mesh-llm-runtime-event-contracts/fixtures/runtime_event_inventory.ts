@@ -413,12 +413,12 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "capacity",
       "producerSymbols": [
-        "skippy_server::runtime_state",
-        "inference::skippy::kv_cache"
+        "skippy_serving::runtime_state",
+        "inference::skippy::runtime_events::SkippyKvRuntimeEventObserver"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/runtime_state.rs",
-        "crates/mesh-llm-host-runtime/src/inference/skippy/kv_cache.rs"
+        "crates/skippy-serving/src/runtime_state.rs",
+        "crates/mesh-llm-host-runtime/src/inference/skippy/runtime_events/kv.rs"
       ],
       "authoritativeOutcome": "KV and cache operation returns",
       "reducerEffect": "cache occupancy, pressure, and context state",
@@ -455,12 +455,12 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "failure",
       "producerSymbols": [
-        "skippy_server::runtime_state",
-        "inference::skippy::kv_cache"
+        "skippy_serving::runtime_state",
+        "inference::skippy::runtime_events::SkippyKvRuntimeEventObserver"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/runtime_state.rs",
-        "crates/mesh-llm-host-runtime/src/inference/skippy/kv_cache.rs"
+        "crates/skippy-serving/src/runtime_state.rs",
+        "crates/mesh-llm-host-runtime/src/inference/skippy/runtime_events/kv.rs"
       ],
       "authoritativeOutcome": "KV and cache operation returns",
       "reducerEffect": "cache occupancy, pressure, and context state",
@@ -496,12 +496,12 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "success",
       "producerSymbols": [
-        "skippy_server::runtime_state",
-        "inference::skippy::kv_cache"
+        "skippy_serving::runtime_state",
+        "inference::skippy::runtime_events::SkippyKvRuntimeEventObserver"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/runtime_state.rs",
-        "crates/mesh-llm-host-runtime/src/inference/skippy/kv_cache.rs"
+        "crates/skippy-serving/src/runtime_state.rs",
+        "crates/mesh-llm-host-runtime/src/inference/skippy/runtime_events/kv.rs"
       ],
       "authoritativeOutcome": "KV and cache operation returns",
       "reducerEffect": "cache occupancy, pressure, and context state",
@@ -537,12 +537,12 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "success",
       "producerSymbols": [
-        "skippy_server::runtime_state",
-        "inference::skippy::kv_cache"
+        "skippy_serving::runtime_state",
+        "inference::skippy::runtime_events::SkippyKvRuntimeEventObserver"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/runtime_state.rs",
-        "crates/mesh-llm-host-runtime/src/inference/skippy/kv_cache.rs"
+        "crates/skippy-serving/src/runtime_state.rs",
+        "crates/mesh-llm-host-runtime/src/inference/skippy/runtime_events/kv.rs"
       ],
       "authoritativeOutcome": "KV and cache operation returns",
       "reducerEffect": "cache occupancy, pressure, and context state",
@@ -578,12 +578,12 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "success",
       "producerSymbols": [
-        "skippy_server::runtime_state",
-        "inference::skippy::kv_cache"
+        "skippy_serving::runtime_state",
+        "inference::skippy::runtime_events::SkippyKvRuntimeEventObserver"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/runtime_state.rs",
-        "crates/mesh-llm-host-runtime/src/inference/skippy/kv_cache.rs"
+        "crates/skippy-serving/src/runtime_state.rs",
+        "crates/mesh-llm-host-runtime/src/inference/skippy/runtime_events/kv.rs"
       ],
       "authoritativeOutcome": "KV and cache operation returns",
       "reducerEffect": "cache occupancy, pressure, and context state",
@@ -617,12 +617,12 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "capacity",
       "producerSymbols": [
-        "skippy_server::runtime_state",
-        "inference::skippy::kv_cache"
+        "skippy_serving::runtime_state",
+        "inference::skippy::runtime_events::SkippyKvRuntimeEventObserver"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/runtime_state.rs",
-        "crates/mesh-llm-host-runtime/src/inference/skippy/kv_cache.rs"
+        "crates/skippy-serving/src/runtime_state.rs",
+        "crates/mesh-llm-host-runtime/src/inference/skippy/runtime_events/kv.rs"
       ],
       "authoritativeOutcome": "KV and cache operation returns",
       "reducerEffect": "cache occupancy, pressure, and context state",
@@ -656,12 +656,12 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "capacity",
       "producerSymbols": [
-        "skippy_server::runtime_state",
-        "inference::skippy::kv_cache"
+        "skippy_serving::runtime_state",
+        "inference::skippy::runtime_events::SkippyKvRuntimeEventObserver"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/runtime_state.rs",
-        "crates/mesh-llm-host-runtime/src/inference/skippy/kv_cache.rs"
+        "crates/skippy-serving/src/runtime_state.rs",
+        "crates/mesh-llm-host-runtime/src/inference/skippy/runtime_events/kv.rs"
       ],
       "authoritativeOutcome": "KV and cache operation returns",
       "reducerEffect": "cache occupancy, pressure, and context state",
@@ -697,12 +697,12 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "success",
       "producerSymbols": [
-        "skippy_server::runtime_state",
-        "inference::skippy::kv_cache"
+        "skippy_serving::runtime_state",
+        "inference::skippy::runtime_events::SkippyKvRuntimeEventObserver"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/runtime_state.rs",
-        "crates/mesh-llm-host-runtime/src/inference/skippy/kv_cache.rs"
+        "crates/skippy-serving/src/runtime_state.rs",
+        "crates/mesh-llm-host-runtime/src/inference/skippy/runtime_events/kv.rs"
       ],
       "authoritativeOutcome": "KV and cache operation returns",
       "reducerEffect": "cache occupancy, pressure, and context state",
@@ -739,12 +739,12 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "failure",
       "producerSymbols": [
-        "skippy_server::runtime_state",
-        "inference::skippy::kv_cache"
+        "skippy_serving::runtime_state",
+        "inference::skippy::runtime_events::SkippyKvRuntimeEventObserver"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/runtime_state.rs",
-        "crates/mesh-llm-host-runtime/src/inference/skippy/kv_cache.rs"
+        "crates/skippy-serving/src/runtime_state.rs",
+        "crates/mesh-llm-host-runtime/src/inference/skippy/runtime_events/kv.rs"
       ],
       "authoritativeOutcome": "KV and cache operation returns",
       "reducerEffect": "cache occupancy, pressure, and context state",
@@ -778,12 +778,12 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "state",
       "producerSymbols": [
-        "skippy_server::runtime_state",
-        "inference::skippy::kv_cache"
+        "skippy_serving::runtime_state",
+        "inference::skippy::runtime_events::SkippyKvRuntimeEventObserver"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/runtime_state.rs",
-        "crates/mesh-llm-host-runtime/src/inference/skippy/kv_cache.rs"
+        "crates/skippy-serving/src/runtime_state.rs",
+        "crates/mesh-llm-host-runtime/src/inference/skippy/runtime_events/kv.rs"
       ],
       "authoritativeOutcome": "KV and cache operation returns",
       "reducerEffect": "cache occupancy, pressure, and context state",
@@ -817,12 +817,12 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "capacity",
       "producerSymbols": [
-        "skippy_server::runtime_state",
-        "inference::skippy::kv_cache"
+        "skippy_serving::runtime_state",
+        "inference::skippy::runtime_events::SkippyKvRuntimeEventObserver"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/runtime_state.rs",
-        "crates/mesh-llm-host-runtime/src/inference/skippy/kv_cache.rs"
+        "crates/skippy-serving/src/runtime_state.rs",
+        "crates/mesh-llm-host-runtime/src/inference/skippy/runtime_events/kv.rs"
       ],
       "authoritativeOutcome": "KV and cache operation returns",
       "reducerEffect": "cache occupancy, pressure, and context state",
@@ -858,12 +858,12 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "success",
       "producerSymbols": [
-        "skippy_server::runtime_state",
-        "inference::skippy::kv_cache"
+        "skippy_serving::runtime_state",
+        "inference::skippy::runtime_events::SkippyKvRuntimeEventObserver"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/runtime_state.rs",
-        "crates/mesh-llm-host-runtime/src/inference/skippy/kv_cache.rs"
+        "crates/skippy-serving/src/runtime_state.rs",
+        "crates/mesh-llm-host-runtime/src/inference/skippy/runtime_events/kv.rs"
       ],
       "authoritativeOutcome": "KV and cache operation returns",
       "reducerEffect": "cache occupancy, pressure, and context state",
@@ -939,12 +939,12 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "capacity",
       "producerSymbols": [
-        "skippy_server::runtime_state",
-        "inference::skippy::kv_cache"
+        "skippy_serving::runtime_state",
+        "inference::skippy::runtime_events::SkippyKvRuntimeEventObserver"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/runtime_state.rs",
-        "crates/mesh-llm-host-runtime/src/inference/skippy/kv_cache.rs"
+        "crates/skippy-serving/src/runtime_state.rs",
+        "crates/mesh-llm-host-runtime/src/inference/skippy/runtime_events/kv.rs"
       ],
       "authoritativeOutcome": "KV and cache operation returns",
       "reducerEffect": "cache occupancy, pressure, and context state",
@@ -981,12 +981,12 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "failure",
       "producerSymbols": [
-        "skippy_server::runtime_state",
-        "inference::skippy::kv_cache"
+        "skippy_serving::runtime_state",
+        "inference::skippy::runtime_events::SkippyKvRuntimeEventObserver"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/runtime_state.rs",
-        "crates/mesh-llm-host-runtime/src/inference/skippy/kv_cache.rs"
+        "crates/skippy-serving/src/runtime_state.rs",
+        "crates/mesh-llm-host-runtime/src/inference/skippy/runtime_events/kv.rs"
       ],
       "authoritativeOutcome": "KV and cache operation returns",
       "reducerEffect": "cache occupancy, pressure, and context state",
@@ -1433,11 +1433,11 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "failure",
       "producerSymbols": [
-        "runtime_data::metrics",
+        "mesh_llm_control_api::status::metrics",
         "api::routes::logs::events"
       ],
       "sourcePaths": [
-        "crates/mesh-llm-host-runtime/src/runtime_data/metrics.rs",
+        "crates/mesh-llm-control-api/src/status/metrics.rs",
         "crates/mesh-llm-host-runtime/src/api/routes/logs/events/mod.rs"
       ],
       "authoritativeOutcome": "event engine counters",
@@ -1473,11 +1473,11 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "health",
       "producerSymbols": [
-        "runtime_data::metrics",
+        "mesh_llm_control_api::status::metrics",
         "api::routes::logs::events"
       ],
       "sourcePaths": [
-        "crates/mesh-llm-host-runtime/src/runtime_data/metrics.rs",
+        "crates/mesh-llm-control-api/src/status/metrics.rs",
         "crates/mesh-llm-host-runtime/src/api/routes/logs/events/mod.rs"
       ],
       "authoritativeOutcome": "event engine counters",
@@ -1513,11 +1513,11 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "health",
       "producerSymbols": [
-        "runtime_data::metrics",
+        "mesh_llm_control_api::status::metrics",
         "api::routes::logs::events"
       ],
       "sourcePaths": [
-        "crates/mesh-llm-host-runtime/src/runtime_data/metrics.rs",
+        "crates/mesh-llm-control-api/src/status/metrics.rs",
         "crates/mesh-llm-host-runtime/src/api/routes/logs/events/mod.rs"
       ],
       "authoritativeOutcome": "event engine counters",
@@ -1553,11 +1553,11 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "health",
       "producerSymbols": [
-        "runtime_data::metrics",
+        "mesh_llm_control_api::status::metrics",
         "api::routes::logs::events"
       ],
       "sourcePaths": [
-        "crates/mesh-llm-host-runtime/src/runtime_data/metrics.rs",
+        "crates/mesh-llm-control-api/src/status/metrics.rs",
         "crates/mesh-llm-host-runtime/src/api/routes/logs/events/mod.rs"
       ],
       "authoritativeOutcome": "event engine counters",
@@ -1677,12 +1677,12 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "success",
       "producerSymbols": [
-        "skippy_server::frontend",
-        "openai_frontend::sse"
+        "skippy_serving::frontend",
+        "skippy_openai_frontend::sse"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/frontend.rs",
-        "crates/openai-frontend/src/sse.rs"
+        "crates/skippy-serving/src/frontend.rs",
+        "crates/skippy-openai-frontend/src/sse.rs"
       ],
       "authoritativeOutcome": "generation receipt and response stream outcome",
       "reducerEffect": "request generation state",
@@ -1761,12 +1761,12 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "failure",
       "producerSymbols": [
-        "skippy_server::frontend",
-        "openai_frontend::sse"
+        "skippy_serving::frontend",
+        "skippy_openai_frontend::sse"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/frontend.rs",
-        "crates/openai-frontend/src/sse.rs"
+        "crates/skippy-serving/src/frontend.rs",
+        "crates/skippy-openai-frontend/src/sse.rs"
       ],
       "authoritativeOutcome": "generation receipt and response stream outcome",
       "reducerEffect": "request generation state",
@@ -1802,12 +1802,12 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "success",
       "producerSymbols": [
-        "skippy_server::frontend",
-        "openai_frontend::sse"
+        "skippy_serving::frontend",
+        "skippy_openai_frontend::sse"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/frontend.rs",
-        "crates/openai-frontend/src/sse.rs"
+        "crates/skippy-serving/src/frontend.rs",
+        "crates/skippy-openai-frontend/src/sse.rs"
       ],
       "authoritativeOutcome": "generation receipt and response stream outcome",
       "reducerEffect": "request generation state",
@@ -1844,12 +1844,12 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "failure",
       "producerSymbols": [
-        "skippy_server::frontend",
-        "openai_frontend::sse"
+        "skippy_serving::frontend",
+        "skippy_openai_frontend::sse"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/frontend.rs",
-        "crates/openai-frontend/src/sse.rs"
+        "crates/skippy-serving/src/frontend.rs",
+        "crates/skippy-openai-frontend/src/sse.rs"
       ],
       "authoritativeOutcome": "generation receipt and response stream outcome",
       "reducerEffect": "request generation state",
@@ -1883,12 +1883,12 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "progress",
       "producerSymbols": [
-        "skippy_server::frontend",
-        "openai_frontend::sse"
+        "skippy_serving::frontend",
+        "skippy_openai_frontend::sse"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/frontend.rs",
-        "crates/openai-frontend/src/sse.rs"
+        "crates/skippy-serving/src/frontend.rs",
+        "crates/skippy-openai-frontend/src/sse.rs"
       ],
       "authoritativeOutcome": "generation receipt and response stream outcome",
       "reducerEffect": "request generation state",
@@ -1922,12 +1922,12 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "state",
       "producerSymbols": [
-        "skippy_server::frontend",
-        "openai_frontend::sse"
+        "skippy_serving::frontend",
+        "skippy_openai_frontend::sse"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/frontend.rs",
-        "crates/openai-frontend/src/sse.rs"
+        "crates/skippy-serving/src/frontend.rs",
+        "crates/skippy-openai-frontend/src/sse.rs"
       ],
       "authoritativeOutcome": "generation receipt and response stream outcome",
       "reducerEffect": "request generation state",
@@ -1964,12 +1964,12 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "failure",
       "producerSymbols": [
-        "skippy_server::frontend",
-        "openai_frontend::sse"
+        "skippy_serving::frontend",
+        "skippy_openai_frontend::sse"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/frontend.rs",
-        "crates/openai-frontend/src/sse.rs"
+        "crates/skippy-serving/src/frontend.rs",
+        "crates/skippy-openai-frontend/src/sse.rs"
       ],
       "authoritativeOutcome": "generation receipt and response stream outcome",
       "reducerEffect": "request generation state",
@@ -2004,11 +2004,11 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "health",
       "producerSymbols": [
-        "runtime_data::metrics",
+        "mesh_llm_control_api::status::metrics",
         "api::routes::logs::events"
       ],
       "sourcePaths": [
-        "crates/mesh-llm-host-runtime/src/runtime_data/metrics.rs",
+        "crates/mesh-llm-control-api/src/status/metrics.rs",
         "crates/mesh-llm-host-runtime/src/api/routes/logs/events/mod.rs"
       ],
       "authoritativeOutcome": "event engine counters",
@@ -2087,12 +2087,12 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "success",
       "producerSymbols": [
-        "skippy_server::runtime_state",
-        "inference::skippy::kv_cache"
+        "skippy_serving::runtime_state",
+        "inference::skippy::runtime_events::SkippyKvRuntimeEventObserver"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/runtime_state.rs",
-        "crates/mesh-llm-host-runtime/src/inference/skippy/kv_cache.rs"
+        "crates/skippy-serving/src/runtime_state.rs",
+        "crates/mesh-llm-host-runtime/src/inference/skippy/runtime_events/kv.rs"
       ],
       "authoritativeOutcome": "KV and cache operation returns",
       "reducerEffect": "cache occupancy, pressure, and context state",
@@ -2129,12 +2129,12 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "failure",
       "producerSymbols": [
-        "skippy_server::runtime_state",
-        "inference::skippy::kv_cache"
+        "skippy_serving::runtime_state",
+        "inference::skippy::runtime_events::SkippyKvRuntimeEventObserver"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/runtime_state.rs",
-        "crates/mesh-llm-host-runtime/src/inference/skippy/kv_cache.rs"
+        "crates/skippy-serving/src/runtime_state.rs",
+        "crates/mesh-llm-host-runtime/src/inference/skippy/runtime_events/kv.rs"
       ],
       "authoritativeOutcome": "KV and cache operation returns",
       "reducerEffect": "cache occupancy, pressure, and context state",
@@ -2168,12 +2168,12 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "state",
       "producerSymbols": [
-        "skippy_server::runtime_state",
-        "inference::skippy::kv_cache"
+        "skippy_serving::runtime_state",
+        "inference::skippy::runtime_events::SkippyKvRuntimeEventObserver"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/runtime_state.rs",
-        "crates/mesh-llm-host-runtime/src/inference/skippy/kv_cache.rs"
+        "crates/skippy-serving/src/runtime_state.rs",
+        "crates/mesh-llm-host-runtime/src/inference/skippy/runtime_events/kv.rs"
       ],
       "authoritativeOutcome": "KV and cache operation returns",
       "reducerEffect": "cache occupancy, pressure, and context state",
@@ -2248,11 +2248,11 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "success",
       "producerSymbols": [
-        "skippy_server::frontend::generation_receipt",
+        "skippy_serving::frontend::generation_receipt",
         "inference::pipeline"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/frontend/generation_receipt.rs",
+        "crates/skippy-serving/src/frontend/generation_receipt.rs",
         "crates/mesh-llm-host-runtime/src/inference/pipeline.rs"
       ],
       "authoritativeOutcome": "prefill and tokenization returns",
@@ -2290,11 +2290,11 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "failure",
       "producerSymbols": [
-        "skippy_server::frontend::generation_receipt",
+        "skippy_serving::frontend::generation_receipt",
         "inference::pipeline"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/frontend/generation_receipt.rs",
+        "crates/skippy-serving/src/frontend/generation_receipt.rs",
         "crates/mesh-llm-host-runtime/src/inference/pipeline.rs"
       ],
       "authoritativeOutcome": "prefill and tokenization returns",
@@ -2329,11 +2329,11 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "state",
       "producerSymbols": [
-        "skippy_server::frontend::generation_receipt",
+        "skippy_serving::frontend::generation_receipt",
         "inference::pipeline"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/frontend/generation_receipt.rs",
+        "crates/skippy-serving/src/frontend/generation_receipt.rs",
         "crates/mesh-llm-host-runtime/src/inference/pipeline.rs"
       ],
       "authoritativeOutcome": "prefill and tokenization returns",
@@ -4118,11 +4118,11 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "failure",
       "producerSymbols": [
-        "skippy_server::frontend::generation_receipt",
+        "skippy_serving::frontend::generation_receipt",
         "inference::pipeline"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/frontend/generation_receipt.rs",
+        "crates/skippy-serving/src/frontend/generation_receipt.rs",
         "crates/mesh-llm-host-runtime/src/inference/pipeline.rs"
       ],
       "authoritativeOutcome": "prefill and tokenization returns",
@@ -4159,11 +4159,11 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "success",
       "producerSymbols": [
-        "skippy_server::frontend::generation_receipt",
+        "skippy_serving::frontend::generation_receipt",
         "inference::pipeline"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/frontend/generation_receipt.rs",
+        "crates/skippy-serving/src/frontend/generation_receipt.rs",
         "crates/mesh-llm-host-runtime/src/inference/pipeline.rs"
       ],
       "authoritativeOutcome": "prefill and tokenization returns",
@@ -4201,11 +4201,11 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "failure",
       "producerSymbols": [
-        "skippy_server::frontend::generation_receipt",
+        "skippy_serving::frontend::generation_receipt",
         "inference::pipeline"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/frontend/generation_receipt.rs",
+        "crates/skippy-serving/src/frontend/generation_receipt.rs",
         "crates/mesh-llm-host-runtime/src/inference/pipeline.rs"
       ],
       "authoritativeOutcome": "prefill and tokenization returns",
@@ -4240,11 +4240,11 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "progress",
       "producerSymbols": [
-        "skippy_server::frontend::generation_receipt",
+        "skippy_serving::frontend::generation_receipt",
         "inference::pipeline"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/frontend/generation_receipt.rs",
+        "crates/skippy-serving/src/frontend/generation_receipt.rs",
         "crates/mesh-llm-host-runtime/src/inference/pipeline.rs"
       ],
       "authoritativeOutcome": "prefill and tokenization returns",
@@ -4279,11 +4279,11 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "state",
       "producerSymbols": [
-        "skippy_server::frontend::generation_receipt",
+        "skippy_serving::frontend::generation_receipt",
         "inference::pipeline"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/frontend/generation_receipt.rs",
+        "crates/skippy-serving/src/frontend/generation_receipt.rs",
         "crates/mesh-llm-host-runtime/src/inference/pipeline.rs"
       ],
       "authoritativeOutcome": "prefill and tokenization returns",
@@ -4320,12 +4320,12 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "success",
       "producerSymbols": [
-        "skippy_server::runtime_state",
-        "inference::skippy::kv_cache"
+        "skippy_serving::runtime_state",
+        "inference::skippy::runtime_events::SkippyKvRuntimeEventObserver"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/runtime_state.rs",
-        "crates/mesh-llm-host-runtime/src/inference/skippy/kv_cache.rs"
+        "crates/skippy-serving/src/runtime_state.rs",
+        "crates/mesh-llm-host-runtime/src/inference/skippy/runtime_events/kv.rs"
       ],
       "authoritativeOutcome": "KV and cache operation returns",
       "reducerEffect": "cache occupancy, pressure, and context state",
@@ -4362,11 +4362,11 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "failure",
       "producerSymbols": [
-        "skippy_server::frontend::generation_receipt",
+        "skippy_serving::frontend::generation_receipt",
         "inference::pipeline"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/frontend/generation_receipt.rs",
+        "crates/skippy-serving/src/frontend/generation_receipt.rs",
         "crates/mesh-llm-host-runtime/src/inference/pipeline.rs"
       ],
       "authoritativeOutcome": "prefill and tokenization returns",
@@ -4403,11 +4403,11 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "success",
       "producerSymbols": [
-        "skippy_server::frontend::generation_receipt",
+        "skippy_serving::frontend::generation_receipt",
         "inference::pipeline"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/frontend/generation_receipt.rs",
+        "crates/skippy-serving/src/frontend/generation_receipt.rs",
         "crates/mesh-llm-host-runtime/src/inference/pipeline.rs"
       ],
       "authoritativeOutcome": "prefill and tokenization returns",
@@ -4444,11 +4444,11 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "success",
       "producerSymbols": [
-        "skippy_server::frontend::generation_receipt",
+        "skippy_serving::frontend::generation_receipt",
         "inference::pipeline"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/frontend/generation_receipt.rs",
+        "crates/skippy-serving/src/frontend/generation_receipt.rs",
         "crates/mesh-llm-host-runtime/src/inference/pipeline.rs"
       ],
       "authoritativeOutcome": "prefill and tokenization returns",
@@ -4485,11 +4485,11 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "success",
       "producerSymbols": [
-        "skippy_server::frontend::generation_receipt",
+        "skippy_serving::frontend::generation_receipt",
         "inference::pipeline"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/frontend/generation_receipt.rs",
+        "crates/skippy-serving/src/frontend/generation_receipt.rs",
         "crates/mesh-llm-host-runtime/src/inference/pipeline.rs"
       ],
       "authoritativeOutcome": "prefill and tokenization returns",
@@ -4524,11 +4524,11 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "state",
       "producerSymbols": [
-        "skippy_server::frontend::generation_receipt",
+        "skippy_serving::frontend::generation_receipt",
         "inference::pipeline"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/frontend/generation_receipt.rs",
+        "crates/skippy-serving/src/frontend/generation_receipt.rs",
         "crates/mesh-llm-host-runtime/src/inference/pipeline.rs"
       ],
       "authoritativeOutcome": "prefill and tokenization returns",
@@ -4608,11 +4608,11 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "failure",
       "producerSymbols": [
-        "runtime_data::metrics",
+        "mesh_llm_control_api::status::metrics",
         "api::routes::logs::events"
       ],
       "sourcePaths": [
-        "crates/mesh-llm-host-runtime/src/runtime_data/metrics.rs",
+        "crates/mesh-llm-control-api/src/status/metrics.rs",
         "crates/mesh-llm-host-runtime/src/api/routes/logs/events/mod.rs"
       ],
       "authoritativeOutcome": "event engine counters",
@@ -4650,11 +4650,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "success",
       "producerSymbols": [
         "logging::openai_lifecycle",
-        "openai_frontend::router"
+        "skippy_openai_frontend::router"
       ],
       "sourcePaths": [
         "crates/mesh-llm-host-runtime/src/logging/openai_lifecycle.rs",
-        "crates/openai-frontend/src/router.rs"
+        "crates/skippy-openai-frontend/src/router.rs"
       ],
       "authoritativeOutcome": "OpenAI request result and TerminalOutcome",
       "reducerEffect": "request admission and inflight state",
@@ -4692,11 +4692,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "failure",
       "producerSymbols": [
         "logging::openai_lifecycle",
-        "openai_frontend::router"
+        "skippy_openai_frontend::router"
       ],
       "sourcePaths": [
         "crates/mesh-llm-host-runtime/src/logging/openai_lifecycle.rs",
-        "crates/openai-frontend/src/router.rs"
+        "crates/skippy-openai-frontend/src/router.rs"
       ],
       "authoritativeOutcome": "OpenAI request result and TerminalOutcome",
       "reducerEffect": "request admission and inflight state",
@@ -4772,11 +4772,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "success",
       "producerSymbols": [
         "logging::openai_lifecycle",
-        "openai_frontend::router"
+        "skippy_openai_frontend::router"
       ],
       "sourcePaths": [
         "crates/mesh-llm-host-runtime/src/logging/openai_lifecycle.rs",
-        "crates/openai-frontend/src/router.rs"
+        "crates/skippy-openai-frontend/src/router.rs"
       ],
       "authoritativeOutcome": "OpenAI request result and TerminalOutcome",
       "reducerEffect": "request admission and inflight state",
@@ -4811,11 +4811,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "state",
       "producerSymbols": [
         "logging::openai_lifecycle",
-        "openai_frontend::router"
+        "skippy_openai_frontend::router"
       ],
       "sourcePaths": [
         "crates/mesh-llm-host-runtime/src/logging/openai_lifecycle.rs",
-        "crates/openai-frontend/src/router.rs"
+        "crates/skippy-openai-frontend/src/router.rs"
       ],
       "authoritativeOutcome": "OpenAI request result and TerminalOutcome",
       "reducerEffect": "request admission and inflight state",
@@ -4853,11 +4853,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "failure",
       "producerSymbols": [
         "logging::openai_lifecycle",
-        "openai_frontend::router"
+        "skippy_openai_frontend::router"
       ],
       "sourcePaths": [
         "crates/mesh-llm-host-runtime/src/logging/openai_lifecycle.rs",
-        "crates/openai-frontend/src/router.rs"
+        "crates/skippy-openai-frontend/src/router.rs"
       ],
       "authoritativeOutcome": "OpenAI request result and TerminalOutcome",
       "reducerEffect": "request admission and inflight state",
@@ -4892,11 +4892,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "state",
       "producerSymbols": [
         "logging::openai_lifecycle",
-        "openai_frontend::router"
+        "skippy_openai_frontend::router"
       ],
       "sourcePaths": [
         "crates/mesh-llm-host-runtime/src/logging/openai_lifecycle.rs",
-        "crates/openai-frontend/src/router.rs"
+        "crates/skippy-openai-frontend/src/router.rs"
       ],
       "authoritativeOutcome": "OpenAI request result and TerminalOutcome",
       "reducerEffect": "request admission and inflight state",
@@ -4931,11 +4931,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "state",
       "producerSymbols": [
         "logging::openai_lifecycle",
-        "openai_frontend::router"
+        "skippy_openai_frontend::router"
       ],
       "sourcePaths": [
         "crates/mesh-llm-host-runtime/src/logging/openai_lifecycle.rs",
-        "crates/openai-frontend/src/router.rs"
+        "crates/skippy-openai-frontend/src/router.rs"
       ],
       "authoritativeOutcome": "OpenAI request result and TerminalOutcome",
       "reducerEffect": "request admission and inflight state",
@@ -4973,11 +4973,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "failure",
       "producerSymbols": [
         "logging::openai_lifecycle",
-        "openai_frontend::router"
+        "skippy_openai_frontend::router"
       ],
       "sourcePaths": [
         "crates/mesh-llm-host-runtime/src/logging/openai_lifecycle.rs",
-        "crates/openai-frontend/src/router.rs"
+        "crates/skippy-openai-frontend/src/router.rs"
       ],
       "authoritativeOutcome": "OpenAI request result and TerminalOutcome",
       "reducerEffect": "request admission and inflight state",
@@ -5015,11 +5015,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "failure",
       "producerSymbols": [
         "logging::openai_lifecycle",
-        "openai_frontend::router"
+        "skippy_openai_frontend::router"
       ],
       "sourcePaths": [
         "crates/mesh-llm-host-runtime/src/logging/openai_lifecycle.rs",
-        "crates/openai-frontend/src/router.rs"
+        "crates/skippy-openai-frontend/src/router.rs"
       ],
       "authoritativeOutcome": "OpenAI request result and TerminalOutcome",
       "reducerEffect": "request admission and inflight state",
@@ -5382,12 +5382,12 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "success",
       "producerSymbols": [
-        "skippy_server::runtime_state",
-        "inference::skippy::kv_cache"
+        "skippy_serving::runtime_state",
+        "inference::skippy::runtime_events::SkippyKvRuntimeEventObserver"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/runtime_state.rs",
-        "crates/mesh-llm-host-runtime/src/inference/skippy/kv_cache.rs"
+        "crates/skippy-serving/src/runtime_state.rs",
+        "crates/mesh-llm-host-runtime/src/inference/skippy/runtime_events/kv.rs"
       ],
       "authoritativeOutcome": "KV and cache operation returns",
       "reducerEffect": "cache occupancy, pressure, and context state",
@@ -5424,12 +5424,12 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "failure",
       "producerSymbols": [
-        "skippy_server::runtime_state",
-        "inference::skippy::kv_cache"
+        "skippy_serving::runtime_state",
+        "inference::skippy::runtime_events::SkippyKvRuntimeEventObserver"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/runtime_state.rs",
-        "crates/mesh-llm-host-runtime/src/inference/skippy/kv_cache.rs"
+        "crates/skippy-serving/src/runtime_state.rs",
+        "crates/mesh-llm-host-runtime/src/inference/skippy/runtime_events/kv.rs"
       ],
       "authoritativeOutcome": "KV and cache operation returns",
       "reducerEffect": "cache occupancy, pressure, and context state",
@@ -5465,12 +5465,12 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "success",
       "producerSymbols": [
-        "skippy_server::runtime_state",
-        "inference::skippy::kv_cache"
+        "skippy_serving::runtime_state",
+        "inference::skippy::runtime_events::SkippyKvRuntimeEventObserver"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/runtime_state.rs",
-        "crates/mesh-llm-host-runtime/src/inference/skippy/kv_cache.rs"
+        "crates/skippy-serving/src/runtime_state.rs",
+        "crates/mesh-llm-host-runtime/src/inference/skippy/runtime_events/kv.rs"
       ],
       "authoritativeOutcome": "KV and cache operation returns",
       "reducerEffect": "cache occupancy, pressure, and context state",
@@ -5507,12 +5507,12 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "failure",
       "producerSymbols": [
-        "skippy_server::runtime_state",
-        "inference::skippy::kv_cache"
+        "skippy_serving::runtime_state",
+        "inference::skippy::runtime_events::SkippyKvRuntimeEventObserver"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/runtime_state.rs",
-        "crates/mesh-llm-host-runtime/src/inference/skippy/kv_cache.rs"
+        "crates/skippy-serving/src/runtime_state.rs",
+        "crates/mesh-llm-host-runtime/src/inference/skippy/runtime_events/kv.rs"
       ],
       "authoritativeOutcome": "KV and cache operation returns",
       "reducerEffect": "cache occupancy, pressure, and context state",
@@ -5669,11 +5669,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "failure",
       "producerSymbols": [
         "skippy_runtime",
-        "skippy_server::runtime_state"
+        "skippy_serving::runtime_state"
       ],
       "sourcePaths": [
         "crates/skippy-runtime/src/lib.rs",
-        "crates/skippy-server/src/runtime_state.rs"
+        "crates/skippy-serving/src/runtime_state.rs"
       ],
       "authoritativeOutcome": "session and lane state machine",
       "reducerEffect": "session counts, state, and capacity",
@@ -5708,11 +5708,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "state",
       "producerSymbols": [
         "skippy_runtime",
-        "skippy_server::runtime_state"
+        "skippy_serving::runtime_state"
       ],
       "sourcePaths": [
         "crates/skippy-runtime/src/lib.rs",
-        "crates/skippy-server/src/runtime_state.rs"
+        "crates/skippy-serving/src/runtime_state.rs"
       ],
       "authoritativeOutcome": "session and lane state machine",
       "reducerEffect": "session counts, state, and capacity",
@@ -5788,11 +5788,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "success",
       "producerSymbols": [
         "skippy_runtime",
-        "skippy_server::runtime_state"
+        "skippy_serving::runtime_state"
       ],
       "sourcePaths": [
         "crates/skippy-runtime/src/lib.rs",
-        "crates/skippy-server/src/runtime_state.rs"
+        "crates/skippy-serving/src/runtime_state.rs"
       ],
       "authoritativeOutcome": "session and lane state machine",
       "reducerEffect": "session counts, state, and capacity",
@@ -5829,11 +5829,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "success",
       "producerSymbols": [
         "skippy_runtime",
-        "skippy_server::runtime_state"
+        "skippy_serving::runtime_state"
       ],
       "sourcePaths": [
         "crates/skippy-runtime/src/lib.rs",
-        "crates/skippy-server/src/runtime_state.rs"
+        "crates/skippy-serving/src/runtime_state.rs"
       ],
       "authoritativeOutcome": "session and lane state machine",
       "reducerEffect": "session counts, state, and capacity",
@@ -5868,11 +5868,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "state",
       "producerSymbols": [
         "skippy_runtime",
-        "skippy_server::runtime_state"
+        "skippy_serving::runtime_state"
       ],
       "sourcePaths": [
         "crates/skippy-runtime/src/lib.rs",
-        "crates/skippy-server/src/runtime_state.rs"
+        "crates/skippy-serving/src/runtime_state.rs"
       ],
       "authoritativeOutcome": "session and lane state machine",
       "reducerEffect": "session counts, state, and capacity",
@@ -5988,11 +5988,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "failure",
       "producerSymbols": [
         "skippy_runtime",
-        "skippy_server::runtime_state"
+        "skippy_serving::runtime_state"
       ],
       "sourcePaths": [
         "crates/skippy-runtime/src/lib.rs",
-        "crates/skippy-server/src/runtime_state.rs"
+        "crates/skippy-serving/src/runtime_state.rs"
       ],
       "authoritativeOutcome": "session and lane state machine",
       "reducerEffect": "session counts, state, and capacity",
@@ -6027,11 +6027,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "state",
       "producerSymbols": [
         "skippy_runtime",
-        "skippy_server::runtime_state"
+        "skippy_serving::runtime_state"
       ],
       "sourcePaths": [
         "crates/skippy-runtime/src/lib.rs",
-        "crates/skippy-server/src/runtime_state.rs"
+        "crates/skippy-serving/src/runtime_state.rs"
       ],
       "authoritativeOutcome": "session and lane state machine",
       "reducerEffect": "session counts, state, and capacity",
@@ -6068,11 +6068,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "success",
       "producerSymbols": [
         "skippy_runtime",
-        "skippy_server::runtime_state"
+        "skippy_serving::runtime_state"
       ],
       "sourcePaths": [
         "crates/skippy-runtime/src/lib.rs",
-        "crates/skippy-server/src/runtime_state.rs"
+        "crates/skippy-serving/src/runtime_state.rs"
       ],
       "authoritativeOutcome": "session and lane state machine",
       "reducerEffect": "session counts, state, and capacity",
@@ -6107,11 +6107,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "state",
       "producerSymbols": [
         "skippy_runtime",
-        "skippy_server::runtime_state"
+        "skippy_serving::runtime_state"
       ],
       "sourcePaths": [
         "crates/skippy-runtime/src/lib.rs",
-        "crates/skippy-server/src/runtime_state.rs"
+        "crates/skippy-serving/src/runtime_state.rs"
       ],
       "authoritativeOutcome": "session and lane state machine",
       "reducerEffect": "session counts, state, and capacity",
@@ -6146,11 +6146,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "state",
       "producerSymbols": [
         "skippy_runtime",
-        "skippy_server::runtime_state"
+        "skippy_serving::runtime_state"
       ],
       "sourcePaths": [
         "crates/skippy-runtime/src/lib.rs",
-        "crates/skippy-server/src/runtime_state.rs"
+        "crates/skippy-serving/src/runtime_state.rs"
       ],
       "authoritativeOutcome": "session and lane state machine",
       "reducerEffect": "session counts, state, and capacity",
@@ -6185,11 +6185,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "state",
       "producerSymbols": [
         "skippy_runtime",
-        "skippy_server::runtime_state"
+        "skippy_serving::runtime_state"
       ],
       "sourcePaths": [
         "crates/skippy-runtime/src/lib.rs",
-        "crates/skippy-server/src/runtime_state.rs"
+        "crates/skippy-serving/src/runtime_state.rs"
       ],
       "authoritativeOutcome": "session and lane state machine",
       "reducerEffect": "session counts, state, and capacity",
@@ -6224,11 +6224,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "state",
       "producerSymbols": [
         "skippy_runtime",
-        "skippy_server::runtime_state"
+        "skippy_serving::runtime_state"
       ],
       "sourcePaths": [
         "crates/skippy-runtime/src/lib.rs",
-        "crates/skippy-server/src/runtime_state.rs"
+        "crates/skippy-serving/src/runtime_state.rs"
       ],
       "authoritativeOutcome": "session and lane state machine",
       "reducerEffect": "session counts, state, and capacity",
@@ -6263,11 +6263,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "state",
       "producerSymbols": [
         "skippy_runtime",
-        "skippy_server::runtime_state"
+        "skippy_serving::runtime_state"
       ],
       "sourcePaths": [
         "crates/skippy-runtime/src/lib.rs",
-        "crates/skippy-server/src/runtime_state.rs"
+        "crates/skippy-serving/src/runtime_state.rs"
       ],
       "authoritativeOutcome": "session and lane state machine",
       "reducerEffect": "session counts, state, and capacity",
@@ -6302,11 +6302,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "state",
       "producerSymbols": [
         "skippy_runtime",
-        "skippy_server::runtime_state"
+        "skippy_serving::runtime_state"
       ],
       "sourcePaths": [
         "crates/skippy-runtime/src/lib.rs",
-        "crates/skippy-server/src/runtime_state.rs"
+        "crates/skippy-serving/src/runtime_state.rs"
       ],
       "authoritativeOutcome": "session and lane state machine",
       "reducerEffect": "session counts, state, and capacity",
@@ -6791,12 +6791,12 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "success",
       "producerSymbols": [
-        "skippy_server::frontend",
-        "openai_frontend::sse"
+        "skippy_serving::frontend",
+        "skippy_openai_frontend::sse"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/frontend.rs",
-        "crates/openai-frontend/src/sse.rs"
+        "crates/skippy-serving/src/frontend.rs",
+        "crates/skippy-openai-frontend/src/sse.rs"
       ],
       "authoritativeOutcome": "generation receipt and response stream outcome",
       "reducerEffect": "request generation state",
@@ -6833,11 +6833,11 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "failure",
       "producerSymbols": [
-        "runtime_data::metrics",
+        "mesh_llm_control_api::status::metrics",
         "api::routes::logs::events"
       ],
       "sourcePaths": [
-        "crates/mesh-llm-host-runtime/src/runtime_data/metrics.rs",
+        "crates/mesh-llm-control-api/src/status/metrics.rs",
         "crates/mesh-llm-host-runtime/src/api/routes/logs/events/mod.rs"
       ],
       "authoritativeOutcome": "event engine counters",
@@ -6875,11 +6875,11 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "failure",
       "producerSymbols": [
-        "runtime_data::metrics",
+        "mesh_llm_control_api::status::metrics",
         "api::routes::logs::events"
       ],
       "sourcePaths": [
-        "crates/mesh-llm-host-runtime/src/runtime_data/metrics.rs",
+        "crates/mesh-llm-control-api/src/status/metrics.rs",
         "crates/mesh-llm-host-runtime/src/api/routes/logs/events/mod.rs"
       ],
       "authoritativeOutcome": "event engine counters",
@@ -6917,11 +6917,11 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "failure",
       "producerSymbols": [
-        "runtime_data::metrics",
+        "mesh_llm_control_api::status::metrics",
         "api::routes::logs::events"
       ],
       "sourcePaths": [
-        "crates/mesh-llm-host-runtime/src/runtime_data/metrics.rs",
+        "crates/mesh-llm-control-api/src/status/metrics.rs",
         "crates/mesh-llm-host-runtime/src/api/routes/logs/events/mod.rs"
       ],
       "authoritativeOutcome": "event engine counters",
@@ -6958,11 +6958,11 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "success",
       "producerSymbols": [
-        "runtime_data::metrics",
+        "mesh_llm_control_api::status::metrics",
         "api::routes::logs::events"
       ],
       "sourcePaths": [
-        "crates/mesh-llm-host-runtime/src/runtime_data/metrics.rs",
+        "crates/mesh-llm-control-api/src/status/metrics.rs",
         "crates/mesh-llm-host-runtime/src/api/routes/logs/events/mod.rs"
       ],
       "authoritativeOutcome": "event engine counters",
@@ -6999,11 +6999,11 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "success",
       "producerSymbols": [
-        "skippy_server::frontend::generation_receipt",
+        "skippy_serving::frontend::generation_receipt",
         "inference::pipeline"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/frontend/generation_receipt.rs",
+        "crates/skippy-serving/src/frontend/generation_receipt.rs",
         "crates/mesh-llm-host-runtime/src/inference/pipeline.rs"
       ],
       "authoritativeOutcome": "prefill and tokenization returns",
@@ -7041,11 +7041,11 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "failure",
       "producerSymbols": [
-        "skippy_server::frontend::generation_receipt",
+        "skippy_serving::frontend::generation_receipt",
         "inference::pipeline"
       ],
       "sourcePaths": [
-        "crates/skippy-server/src/frontend/generation_receipt.rs",
+        "crates/skippy-serving/src/frontend/generation_receipt.rs",
         "crates/mesh-llm-host-runtime/src/inference/pipeline.rs"
       ],
       "authoritativeOutcome": "prefill and tokenization returns",
@@ -7247,11 +7247,11 @@ export const runtimeEventInventory = {
       ],
       "projectionProfile": "failure",
       "producerSymbols": [
-        "runtime_data::metrics",
+        "mesh_llm_control_api::status::metrics",
         "api::routes::logs::events"
       ],
       "sourcePaths": [
-        "crates/mesh-llm-host-runtime/src/runtime_data/metrics.rs",
+        "crates/mesh-llm-control-api/src/status/metrics.rs",
         "crates/mesh-llm-host-runtime/src/api/routes/logs/events/mod.rs"
       ],
       "authoritativeOutcome": "event engine counters",

@@ -2,9 +2,9 @@
 title: Model Package Specification
 ---
 
-# `skippy-model-package.json` specification
+# `model-package.json` specification
 
-`skippy-model-package.json` is the root manifest for a Skippy package-v2 repository. It binds an immutable source-model identity to a catalog of GGUF artifacts. Stage ownership is not encoded by filenames or fixed layer ranges: the planner selects an exact tensor closure, and package admission resolves those tensor IDs to their declared storage.
+`model-package.json` is the root manifest for a Skippy package-v2 repository. It binds an immutable source-model identity to a catalog of GGUF artifacts. Stage ownership is not encoded by filenames or fixed layer ranges: the planner selects an exact tensor closure, and package admission resolves those tensor IDs to their declared storage.
 
 The current manifest schema is version `2`. The root manifest is intentionally small. The metadata artifact named by `source_model.metadata_artifact_id` carries the normalized model metadata and complete tensor catalog used after its bytes have been verified.
 
@@ -13,7 +13,7 @@ The current manifest schema is version `2`. The root manifest is intentionally s
 The manifest must be at the repository root. A typical package has this shape:
 
 ```text
-skippy-model-package.json
+model-package.json
 shared/
   metadata.gguf
   common.gguf

@@ -14,7 +14,7 @@ import subprocess
 import tarfile
 import time
 
-BINS = ("skippy-correctness", "skippy-server", "skippy-model-package", "skippy-topology-plan")
+BINS = ("skippy-correctness", "skippy", "skippy-package-builder", "skippy-topology-plan")
 CORE = {"single-step", "chain", "state-handoff"}
 # The workload oracle closure ships in the handoff so family workers consume
 # the CPU candidate and native oracle executables without compiling. Paths are
@@ -26,7 +26,7 @@ WORKLOAD_ORACLE_CANONICAL = (
     "native/bin/llama-server",
     "native/bin/llama-completion",
     "native/bin/llama-tts",
-    "cargo/debug/skippy-server",
+    "cargo/debug/skippy",
 )
 
 
@@ -181,9 +181,9 @@ def pack(args) -> None:
         shutil.copy2(source, payload / name)
     tests = [row["executable"] for row in map(json.loads, args.test_build.read_text().splitlines())
              if row.get("reason") == "compiler-artifact" and row.get("executable")
-             and row.get("target", {}).get("name") == "skippy_server" and row.get("profile", {}).get("test")]
+             and row.get("target", {}).get("name") == "skippy_serving" and row.get("profile", {}).get("test")]
     if len(tests) != 1:
-        raise ValueError("expected exactly one prebuilt skippy-server library test executable")
+        raise ValueError("expected exactly one prebuilt skippy-serving library test executable")
     check_binary(Path(tests[0]))
     shutil.copy2(tests[0], payload / "skippy-mm-test")
     # Metal is embedded in the static native library. Reject nonrelocatable

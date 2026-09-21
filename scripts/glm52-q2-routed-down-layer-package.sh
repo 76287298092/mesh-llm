@@ -4,7 +4,7 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 skippy_quantize_bin="${SKIPPY_QUANTIZE_BIN:-$repo_root/target/release/skippy-quantize}"
-skippy_model_package_bin="${SKIPPY_MODEL_PACKAGE_BIN:-$repo_root/target/release/skippy-model-package}"
+skippy_model_package_bin="${SKIPPY_MODEL_PACKAGE_BIN:-$repo_root/target/release/skippy-package-builder}"
 
 work_base="${WORK_BASE:-/Users/lab/glm52-work/q2-routed-down}"
 source_root="${SOURCE_ROOT:-/Users/lab/glm52-work/bf16-gguf}"

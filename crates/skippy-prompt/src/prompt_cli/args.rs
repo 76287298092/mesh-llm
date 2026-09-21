@@ -36,7 +36,7 @@ pub struct PromptArgs {
     pub metrics_server_bin: PathBuf,
     #[arg(long, default_value = "target/debug/skippy")]
     pub stage_server_bin: PathBuf,
-    #[arg(long, default_value = "target/debug/skippy-model-package")]
+    #[arg(long, default_value = "target/debug/skippy-package-builder")]
     pub model_slice_bin: PathBuf,
     #[arg(long, value_delimiter = ',')]
     pub hosts: Vec<String>,

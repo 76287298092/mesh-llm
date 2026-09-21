@@ -33,6 +33,9 @@ COPY crates/mesh-llm-types/ crates/mesh-llm-types/
 COPY crates/mesh-llm-config/ crates/mesh-llm-config/
 COPY crates/mesh-llm-console-server/ crates/mesh-llm-console-server/
 COPY crates/mesh-llm-host-runtime/ crates/mesh-llm-host-runtime/
+COPY crates/mesh-llm-membership/ crates/mesh-llm-membership/
+COPY crates/mesh-llm-skippy-adapter/ crates/mesh-llm-skippy-adapter/
+COPY crates/mesh-llm-control-api/ crates/mesh-llm-control-api/
 COPY crates/mesh-llm/ crates/mesh-llm/
 COPY crates/mesh-llm-plugin/ crates/mesh-llm-plugin/
 COPY crates/mesh-client/ crates/mesh-client/

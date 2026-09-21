@@ -385,6 +385,7 @@ publish_crates=(
     mesh-llm-transport
     mesh-llm-routing
     mesh-llm-types
+    mesh-llm-membership
     skippy-guardrails
     mesh-llm-plugin
     mesh-native-serving-plugin-api

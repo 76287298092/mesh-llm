@@ -2,7 +2,7 @@
 
 Layer package repositories let Mesh LLM run very large models with Skippy stage
 splits. A package repository is a durable Hugging Face repo containing one
-`skippy-model-package.json` manifest plus GGUF fragments for shared tensors, per-layer
+`model-package.json` manifest plus GGUF fragments for shared tensors, per-layer
 tensors, and optional multimodal projectors.
 
 Use this page for contributor workflow. The exact schema lives in
@@ -11,7 +11,7 @@ Use this page for contributor workflow. The exact schema lives in
 ## Repository shape
 
 ```text
-skippy-model-package.json
+model-package.json
 shared/
   metadata.gguf
   embeddings.gguf
@@ -27,7 +27,7 @@ README.md
 
 Required rules:
 
-- `skippy-model-package.json` must be at the repo root.
+- `model-package.json` must be at the repo root.
 - `schema_version` must be `1`.
 - `format` must be `layer-package`.
 - Each manifest artifact path must be relative to the repo root.
@@ -307,7 +307,7 @@ The HF Jobs script performs the publishing work:
 3. run `write-package`,
 4. validate the manifest,
 5. upload package artifacts incrementally,
-6. upload `skippy-model-package.json`,
+6. upload `model-package.json`,
 7. write a package model card,
 8. update `meshllm/catalog`,
 9. print the suggested run command.

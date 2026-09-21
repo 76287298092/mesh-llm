@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use clap::{Parser, Subcommand};
 
 #[derive(Debug, Parser)]
-#[command(name = "skippy-model-package")]
+#[command(name = "skippy-package-builder")]
 #[command(about = "Inspect, write, and verify Skippy model packages")]
 pub(crate) struct Args {
     #[command(subcommand)]

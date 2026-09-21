@@ -57,7 +57,7 @@ class TtsOracleTests(unittest.TestCase):
                               "--exact", "--nocapture", "--test-threads=1"], command)
             verify.assert_called_once_with(
                 [sys.executable, str(ROOT / "scripts/check-skippy-workload-candidate.py"),
-                 "--candidate-binary", str(root / "bin/skippy-server"),
+                 "--candidate-binary", str(root / "bin/skippy"),
                  "--native-build-dir", str(root / "native"), "--producer-manifest", str(manifest)],
                 cwd=ROOT, env=env, check=True,
             )

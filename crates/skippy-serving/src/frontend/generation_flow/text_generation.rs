@@ -4,8 +4,8 @@ use crate::frontend::generation::{
     PreparedTextPrompt, StageOpenAiBackend, TextGenerationCollector, emulation_generation_active,
 };
 use crate::frontend::util::{generation_stop_values, openai_backend_error};
-use skippy_openai_frontend::{ChatCompletionRequest, OpenAiError, OpenAiResult};
 use serde_json::json;
+use skippy_openai_frontend::{ChatCompletionRequest, OpenAiError, OpenAiResult};
 use skippy_runtime::{ModelWorkload, SamplingConfig};
 
 pub(super) fn resident_capacity_target_tokens(prompt_token_count: usize) -> u64 {

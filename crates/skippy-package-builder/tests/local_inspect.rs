@@ -13,7 +13,7 @@ fn inspect_local_gguf_does_not_prepare_download_caches() {
     gguf.resize(32, 0);
     fs::write(&model, gguf).unwrap();
     let cache = temp.path().join("unused-cache");
-    let output = Command::new(env!("CARGO_BIN_EXE_skippy-model-package"))
+    let output = Command::new(env!("CARGO_BIN_EXE_skippy-package-builder"))
         .arg("inspect")
         .arg(&model)
         .env("HF_HOME", &cache)

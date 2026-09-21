@@ -199,7 +199,7 @@ def main() -> int:
         default=REPO / ".deps/llama-build/build-stage-abi-cpu",
     )
     parser.add_argument("--skippy-correctness-bin", type=Path, default=REPO / "target/debug/skippy-correctness")
-    parser.add_argument("--skippy-model-package-bin", type=Path, default=REPO / "target/debug/skippy-model-package")
+    parser.add_argument("--skippy-model-package-bin", type=Path, default=REPO / "target/debug/skippy-package-builder")
     args = parser.parse_args()
 
     wanted = set(args.case or ["olmoe", "qwen2moe", "qwen3moe"])

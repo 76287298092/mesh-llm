@@ -7,11 +7,11 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use serde::Serialize;
 use skippy_openai_frontend::{
     CapsuleMarker, ChatCompletionOutcome, ChatCompletionRequest, ChatCompletionResponse,
     ChatExchangeRoute, OpenAiHookPolicy,
 };
-use serde::Serialize;
 
 use super::PluginManager;
 
@@ -638,7 +638,9 @@ pub(crate) mod test_support {
 
 #[cfg(test)]
 mod tests {
-    use skippy_openai_frontend::{ChatCompletionOutcome, HookedOpenAiBackend, OpenAiBackend, Usage};
+    use skippy_openai_frontend::{
+        ChatCompletionOutcome, HookedOpenAiBackend, OpenAiBackend, Usage,
+    };
 
     use super::test_support::RecordingChannel;
     use super::*;
@@ -647,7 +649,10 @@ mod tests {
 
     #[async_trait]
     impl OpenAiBackend for EchoBackend {
-        async fn models(&self) -> skippy_openai_frontend::OpenAiResult<Vec<skippy_openai_frontend::ModelObject>> {
+        async fn models(
+            &self,
+        ) -> skippy_openai_frontend::OpenAiResult<Vec<skippy_openai_frontend::ModelObject>>
+        {
             Ok(Vec::new())
         }
 
@@ -666,7 +671,8 @@ mod tests {
             &self,
             _request: ChatCompletionRequest,
             _context: skippy_openai_frontend::OpenAiRequestContext,
-        ) -> skippy_openai_frontend::OpenAiResult<skippy_openai_frontend::ChatCompletionStream> {
+        ) -> skippy_openai_frontend::OpenAiResult<skippy_openai_frontend::ChatCompletionStream>
+        {
             Ok(Box::pin(futures_util::stream::empty()))
         }
     }
@@ -832,7 +838,10 @@ mod tests {
 
     #[async_trait]
     impl OpenAiBackend for DelayedBackend {
-        async fn models(&self) -> skippy_openai_frontend::OpenAiResult<Vec<skippy_openai_frontend::ModelObject>> {
+        async fn models(
+            &self,
+        ) -> skippy_openai_frontend::OpenAiResult<Vec<skippy_openai_frontend::ModelObject>>
+        {
             Ok(Vec::new())
         }
 
@@ -852,7 +861,8 @@ mod tests {
             &self,
             _request: ChatCompletionRequest,
             _context: skippy_openai_frontend::OpenAiRequestContext,
-        ) -> skippy_openai_frontend::OpenAiResult<skippy_openai_frontend::ChatCompletionStream> {
+        ) -> skippy_openai_frontend::OpenAiResult<skippy_openai_frontend::ChatCompletionStream>
+        {
             Ok(Box::pin(futures_util::stream::empty()))
         }
     }

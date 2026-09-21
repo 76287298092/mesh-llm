@@ -19,11 +19,11 @@ Atomic event IDs: `184`
 | 8.8 | `RequestEventKind` | `mesh-llm-host-runtime`, `skippy-openai-frontend` | `logging::openai_lifecycle`, `skippy_openai_frontend::router` | `trusted_local` | `state_transition` | 11 |
 | 8.9 | `PrefillEventKind` | `skippy-serving`, `mesh-llm-host-runtime` | `skippy_serving::frontend::generation_receipt`, `inference::pipeline` | `trusted_local` | `state_transition` | 12 |
 | 8.10 | `GenerationEventKind` | `skippy-serving`, `skippy-openai-frontend` | `skippy_serving::frontend`, `skippy_openai_frontend::sse` | `trusted_local` | `state_transition` | 12 |
-| 8.11 | `KvRuntimeStateEventKind` | `skippy-serving`, `mesh-llm-host-runtime`, `skippy-cache` | `skippy_serving::runtime_state`, `inference::skippy::kv_cache` | `trusted_local` | `state_transition` | 12 |
+| 8.11 | `KvRuntimeStateEventKind` | `skippy-serving`, `mesh-llm-host-runtime`, `skippy-cache` | `skippy_serving::runtime_state`, `inference::skippy::runtime_events::SkippyKvRuntimeEventObserver` | `trusted_local` | `state_transition` | 12 |
 | 8.12 | `ResourceHealthEventKind` | `mesh-llm-host-runtime`, `skippy-runtime` | `system::native_runtime`, `skippy_runtime::devices` | `trusted_local` | `state_transition` | 9 |
 | 8.13 | `DiagnosticEventKind` | `mesh-llm-host-runtime`, `skippy-runtime` | `logging::lifecycle`, `skippy_runtime::runtime_events` | `trusted_local` | `diagnostic` | 9 |
 | 8.14 | `NodeAvailabilityEventKind` | `mesh-llm-host-runtime` | `runtime::serving_surface`, `runtime_data::snapshots` | `aggregate` | `state_transition` | 9 |
-| 8.15 | `EventSystemHealthEventKind` | `mesh-llm-host-runtime` | `runtime_data::metrics`, `api::routes::logs::events` | `aggregate` | `state_transition` | 3 |
+| 8.15 | `EventSystemHealthEventKind` | `mesh-llm-host-runtime`, `mesh-llm-control-api` | `mesh_llm_control_api::status::metrics`, `api::routes::logs::events` | `aggregate` | `state_transition` | 3 |
 
 ## Stable event IDs
 
