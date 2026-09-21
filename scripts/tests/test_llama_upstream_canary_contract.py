@@ -24,14 +24,14 @@ def setup_step(name):
     return next(step["run"] for step in action["runs"]["steps"] if step.get("name") == name)
 
 
-PARITY = ROOT / "scripts" / "skippy-llama-parity.py"
-UPDATE_PIN = ROOT / "scripts" / "update-llama-pin.sh"
-BATTERY = ROOT / "scripts" / "skippy-family-battery.sh"
-BATTERY_PLANNER = ROOT / "scripts" / "plan-family-battery.py"
-FAMILY_CERTIFY = ROOT / "scripts" / "family-certify.sh"
+PARITY = ROOT / "skippy" / "scripts" / "skippy-llama-parity.py"
+UPDATE_PIN = ROOT / "skippy" / "scripts" / "update-llama-pin.sh"
+BATTERY = ROOT / "skippy" / "scripts" / "skippy-family-battery.sh"
+BATTERY_PLANNER = ROOT / "skippy" / "scripts" / "plan-family-battery.py"
+FAMILY_CERTIFY = ROOT / "skippy" / "scripts" / "family-certify.sh"
 FAMILY_OUTCOME = ROOT / "scripts" / "lib" / "family-outcome.sh"
 TIMEOUT_RUNNER = ROOT / "scripts" / "run-command-with-timeout.py"
-REWRITER_CHECK = ROOT / "scripts" / "check-skippy-generated-family-patch.sh"
+REWRITER_CHECK = ROOT / "skippy" / "scripts" / "check-skippy-generated-family-patch.sh"
 
 
 def _step_block(workflow: str, name: str) -> str:
@@ -606,7 +606,7 @@ class SkippyFamilyBatteryTests(unittest.TestCase):
         commands = [
             line
             for line in result.stdout.splitlines()
-            if line.startswith(str(FAMILY_CERTIFY) + " ")
+            if line.startswith(str(ROOT / "scripts/family-certify.sh") + " ")
         ]
         self.assertEqual(1, len(commands))
         self.assertIn("--split-layer", commands[0])
@@ -632,7 +632,7 @@ class SkippyFamilyBatteryTests(unittest.TestCase):
         self.assertIn("--startup-timeout-secs 600", result.stdout)
         self.assertIn("--require-oracle", result.stdout)
         self.assertNotIn("skippy-topology-plan", result.stdout)
-        self.assertNotIn(str(FAMILY_CERTIFY) + " ", result.stdout)
+        self.assertNotIn(str(ROOT / "scripts/family-certify.sh") + " ", result.stdout)
 
     def test_mixed_roster_keeps_workload_and_split_certification_separate(self) -> None:
         """Execute one distinct lane family per row without staging a non-chat workload."""
@@ -646,7 +646,7 @@ class SkippyFamilyBatteryTests(unittest.TestCase):
         result = self._dry_run("--skip-build", models=[causal, workload])
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual(1, result.stdout.count("/skippy-topology-plan "))
-        self.assertEqual(1, result.stdout.count(str(FAMILY_CERTIFY) + " "))
+        self.assertEqual(1, result.stdout.count(str(ROOT / "scripts/family-certify.sh") + " "))
         self.assertEqual(1, result.stdout.count("/skippy-workload-certify.sh "))
         self.assertIn("2 certifications planned; no lanes executed", result.stdout)
 
@@ -675,7 +675,7 @@ class SkippyFamilyBatteryTests(unittest.TestCase):
         commands = [
             line
             for line in result.stdout.splitlines()
-            if line.startswith(str(FAMILY_CERTIFY) + " ")
+            if line.startswith(str(ROOT / "scripts/family-certify.sh") + " ")
         ]
         self.assertEqual(2, len(commands))
         self.assertIn("--family test-family", commands[0])
@@ -693,7 +693,7 @@ class SkippyFamilyBatteryTests(unittest.TestCase):
             policy["models"] = [first, second]
             manifest.write_text(json.dumps(policy) + "\n", encoding="utf-8")
             generated = subprocess.run(
-                [str(ROOT / "scripts" / "plan-family-battery.py"), "--manifest", str(manifest)],
+                [str(ROOT / "skippy" / "scripts" / "plan-family-battery.py"), "--manifest", str(manifest)],
                 cwd=ROOT, text=True, capture_output=True, check=False,
             )
             self.assertEqual(0, generated.returncode, generated.stderr)

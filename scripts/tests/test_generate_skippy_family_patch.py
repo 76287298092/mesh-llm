@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-GENERATOR = ROOT / "scripts/generate-skippy-family-patch.py"
+GENERATOR = ROOT / "skippy/scripts/generate-skippy-family-patch.py"
 
 
 def load_generator():

@@ -16,10 +16,10 @@ selected-device behavior, and package materialization.
 
 1. Inspect the model with `skippy-runtime::ModelInfo` or the skippy-model-package
    helpers before choosing split points. Keep topology policy in
-   `crates/skippy-topology`.
+   `skippy/crates/skippy-topology`.
 
 2. Prefer reviewed capability data in
-   `crates/skippy-topology/capabilities/reviewed-family-capabilities.json`.
+   `skippy/crates/skippy-topology/capabilities/reviewed-family-capabilities.json`.
    Do not enable default staged splits for a family without reviewed evidence.
 
 3. For dense models, validate at least one representative two-stage boundary

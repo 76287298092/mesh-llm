@@ -139,12 +139,12 @@ class CiWorkflowArtifactTests(unittest.TestCase):
         self.assertIn('MESH_LLM_SKIP_UI: "1"', smoke)
         self.assertIn("uses: ./.github/actions/restore-sccache-seed", smoke)
         self.assertEqual(smoke.count("cargo test --locked"), 1)
-        self.assertIn("cargo test --locked -p mesh-llm-skippy-adapter", smoke)
-        self.assertIn('.target.name == "mesh_llm_skippy_adapter"', smoke)
+        self.assertIn('cargo test --locked -p "$test_crate"', smoke)
+        self.assertIn('.target.name == $target', smoke)
         self.assertIn("contains(inputs.rust_tests_matrix, 'mesh-llm-skippy-adapter')", smoke)
         self.assertNotIn("-p mesh-llm-host-runtime", smoke)
         source = (
-            ROOT / "crates/mesh-llm-skippy-adapter/src/config/hardware_translation_tests.rs"
+            ROOT / "mesh/crates/mesh-llm-skippy-adapter/src/config/hardware_translation_tests.rs"
         ).read_text()
         self.assertRegex(
             source,
@@ -220,7 +220,7 @@ class CiWorkflowArtifactTests(unittest.TestCase):
 
         cuda_benchmark = (
             ROOT
-            / "crates/skippy-gpu-bench/native/cuda/membench-fingerprint.cu"
+            / "skippy/crates/skippy-gpu-bench/native/cuda/membench-fingerprint.cu"
         ).read_text()
         self.assertIn('strcmp(argv[i], "--probe")', cuda_benchmark)
         self.assertIn("if (probeMode)", cuda_benchmark)

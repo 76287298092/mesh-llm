@@ -170,7 +170,7 @@ main() {
     fi
 
     # UI changed detection
-    if [[ "$file" =~ ^crates/mesh-llm-ui/ ]]; then
+    if [[ "$file" =~ ^mesh/crates/mesh-llm-ui/ ]]; then
       ui_changed=true
       FAIL_OPEN_UI_CHANGED=true
     fi
@@ -185,7 +185,7 @@ main() {
     # .github/actions/compute-changes as backend builds, not as all-Rust crate
     # test fanout. The upstream pin and the patch queue are the exception: they
     # can change which archives the native build emits, and the static link
-    # line in crates/skippy-ffi/build.rs is hand-maintained, so only the Rust
+    # line in skippy/crates/skippy-ffi/build.rs is hand-maintained, so only the Rust
     # test batches can prove the link still closes. Advancing the pin without
     # this escalation is how an undefined hash_sha256_hex reached main.
     if [[ "$file" =~ ^third_party/llama\.cpp/upstream\.txt$ ]] || \
@@ -256,12 +256,12 @@ EOF
 
   for file in "${changed_files[@]}"; do
     # Skip non-Rust files (docs, config, etc.)
-    if [[ ! "$file" =~ ^crates/ ]] && [[ ! "$file" =~ ^tools/ ]]; then
+    if [[ ! "$file" =~ ^(mesh/|skippy/)?crates/ ]] && [[ ! "$file" =~ ^tools/ ]]; then
       continue
     fi
 
     # Skip UI crate files (they don't affect Rust builds)
-    if [[ "$file" =~ ^crates/mesh-llm-ui/ ]]; then
+    if [[ "$file" =~ ^mesh/crates/mesh-llm-ui/ ]]; then
       continue
     fi
 

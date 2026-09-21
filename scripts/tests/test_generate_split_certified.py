@@ -12,7 +12,7 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = ROOT / "scripts" / "generate-split-certified.py"
+SCRIPT = ROOT / "skippy" / "scripts" / "generate-split-certified.py"
 SPEC = importlib.util.spec_from_file_location("generate_split_certified", SCRIPT)
 assert SPEC is not None and SPEC.loader is not None
 GENERATOR = importlib.util.module_from_spec(SPEC)

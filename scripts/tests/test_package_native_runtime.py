@@ -10,7 +10,7 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = ROOT / "scripts" / "package-native-runtime.sh"
+SCRIPT = ROOT / "skippy" / "scripts" / "package-native-runtime.sh"
 
 
 def write_failing_nvcc(path: Path) -> None:
@@ -25,7 +25,7 @@ class PackageNativeRuntimeTests(unittest.TestCase):
         end = script.index("skippy_abi_version()", start)
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            version = root / "crates/skippy-native-runtime/RUNTIME_VERSION"
+            version = root / "skippy/crates/skippy-native-runtime/RUNTIME_VERSION"
             version.parent.mkdir(parents=True)
             (root / "Cargo.toml").write_text(
                 '[workspace.package]\nversion = "99.0.0"\n', encoding="utf-8"
@@ -650,7 +650,7 @@ class PackageNativeRuntimeTests(unittest.TestCase):
                     "bash",
                     "-c",
                     "set -euo pipefail\n"
-                    f"source {SCRIPT.parent / 'lib' / 'cuda-toolkit.sh'}\n"
+                    f"source {ROOT / 'scripts' / 'lib' / 'cuda-toolkit.sh'}\n"
                     f"{helpers}\nbackend_flavor",
                 ],
                 env=env,

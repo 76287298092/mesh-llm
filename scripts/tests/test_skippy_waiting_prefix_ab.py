@@ -13,7 +13,7 @@ REPO = Path(__file__).resolve().parents[2]
 
 
 def load_module():
-    path = REPO / "evals/skippy-waiting-prefix-ab.py"
+    path = REPO / "skippy/evals/skippy-waiting-prefix-ab.py"
     spec = importlib.util.spec_from_file_location("skippy_waiting_prefix_ab", path)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"cannot import {path}")
@@ -97,7 +97,7 @@ class WaitingPrefixAbTest(unittest.TestCase):
         self.assertEqual(summary["capacity_rejections"], 0)
 
     def test_warm_profile_accepts_the_measured_neutral_boundary(self) -> None:
-        catalog = json.loads((REPO / "evals/skippy-scheduler-fixtures.json").read_text())
+        catalog = json.loads((REPO / "skippy/evals/skippy-scheduler-fixtures.json").read_text())
         profile = catalog["profiles"]["warm-affinity"]
         rows = [
             {
@@ -127,7 +127,7 @@ class WaitingPrefixAbTest(unittest.TestCase):
         self.assertTrue(acceptance["passed"])
 
     def test_zero_baseline_regression_fails_closed(self) -> None:
-        catalog = json.loads((REPO / "evals/skippy-scheduler-fixtures.json").read_text())
+        catalog = json.loads((REPO / "skippy/evals/skippy-scheduler-fixtures.json").read_text())
         profile = catalog["profiles"]["warm-affinity"]
         rows = [
             {
@@ -158,7 +158,7 @@ class WaitingPrefixAbTest(unittest.TestCase):
         self.assertIsNone(BENCH.delta(0.0, 1.0))
 
     def test_eviction_profile_enforces_hardware_acceptance(self) -> None:
-        catalog = json.loads((REPO / "evals/skippy-scheduler-fixtures.json").read_text())
+        catalog = json.loads((REPO / "skippy/evals/skippy-scheduler-fixtures.json").read_text())
         profile = catalog["profiles"]["agentic-eviction-pressure"]
         rows = [
             {
@@ -191,10 +191,10 @@ class WaitingPrefixAbTest(unittest.TestCase):
         self.assertFalse(BENCH.evaluate_acceptance(rows, profile)["passed"])
 
     def test_capacity_contract_reuses_workload_with_layer_specific_bounds(self) -> None:
-        catalog = json.loads((REPO / "evals/skippy-scheduler-fixtures.json").read_text())
+        catalog = json.loads((REPO / "skippy/evals/skippy-scheduler-fixtures.json").read_text())
         profile = catalog["profiles"]["agentic-eviction-pressure"]
         contract = BENCH.load_acceptance_contract(
-            REPO / "evals/skippy-capacity-acceptance.json"
+            REPO / "skippy/evals/skippy-capacity-acceptance.json"
         )
         self.assertEqual(contract["workload_overrides"], {"cache_entries": 16})
         self.assertEqual(contract["cache_seed"]["families"], 8)
@@ -232,7 +232,7 @@ class WaitingPrefixAbTest(unittest.TestCase):
     def test_checked_in_fixture_profile_owns_the_workload_shape(self) -> None:
         args = Namespace(
             fixture_profile="agentic-eviction-pressure",
-            fixture_catalog=REPO / "evals/skippy-scheduler-fixtures.json",
+            fixture_catalog=REPO / "skippy/evals/skippy-scheduler-fixtures.json",
             rounds=1,
             families=1,
         )
@@ -246,7 +246,7 @@ class WaitingPrefixAbTest(unittest.TestCase):
         self.assertEqual(len(catalog_hash), 64)
 
     def test_fixture_input_validation_pins_model_and_manifest_mode(self) -> None:
-        catalog = json.loads((REPO / "evals/skippy-scheduler-fixtures.json").read_text())
+        catalog = json.loads((REPO / "skippy/evals/skippy-scheduler-fixtures.json").read_text())
         warm = catalog["profiles"]["warm-affinity"]
         agentic = catalog["profiles"]["agentic-eviction-pressure"]
         model = warm["model"]

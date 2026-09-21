@@ -14,7 +14,7 @@ REPO = Path(__file__).resolve().parents[2]
 
 
 def load_module():
-    path = REPO / "evals/skippy-radix-cache-ab.py"
+    path = REPO / "skippy/evals/skippy-radix-cache-ab.py"
     spec = importlib.util.spec_from_file_location("skippy_radix_cache_ab", path)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"cannot import {path}")

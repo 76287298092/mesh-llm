@@ -682,7 +682,7 @@ jobs:
         uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: ${{ env.LLAMA_STAGE_BUILD_DIR }}
-          key: ${{ env.CACHE_NAMESPACE }}-release-llama-linux-x86_64-cuda${{ matrix.cuda_major }}-${{ matrix.cuda_version }}-dynamic-${{ matrix.cuda_architectures_cache }}-${{ steps.native_toolchain.outputs.epoch }}-${{ hashFiles('scripts/build-llama.sh', 'scripts/prepare-llama.sh', 'scripts/package-native-runtime.sh', '.github/actions/prepare-native-runtime-input/action.yml', 'third_party/llama.cpp/upstream.txt', 'third_party/llama.cpp/patches/**', '.github/cache-version.txt') }}
+          key: ${{ env.CACHE_NAMESPACE }}-release-llama-linux-x86_64-cuda${{ matrix.cuda_major }}-${{ matrix.cuda_version }}-dynamic-${{ matrix.cuda_architectures_cache }}-${{ steps.native_toolchain.outputs.epoch }}-${{ hashFiles('scripts/build-llama.sh', 'skippy/scripts/build-llama.sh', 'scripts/prepare-llama.sh', 'skippy/scripts/prepare-llama.sh', 'scripts/package-native-runtime.sh', 'skippy/scripts/package-native-runtime.sh', '.github/actions/prepare-native-runtime-input/action.yml', 'skippy/third_party/llama.cpp/upstream.txt', 'skippy/third_party/llama.cpp/patches/**', '.github/cache-version.txt') }}
       - name: Prepare dispatched release version
         if: github.event_name == 'workflow_dispatch'
         env:
@@ -741,7 +741,7 @@ jobs:
         uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: ${{ env.LLAMA_STAGE_BUILD_DIR }}
-          key: ${{ env.CACHE_NAMESPACE }}-release-llama-linux-x86_64-rocm7.0-dynamic-gfx90a_gfx942_gfx1100_gfx1101_gfx1102_gfx1103_gfx1151_gfx1200_gfx1201-${{ steps.native_toolchain.outputs.epoch }}-${{ hashFiles('scripts/build-llama.sh', 'scripts/prepare-llama.sh', 'scripts/package-native-runtime.sh', '.github/actions/prepare-native-runtime-input/action.yml', 'third_party/llama.cpp/upstream.txt', 'third_party/llama.cpp/patches/**', '.github/cache-version.txt') }}
+          key: ${{ env.CACHE_NAMESPACE }}-release-llama-linux-x86_64-rocm7.0-dynamic-gfx90a_gfx942_gfx1100_gfx1101_gfx1102_gfx1103_gfx1151_gfx1200_gfx1201-${{ steps.native_toolchain.outputs.epoch }}-${{ hashFiles('scripts/build-llama.sh', 'skippy/scripts/build-llama.sh', 'scripts/prepare-llama.sh', 'skippy/scripts/prepare-llama.sh', 'scripts/package-native-runtime.sh', 'skippy/scripts/package-native-runtime.sh', '.github/actions/prepare-native-runtime-input/action.yml', 'skippy/third_party/llama.cpp/upstream.txt', 'skippy/third_party/llama.cpp/patches/**', '.github/cache-version.txt') }}
       - name: Prepare dispatched release version
         if: github.event_name == 'workflow_dispatch'
         env:
@@ -799,7 +799,7 @@ jobs:
         uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: ${{ env.LLAMA_STAGE_BUILD_DIR }}
-          key: ${{ env.CACHE_NAMESPACE }}-release-llama-linux-x86_64-vulkan-dynamic-${{ steps.native_toolchain.outputs.epoch }}-${{ hashFiles('scripts/build-llama.sh', 'scripts/prepare-llama.sh', 'scripts/package-native-runtime.sh', '.github/actions/prepare-native-runtime-input/action.yml', 'third_party/llama.cpp/upstream.txt', 'third_party/llama.cpp/patches/**', '.github/cache-version.txt') }}
+          key: ${{ env.CACHE_NAMESPACE }}-release-llama-linux-x86_64-vulkan-dynamic-${{ steps.native_toolchain.outputs.epoch }}-${{ hashFiles('scripts/build-llama.sh', 'skippy/scripts/build-llama.sh', 'scripts/prepare-llama.sh', 'skippy/scripts/prepare-llama.sh', 'scripts/package-native-runtime.sh', 'skippy/scripts/package-native-runtime.sh', '.github/actions/prepare-native-runtime-input/action.yml', 'skippy/third_party/llama.cpp/upstream.txt', 'skippy/third_party/llama.cpp/patches/**', '.github/cache-version.txt') }}
       - name: Prepare dispatched release version
         if: github.event_name == 'workflow_dispatch'
         env:
@@ -1810,7 +1810,7 @@ jobs:
           scripts/release-version.sh "$RELEASE_TAG"
           cp generated-swift-manifest/Package.swift Package.swift
           generated_binding="generated-swift-binding/mesh_ffi.swift"
-          tracked_binding="sdk/swift/Sources/MeshLLM/Generated/mesh_ffi.swift"
+          tracked_binding="mesh/sdk/swift/Sources/MeshLLM/Generated/mesh_ffi.swift"
           if [[ ! -f "$generated_binding" || -L "$generated_binding" ]]; then
             echo "generated Swift binding artifact is missing or unsafe: $generated_binding" >&2
             exit 1
@@ -1825,7 +1825,7 @@ jobs:
           # all tracked release-preparation changes so this list cannot drift
           # when another version-bearing file is added to the script.
           git add --update
-          git add -f sdk/node/console sdk/swift/Sources/MeshLLM/Resources/Console sdk/kotlin/src/main/resources/mesh-llm/console
+          git add -f mesh/sdk/node/console mesh/sdk/swift/Sources/MeshLLM/Resources/Console mesh/sdk/kotlin/src/main/resources/mesh-llm/console
           if ! git diff --quiet; then
             echo "Release preparation left unstaged tracked changes:" >&2
             git status --short >&2

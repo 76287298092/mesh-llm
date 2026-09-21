@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-PRODUCER = ROOT / "scripts/skippy-workload-oracles-build.sh"
+PRODUCER = ROOT / "skippy/scripts/skippy-workload-oracles-build.sh"
 
 
 class WorkloadOracleProducerTests(unittest.TestCase):
@@ -47,7 +47,7 @@ class WorkloadOracleProducerTests(unittest.TestCase):
         self.assertIn("-p skippy-topology --bins", producer)
         for contract in ["LLAMA_STAGE_BACKEND=cpu", "LLAMA_STAGE_LINK_MODE=static", "LLAMA_STAGE_WORKLOAD_ORACLE=ON", "CARGO_TARGET_DIR=", "--no-run --message-format=json", "--write-producer", "--source-snapshot"]:
             self.assertIn(contract, producer)
-        consumer = (ROOT / "scripts/skippy-workload-certify.sh").read_text()
+        consumer = (ROOT / "skippy/scripts/skippy-workload-certify.sh").read_text()
         self.assertIn("--producer-manifest", consumer)
         self.assertIn("$(jq -er", consumer)
         # Manifest-recorded paths resolve against the manifest's own directory.
@@ -56,7 +56,7 @@ class WorkloadOracleProducerTests(unittest.TestCase):
     def test_full_roster_and_cpu_producer_include_non_chat_on_every_trigger(self) -> None:
         """Nightly, pin changes, and forced runs share all six certified workload classes."""
         result = subprocess.run(
-            [str(ROOT / "scripts/plan-family-battery.py")],
+            [str(ROOT / "skippy/scripts/plan-family-battery.py")],
             cwd=ROOT, text=True, capture_output=True, check=True,
         )
         rows = [row for row in json.loads(result.stdout)["selected_models"] if row["class"] != "causal_generation"]

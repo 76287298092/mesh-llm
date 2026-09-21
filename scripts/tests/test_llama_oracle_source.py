@@ -9,7 +9,7 @@ import tempfile
 import unittest
 
 
-SCRIPT = Path(__file__).resolve().parents[1] / "llama-oracle-source.py"
+SCRIPT = Path(__file__).resolve().parents[2] / "skippy/scripts/llama-oracle-source.py"
 SPEC = importlib.util.spec_from_file_location("llama_oracle_source", SCRIPT)
 assert SPEC is not None and SPEC.loader is not None
 source = importlib.util.module_from_spec(SPEC)
@@ -71,11 +71,11 @@ class LlamaOracleSourceTests(unittest.TestCase):
             root = Path(temp_dir)
             checkout = root / ".deps/llama.cpp"
             checkout.mkdir(parents=True)
-            patches = root / "third_party/llama.cpp/patches"
+            patches = root / "skippy/third_party/llama.cpp/patches"
             patches.mkdir(parents=True)
             patch = patches / "0001-test.patch"
             patch.write_bytes(b"original\n")
-            upstream = root / "third_party/llama.cpp/upstream.txt"
+            upstream = root / "skippy/third_party/llama.cpp/upstream.txt"
             upstream.write_text("upstream-sha\n", encoding="utf-8")
             subprocess.run(["git", "init", "-q", str(checkout)], check=True)
             head = subprocess.run(

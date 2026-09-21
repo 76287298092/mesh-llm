@@ -15,7 +15,7 @@ REPO = Path(__file__).resolve().parents[2]
 
 
 def load_module():
-    path = REPO / "evals/skippy-scheduler-fixtures.py"
+    path = REPO / "skippy/evals/skippy-scheduler-fixtures.py"
     spec = importlib.util.spec_from_file_location("skippy_scheduler_fixtures", path)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"cannot import {path}")
@@ -26,7 +26,7 @@ def load_module():
 
 
 FIXTURES = load_module()
-CATALOG_PATH = REPO / "evals/skippy-scheduler-fixtures.json"
+CATALOG_PATH = REPO / "skippy/evals/skippy-scheduler-fixtures.json"
 
 
 class SchedulerFixturesTest(unittest.TestCase):

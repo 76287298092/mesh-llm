@@ -10,7 +10,7 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = ROOT / "scripts" / "download-skippy-parity-candidates.sh"
+SCRIPT = ROOT / "skippy" / "scripts" / "download-skippy-parity-candidates.sh"
 
 
 class DownloadSkippyParityCandidatesTests(unittest.TestCase):

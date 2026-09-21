@@ -15,7 +15,7 @@ import wave
 
 
 ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = ROOT / "scripts" / "skippy-tts-oracle.py"
+SCRIPT = ROOT / "skippy" / "scripts" / "skippy-tts-oracle.py"
 SPEC = importlib.util.spec_from_file_location("skippy_tts_oracle", SCRIPT)
 assert SPEC is not None and SPEC.loader is not None
 oracle = importlib.util.module_from_spec(SPEC)

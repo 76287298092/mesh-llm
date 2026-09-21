@@ -8,14 +8,14 @@ metadata:
 # llama-stage-patch-changes
 
 Use this skill when changing the Skippy staged-runtime ABI carried in
-`third_party/llama.cpp/patches`.
+`skippy/third_party/llama.cpp/patches`.
 
 ## Boundaries
 
 - Keep durable llama.cpp-side changes in the ordered queue under
-  `third_party/llama.cpp/patches`: top-level core patches first,
+  `skippy/third_party/llama.cpp/patches`: top-level core patches first,
   `model_support/series` second, and `generated/series` last.
-- Keep the upstream pin in `third_party/llama.cpp/upstream.txt`.
+- Keep the upstream pin in `skippy/third_party/llama.cpp/upstream.txt`.
 - Do not edit `.deps/llama.cpp` as the final artifact; regenerate the
   patch queue from commits.
 - Keep mesh orchestration, protocol compatibility, lifecycle, model management,
@@ -67,7 +67,7 @@ Use this skill when changing the Skippy staged-runtime ABI carried in
   python3 scripts/generate-skippy-api-doc.py --check
   ```
 
-- Commit `website/src/docs/pages/skippy-api.md` alongside the native queue
+- Commit `mesh/website/src/docs/pages/skippy-api.md` alongside the native queue
   change. The generated page must not be hand-edited, and its inventory must
   include every public header and exported function in the prepared checkout.
 
@@ -102,7 +102,7 @@ the symbol name is unchanged. List removed declarations explicitly as
 “none” when no functions or fields were deleted; this prevents reviewers from
 having to infer removals from a patch diff. Keep this inventory synchronized
 with the ABI version constants in `include/skippy/common.h` and the mirrors in
-`crates/skippy-ffi/src/lib.rs`. Do not add compatibility shims solely to
+`skippy/crates/skippy-ffi/src/lib.rs`. Do not add compatibility shims solely to
 support an older native runtime; the acceptance criterion is a synchronized
 Rust/native build and a clear version mismatch if the pieces are mixed.
 
@@ -126,7 +126,7 @@ the patch after `model_support/` or generated shards:
 ```bash
 repo_root="$(pwd)"
 llama_checkout="${LLAMA_CHECKOUT:-$repo_root/.deps/llama.cpp}"
-last_patch="$(find third_party/llama.cpp/patches -maxdepth 1 -type f -name '*.patch' | sort | tail -n 1)"
+last_patch="$(find skippy/third_party/llama.cpp/patches -maxdepth 1 -type f -name '*.patch' | sort | tail -n 1)"
 last_number="${last_patch##*/}"
 last_number="${last_number%%-*}"
 next_number=$((10#$last_number + 1))
@@ -151,7 +151,7 @@ git log --reverse --oneline <pinned-upstream>..<reconstructed-series-head>
 ```
 
 Move the old queue to an explicit temporary backup, generate the replacement
-into a fresh `third_party/llama.cpp/patches` directory, and retain the backup
+into a fresh `skippy/third_party/llama.cpp/patches` directory, and retain the backup
 until clean application and native compilation pass. Never keep both series or
 duplicate patch numbers in the durable directory.
 
@@ -172,7 +172,7 @@ LLAMA_WORKDIR="$tmp_root/llama.cpp" \
 
 ### Re-pinning upstream
 
-Advancing `third_party/llama.cpp/upstream.txt` can silently invalidate a patch
+Advancing `skippy/third_party/llama.cpp/upstream.txt` can silently invalidate a patch
 that depends on upstream's *ordering*, not just its symbols. The queue still
 applies, everything compiles, and the behavior is broken. This happened with
 upstream `1269cb1`, which moved `check_tensor_dims` ahead of `buft_for_tensor`

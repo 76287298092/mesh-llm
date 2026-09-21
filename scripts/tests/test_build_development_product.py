@@ -5,7 +5,7 @@ from scripts.tests.justfile_source import read_justfile_source
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-SCRIPT = ROOT / "scripts" / "build-development-product.sh"
+SCRIPT = ROOT / "mesh" / "scripts" / "build-development-product.sh"
 JUSTFILE = ROOT / "Justfile"
 
 

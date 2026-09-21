@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 REPO = Path(__file__).resolve().parents[2]
-SCRIPT = REPO / "evals/agentic-trajectory-manifest.py"
+SCRIPT = REPO / "mesh/evals/agentic-trajectory-manifest.py"
 
 
 def load_module():

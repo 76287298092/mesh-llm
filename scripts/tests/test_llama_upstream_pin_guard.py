@@ -10,10 +10,10 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[2]
-GUARD = ROOT / "scripts" / "check-llama-upstream-pin.py"
+GUARD = ROOT / "skippy" / "scripts" / "check-llama-upstream-pin.py"
 QUALITY_LANE = ROOT / ".github" / "workflows" / "ci-quality-lane.yml"
 PR_QUALITY = ROOT / ".github" / "workflows" / "pr_quality.yml"
-PIN_PATH = Path("third_party/llama.cpp/upstream.txt")
+PIN_PATH = Path("skippy/third_party/llama.cpp/upstream.txt")
 GUARD_SPEC = importlib.util.spec_from_file_location("check_llama_upstream_pin", GUARD)
 if GUARD_SPEC is None or GUARD_SPEC.loader is None:
     raise RuntimeError(f"cannot load {GUARD}")

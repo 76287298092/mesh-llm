@@ -2,7 +2,7 @@
 # Run from repo root: docker build -f ci/linux-test.dockerfile -t mesh-llm-ci .
 #
 # NOTE: npm ci may fail behind SSL-intercepting proxies. If so, pre-build the
-# UI on the host (npm run build in crates/mesh-llm-ui/) — the dist/ is COPY'd in.
+# UI on the host (npm run build in mesh/crates/mesh-llm-ui/) — the dist/ is COPY'd in.
 FROM rust:latest
 
 RUN apt-get update && apt-get install -y cmake pkg-config git && rm -rf /var/lib/apt/lists/*
@@ -21,63 +21,8 @@ RUN cmake -B llama.cpp/build -S llama.cpp \
 
 # Build mesh-llm (UI already built on host via npm run build, dist/ included)
 COPY Cargo.toml Cargo.lock ./
-COPY crates/mesh-llm-ui/ crates/mesh-llm-ui/
-COPY crates/mesh-llm-identity/ crates/mesh-llm-identity/
-COPY crates/mesh-llm-protocol/ crates/mesh-llm-protocol/
-COPY crates/mesh-llm-release-footer/ crates/mesh-llm-release-footer/
-COPY crates/mesh-llm-routing/ crates/mesh-llm-routing/
-COPY crates/skippy-guardrails/ crates/skippy-guardrails/
-COPY crates/skippy-events/ crates/skippy-events/
-COPY crates/mesh-llm-system/ crates/mesh-llm-system/
-COPY crates/mesh-llm-types/ crates/mesh-llm-types/
-COPY crates/mesh-llm-config/ crates/mesh-llm-config/
-COPY crates/mesh-llm-console-server/ crates/mesh-llm-console-server/
-COPY crates/mesh-llm-host-runtime/ crates/mesh-llm-host-runtime/
-COPY crates/mesh-llm-membership/ crates/mesh-llm-membership/
-COPY crates/mesh-llm-skippy-adapter/ crates/mesh-llm-skippy-adapter/
-COPY crates/mesh-llm-control-api/ crates/mesh-llm-control-api/
-COPY crates/mesh-llm/ crates/mesh-llm/
-COPY crates/mesh-llm-plugin/ crates/mesh-llm-plugin/
-COPY crates/mesh-client/ crates/mesh-client/
-COPY crates/mesh-llm-transport/ crates/mesh-llm-transport/
-COPY crates/mesh-llm-api-client/ crates/mesh-llm-api-client/
-COPY crates/mesh-llm-api-server/ crates/mesh-llm-api-server/
-COPY crates/mesh-llm-node/ crates/mesh-llm-node/
-COPY crates/mesh-llm-nodejs/ crates/mesh-llm-nodejs/
-COPY crates/mesh-llm-ffi/ crates/mesh-llm-ffi/
-COPY crates/mesh-api/ crates/mesh-api/
-COPY crates/mesh-host-core/ crates/mesh-host-core/
-COPY crates/mesh-api-ffi/ crates/mesh-api-ffi/
-COPY crates/mesh-llm-test-harness/ crates/mesh-llm-test-harness/
-COPY crates/skippy-model-ref/ crates/skippy-model-ref/
-COPY crates/skippy-model-artifact/ crates/skippy-model-artifact/
-COPY crates/skippy-model-hf/ crates/skippy-model-hf/
-COPY crates/skippy-hf-hub/ crates/skippy-hf-hub/
-COPY crates/skippy-model-package/ crates/skippy-model-package/
-COPY crates/skippy-model-resolver/ crates/skippy-model-resolver/
-COPY crates/skippy-protocol/ crates/skippy-protocol/
-COPY crates/skippy-coordinator/ crates/skippy-coordinator/
-COPY crates/skippy-topology/ crates/skippy-topology/
-COPY crates/skippy-cache/ crates/skippy-cache/
-COPY crates/skippy-metrics/ crates/skippy-metrics/
-COPY crates/skippy-openai-frontend/ crates/skippy-openai-frontend/
-COPY crates/skippy-ffi/ crates/skippy-ffi/
-COPY crates/skippy-model/ crates/skippy-model/
-COPY crates/skippy-runtime/ crates/skippy-runtime/
-COPY crates/skippy-native-runtime/ crates/skippy-native-runtime/
-COPY crates/skippy-hardware-profile/ crates/skippy-hardware-profile/
-COPY crates/skippy-runtime-install/ crates/skippy-runtime-install/
-COPY crates/skippy-serving/ crates/skippy-serving/
-COPY crates/skippy-cli/ crates/skippy-cli/
-COPY crates/skippy-commands/ crates/skippy-commands/
-COPY crates/skippy-config/ crates/skippy-config/
-COPY crates/skippy-api/ crates/skippy-api/
-COPY crates/metrics-server/ crates/metrics-server/
-COPY crates/skippy-package-builder/ crates/skippy-package-builder/
-COPY crates/skippy-correctness/ crates/skippy-correctness/
-COPY crates/llama-spec-bench/ crates/llama-spec-bench/
-COPY crates/skippy-bench/ crates/skippy-bench/
-COPY crates/skippy-prompt/ crates/skippy-prompt/
+COPY mesh/crates/ mesh/crates/
+COPY skippy/crates/ skippy/crates/
 COPY tools/xtask/ tools/xtask/
 RUN cargo build --release -p mesh-llm
 RUN cargo test -p mesh-llm

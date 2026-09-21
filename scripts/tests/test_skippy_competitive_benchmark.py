@@ -12,8 +12,8 @@ from unittest import mock
 
 
 REPO = Path(__file__).resolve().parents[2]
-SCRIPT = REPO / "evals/skippy-competitive-benchmark.py"
-CONFIG = REPO / "evals/skippy-competitive-benchmark.json"
+SCRIPT = REPO / "skippy/evals/skippy-competitive-benchmark.py"
+CONFIG = REPO / "skippy/evals/skippy-competitive-benchmark.json"
 
 
 def load_module():

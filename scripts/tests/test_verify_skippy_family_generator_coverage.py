@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = ROOT / "scripts" / "verify-skippy-family-generator-coverage.py"
+SCRIPT = ROOT / "skippy" / "scripts" / "verify-skippy-family-generator-coverage.py"
 
 
 def load_module():

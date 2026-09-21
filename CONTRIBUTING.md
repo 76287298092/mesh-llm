@@ -106,7 +106,7 @@ just release-bundle v0.X.0 dist
 
 ## UI development workflow
 
-The React console and embedded asset crate live in `crates/mesh-llm-ui/`.
+The React console and embedded asset crate live in `mesh/crates/mesh-llm-ui/`.
 The host binary serves the built assets through the management API.
 
 Use this two-terminal flow for UI development.
@@ -388,7 +388,7 @@ Intel GPU benchmark execution is not currently supported in standard `just build
 
 ## Protocol Backward Compatibility
 
-Any change to `crates/mesh-llm-host-runtime/src/protocol/` or `crates/mesh-client/src/protocol/` requires backward-compatibility tests before merging.
+Any change to `mesh/crates/mesh-llm-host-runtime/src/protocol/` or `mesh/crates/mesh-client/src/protocol/` requires backward-compatibility tests before merging.
 
 Embedded clients (iOS, macOS, Android) are permanently supported. Protocol changes that break embedded client compatibility are breaking changes.
 
@@ -399,4 +399,4 @@ cargo test -p mesh-llm --test protocol_compat_v0_client
 cargo test -p mesh-llm --test protocol_convert_matrix
 ```
 
-See [`docs/design/EMBEDDED_CLIENT_ADR.md`](docs/design/EMBEDDED_CLIENT_ADR.md) for the full compatibility policy and rationale.
+See [`mesh/docs/design/EMBEDDED_CLIENT_ADR.md`](mesh/docs/design/EMBEDDED_CLIENT_ADR.md) for the full compatibility policy and rationale.

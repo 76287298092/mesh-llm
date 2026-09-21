@@ -11,8 +11,8 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = ROOT / "scripts" / "build-release.sh"
-HOST_SCRIPT = ROOT / "scripts" / "build-host.sh"
+SCRIPT = ROOT / "mesh" / "scripts" / "build-release.sh"
+HOST_SCRIPT = ROOT / "mesh" / "scripts" / "build-host.sh"
 LLD_LIB = ROOT / "scripts" / "lib" / "lld.sh"
 
 
@@ -73,6 +73,13 @@ class BuildReleaseScriptTests(unittest.TestCase):
     def test_release_profile_stamps_the_plain_version(self) -> None:
         self.assertEqual(self.run_build_host_with_profile("release"), "0.68.0")
 
+    def stage_product_script(self, source: Path, entrypoint: Path) -> None:
+        # Reproduce both the stable workspace entrypoint and its product owner.
+        implementation = entrypoint.parent.parent / source.relative_to(ROOT)
+        implementation.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(source, implementation)
+        shutil.copy(ROOT / "scripts" / source.name, entrypoint)
+
     def stage_linker_probe(self, scripts_dir: Path, bin_dir: Path) -> None:
         """build-host.sh sources scripts/lib/lld.sh and probes the linker
         with `cc`; stage the lib beside the copied script and a `cc` that
@@ -100,7 +107,7 @@ class BuildReleaseScriptTests(unittest.TestCase):
             bin_dir.mkdir()
 
             copied_host_script = scripts_dir / "build-host.sh"
-            shutil.copy(HOST_SCRIPT, copied_host_script)
+            self.stage_product_script(HOST_SCRIPT, copied_host_script)
             copied_host_script.chmod(copied_host_script.stat().st_mode | stat.S_IXUSR)
             self.stage_linker_probe(scripts_dir, bin_dir)
 
@@ -187,10 +194,10 @@ class BuildReleaseScriptTests(unittest.TestCase):
             bin_dir.mkdir()
 
             copied_script = scripts_dir / "build-release.sh"
-            shutil.copy(SCRIPT, copied_script)
+            self.stage_product_script(SCRIPT, copied_script)
             copied_script.chmod(copied_script.stat().st_mode | stat.S_IXUSR)
             copied_host_script = scripts_dir / "build-host.sh"
-            shutil.copy(HOST_SCRIPT, copied_host_script)
+            self.stage_product_script(HOST_SCRIPT, copied_host_script)
             copied_host_script.chmod(
                 copied_host_script.stat().st_mode | stat.S_IXUSR
             )

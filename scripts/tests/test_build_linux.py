@@ -9,7 +9,7 @@ import unittest
 
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
-SCRIPT = REPO_ROOT / "scripts" / "build-linux.sh"
+SCRIPT = REPO_ROOT / "mesh" / "scripts" / "build-linux.sh"
 
 
 class BuildLinuxArgumentTests(unittest.TestCase):

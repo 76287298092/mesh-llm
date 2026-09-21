@@ -12,9 +12,9 @@ that prepare or consume patched llama.cpp.
 ## Boundaries
 
 - Keep durable llama-side changes in the ordered queue under
-  `third_party/llama.cpp/patches`: top-level core patches first,
+  `skippy/third_party/llama.cpp/patches`: top-level core patches first,
   `model_support/series` second, and `generated/series` last.
-- Keep the upstream pin in `third_party/llama.cpp/upstream.txt`.
+- Keep the upstream pin in `skippy/third_party/llama.cpp/upstream.txt`.
 - Do not add a submodule, vendor a llama checkout, or depend on the old
   Mesh-LLM llama.cpp fork.
 - Do not treat edits in `.deps/llama.cpp` as durable until the patch queue has
@@ -159,8 +159,8 @@ cargo test -p mesh-llm --lib
 If the queue applies and validation passes, update the upstream pin:
 
 ```bash
-cp third_party/llama.cpp/upstream.txt /tmp/old-llama-upstream.txt
-git -C .deps/llama.cpp rev-parse "$(cat .deps/llama.cpp/.git/mesh-llm-upstream-sha)" > third_party/llama.cpp/upstream.txt
+cp skippy/third_party/llama.cpp/upstream.txt /tmp/old-llama-upstream.txt
+git -C .deps/llama.cpp rev-parse "$(cat .deps/llama.cpp/.git/mesh-llm-upstream-sha)" > skippy/third_party/llama.cpp/upstream.txt
 ```
 
 Commit the pin update with any patch refreshes.

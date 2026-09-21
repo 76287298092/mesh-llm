@@ -13,7 +13,7 @@ import yaml
 
 
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location("ui_distribution", ROOT / "scripts/ui-distribution.py")
+SPEC = importlib.util.spec_from_file_location("ui_distribution", ROOT / "mesh/scripts/ui-distribution.py")
 UI = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(UI)
 SOURCE = "a" * 40
@@ -96,13 +96,15 @@ class UiDistributionTests(unittest.TestCase):
                     )
                     executable.chmod(0o755)
                 (workspace / "scripts").mkdir()
+                (workspace / "mesh/scripts").mkdir(parents=True)
                 shutil.copyfile(ROOT / "scripts/ui-distribution.py", workspace / "scripts/ui-distribution.py")
-                dist = workspace / "crates/mesh-llm-ui/dist"
+                shutil.copyfile(ROOT / "mesh/scripts/ui-distribution.py", workspace / "mesh/scripts/ui-distribution.py")
+                dist = workspace / "mesh/crates/mesh-llm-ui/dist"
                 shutil.copytree(self.dist, dist)
                 env = {
                     **os.environ,
                     "PATH": str(binaries),
-                    "UI_DIR": "crates/mesh-llm-ui",
+                    "UI_DIR": "mesh/crates/mesh-llm-ui",
                     "UI_SOURCE_SHA": SOURCE,
                     "UI_RELEASE_TAG": TAG,
                     "UI_PYTHON_MARKER": str(marker),

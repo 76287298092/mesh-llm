@@ -317,7 +317,7 @@ Reusable slices/workflows with a `container:` job, and what backs it:
 | `smoke.yml` | `smoke_tests` | `public cpu` when `inputs.runner != 'gpu-nvidia'`, else uncontainerized (see opt-out below) |
 | `sdk-smoke.yml` | its job | `public cpu` when `inputs.sdk_kind != 'swift'`, else uncontainerized |
 | `ci-ui-artifact-slice.yml` | `ui_artifact` | `public ui` ordinarily; existing `public web` for nonempty release tags |
-| `ci-web-slice.yml` | `ui_quality`, `ui_e2e`, `website` | `public ui`, `public browser`, existing `public web`, respectively |
+| `ci-web-slice.yml` | `ui_quality`, `ui_e2e`, `mesh/website` | `public ui`, `public browser`, existing `public web`, respectively |
 | `website-pages.yml` | `build` | `public web` |
 | `nightly-stability-run.yml` | `stability` | `public web` (bakes node/pnpm the CLI-smoke step needs) |
 | `nightly-kv-coverage.yml` | `ownership-state-machines` | `public cpu`, sha256:8d93de6b... |
@@ -472,7 +472,7 @@ stdout with an npm warning) and passes it as the seventh argument; a mismatch
 against the image's own build-time `playwright --version` fails fast instead
 of surfacing as a confusing Playwright/Chromium error deep in the E2E run.
 
-`crates/mesh-llm-ui/package.json`'s `@playwright/test` and
+`mesh/crates/mesh-llm-ui/package.json`'s `@playwright/test` and
 `mesh-llm-runner-images`' `config/playwright-pin.txt` are now a matched pair
 (both `1.62.1` as of 2026-08-20; re-check the two sources rather than
 trusting this line). Bumping the mesh-llm side alone fails `ui_e2e` on
@@ -481,7 +481,7 @@ cross-repo sequence, in order: bump `config/playwright-pin.txt` in
 `mesh-llm-runner-images`, rebuild and promote the `public web` image, re-pin
 the new digest in `ci-web-slice.yml` (and `ci-ui-artifact-slice.yml` /
 `website-pages.yml` / `nightly-stability-run.yml`, which share it), then
-bump `@playwright/test` in `crates/mesh-llm-ui/package.json`.
+bump `@playwright/test` in `mesh/crates/mesh-llm-ui/package.json`.
 
 ### `setup-macos-lld` composite
 
@@ -948,7 +948,7 @@ GPU benchmark library/native source ownership is `skippy-gpu-bench`. CI backend
 ownership rows, crate rosters and runtime packaging source paths follow the move;
 packaged helper names, native symbols and execution policy are unchanged.
 
-Native runtime packaging reads `crates/skippy-native-runtime/RUNTIME_VERSION`,
+Native runtime packaging reads `skippy/crates/skippy-native-runtime/RUNTIME_VERSION`,
 not the Mesh workspace package version. The catalog generator verifies the
 stamped runtime release against that source (or `--runtime-version`); its
 publication tag determines archive URLs independently. Product composition
@@ -993,7 +993,7 @@ service; publish order places the server before the API, then the CLI. Native
 runtime startup and model backend composition belong to the API. Source identity
 and planning are shared with Mesh. CI topology and runner policy are unchanged.
 
-Split-certification roster generation now targets `crates/skippy-api/src/split-certified.json`.
+Split-certification roster generation now targets `skippy/crates/skippy-api/src/split-certified.json`.
 The release-bound recipe build script and admission checks move with this neutral
 owner; canary generation/check commands and enforcement policy are unchanged.
 
@@ -1047,3 +1047,9 @@ checkpoint/quantization sweep. Platform unit rows use the same source-owner
 translation. Candidate workflow tests and local checks validate compatibility;
 protected PR runs alone cannot certify a workflow definition that has not yet
 landed on main.
+
+The local `just test-all` native test group follows the renamed
+`skippy-package-builder` owner. Its full suite runs separately with default
+features disabled so the shipped Mesh binary cannot unify dynamic-runtime
+linkage into native package tests. The current model-acquisition
+`skippy-model-package` stays in the ordinary workspace group.

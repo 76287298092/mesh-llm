@@ -60,7 +60,7 @@ def make_executable(path: Path) -> None:
 
 def current_skippy_abi() -> str:
     values = {}
-    constants = ROOT / "crates/skippy-ffi/src/lib.rs"
+    constants = ROOT / "skippy/crates/skippy-ffi/src/lib.rs"
     for line in constants.read_text(encoding="utf-8").splitlines():
         for part in ("MAJOR", "MINOR", "PATCH"):
             prefix = f"pub const ABI_VERSION_{part}: u32 = "

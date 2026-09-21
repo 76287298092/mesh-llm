@@ -17,7 +17,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 ACTIONS = ROOT / ".github" / "actions"
 COMPOSE_SCRIPT = ROOT / "scripts" / "ci-compose-product-input.sh"
-RELEASE_FOOTER_MANIFEST = ROOT / "crates" / "mesh-llm-release-footer" / "Cargo.toml"
+RELEASE_FOOTER_MANIFEST = ROOT / "mesh" / "crates" / "mesh-llm-release-footer" / "Cargo.toml"
 XTASK_MANIFEST = ROOT / "tools" / "xtask" / "Cargo.toml"
 RELEASE_WORKFLOW = ROOT / ".github" / "workflows" / "release.yml"
 
@@ -573,8 +573,8 @@ class CiArtifactActionTests(unittest.TestCase):
         cpu_routing = routing[: routing.index("WINDOWS_GPU_INPUTS=")]
         gpu_routing = routing[routing.index("WINDOWS_GPU_INPUTS=") :]
 
-        self.assertIn("^crates/mesh-llm-release-footer/", cpu_routing)
-        self.assertNotIn("^crates/mesh-llm-release-footer/", gpu_routing)
+        self.assertIn("^mesh/crates/mesh-llm-release-footer/", cpu_routing)
+        self.assertNotIn("^mesh/crates/mesh-llm-release-footer/", gpu_routing)
         self.assertIn("package-release", cpu_routing)
         self.assertIn("package-release", gpu_routing)
         for workflow in (
@@ -677,10 +677,10 @@ class CiArtifactActionTests(unittest.TestCase):
             "'.github/actions/resolve-native-toolchain-epoch/action.yml', "
             "'.github/actions/prepare-native-runtime-input/action.yml', "
             "'.github/actions/setup-windows-rocm-sdk/action.yml', "
-            "'scripts/build-llama.sh', 'scripts/prepare-llama.sh', "
-            "'scripts/package-native-runtime.sh', "
-            "'third_party/llama.cpp/upstream.txt', "
-            "'third_party/llama.cpp/patches/**', "
+            "'scripts/build-llama.sh', 'skippy/scripts/build-llama.sh', 'scripts/prepare-llama.sh', 'skippy/scripts/prepare-llama.sh', "
+            "'scripts/package-native-runtime.sh', 'skippy/scripts/package-native-runtime.sh', "
+            "'skippy/third_party/llama.cpp/upstream.txt', "
+            "'skippy/third_party/llama.cpp/patches/**', "
             "'.github/cache-version.txt') }}"
         )
         self.assertIn(expected_hash, action)
@@ -1719,10 +1719,10 @@ class CiArtifactActionTests(unittest.TestCase):
         self.assertIn("type: string", producer)
         self.assertIn("host-only|full", producer)
         self.assertIn(
-            "sdk/swift/scripts/build-host-macos-xcframework.sh",
+            "mesh/sdk/swift/scripts/build-host-macos-xcframework.sh",
             producer,
         )
-        self.assertIn("sdk/swift/scripts/build-xcframework.sh", producer)
+        self.assertIn("mesh/sdk/swift/scripts/build-xcframework.sh", producer)
         self.assertIn("max-parallel: ${{ inputs.max_parallel }}", producer)
         self.assertEqual(producer.count("- aarch64-apple-ios\n"), 1)
         self.assertIn(
@@ -1753,7 +1753,7 @@ class CiArtifactActionTests(unittest.TestCase):
         self.assertIn(
             "scripts/verify-swift-xcframework.py",
             (
-                ROOT / "scripts" / "verify-swift-release-artifact.sh"
+                ROOT / "mesh" / "scripts" / "verify-swift-release-artifact.sh"
             ).read_text(encoding="utf-8"),
         )
         self.assertIn("persist-credentials: false", producer)
@@ -1915,7 +1915,7 @@ class CiArtifactActionTests(unittest.TestCase):
             ROOT / ".github" / "workflows" / "swift-sdk-artifact.yml"
         ).read_text(encoding="utf-8")
         host_builder = (
-            ROOT / "sdk" / "swift" / "scripts"
+            ROOT / "mesh" / "sdk" / "swift" / "scripts"
             / "build-host-macos-xcframework.sh"
         ).read_text(encoding="utf-8")
 

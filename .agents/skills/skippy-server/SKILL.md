@@ -20,10 +20,10 @@ runtime.
 Important crates:
 
 ```text
-crates/skippy-serving
-crates/skippy-protocol
-crates/skippy-runtime
-crates/mesh-llm/src/inference/skippy
+skippy/crates/skippy-serving
+skippy/crates/skippy-protocol
+skippy/crates/skippy-runtime
+mesh/crates/mesh-llm/src/inference/skippy
 ```
 
 ## Validation

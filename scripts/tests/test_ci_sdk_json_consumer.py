@@ -72,9 +72,15 @@ class SdkJsonConsumerTests(unittest.TestCase):
             "safe-extract-tar.py",
         ):
             shutil.copy2(ROOT / "scripts" / name, scripts / name)
-        abi = workspace / "crates/skippy-ffi/src/lib.rs"
+            for product in ("mesh", "skippy"):
+                implementation = ROOT / product / "scripts" / name
+                if implementation.is_file():
+                    destination = workspace / product / "scripts" / name
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(implementation, destination)
+        abi = workspace / "skippy/crates/skippy-ffi/src/lib.rs"
         abi.parent.mkdir(parents=True)
-        shutil.copy2(ROOT / "crates/skippy-ffi/src/lib.rs", abi)
+        shutil.copy2(ROOT / "skippy/crates/skippy-ffi/src/lib.rs", abi)
         # Only readiness/network startup is stubbed; execute the real composer,
         # SDK reader and package verification against checksum-bound fixture bytes.
         (scripts / "ci-client-readiness-smoke.sh").write_text(

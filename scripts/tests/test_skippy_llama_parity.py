@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = ROOT / "scripts" / "skippy-llama-parity.py"
+SCRIPT = ROOT / "skippy" / "scripts" / "skippy-llama-parity.py"
 
 
 def load_module():

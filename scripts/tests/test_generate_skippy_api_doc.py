@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = ROOT / "scripts" / "generate-skippy-api-doc.py"
+SCRIPT = ROOT / "skippy" / "scripts" / "generate-skippy-api-doc.py"
 
 
 def load_module():

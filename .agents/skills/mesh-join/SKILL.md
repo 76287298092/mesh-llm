@@ -10,7 +10,7 @@ metadata:
 Use this when wiring two or more mesh-llm nodes together, or attaching a
 client-only node to an existing mesh. Per-platform install/serve steps live in
 `deploy-macos` and `deploy-linux-gpu`; this skill covers the mesh topology
-itself. Full reference: `docs/MESHES.md`.
+itself. Full reference: `mesh/docs/MESHES.md`.
 
 ## Mental model
 
@@ -120,13 +120,13 @@ curl -s http://localhost:9337/v1/chat/completions \
 
 When one node cannot fit the model, use Skippy layer splits — same mesh
 mechanics plus `--split` and a layer-package model on every serving node. See
-`docs/SKIPPY_SPLITS.md`; diagnose readiness with `mesh-llm doctor split`.
+`skippy/docs/SKIPPY_SPLITS.md`; diagnose readiness with `mesh-llm doctor split`.
 
 ## Ownership / trust (private deployments)
 
 For owner-attested meshes: `mesh-llm auth init`, then start nodes with
 `--owner-key`, `--node-label`, `--trust-policy`, `--trust-owner`. Details in
-`docs/MESHES.md` ("Private ownership and trust").
+`mesh/docs/MESHES.md` ("Private ownership and trust").
 
 ## Gotchas
 

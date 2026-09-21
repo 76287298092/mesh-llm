@@ -8,7 +8,7 @@
 
 ## Environment (verified)
 
-- `crates/mesh-llm-ui`: react/react-dom **19.2.8**, recharts **^3.10.1**, react-redux v9
+- `mesh/crates/mesh-llm-ui`: react/react-dom **19.2.8**, recharts **^3.10.1**, react-redux v9
   (synchronous `defaultNoopBatch`), @playwright/test 1.62.1, vitest 4.1.10, TypeScript 5.9.3.
 - Chart component: `src/features/logs/components/EventsOverTimeChart.tsx`, rendered by
   `LogsLedger.tsx` as `<EventsOverTimeChart now={selectedLedgerRange.endMs} ...>` — `now` is
@@ -99,7 +99,7 @@ business logic is involved.
 
 ## Test coverage (current state)
 
-**`crates/mesh-llm-ui/e2e/logs/logs-chart-stability.spec.ts`** — the permanent regression
+**`mesh/crates/mesh-llm-ui/e2e/logs/logs-chart-stability.spec.ts`** — the permanent regression
 suite, following the tracked `log-workflows` mock conventions (`**/api/logs/**` routes,
 live-mode `addInitScript`, valid UUIDs via `padStart(12)`). Seven variants:
 

@@ -21,8 +21,8 @@ def import_script(name: str, path: Path):
     return module
 
 
-fixture = import_script("ocr_oracle_fixture", ROOT / "scripts" / "generate-ocr-oracle-fixture.py")
-oracle = import_script("skippy_ocr_asr_oracle", ROOT / "scripts" / "skippy-ocr-asr-oracle.py")
+fixture = import_script("ocr_oracle_fixture", ROOT / "skippy" / "scripts" / "generate-ocr-oracle-fixture.py")
+oracle = import_script("skippy_ocr_asr_oracle", ROOT / "skippy" / "scripts" / "skippy-ocr-asr-oracle.py")
 
 
 class OcrFixtureTests(unittest.TestCase):
@@ -129,7 +129,7 @@ class MultimodalOracleTests(unittest.TestCase):
         self.assertEqual(payload["max_tokens"], oracle.ASR_MAX_TOKENS)
         # The multipart API has no max_tokens field; set the candidate server's
         # default explicitly instead of comparing its CLI default of 16 to 128.
-        runner = (ROOT / "scripts/skippy-workload-certify.sh").read_text()
+        runner = (ROOT / "skippy/scripts/skippy-workload-certify.sh").read_text()
         self.assertIn(f"--default-max-tokens {oracle.ASR_MAX_TOKENS}", runner)
 
     def test_asr_multipart_contains_deterministic_fields_and_audio(self):

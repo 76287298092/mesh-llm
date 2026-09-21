@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-PLANNER = ROOT / "scripts" / "plan-family-battery.py"
+PLANNER = ROOT / "skippy" / "scripts" / "plan-family-battery.py"
 MANIFEST = ROOT / "ci" / "llama-canary" / "family-certified.json"
 
 

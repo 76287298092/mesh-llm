@@ -159,7 +159,7 @@ workflow, which creates the tag:
 
 ```bash
 scripts/prepare-swift-package-release.sh v0.X.Y
-git add Package.swift sdk/swift/Sources/MeshLLM/Generated/mesh_ffi.swift
+git add Package.swift mesh/sdk/swift/Sources/MeshLLM/Generated/mesh_ffi.swift
 git commit -m "v0.X.Y: prepare Swift package artifact"
 ```
 
@@ -263,10 +263,10 @@ scripts/package-sdk-console-assets.sh --sdk all
 scripts/verify-sdk-console-assets.sh --sdk all
 ```
 
-The script builds `crates/mesh-llm-ui/dist` in release mode and copies it to
-the canonical SDK resource locations: `sdk/node/console`,
-`sdk/swift/Sources/MeshLLM/Resources/Console`, and
-`sdk/kotlin/src/main/resources/mesh-llm/console`.
+The script builds `mesh/crates/mesh-llm-ui/dist` in release mode and copies it to
+the canonical SDK resource locations: `mesh/sdk/node/console`,
+`mesh/sdk/swift/Sources/MeshLLM/Resources/Console`, and
+`mesh/sdk/kotlin/src/main/resources/mesh-llm/console`.
 
 Workflow-dispatch releases generate and force-add these resources into the
 release tag commit automatically.

@@ -57,7 +57,7 @@ python3 scripts/generate-skippy-family-patch.py \
   --report .scratch/skippy-stage-rewriter-report.json \
   --diff-base "$(git -C .scratch/llama-central rev-parse HEAD)" \
   --output target/generated-family-combined.patch \
-  --shard-output-dir third_party/llama.cpp/patches/generated \
+  --shard-output-dir skippy/third_party/llama.cpp/patches/generated \
   --family-source-map ci/llama-canary/generated-family-map.json \
   --family-manifest ci/llama-canary/family-certified.json
 ```

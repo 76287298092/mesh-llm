@@ -6,7 +6,7 @@ import unittest
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-SCRIPT = ROOT / "scripts" / "compose-product-bundle.py"
+SCRIPT = ROOT / "mesh" / "scripts" / "compose-product-bundle.py"
 SPEC = importlib.util.spec_from_file_location("compose_product_bundle", SCRIPT)
 assert SPEC is not None and SPEC.loader is not None
 COMPOSE_PRODUCT_BUNDLE = importlib.util.module_from_spec(SPEC)

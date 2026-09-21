@@ -11,7 +11,7 @@ from pathlib import Path
 def load_module():
     path = (
         Path(__file__).resolve().parents[2]
-        / "evals/skippy-mixed-prefill-decode-ab.py"
+        / "skippy/evals/skippy-mixed-prefill-decode-ab.py"
     )
     spec = importlib.util.spec_from_file_location(
         "skippy_mixed_prefill_decode_ab", path

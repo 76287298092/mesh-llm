@@ -11,7 +11,7 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[2]
-BUILD_SCRIPT = ROOT / "scripts" / "build-llama.sh"
+BUILD_SCRIPT = ROOT / "skippy" / "scripts" / "build-llama.sh"
 
 PRIVATE_TARGETS = {
     "skippy-graph-build-inputs",

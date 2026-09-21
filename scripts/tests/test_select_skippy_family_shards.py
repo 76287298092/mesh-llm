@@ -20,7 +20,7 @@ class FamilyShardSelectionTests(unittest.TestCase):
     def setUp(self) -> None:
         self.selector = load(
             "select_skippy_family_shards",
-            ROOT / "scripts" / "select-skippy-family-shards.py",
+            ROOT / "skippy" / "scripts" / "select-skippy-family-shards.py",
         )
 
     @staticmethod
@@ -114,7 +114,7 @@ class FamilyShardGenerationTests(unittest.TestCase):
     def setUp(self) -> None:
         self.generator = load(
             "generate_skippy_family_patch",
-            ROOT / "scripts" / "generate-skippy-family-patch.py",
+            ROOT / "skippy" / "scripts" / "generate-skippy-family-patch.py",
         )
 
     def test_split_model_diff_preserves_complete_sections(self) -> None:

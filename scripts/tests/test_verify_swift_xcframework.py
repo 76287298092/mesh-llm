@@ -10,7 +10,7 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[2]
-VERIFIER = ROOT / "scripts" / "verify-swift-xcframework.py"
+VERIFIER = ROOT / "mesh" / "scripts" / "verify-swift-xcframework.py"
 
 
 FULL_SLICES = [

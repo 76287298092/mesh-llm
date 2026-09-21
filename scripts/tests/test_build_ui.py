@@ -10,8 +10,8 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = ROOT / "scripts" / "build-ui.sh"
-UI_DIR = ROOT / "crates" / "mesh-llm-ui"
+SCRIPT = ROOT / "mesh" / "scripts" / "build-ui.sh"
+UI_DIR = ROOT / "mesh" / "crates" / "mesh-llm-ui"
 WORKFLOWS = ROOT / ".github" / "workflows"
 
 
@@ -74,7 +74,7 @@ class BuildUiScriptTests(unittest.TestCase):
         self.assertIn("Cargo's default package change detection", build_script)
 
     def test_ui_pnpm_workspace_names_root_package(self) -> None:
-        workspace = ROOT / "crates" / "mesh-llm-ui" / "pnpm-workspace.yaml"
+        workspace = ROOT / "mesh" / "crates" / "mesh-llm-ui" / "pnpm-workspace.yaml"
 
         contents = workspace.read_text(encoding="utf-8")
 
@@ -143,7 +143,7 @@ class BuildUiScriptTests(unittest.TestCase):
         still gets the unrelated lockfile-mismatch error.
         """
         npmrc = UI_DIR / ".npmrc"
-        self.assertTrue(npmrc.exists(), "crates/mesh-llm-ui/.npmrc is missing")
+        self.assertTrue(npmrc.exists(), "mesh/crates/mesh-llm-ui/.npmrc is missing")
         self.assertRegex(
             npmrc.read_text(encoding="utf-8"),
             r"(?m)^engine-strict\s*=\s*true\s*$",

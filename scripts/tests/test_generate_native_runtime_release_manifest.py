@@ -121,7 +121,7 @@ class GenerateNativeRuntimeReleaseManifestTests(unittest.TestCase):
             self.assertIn("/download/v99.0.0/", manifest["artifacts"][0]["url"])
 
     def test_default_runtime_release_comes_from_skippy_metadata(self):
-        expected = (SCRIPT.parent.parent / "crates/skippy-native-runtime/RUNTIME_VERSION").read_text().strip()
+        expected = (SCRIPT.parent.parent / "skippy/crates/skippy-native-runtime/RUNTIME_VERSION").read_text().strip()
         with tempfile.TemporaryDirectory() as directory:
             root = pathlib.Path(directory)
             archive = self.create_archive(root, runtime_version=expected)

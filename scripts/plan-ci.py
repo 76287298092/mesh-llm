@@ -599,13 +599,13 @@ def _signal_value(
         return "website" in domains
     if name == "website_docs_changed":
         return any(
-            path.startswith("website/src/docs/pages/")
-            or path.startswith("website/src/_includes/")
+            path.startswith(("website/src/docs/pages/", "mesh/website/src/docs/pages/"))
+            or path.startswith(("website/src/_includes/", "mesh/website/src/_includes/"))
             for path in changed_files
         )
     if name == "plugin_exemplars_changed":
         return any(
-            path.startswith("docs/plugins/exemplars/") for path in changed_files
+            path.startswith(("docs/plugins/exemplars/", "mesh/docs/plugins/exemplars/")) for path in changed_files
         )
     if name == "cli_surface_changed":
         return "cli" in domains

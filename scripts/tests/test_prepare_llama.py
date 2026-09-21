@@ -11,7 +11,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-PREPARE_LLAMA = ROOT / "scripts" / "prepare-llama.sh"
+PREPARE_LLAMA = ROOT / "skippy" / "scripts" / "prepare-llama.sh"
 
 
 class PrepareLlamaTests(unittest.TestCase):

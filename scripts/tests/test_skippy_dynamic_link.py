@@ -24,7 +24,7 @@ class SkippyDynamicLinkTests(unittest.TestCase):
         # job has Rust and cc but does not install LLD.
         result = subprocess.run(
             ["rustc", "--edition=2024",
-             str(ROOT / "crates/skippy-ffi/build.rs"), "-o", str(cls.binary)],
+             str(ROOT / "skippy/crates/skippy-ffi/build.rs"), "-o", str(cls.binary)],
             cwd=ROOT, capture_output=True, text=True,
         )
         if result.returncode:
@@ -50,7 +50,7 @@ class SkippyDynamicLinkTests(unittest.TestCase):
         }
         prefix = "SKIPPY_LLAMA" if legacy else "LLAMA_STAGE"
         env.update({
-            "CARGO_MANIFEST_DIR": str(ROOT / "crates/skippy-ffi"),
+            "CARGO_MANIFEST_DIR": str(ROOT / "skippy/crates/skippy-ffi"),
             "TARGET": target,
             f"{prefix}_LINK_MODE": "dynamic",
             f"{prefix}_BUILD_DIR": str(build),

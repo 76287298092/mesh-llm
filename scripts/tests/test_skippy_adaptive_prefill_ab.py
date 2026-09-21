@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 def load_module():
-    path = Path(__file__).resolve().parents[2] / "evals/skippy-adaptive-prefill-ab.py"
+    path = Path(__file__).resolve().parents[2] / "skippy/evals/skippy-adaptive-prefill-ab.py"
     spec = importlib.util.spec_from_file_location("skippy_adaptive_prefill_ab", path)
     module = importlib.util.module_from_spec(spec)
     assert spec.loader is not None

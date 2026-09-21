@@ -1,7 +1,7 @@
 """Validates the executed-evidence invariant for the gated native-runtime
 integration test.
 
-`crates/skippy-runtime/tests/runtime_events_native.rs` writes an evidence
+`skippy/crates/skippy-runtime/tests/runtime_events_native.rs` writes an evidence
 marker file when `MESH_LLM_RUNTIME_EVENTS_EVIDENCE_FILE` is set. Defect D10
 (`.omo/plans/event-system-fixes.md` task 11) was an evidence file whose
 first line was `executed` even though the run was ungated and no native

@@ -715,10 +715,10 @@ class CiSdkProducersTests(RunnerSelectorMixin, unittest.TestCase):
         self.assertIn("type: string", producer)
         self.assertIn("host-only|full", producer)
         self.assertIn(
-            "sdk/swift/scripts/build-host-macos-xcframework.sh",
+            "mesh/sdk/swift/scripts/build-host-macos-xcframework.sh",
             producer,
         )
-        self.assertIn("sdk/swift/scripts/build-xcframework.sh", producer)
+        self.assertIn("mesh/sdk/swift/scripts/build-xcframework.sh", producer)
         self.assertIn("max-parallel: ${{ inputs.max_parallel }}", producer)
         self.assertEqual(producer.count("- aarch64-apple-ios\n"), 1)
         self.assertIn(
@@ -749,7 +749,7 @@ class CiSdkProducersTests(RunnerSelectorMixin, unittest.TestCase):
         self.assertIn(
             "scripts/verify-swift-xcframework.py",
             (
-                ROOT / "scripts" / "verify-swift-release-artifact.sh"
+                ROOT / "mesh" / "scripts" / "verify-swift-release-artifact.sh"
             ).read_text(encoding="utf-8"),
         )
         self.assertIn("persist-credentials: false", producer)
@@ -921,7 +921,7 @@ class CiSdkProducersTests(RunnerSelectorMixin, unittest.TestCase):
             ROOT / ".github" / "workflows" / "swift-sdk-artifact.yml"
         ).read_text(encoding="utf-8")
         host_builder = (
-            ROOT / "sdk" / "swift" / "scripts"
+            ROOT / "mesh" / "sdk" / "swift" / "scripts"
             / "build-host-macos-xcframework.sh"
         ).read_text(encoding="utf-8")
 

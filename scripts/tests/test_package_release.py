@@ -7,7 +7,7 @@ import unittest
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-SCRIPT = ROOT / "scripts" / "package-release.sh"
+SCRIPT = ROOT / "mesh" / "scripts" / "package-release.sh"
 
 
 def run_bash(command: str, env: dict[str, str]) -> subprocess.CompletedProcess[str]:

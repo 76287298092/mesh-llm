@@ -8,7 +8,7 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = ROOT / "scripts" / "skippy-rewriter-harness.py"
+SCRIPT = ROOT / "skippy" / "scripts" / "skippy-rewriter-harness.py"
 
 
 def load_module():

@@ -16,7 +16,7 @@ Related skills/docs:
 
 - `mesh-join` — creating/joining meshes (tokens, NAT, multi-node)
 - `connect-agents` — pointing Goose/Claude Code/OpenCode/Pi at a running mesh
-- `docs/USAGE.md` — install details; `docs/CLI.md` — full command reference
+- `mesh/docs/USAGE.md` — install details; `mesh/docs/CLI.md` — full command reference
 - `contrib/windows/README.md` — local PowerShell helper scripts
 
 ## The one rule that matters most

@@ -5,7 +5,7 @@ from scripts.tests.justfile_source import read_justfile_source
 
 
 ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = ROOT / "scripts/build-windows.ps1"
+SCRIPT = ROOT / "mesh/scripts/build-windows.ps1"
 RUNTIME = ROOT / ".github/workflows/ci-windows-runtime-slice.yml"
 PRODUCT = ROOT / ".github/workflows/ci-windows-product-slice.yml"
 HOST_INPUT = ROOT / ".github/actions/prepare-windows-host-input/action.yml"

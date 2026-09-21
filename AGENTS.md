@@ -2,65 +2,50 @@
 
 ## Repo Overview
 
-This repo (`mesh-llm`) contains mesh-llm — a Rust binary that pools GPUs over QUIC for distributed LLM inference using llama.cpp.
+This repository contains two products in one Cargo workspace:
 
-The workspace is split across many crates under `crates/`. The shipped binary `mesh-llm` (`crates/mesh-llm/`) is a thin entry point: it builds the Tokio runtime, parses the CLI via `mesh-llm-cli`, dispatches one-shot commands (via its `commands/` module and `mesh-llm-commands`), and hands the runtime surfaces (`serve` / `client`) to `mesh-llm-host-runtime`, where the bulk of host-side logic lives. A lighter parallel crate `mesh-client` (`mesh-llm-client`) carries the same domain shape for client-only usage. Embedded llama.cpp staged-runtime support lives in the `skippy-*` crates.
+- `skippy/` owns standalone model management, native runtimes, inference, split execution and OpenAI serving. Its CLI is `skippy` in `skippy/crates/skippy-cli/`.
+- `mesh/` owns discovery, Iroh transport, peer admission, routing, management APIs, plugins, console, SDKs and deployment. The `mesh-llm` binary composes Skippy through the Mesh adapter.
+
+Dependency direction is Mesh → Skippy. Skippy does not depend on Mesh crates or plugin hosts. Root `Cargo.toml`, `Cargo.lock`, `.cargo/`, `just/`, CI and cross-workspace tooling remain shared workspace infrastructure. There is no `shared/` product tree. Product script implementations live under `mesh/scripts/` or `skippy/scripts/`; root script forwarders preserve existing CI entrypoints. Build outputs and native working caches remain at root `target/` and `.deps/`.
 
 ## Key Docs
 
 | Doc | What it covers |
 |---|---|
 | `README.md` | Quickstart and documentation hub |
-| `docs/MESHES.md` | Public/private meshes, publishing, discovery, join flows |
-| `docs/SKIPPY_SPLITS.md` | Running big models with Skippy split serving |
-| `docs/LAYER_PACKAGE_REPOS.md` | Contributing and publishing layer package repos |
-| `docs/EXO_COMPARISON.md` | mesh-llm vs Exo comparison |
+| `mesh/docs/MESHES.md` | Public/private meshes, publishing, discovery, join flows |
+| `skippy/docs/SKIPPY_SPLITS.md` | Running big models with Skippy split serving |
+| `skippy/docs/LAYER_PACKAGE_REPOS.md` | Contributing and publishing layer package repos |
+| `mesh/docs/EXO_COMPARISON.md` | mesh-llm vs Exo comparison |
 | `CONTRIBUTING.md` | Build from source, dev workflow, UI dev |
 | `RELEASE.md` | Release process (build, bundle, tag, GitHub release) |
 | `ROADMAP.md` | Future directions |
-| `crates/mesh-llm/TODO.md` | Current work items and backlog |
-| `crates/mesh-llm/README.md` | Rust crate overview and file map |
-| `docs/README.md` | Documentation map and topic directory guide |
-| `docs/design/DESIGN.md` | Architecture, protocols, features |
-| `docs/design/TESTING.md` | Test playbook, scenarios, remote deploy |
-| `docs/design/MULTI_MODAL.md` | Multimodal design: capability model, blob plugin, console, routing |
-| `docs/design/VIRTUAL_LLM.md` | Virtual LLM engine (inter-model collaboration) |
-| `docs/design/LLAMA_STAGE_INTEGRATION_PLAN.md` | llama.cpp staged-runtime integration and patch-queue background |
-| `docs/SKIPPY.md` | Skippy integration readiness and parity notes |
-| `docs/plugins/README.md` | Plugin architecture and plugin development |
-| `fly/README.md` | Fly.io deployment (console + API apps) |
+| `mesh/crates/mesh-llm/TODO.md` | Current work items and backlog |
+| `mesh/crates/mesh-llm/README.md` | Rust crate overview and file map |
+| `mesh/docs/README.md` | Documentation map and topic directory guide |
+| `mesh/docs/design/DESIGN.md` | Architecture, protocols, features |
+| `mesh/docs/design/TESTING.md` | Test playbook, scenarios, remote deploy |
+| `mesh/docs/design/MULTI_MODAL.md` | Multimodal design: capability model, blob plugin, console, routing |
+| `mesh/docs/design/VIRTUAL_LLM.md` | Virtual LLM engine (inter-model collaboration) |
+| `skippy/docs/design/LLAMA_STAGE_INTEGRATION_PLAN.md` | llama.cpp staged-runtime integration and patch-queue background |
+| `skippy/docs/SKIPPY.md` | Skippy integration readiness and parity notes |
+| `mesh/docs/plugins/README.md` | Plugin architecture and plugin development |
+| `mesh/deploy/fly/README.md` | Fly.io deployment (console + API apps) |
 | `tools/relay-fly-legacy/README.md` | Archived self-hosted iroh relay reference; production uses services.iroh.computer |
 
 ## Public Website
 
-The public static website lives in `website/` and is built with Eleventy.
-Treat `website/` as the only maintained source for the public marketing/docs
-site. The build writes static-hosting output into `docs/`, alongside the repo's
-existing Markdown documentation. The root `docs/` tree is therefore mixed
-ownership by path: generated website artifacts live at `docs/index.html`,
-`docs/CNAME`, `docs/install.sh`, `docs/install.ps1`, `docs/setup-mesh`,
-`docs/mesh-llm-logo.svg`, `docs/funding.json`, `docs/.well-known/`,
-`docs/catalog/`, `docs/assets/`, `docs/pagefind/`, `docs/docs/`, and
-`docs/crates/`; project
-documentation Markdown such as `docs/MESHES.md`, `docs/design/**`,
-`docs/plugins/**`, and `docs/specs/**` remains source. Do not hand-edit the
-generated website artifact paths; update files under `website/src/` and rebuild
-instead.
+The maintained website source lives in `mesh/website/`. Eleventy writes generated static-hosting output into root `docs/`; authored documentation lives under `mesh/docs/` and `skippy/docs/`. Do not hand-edit generated website files.
 
 ```bash
-just website-build # build website and crate API docs into docs/
+just website-build # build website and crate API docs into root docs/
 just website-dev   # Eleventy dev server on port 8765
-just website-clean # remove generated website output while preserving docs/ source
-just crate-docs    # regenerate only the published crate API docs
+just website-clean # remove generated output
+just crate-docs    # regenerate published crate API docs
 ```
 
-The website build runs Tailwind first, then Eleventy, then Pagefind. Eleventy
-copies `website/src/CNAME`, `website/src/assets/`, `website/src/mesh-llm-logo.svg`,
-and the repo-root `install.sh` / `install.ps1` (plus `install.md` published as
-`docs/setup-mesh`) into `docs/` for deployment.
-`website/src/assets/site.generated.css` is generated by Tailwind and should not
-be edited by hand. Use `just website-clean` before rebuilding when you need to
-purge generated website output without deleting authored Markdown docs.
+The build runs Tailwind, Eleventy and Pagefind. It copies website source assets and root `install.sh`, `install.ps1` and `install.md` into the generated tree. `mesh/website/src/assets/site.generated.css` is generated by Tailwind.
 
 ## Building
 
@@ -74,7 +59,7 @@ just stop          # stop tracked mesh-llm runtime processes
 just test          # quick inference test against :9337
 just auto          # build + stop + start with --auto
 just ui-dev        # vite dev server with HMR
-just website-build # build website/ into docs/ for static hosting
+just website-build # build mesh/website/ into docs/ for static hosting
 just website-dev   # Eleventy dev server on :8765
 just ui-clean      # nuke node_modules + dist (fixes stale npm state)
 ```
@@ -148,7 +133,7 @@ See `CONTRIBUTING.md` for full dev workflow.
 
 mesh-llm embeds the stage runtime and links patched llama.cpp static ABI
 libraries. The only durable llama.cpp patch queue is
-`third_party/llama.cpp/patches`, pinned by `third_party/llama.cpp/upstream.txt`.
+`skippy/third_party/llama.cpp/patches`, pinned by `skippy/third_party/llama.cpp/upstream.txt`.
 
 - `just build` builds the UI and a dynamic host, then packages the selected
   local runtime next to it. The host never links a backend library.
@@ -224,12 +209,12 @@ implementation file.
   python3 scripts/generate-skippy-api-doc.py --check
   ```
 
-- Commit the regenerated `website/src/docs/pages/skippy-api.md` with the
+- Commit the regenerated `mesh/website/src/docs/pages/skippy-api.md` with the
   native queue change. Do not hand-edit the generated page or let a native API
   PR merge without updating the website reference.
 ## Workspace Crates
 
-The workspace lives under `crates/`. The most important crates:
+Product crates live under `mesh/crates/` and `skippy/crates/`. The most important crates:
 
 Shipped binary and CLI surface:
 
@@ -285,34 +270,34 @@ Tools and benchmarks:
 - `metrics-server/` — standalone metrics collector binary.
 - `skippy-gpu-bench/`, `llama-spec-bench/`, `mesh-llm-test-harness/` — benchmarking and test harness binaries.
 
-This list covers the crates you are most likely to touch; check `crates/` and each crate's `Cargo.toml` description for anything not listed.
+This list covers the crates you are most likely to touch; check the owning product's `crates/` tree and each crate's `Cargo.toml` description for anything not listed.
 
 Other top-level directories:
 
-- `docs/` — Project docs, grouped by topic (see `docs/README.md` for the map).
-- `website/` — Eleventy source for the public website; builds into `docs/`.
-- `docs/design/` — Architecture, protocol, and testing docs.
-- `docs/skippy/` — Skippy family certification, configuration, benchmarks, parity.
-- `docs/plugins/` — Plugin architecture docs and plans.
-- `docs/specs/` — Focused behavior specs for individual features.
+- `docs/` — Generated website output; authored docs live under the owning product.
+- `mesh/website/` — Eleventy source for the public website; builds into `docs/`.
+- `mesh/docs/design/`, `skippy/docs/design/` — Product architecture, protocol, and testing docs.
+- `skippy/docs/` — Skippy family certification, configuration, benchmarks, parity.
+- `mesh/docs/plugins/` — Plugin architecture docs and plans.
+- `mesh/docs/specs/` — Focused behavior specs for Mesh features.
 - `.agents/agents/release-validation.md` — Canonical Markdown definition for the selectable release-validation specialist; it uses the canonical release-validation skill in `.agents/skills/`.
 - `.agents/skills/` — Canonical repo-local agent skills, including per-platform deploy, mesh operations, release validation, release notes, Skippy internals, patch queues, and benchmarks.
-- `sdk/` — SDK packaging for Node, Swift, Kotlin.
-- `fly/` — Fly.io deployment (console + API client apps).
+- `mesh/sdk/` — SDK packaging for Node, Swift, Kotlin.
+- `mesh/deploy/fly/` — Fly.io deployment (console + API client apps).
 - `tools/relay-fly-legacy/` — Archived self-hosted iroh relay reference; production uses services.iroh.computer.
-- `evals/` — Benchmarking and evaluation scripts.
-- `third_party/llama.cpp/patches/` — durable llama.cpp patch queue, pinned by `upstream.txt`.
+- `mesh/evals/`, `skippy/evals/` — Product benchmarking and evaluation scripts.
+- `skippy/third_party/llama.cpp/patches/` — durable llama.cpp patch queue, pinned by `upstream.txt`.
 
 ## Module Structure Rules
 
-These rules apply primarily inside `crates/mesh-llm-host-runtime/src/` (the main host monolith), and by analogy inside `crates/mesh-client/src/`. New peer crates should still follow the semantic-ownership principles below.
+These rules apply primarily inside `mesh/crates/mesh-llm-host-runtime/src/` (the main host monolith), and by analogy inside `mesh/crates/mesh-client/src/`. New peer crates should still follow the semantic-ownership principles below.
 
 The host-runtime crate root should stay minimal.
 
-- Keep `crates/mesh-llm-host-runtime/src/lib.rs` slim — it is a small entry point, not a junk drawer.
+- Keep `mesh/crates/mesh-llm-host-runtime/src/lib.rs` slim — it is a small entry point, not a junk drawer.
 - New code should go into an existing domain directory when possible.
 
-Use semantic ownership for module placement. Inside `crates/mesh-llm-host-runtime/src/`:
+Use semantic ownership for module placement. Inside `mesh/crates/mesh-llm-host-runtime/src/`:
 
 - `runtime/` — top-level process orchestration, startup/runtime coordination, runtime instance, capacity, split planning, proxy lifecycle.
 - `network/` — request routing, proxying, tunneling, relay/discovery networking, request-affinity logic, endpoint rewrite, target health, OpenAI transport glue.
@@ -329,8 +314,8 @@ Use semantic ownership for module placement. Inside `crates/mesh-llm-host-runtim
 
 CLI ownership rule.
 
-- Clap types, argument parsing, and surface normalization belong in `crates/mesh-llm-cli/`.
-- User-facing command handlers belong in `crates/mesh-llm-commands/` (or the shipped binary's `crates/mesh-llm/src/commands/` dispatch layer for wiring).
+- Clap types, argument parsing, and surface normalization belong in `mesh/crates/mesh-llm-cli/`.
+- User-facing command handlers belong in `mesh/crates/mesh-llm-commands/` (or the shipped binary's `mesh/crates/mesh-llm/src/commands/` dispatch layer for wiring).
 - Domain modules in `mesh-llm-host-runtime` should not own Clap parsing or top-level command dispatch.
 - Domain modules may expose reusable functions that command handlers call.
 
@@ -378,15 +363,15 @@ Naming rule.
 When to add a new workspace crate.
 
 - Prefer adding modules inside an existing crate first.
-- Add a new `crates/<name>/` only when the responsibility is genuinely cross-cutting (used by host and client, or host and a separate binary) or when isolating compile time / dependencies for a specific binary or FFI surface.
+- Add a new crate under its owning product only when the responsibility is genuinely cross-cutting (used by host and client, or host and a separate binary) or when isolating compile time / dependencies for a specific binary or FFI surface.
 - New crates should be named after the responsibility they own, not the consumer (e.g., `skippy-model-resolver` not `mesh-llm-model-helpers`).
 
 Current structure notes.
 
 - Request-affinity code belongs with networking/routing behavior (`network/affinity.rs`), not `system/`.
 - Plugin MCP support belongs inside `mesh-llm-host-runtime/src/plugin/`, not as a separate root module.
-- Model command handlers belong in `mesh-llm-commands/` (or `crates/mesh-llm/src/commands/` for dispatch wiring); host-runtime `models/` should stay domain-focused.
-- The shipped binary crate (`crates/mesh-llm/`) carries CLI dispatch wiring only; do not move domain logic into it.
+- Model command handlers belong in `mesh-llm-commands/` (or `mesh/crates/mesh-llm/src/commands/` for dispatch wiring); host-runtime `models/` should stay domain-focused.
+- The shipped binary crate (`mesh/crates/mesh-llm/`) carries CLI dispatch wiring only; do not move domain logic into it.
 
 ## Code Quality Rules for New Code
 
@@ -405,9 +390,9 @@ Current structure notes.
 
 ## Key Source Files
 
-Host runtime (main monolith — `crates/mesh-llm-host-runtime/src/`):
+Host runtime (main monolith — `mesh/crates/mesh-llm-host-runtime/src/`):
 
-- `lib.rs` — crate entry; exposes the runtime entrypoints (`run_runtime_initialized`, `initialize_host_runtime`) called from `crates/mesh-llm/src/lib.rs`.
+- `lib.rs` — crate entry; exposes the runtime entrypoints (`run_runtime_initialized`, `initialize_host_runtime`) called from `mesh/crates/mesh-llm/src/lib.rs`.
 - `runtime/mod.rs` — top-level startup flows, runtime orchestration, command dispatch.
 - `runtime/instance.rs` — per-instance runtime directory management: `InstanceRuntime`, pidfiles, flock liveness, scoped orphan reaping, local instance scanning.
 - `runtime/local.rs` — local model startup loop.
@@ -435,7 +420,7 @@ Host runtime (main monolith — `crates/mesh-llm-host-runtime/src/`):
 - `plugins/blobstore/mod.rs` — request-scoped media object storage for multimodal.
 - `plugin/` — plugin host, runtime, transport, config, MCP bridge (external plugins install via `mesh-llm plugins install`).
 
-Shipped binary and CLI (`crates/mesh-llm/src/`, `crates/mesh-llm-cli/src/`, `crates/mesh-llm-commands/src/`):
+Shipped binary and CLI (`mesh/crates/mesh-llm/src/`, `mesh/crates/mesh-llm-cli/src/`, `mesh/crates/mesh-llm-commands/src/`):
 
 - `mesh-llm/src/main.rs` — builds the Tokio runtime (custom stack size via `MESH_TOKIO_STACK_SIZE`) and calls `mesh_llm::run_main()`.
 - `mesh-llm/src/lib.rs` — `run_main`: CLI parse, one-shot command dispatch, runtime handoff; plus a transitional `pub use mesh_llm_host_runtime::*;` re-export.
@@ -443,7 +428,7 @@ Shipped binary and CLI (`crates/mesh-llm/src/`, `crates/mesh-llm-cli/src/`, `cra
 - `mesh-llm-cli/src/parser.rs` — Clap surface, serve/client arg normalization, advanced help.
 - `mesh-llm-commands/src/` — user-facing handlers (auth, gpus, update, skills, agent launchers, plugin, benchmark).
 
-Embedded staged runtime (`crates/skippy-*`):
+Embedded staged runtime (`skippy/crates/skippy-*`):
 
 - `skippy-ffi/src/lib.rs` — Rust ABI mirror of the patched llama.cpp staged runtime; `ABI_VERSION_*` constants must stay in sync with `skippy/common.h` in the patch queue.
 - `skippy-runtime/src/package.rs` — layer-package materialization, identity-bound cache.
@@ -452,7 +437,7 @@ Embedded staged runtime (`crates/skippy-*`):
 - `skippy-serving/src/runtime_state.rs` — KV-slot, lane, session state machine.
 - `skippy-serving/src/binary_transport.rs`, `binary_transport/` — binary transport to embedded server.
 
-OpenAI-compatible HTTP frontend (`crates/skippy-openai-frontend/src/`):
+OpenAI-compatible HTTP frontend (`skippy/crates/skippy-openai-frontend/src/`):
 
 - `router.rs`, `chat.rs`, `completions.rs`, `responses.rs`, `models.rs`, `sse.rs`, `backend.rs` — OpenAI surface.
 
@@ -477,7 +462,7 @@ When iterating on the plugin protocol, always consider protocol compatibility.
 
 ## Skippy ABI Compatibility
 
-The patched llama.cpp staged runtime has its own ABI version, tracked in `skippy/common.h` (inside the patch queue) and mirrored by `SKIPPY_ABI_VERSION_*` constants in `crates/skippy-ffi/src/lib.rs`.
+The patched llama.cpp staged runtime has its own ABI version, tracked in `skippy/common.h` (inside the patch queue) and mirrored by `SKIPPY_ABI_VERSION_*` constants in `skippy/crates/skippy-ffi/src/lib.rs`.
 
 - When changing the staged-runtime ABI in the patch queue, bump `SKIPPY_ABI_VERSION_PATCH` (or MINOR/MAJOR) in `skippy/common.h` AND keep the Rust constants in `skippy-ffi/src/lib.rs` in sync in the same change.
 - `skippy-runtime` consumes the ABI version for package loading and feature probing; an out-of-sync mirror will silently advertise the wrong version.
@@ -485,13 +470,13 @@ The patched llama.cpp staged runtime has its own ABI version, tracked in `skippy
 
 ## UI Notes
 
-For changes in `crates/mesh-llm-ui/`, use components and compose interfaces consistently with shadcn/ui patterns. Prefer extending existing primitives in `src/components/ui/` over ad-hoc markup.
+For changes in `mesh/crates/mesh-llm-ui/`, use components and compose interfaces consistently with shadcn/ui patterns. Prefer extending existing primitives in `src/components/ui/` over ad-hoc markup.
 
 ### Terminal dashboard integrity
 
 The dashboard renders to the **controlling terminal** (`/dev/tty`, `CONOUT$`),
 never to fd 1 or fd 2, and while it owns the screen those two descriptors are
-redirected into it (`crates/mesh-llm-tui/src/output/console_capture.rs`). Stray
+redirected into it (`mesh/crates/mesh-llm-tui/src/output/console_capture.rs`). Stray
 `println!`/`eprintln!`, inherited child stderr, and native llama.cpp output
 therefore arrive as dashboard events instead of painting over the frame.
 
@@ -516,7 +501,7 @@ so an unlisted target's `warn!` is dropped before the writer sees it.
 
 ## Testing
 
-Read `docs/design/TESTING.md` before running tests. It has all test scenarios, remote deploy instructions, and cleanup commands.
+Read `mesh/docs/design/TESTING.md` before running tests. It has all test scenarios, remote deploy instructions, and cleanup commands.
 
 Testing matters more than usual in this project because:
 
@@ -785,5 +770,5 @@ Test machine IPs, SSH details, and passwords are in `~/Documents/private-note.tx
 
 - **No `api_key_token` feature** — explicitly rejected, removed in v0.26.0.
 - **No credentials in tracked files** — IPs, passwords, SSH commands belong in `~/Documents/private-note.txt` only.
-- **No domain logic in `crates/mesh-llm/src/`** — that crate is CLI dispatch wiring over `mesh-llm-cli` / `mesh-llm-commands` / `mesh-llm-host-runtime`; put new domain code in the host-runtime crate (or a more specific peer crate).
+- **No domain logic in `mesh/crates/mesh-llm/src/`** — that crate is CLI dispatch wiring over `mesh-llm-cli` / `mesh-llm-commands` / `mesh-llm-host-runtime`; put new domain code in the host-runtime crate (or a more specific peer crate).
 - **No external `llama-server` / `rpc-server` runtime lane** — the embedded staged runtime via patched llama.cpp is the only supported path.

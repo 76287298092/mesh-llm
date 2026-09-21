@@ -9,8 +9,8 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[2]
-VERIFIER = ROOT / "scripts" / "verify-workload-oracle-evidence.py"
-WRITER = ROOT / "scripts" / "write-workload-oracle-evidence.py"
+VERIFIER = ROOT / "skippy" / "scripts" / "verify-workload-oracle-evidence.py"
+WRITER = ROOT / "skippy" / "scripts" / "write-workload-oracle-evidence.py"
 
 
 def sha256(path: Path) -> str:

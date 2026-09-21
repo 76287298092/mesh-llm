@@ -8,7 +8,7 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[2]
-BUILD_SCRIPT = ROOT / "crates/skippy-ffi/build.rs"
+BUILD_SCRIPT = ROOT / "skippy/crates/skippy-ffi/build.rs"
 CORE_ARCHIVES = (
     "src/libllama.a",
     "common/libllama-common.a",
@@ -77,7 +77,7 @@ class SkippyStaticLinkTests(unittest.TestCase):
             if not key.startswith(("LLAMA_STAGE_", "SKIPPY_LLAMA_", "CARGO_FEATURE_"))
         }
         env.update({
-            "CARGO_MANIFEST_DIR": str(ROOT / "crates/skippy-ffi"),
+            "CARGO_MANIFEST_DIR": str(ROOT / "skippy/crates/skippy-ffi"),
             "TARGET": "aarch64-apple-darwin",
             "LLAMA_STAGE_BACKEND": backend,
             "LLAMA_STAGE_BUILD_DIR": str(build_dir),

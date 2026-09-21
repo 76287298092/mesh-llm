@@ -1,6 +1,6 @@
 """Contract for the native runtime-event gate and its CI lane.
 
-`crates/skippy-runtime/tests/runtime_events_native.rs` is the only test that
+`skippy/crates/skippy-runtime/tests/runtime_events_native.rs` is the only test that
 exercises the reporter against actual native code. It is env-gated so an
 ordinary `cargo test` never touches a native symbol -- which also meant
 nothing in CI ever ran it, and the whole native reporter path was covered

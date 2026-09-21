@@ -13,7 +13,7 @@ from unittest import mock
 
 
 REPO = Path(__file__).resolve().parents[2]
-SCRIPT = REPO / "evals/agentic-replay.py"
+SCRIPT = REPO / "mesh/evals/agentic-replay.py"
 
 
 def load_module():
