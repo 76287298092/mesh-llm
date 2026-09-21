@@ -17,6 +17,7 @@ dynamic-native-runtime = ["skippy-api/dynamic-native-runtime", "skippy-runtime/d
 workspace = true
 
 [dependencies]
+hf_hub = { package = "skippy-hf-hub", path = "../skippy-hf-hub", version = "0.76.1", default-features = false, features = ["blocking"] }
 mesh-llm-config = { path = "../mesh-llm-config", version = "0.76.1" }
 mesh-llm-events = { path = "../mesh-llm-events", version = "0.76.1" }
 skippy-config = { path = "../skippy-config", version = "0.76.1" }

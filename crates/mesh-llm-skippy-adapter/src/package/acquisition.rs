@@ -63,3 +63,18 @@ pub mod cache_resolution {
         )
     }
 }
+
+pub mod progress;
+
+/// Preserve Mesh's cache policy and presentation while Skippy owns acquisition.
+pub fn with_client(
+    build_client: impl Fn() -> anyhow::Result<hf_hub::HFClientSync> + Send + Sync + 'static,
+) -> skippy_api::package::acquisition::remote::PackageAcquisition {
+    let mut acquisition = skippy_api::package::acquisition::remote::PackageAcquisition::new(
+        skippy_model_hf::huggingface_hub_cache_dir(),
+        build_client,
+    );
+    acquisition.integrity_cache = Some(integrity_cache_dir());
+    acquisition.progress = std::sync::Arc::new(progress::MeshPackageProgress::default());
+    acquisition
+}

@@ -75,25 +75,7 @@ pub(crate) fn build_hf_api(_progress: bool) -> Result<HFClientSync> {
         .context("Build Hugging Face sync API client")
 }
 
-pub(crate) fn run_hf_sync<T, F>(operation: F) -> Result<T>
-where
-    T: Send + 'static,
-    F: FnOnce() -> Result<T> + Send + 'static,
-{
-    if tokio::runtime::Handle::try_current().is_ok() {
-        std::thread::spawn(operation).join().map_err(|panic| {
-            if let Some(message) = panic.downcast_ref::<&str>() {
-                anyhow::anyhow!("Hugging Face sync task panicked: {message}")
-            } else if let Some(message) = panic.downcast_ref::<String>() {
-                anyhow::anyhow!("Hugging Face sync task panicked: {message}")
-            } else {
-                anyhow::anyhow!("Hugging Face sync task panicked")
-            }
-        })?
-    } else {
-        operation()
-    }
-}
+pub(crate) use skippy_model_hf::blocking::run_hf_sync;
 
 pub(crate) fn build_hf_tokio_api(_progress: bool) -> Result<HFClient> {
     let _ = skippy_model_hf::configure_hf_tls_provider();

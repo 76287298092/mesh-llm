@@ -1,5 +1,5 @@
-//! Local package selection, artifact integrity and cached snapshot resolution.
-//! Cache locations are supplied by the caller; this module does not acquire files.
+//! Package selection, acquisition, artifact integrity and cached snapshot resolution.
+//! Cache locations and acquisition policies are supplied by the caller.
 use crate::materialization::{safe_manifest_file_path, verify_package_v2_artifact};
 use anyhow::{Context, Result, bail};
 use skippy_package_format::PackageManifest as PackageManifestV2;
@@ -10,6 +10,8 @@ use std::{
 };
 
 pub mod cache_resolution;
+pub mod progress;
+pub mod remote;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum StagePackageRef {
