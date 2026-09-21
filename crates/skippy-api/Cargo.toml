@@ -12,6 +12,8 @@ default = []
 dynamic-native-runtime = ["skippy-runtime/dynamic-native-runtime", "skippy-serving/dynamic-native-runtime"]
 
 [dependencies]
+reqwest = { version = "0.13", features = ["json"] }
+tokio = { version = "1", features = ["rt"] }
 skippy-config = { path = "../skippy-config", version = "0.76.1" }
 skippy-serving = { path = "../skippy-serving", version = "0.76.1" }
 skippy-native-runtime = { path = "../skippy-native-runtime", version = "0.76.1" }
@@ -36,6 +38,7 @@ hf_hub = { package = "skippy-hf-hub", path = "../skippy-hf-hub", version = "0.76
 same-file = "1.0.6"
 
 [dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt", "net", "io-util"] }
 tempfile = "3"
 
 [build-dependencies]
