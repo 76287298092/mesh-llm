@@ -10,6 +10,7 @@ pub mod frontend;
 pub mod http;
 pub mod kv_integration;
 pub mod kv_proto;
+pub mod readiness;
 pub mod runtime_state;
 
 #[cfg(test)]

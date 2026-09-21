@@ -36,3 +36,5 @@ The serving library selects local execution for a stage-zero configuration with
 no downstream peer; split configurations retain embedded stage-zero execution.
 
 `package::inspection` owns local package inspection results and per-layer tensor/artifact accounting, including metadata-only v2 inspection and legacy offline inspection. The caller supplies a resolved directory, original reference and optional digest cache.
+
+`serving::readiness` exposes Skippy binary-stage bind-address selection, wire readiness probes and size-scaled load deadlines. Probe cancellation joins its worker; Mesh retains coordinator claims, stage registration and shutdown orchestration.

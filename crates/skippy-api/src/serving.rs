@@ -227,3 +227,6 @@ impl ServingTelemetryOptions {
 
 mod local;
 pub use local::{LocalOpenAiOptions, serve_local_openai_with_shutdown};
+
+/// Startup handshakes and cancellation shared by embedded stage hosts.
+pub use skippy_serving::readiness;

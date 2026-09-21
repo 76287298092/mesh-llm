@@ -1,15 +1,15 @@
 use std::{
     collections::HashMap,
-    net::SocketAddr,
     path::Path,
-    sync::{
-        Arc,
-        atomic::{AtomicBool, Ordering},
-    },
+    sync::Arc,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 use anyhow::{Context, Result, anyhow};
+use mesh_llm_skippy_adapter::readiness::{
+    StageReadinessProbe, materialize_stage_bind_addr, parse_bind_addr,
+    start_binary_stage_ready_probe,
+};
 use skippy_coordinator::{ClaimDecision, ClaimFence, LoadClaimRef};
 use skippy_protocol::{FlashAttentionType, PeerConfig, StageConfig};
 use skippy_serving::{EmbeddedServerHandle, binary_transport::BinaryStageOptions};
@@ -40,11 +40,6 @@ struct StageControlState {
     coordinator_claims: ClaimFence,
     readiness_probe: Option<StageReadinessProbe>,
     telemetry: super::SkippyTelemetryOptions,
-}
-
-struct StageReadinessProbe {
-    cancelled: Arc<AtomicBool>,
-    handle: JoinHandle<Result<()>>,
 }
 
 pub(crate) struct StageControlHandle {
@@ -113,9 +108,8 @@ fn spawn_stage_control_loop_with_state(mut state: StageControlState) -> StageCon
 
 impl StageControlState {
     async fn shutdown(&mut self) -> Result<()> {
-        if let Some(mut probe) = self.readiness_probe.take() {
-            probe.cancelled.store(true, Ordering::Release);
-            let _ = (&mut probe.handle).await;
+        if let Some(probe) = self.readiness_probe.take() {
+            probe.cancel_and_join().await;
         }
         let mut first_error = None;
         for (_, stage) in self.stages.drain() {
@@ -352,12 +346,10 @@ impl StageControlState {
                 .readiness_probe
                 .as_mut()
                 .expect("binary stage readiness probe must remain registered while pending");
-            (&mut probe.handle)
-                .await
-                .context("join binary stage readiness probe")
+            probe.wait().await
         };
         self.readiness_probe.take();
-        if let Err(error) = readiness_result.and_then(|result| result) {
+        if let Err(error) = readiness_result {
             let stage = self
                 .stages
                 .remove(&key)
@@ -517,49 +509,8 @@ fn load_claim_ref(load: &StageLoadRequest) -> LoadClaimRef {
     }
 }
 
-fn parse_bind_addr(bind_addr: &str) -> Result<SocketAddr> {
-    bind_addr
-        .parse()
-        .with_context(|| format!("parse stage bind_addr {bind_addr:?}"))
-}
-
-fn materialize_stage_bind_addr(bind_addr: SocketAddr) -> Result<SocketAddr> {
-    if bind_addr.port() != 0 {
-        return Ok(bind_addr);
-    }
-    let listener = std::net::TcpListener::bind(bind_addr)
-        .with_context(|| format!("reserve ephemeral stage bind address for {bind_addr}"))?;
-    listener
-        .local_addr()
-        .context("read reserved ephemeral stage bind address")
-}
-
-fn start_binary_stage_ready_probe(bind_addr: SocketAddr, timeout: Duration) -> StageReadinessProbe {
-    let cancelled = Arc::new(AtomicBool::new(false));
-    let probe_cancelled = Arc::clone(&cancelled);
-    let handle = tokio::task::spawn_blocking(move || {
-        probe_binary_stage_ready(bind_addr, timeout, &probe_cancelled)
-    });
-    StageReadinessProbe { cancelled, handle }
-}
-
 pub(crate) fn stage_load_timeout(load: &StageLoadRequest) -> Duration {
-    const MIN_STAGE_LOAD_TIMEOUT_SECS: u64 = 900;
-    const MAX_STAGE_LOAD_TIMEOUT_SECS: u64 = 4 * 60 * 60;
-    const STAGE_LOAD_BYTES_PER_SEC: u64 = 128 * 1024 * 1024;
-
-    let scaled_secs = load
-        .source_model_bytes
-        .map(|bytes| {
-            bytes.saturating_add(STAGE_LOAD_BYTES_PER_SEC.saturating_sub(1))
-                / STAGE_LOAD_BYTES_PER_SEC
-        })
-        .unwrap_or(MIN_STAGE_LOAD_TIMEOUT_SECS);
-    Duration::from_secs(
-        MIN_STAGE_LOAD_TIMEOUT_SECS
-            .max(scaled_secs)
-            .min(MAX_STAGE_LOAD_TIMEOUT_SECS),
-    )
+    mesh_llm_skippy_adapter::readiness::stage_load_timeout(load.source_model_bytes)
 }
 
 fn stage_load_failure_context(
@@ -594,49 +545,6 @@ fn stage_load_failure_context(
         error,
         last_error.unwrap_or("none"),
     )
-}
-
-fn probe_binary_stage_ready(
-    bind_addr: SocketAddr,
-    timeout: Duration,
-    cancelled: &AtomicBool,
-) -> Result<()> {
-    const PROBE_IO_TIMEOUT: Duration = Duration::from_secs(2);
-    let deadline = std::time::Instant::now() + timeout;
-    let mut last_error = None;
-    while std::time::Instant::now() < deadline {
-        if cancelled.load(Ordering::Acquire) {
-            return Err(anyhow!("binary stage readiness probe cancelled"));
-        }
-        match std::net::TcpStream::connect_timeout(&bind_addr, PROBE_IO_TIMEOUT) {
-            Ok(mut stream) => {
-                stream.set_nodelay(true).ok();
-                stream.set_read_timeout(Some(PROBE_IO_TIMEOUT)).ok();
-                stream.set_write_timeout(Some(PROBE_IO_TIMEOUT)).ok();
-                match skippy_protocol::binary::recv_ready(&mut stream) {
-                    Ok(()) => return Ok(()),
-                    Err(error) => {
-                        last_error =
-                            Some(anyhow!(error).context("binary stage ready handshake failed"));
-                    }
-                }
-            }
-            Err(error) => {
-                last_error = Some(anyhow!(error).context("connect binary stage listener"));
-            }
-        }
-        for _ in 0..25 {
-            if cancelled.load(Ordering::Acquire) {
-                return Err(anyhow!("binary stage readiness probe cancelled"));
-            }
-            std::thread::sleep(Duration::from_millis(10));
-        }
-    }
-    Err(last_error
-        .unwrap_or_else(|| anyhow!("timed out waiting for binary stage ready at {bind_addr}"))
-        .context(format!(
-            "binary stage did not become ready at {bind_addr} before timeout"
-        )))
 }
 
 fn stage_config(

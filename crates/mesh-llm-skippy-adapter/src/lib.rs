@@ -24,3 +24,5 @@ pub fn synthetic_direct_gguf_package(
         hash_cache::open_default().as_ref(),
     )
 }
+
+pub use skippy_api::serving::readiness;

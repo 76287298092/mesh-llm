@@ -9,3 +9,5 @@ Resolver tests live beside the implementation. Host hook/receipt integration sta
 `package` applies Mesh digest-cache policy to Skippy full-package and metadata-only identity verification. Schema probing and verification remain in Skippy; the host resolves remote package references before calling the adapter.
 
 `package::inspect_local_stage_package` applies the same Mesh cache policy to Skippy inspection; the host resolves remote references once before invoking it.
+
+`readiness` exposes the Skippy startup contract to Mesh stage orchestration; no Mesh load-request or coordinator identity enters the serving probe.

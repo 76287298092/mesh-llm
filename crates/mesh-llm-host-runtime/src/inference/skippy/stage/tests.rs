@@ -1,8 +1,5 @@
 use super::*;
-use std::{
-    fs,
-    time::{Duration, Instant},
-};
+use std::{fs, time::Duration};
 
 use super::inventory::{inventory_source_candidates, resolve_inventory_source};
 use skippy_protocol::{FlashAttentionType, LoadMode, StageDevice};
@@ -369,13 +366,6 @@ fn stage_status_filter_matches_optional_identity_fields() {
 }
 
 #[test]
-fn materialize_stage_bind_addr_replaces_ephemeral_port() {
-    let bind_addr = materialize_stage_bind_addr("127.0.0.1:0".parse().unwrap()).unwrap();
-    assert_eq!(bind_addr.ip().to_string(), "127.0.0.1");
-    assert_ne!(bind_addr.port(), 0);
-}
-
-#[test]
 fn stage_load_failure_context_identifies_split_stage_shape() {
     let mut request = load_request();
     request.stage_id = "stage-1".to_string();
@@ -404,26 +394,6 @@ fn stage_load_failure_context_identifies_split_stage_shape() {
     assert!(context.contains("device=CUDA0"));
     assert!(context.contains("error=binary stage ready handshake failed"));
     assert!(context.contains("last_error=native loader exited while mapping tensors"));
-}
-
-#[tokio::test]
-async fn binary_stage_ready_probe_waits_for_wire_handshake() {
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let bind_addr = listener.local_addr().unwrap();
-    let server = std::thread::spawn(move || {
-        std::thread::sleep(Duration::from_millis(75));
-        let (mut stream, _) = listener.accept().unwrap();
-        skippy_protocol::binary::send_ready(&mut stream).unwrap();
-    });
-
-    let started = Instant::now();
-    let mut probe = start_binary_stage_ready_probe(bind_addr, Duration::from_secs(2));
-    (&mut probe.handle)
-        .await
-        .expect("join readiness probe")
-        .unwrap();
-    assert!(started.elapsed() >= Duration::from_millis(50));
-    server.join().unwrap();
 }
 
 #[tokio::test]
