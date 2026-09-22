@@ -1,6 +1,8 @@
 //! QUIC tunnel management for delivering remote OpenAI HTTP traffic and
 //! forwarding stage transport streams.
 
+pub(crate) use mesh_llm_transport::stage_link_delay;
+
 use crate::mesh::Node;
 use crate::protocol::read_len_prefixed;
 use anyhow::{Context, Result};
@@ -144,7 +146,7 @@ async fn handle_inbound_stage_transport(
         bind_addr
     );
     let (tcp_read, tcp_write) = tokio::io::split(tcp_stream);
-    relay_bidirectional(tcp_read, tcp_write, quic_send, quic_recv).await
+    relay_bidirectional(tcp_read, tcp_write, quic_send, quic_recv, None).await
 }
 
 async fn resolve_stage_transport_bind_addr(
@@ -212,6 +214,7 @@ pub async fn relay_bidirectional(
     tcp_write: tokio::io::WriteHalf<TcpStream>,
     quic_send: iroh::endpoint::SendStream,
     quic_recv: iroh::endpoint::RecvStream,
+    link_delay: Option<Duration>,
 ) -> Result<()> {
     mesh_llm_transport::relay_bidirectional(
         tcp_read,
@@ -219,6 +222,7 @@ pub async fn relay_bidirectional(
         quic_send,
         quic_recv,
         quic_response_first_byte_timeout(),
+        link_delay,
     )
     .await
 }

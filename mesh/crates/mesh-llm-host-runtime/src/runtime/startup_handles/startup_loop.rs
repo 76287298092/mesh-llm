@@ -303,6 +303,9 @@ pub(in crate::runtime) async fn startup_handle_local_fallback_event(
 
     state.capacity_reservation = Some(reservation);
     state.loaded_name = next_loaded_name;
+    // The split generation was already serving. Register the replacement local
+    // generation from Warming, just as for a split-to-split cutover.
+    rearm_lifecycle_for_cutover(ctx.lifecycle).await;
     let payload = startup_register_loaded_runtime(ctx, &state.loaded_name, &next_handle).await;
     if let Some(cs) = ctx.console_state {
         cs.upsert_local_process(payload).await;

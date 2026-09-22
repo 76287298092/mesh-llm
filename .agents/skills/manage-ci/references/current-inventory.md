@@ -78,6 +78,30 @@ scheduled/forced runs build once and certify the complete roster. Changed pins
 use up to three repair attempts, each followed (only when all families pass) by
 an independent build and complete verification pass on the exact same commit.
 
+
+Manual `mesh_ref` dispatches accept an explicitly trusted same-repository branch
+or full commit SHA. Resolution freezes the SHA once, requires it to be reachable
+from a repository branch, and reads its existing llama.cpp pin. `upstream_sha`
+cannot be combined with this input. Keep the Actions workflow ref on `main`;
+selecting `mesh_ref` always runs a complete certify-only pass, without Goose,
+source repair, an independent upgrade-verification pass, or PR publication.
+The main controller, planner, handoff validation, and aggregation remain at the
+workflow revision; source build scripts and the battery run from a separate
+checkout of the selected SHA. The package binds both revisions, and workers
+reject any changed source identity. This is an operator-authorized trusted-code
+path on persistent lab machines, not isolation for untrusted PRs or fork code.
+Leaving `mesh_ref` empty preserves scheduled and upstream-upgrade behavior.
+
+To certify a recovered branch after this workflow is on main:
+
+```sh
+gh workflow run llama-upstream-canary.yml --ref main \
+  -f mesh_ref=scammed/recover-llama-pin-35582541955
+```
+
+The run summary records the resolved MeshLLM SHA and existing llama.cpp pin;
+a branch moving later cannot change the selected source for that run.
+
 `llama-canary-family-pass.yml` owns the reusable build → family matrix → hosted
 aggregate. The producer performs prepare, manifest-policy, full native and Rust
 builds, generated-family validation, smoke, and split-roster checks. It validates
@@ -1010,6 +1034,7 @@ The adapter/control-API extraction also adds both packages to the affected-crate
 
 Membership extraction adds `mesh-llm-membership` to the affected-crate fallback and publish chain after its identity/protocol/routing/type dependencies. The Linux test Docker source list includes membership, control API and the Skippy adapter. Canary and workload executable handoffs name `skippy` and `skippy-package-builder`, with prebuilt library tests from `skippy-serving`; artifact verification and protected ownership catalogs remain unchanged.
 
+
 ### Protected executor compatibility for the product extraction
 
 The protected executor workflows pin both resolver actions to commit
@@ -1053,3 +1078,15 @@ The local `just test-all` native test group follows the renamed
 features disabled so the shipped Mesh binary cannot unify dynamic-runtime
 linkage into native package tests. The current model-acquisition
 `skippy-model-package` stays in the ordinary workspace group.
+
+Node addon release producers also resolve `sdk` or `mesh/sdk` before version
+checks, native builds, npm pack and immutable artifact staging on Linux, macOS
+and Windows. Executable fixtures cover all three producers in both layouts.
+
+Legacy change-detection entrypoints and Windows cache triggers recognize both
+product layouts. Nightly and explicit-revision canary pin readers accept exactly
+one legacy or relocated pin, rejecting missing and ambiguous source trees.
+
+Release version propagation discovers both relocated crate trees, including
+versioned local dependencies. The compiler seed warmer uses the resolved UI
+placeholder directory. Neither change expands runner or cache authority.

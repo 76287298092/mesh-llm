@@ -4,4 +4,4 @@ pub mod transport;
 pub mod transport_iroh;
 pub mod tunnel;
 
-pub use relay::relay_bidirectional;
+pub use relay::{relay_bidirectional, stage_link_delay};
