@@ -64,53 +64,12 @@ jobs:
           fi
           grep -qE '^\s*COPY\s+Cargo\.toml\s+Cargo\.lock\s+\./?$' "$file"
           for path in \
-            crates/mesh-llm/ \
-            crates/mesh-llm-cli/ \
-            crates/mesh-llm-commands/ \
-            crates/mesh-llm-events/ \
-            crates/skippy-hardware-profile/ \
-            crates/mesh-llm-identity/ \
-            crates/skippy-native-runtime/ \
-            crates/mesh-llm-release-footer/ \
-            crates/mesh-llm-protocol/ \
-            crates/mesh-llm-routing/ \
-            crates/skippy-runtime-install/ \
-            crates/mesh-llm-system/ \
-            crates/skippy-guardrails/ \
-            crates/mesh-llm-types/ \
-            crates/mesh-llm-config/ \
-            crates/mesh-llm-console-server/ \
-            crates/mesh-llm-embedded-runtime/ \
-            crates/mesh-llm-tui/ \
-            crates/mesh-llm-plugin/ \
-            crates/mesh-llm-skills/ \
-            crates/mesh-llm-plugin-manager/ \
-            crates/mesh-client/ \
-            crates/mesh-llm-transport/ \
-            crates/mesh-llm-api-client/ \
-            crates/mesh-llm-api-server/ \
-            crates/mesh-llm-console-server/ \
-            crates/mesh-llm-node/ \
-            crates/mesh-llm-ffi/ \
-            crates/mesh-llm-test-harness/ \
-            crates/skippy-model-ref/ \
-            crates/skippy-model-artifact/ \
-            crates/skippy-model-hf/ \
-            crates/skippy-hf-hub/ \
-            crates/skippy-protocol/ \
-            crates/skippy-tokenizer/ \
-            crates/skippy-topology/ \
-            crates/skippy-ffi/ \
-            crates/skippy-runtime/ \
-            crates/skippy-serving/ \
-            crates/skippy-cli/ \
-            crates/skippy-commands/ \
-            crates/skippy-config/ \
-            crates/skippy-api/ \
-            crates/skippy-package-builder/ \
-            crates/skippy-correctness/ \
-            crates/skippy-bench/ \
-            tools/xtask/
+            mesh/crates/ \
+            skippy/crates/ \
+            tools/xtask/ \
+            scripts/ \
+            mesh/scripts/ \
+            skippy/scripts/
           do
             grep -q "COPY ${path} ${path}" "$file"
           done
@@ -148,7 +107,7 @@ jobs:
           grep -qE '^[[:space:]]*console([|)])' mesh/deploy/docker/entrypoint.sh
           grep -qE '^[[:space:]]*worker\)' mesh/deploy/docker/entrypoint.sh
           grep -qE '^[[:space:]]*\*\)' mesh/deploy/docker/entrypoint.sh
-          if grep -qE '^[[:space:]]*api\)' docker/entrypoint.sh; then
+          if grep -qE '^[[:space:]]*api\)' mesh/deploy/docker/entrypoint.sh; then
             echo "api mode should not be a separate entrypoint mode" >&2
             exit 1
           fi

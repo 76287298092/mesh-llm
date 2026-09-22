@@ -10,7 +10,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$repoRoot = [System.IO.Path]::GetFullPath((Join-Path $scriptDir "..\.."))
+$repoRoot = [System.IO.Path]::GetFullPath((Join-Path $scriptDir "..\..\.."))
 
 if (-not $MeshLlm) {
     $candidate = Join-Path $repoRoot "target\release\mesh-llm.exe"

@@ -90,6 +90,14 @@ if [[ -z "$LLVM_PREFIX" || ! -x "$LLVM_PREFIX/bin/clang" ]]; then
 fi
 
 mkdir -p "$ARTIFACT_ROOT"
+tool_source="$ROOT/skippy/scripts/tools/skippy-stage-rewriter"
+cached_tool_source="$(sed -n 's/^CMAKE_HOME_DIRECTORY:INTERNAL=\(.*\)$/\1/p' \
+  "$TOOL_BUILD/CMakeCache.txt" 2>/dev/null || true)"
+if [[ -n "$cached_tool_source" && "$cached_tool_source" != "$tool_source" ]]; then
+  echo "refreshing rewriter CMake configuration after source relocation" >&2
+  rm -f "$TOOL_BUILD/CMakeCache.txt"
+  rm -rf "$TOOL_BUILD/CMakeFiles"
+fi
 cmake_arch_args=()
 if [[ "$(uname -s)" == "Darwin" ]]; then
   cached_tool_arch="$(sed -n 's/^CMAKE_OSX_ARCHITECTURES:STRING=\(.*\)$/\1/p' \
@@ -100,7 +108,7 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
   fi
   cmake_arch_args=(-DCMAKE_OSX_ARCHITECTURES="$NATIVE_ARCH")
 fi
-cmake -S "$ROOT/tools/skippy-stage-rewriter" -B "$TOOL_BUILD" -G Ninja \
+cmake -S "$tool_source" -B "$TOOL_BUILD" -G Ninja \
   "${cmake_arch_args[@]}" \
   -DLLVM_DIR="$LLVM_PREFIX/lib/cmake/llvm" \
   -DClang_DIR="$LLVM_PREFIX/lib/cmake/clang"

@@ -1284,3 +1284,15 @@ one legacy or relocated pin, rejecting missing and ambiguous source trees.
 Release version propagation discovers both relocated crate trees, including
 versioned local dependencies. The compiler seed warmer uses the resolved UI
 placeholder directory. Neither change expands runner or cache authority.
+
+Product script test implementations now live in `mesh/scripts/tests/` and
+`skippy/scripts/tests/`. Existing `scripts/tests/test_*.py` entrypoints delegate
+through `product_test_loader.py`, preserving the same unittest discovery and
+CI gates. Cross-workspace planner and contract tests stay at root. The Skippy
+rewriter and recipe fixtures live under its existing `scripts/` ownership
+pattern; deployment assets live under `mesh/deploy/`. Protected catalogs and
+required checks are unchanged.
+
+The dormant `docker-precheck.yml` reusable validates the relocated product
+crate/script COPY roots and Mesh entrypoint path. It remains unreferenced;
+this repair does not add a workflow caller or change required checks.

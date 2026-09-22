@@ -24,7 +24,7 @@ The shaping is Linux-level traffic control, not Skippy's artificial
 Create the local env file if you want to override defaults:
 
 ```bash
-cp skippy/evals/wan-lab/.env.example docker/skippy-wan-lab/.env
+cp skippy/evals/wan-lab/.env.example skippy/evals/wan-lab/.env
 ```
 
 The default package is:
@@ -44,7 +44,7 @@ hf auth login
 To calibrate WAN latency from a target such as `100.90.121.70`:
 
 ```bash
-scripts/skippy-wan-calibrate.sh 100.90.121.70 docker/skippy-wan-lab/.env.link
+scripts/skippy-wan-calibrate.sh 100.90.121.70 skippy/evals/wan-lab/.env.link
 ```
 
 The script writes `WAN_RTT_MS` and `WAN_DELAY_MS`. If the target has an `iperf3`
@@ -126,8 +126,8 @@ The DuckDB file is stored in the `metrics_data` Docker volume.
 
 ```bash
 docker compose \
-  --env-file docker/skippy-wan-lab/.env \
-  --env-file docker/skippy-wan-lab/.env.link \
+  --env-file skippy/evals/wan-lab/.env \
+  --env-file skippy/evals/wan-lab/.env.link \
   -f skippy/evals/wan-lab/docker-compose.yml \
   exec stage0 tc -s qdisc
 ```

@@ -235,8 +235,8 @@ def main() -> int:
     parser.add_argument(
         "--output",
         type=Path,
-        default=repo_root / "mesh/website/src/docs/pages/skippy-api.md",
-        help="generated website Markdown path",
+        required=True,
+        help="destination Markdown path chosen by the documentation host",
     )
     parser.add_argument("--check", action="store_true", help="fail if the generated output differs")
     args = parser.parse_args()

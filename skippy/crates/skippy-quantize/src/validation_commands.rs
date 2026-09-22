@@ -144,7 +144,7 @@ mod tests {
     #[test]
     fn glm52_q2_routed_down_recipe_targets_decoder_down_only() {
         let recipe = include_str!(
-            "../../../../recipes/quantization/glm-5.2-q2-k-routed-down-mtp-q8.tensor-types.txt"
+            "../../../scripts/recipes/quantization/glm-5.2-q2-k-routed-down-mtp-q8.tensor-types.txt"
         );
         let routed_down = recipe
             .split_whitespace()
@@ -179,13 +179,13 @@ mod tests {
             (
                 "glm-5.2-q2-k-mtp-q8",
                 include_str!(
-                    "../../../../recipes/quantization/glm-5.2-q2-k-mtp-q8.tensor-types.txt"
+                    "../../../scripts/recipes/quantization/glm-5.2-q2-k-mtp-q8.tensor-types.txt"
                 ),
             ),
             (
                 "glm-5.2-q2-k-routed-down-mtp-q8",
                 include_str!(
-                    "../../../../recipes/quantization/glm-5.2-q2-k-routed-down-mtp-q8.tensor-types.txt"
+                    "../../../scripts/recipes/quantization/glm-5.2-q2-k-routed-down-mtp-q8.tensor-types.txt"
                 ),
             ),
         ] {

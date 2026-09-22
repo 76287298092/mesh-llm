@@ -37,6 +37,6 @@ without lowering the MTP block's sparse MLP down projection.
 Validate recipes before launching an expensive quantization job:
 
 ```bash
-skippy-quantize validate-tensor-types recipes/quantization/glm-5.2-q2-k-mtp-q8.tensor-types.txt
-skippy-quantize validate-tensor-types recipes/quantization/glm-5.2-q2-k-routed-down-mtp-q8.tensor-types.txt
+skippy-quantize validate-tensor-types skippy/scripts/recipes/quantization/glm-5.2-q2-k-mtp-q8.tensor-types.txt
+skippy-quantize validate-tensor-types skippy/scripts/recipes/quantization/glm-5.2-q2-k-routed-down-mtp-q8.tensor-types.txt
 ```

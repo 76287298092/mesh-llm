@@ -13,6 +13,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+# Keep the historical provenance header stable: relocation must not rewrite
+# the native patch queue. The tool now lives at skippy/scripts/tools/skippy-stage-rewriter.
 PATCH_HEADER = """From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Mesh-LLM CI <ci@mesh-llm.local>
 Date: Thu, 1 Jan 1970 00:00:00 +0000

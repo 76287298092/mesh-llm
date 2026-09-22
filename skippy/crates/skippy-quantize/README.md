@@ -426,7 +426,7 @@ Use raw GGML tensor types such as `Q2_K`, `Q3_K`, `Q4_K`, `Q8_0`, `F16`, and
 `BF16`, not artifact profile names such as `Q2_K-MTP-Q8`.
 
 Repository-maintained GLM-5.2 recipes live under
-`recipes/quantization/`. The baseline
+`skippy/scripts/recipes/quantization/`. The baseline
 `glm-5.2-q2-k-mtp-q8.tensor-types.txt` recreates the lab comfort-fit profile
 from base `--quant Q2_K`. The experimental
 `glm-5.2-q2-k-routed-down-mtp-q8.tensor-types.txt` lowers only decoder-layer

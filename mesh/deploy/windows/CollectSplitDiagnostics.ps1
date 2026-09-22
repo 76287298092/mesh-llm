@@ -17,7 +17,7 @@ function Show-Usage {
 CollectSplitDiagnostics.ps1 - capture split-readiness diagnostics for maintainers.
 
 Usage:
-  .\contrib\windows\CollectSplitDiagnostics.ps1 -Model meshllm/Qwen3-8B-Q4_K_M-layers
+  .\mesh\deploy\windows\CollectSplitDiagnostics.ps1 -Model meshllm/Qwen3-8B-Q4_K_M-layers
 
 Options:
   -ConsoleUrls  Management API URLs, default http://127.0.0.1:3131

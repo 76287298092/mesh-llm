@@ -17,7 +17,7 @@ remain the semantic gates for generated changes.
 Build with a pinned LLVM/Clang installation:
 
 ```sh
-cmake -S tools/skippy-stage-rewriter \
+cmake -S skippy/scripts/tools/skippy-stage-rewriter \
   -B .scratch/skippy-stage-rewriter-build \
   -G Ninja \
   -DLLVM_DIR=/path/to/llvm/lib/cmake/llvm \

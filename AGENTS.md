@@ -7,7 +7,7 @@ This repository contains two products in one Cargo workspace:
 - `skippy/` owns standalone model management, native runtimes, inference, split execution and OpenAI serving. Its CLI is `skippy` in `skippy/crates/skippy-cli/`.
 - `mesh/` owns discovery, Iroh transport, peer admission, routing, management APIs, plugins, console, SDKs and deployment. The `mesh-llm` binary composes Skippy through the Mesh adapter.
 
-Dependency direction is Mesh → Skippy. Skippy does not depend on Mesh crates or plugin hosts. Root `Cargo.toml`, `Cargo.lock`, `.cargo/`, `just/`, CI and cross-workspace tooling remain shared workspace infrastructure. There is no `shared/` product tree. Product script implementations live under `mesh/scripts/` or `skippy/scripts/`; root script forwarders preserve existing CI entrypoints. Build outputs and native working caches remain at root `target/` and `.deps/`.
+Dependency direction is Mesh → Skippy. Skippy does not depend on Mesh crates or plugin hosts. Root `Cargo.toml`, `Cargo.lock`, `.cargo/`, `just/`, CI and cross-workspace tooling remain shared workspace infrastructure. There is no `shared/` product tree. Product script implementations live under `mesh/scripts/` or `skippy/scripts/`; root script forwarders preserve existing CI entrypoints. Build outputs and native working caches remain at root `target/` and `.deps/`. Product-owned script tests live under each product’s `scripts/tests/`; root test files only forward discovery for existing CI commands. Skippy’s Clang rewriter and quantization recipes live under `skippy/scripts/tools/` and `skippy/scripts/recipes/`. Mesh service and Windows deployment assets live under `mesh/deploy/`.
 
 ## Key Docs
 
