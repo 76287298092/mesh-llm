@@ -135,8 +135,20 @@ struct StderrTelemetrySink {
 }
 
 impl StderrTelemetrySink {
+    fn channel(
+        capacity: usize,
+    ) -> (
+        std_mpsc::SyncSender<StderrTelemetryEvent>,
+        std_mpsc::Receiver<StderrTelemetryEvent>,
+    ) {
+        // Disabled telemetry supplies zero capacity. The stderr override can
+        // enable it later, so give that opt-in sink the same bounded default
+        // as debug telemetry instead of a one-event queue that loses bursts.
+        std_mpsc::sync_channel(if capacity == 0 { 1024 } else { capacity })
+    }
+
     fn new(capacity: usize) -> Option<Self> {
-        let (tx, rx) = std_mpsc::sync_channel(capacity.max(1));
+        let (tx, rx) = Self::channel(capacity);
         let worker = thread::Builder::new()
             .name("skippy-telemetry-stderr".to_string())
             .spawn(move || stderr_telemetry_loop(rx))
@@ -706,6 +718,28 @@ fn span_id(counter: u64) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::{TelemetryLevel, effective_level, stderr_sink_enabled_from_value};
+
+    #[test]
+    fn stderr_queue_buffers_disabled_config_bursts_and_respects_explicit_bounds() {
+        for (configured, expected) in [(0, 1024), (1, 1), (8, 8)] {
+            let (tx, rx) = super::StderrTelemetrySink::channel(configured);
+            let event = || super::StderrTelemetryEvent {
+                event: "stage.binary_request_summary".into(),
+                attributes: Default::default(),
+                start_time_unix_nanos: 1,
+                end_time_unix_nanos: 2,
+            };
+            for _ in 0..expected {
+                tx.try_send(event()).expect("burst fits configured buffer");
+            }
+            assert!(matches!(
+                tx.try_send(event()),
+                Err(std::sync::mpsc::TrySendError::Full(_))
+            ));
+            assert_eq!(rx.try_iter().count(), expected);
+            tx.try_send(event()).expect("drained buffer accepts events");
+        }
+    }
 
     #[test]
     fn stderr_sink_false_values_do_not_enable_debug_telemetry() {
