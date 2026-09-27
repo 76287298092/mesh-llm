@@ -114,3 +114,5 @@ model inputs or outputs. Cross-process exact/A16 comparisons must use identical
 prompt and teacher-token IDs and artifact/PTX identities; within-profile partition
 metrics alone are not an A16-versus-exact comparison. Neither throughput nor
 quality improvement is claimed before real-model evidence exists.
+
+Initial Linux compilation caught unsupported hexadecimal formatting on the current SHA digest type in the diagnostic exporter. It now uses the existing hex encoder; no GPU trial had started.

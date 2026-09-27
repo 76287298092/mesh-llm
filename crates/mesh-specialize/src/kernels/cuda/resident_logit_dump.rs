@@ -31,7 +31,7 @@ pub(super) fn write(
             .create_new(true)
             .open(directory.join(&filename))?;
         file.write_all(&bytes)?;
-        files.push(json!({"file":filename,"elements":words.len(),"sha256":format!("{:x}",Sha256::digest(&bytes))}));
+        files.push(json!({"file":filename,"elements":words.len(),"sha256":hex::encode(Sha256::digest(&bytes))}));
     }
     let metadata = json!({"schema_version":1,"arithmetic_profile":crate::kernels::fp8_profile::current()?.name(),
         "prefix_token_ids":tokens,"teacher_token":teacher,"encoding":"BF16 little-endian u16",
