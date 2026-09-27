@@ -713,33 +713,6 @@ fn quantization_fixtures(context: &Context, module: &Module<'_>) -> Result<Value
     )
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn projection_comparison_rejects_wrong_rounding_large_error_and_nonfinite_output() {
-        let reference = projection_reference::LinearReference {
-            unrounded: vec![1.0],
-            normalized: vec![0x3f80],
-            absolute_sums: vec![2.0],
-        };
-        assert_eq!(
-            compare(&[0x3f80], &[1.0], &reference).unwrap()["passed"],
-            true
-        );
-        assert_eq!(
-            compare(&[0x3f81], &[1.0], &reference).unwrap()["passed"],
-            false
-        );
-        assert_eq!(
-            compare(&[0x4000], &[2.0], &reference).unwrap()["passed"],
-            false
-        );
-        assert!(compare(&[0x7fc0], &[f32::NAN], &reference).is_err());
-        assert!(compare(&[], &[1.0], &reference).is_err());
-    }
-}
-
 fn compare_layer(
     input: &ProjectionInput,
     tokens: &[u32],
@@ -799,4 +772,31 @@ fn compare_layer(
         "reference_profile":"independent scalar operation chain, f64 dot/norm/exp oracles and ordered-FP32 recurrence; chosen FP32 activation quantization profile",
         "full_model_or_logits_compared":false}),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn projection_comparison_rejects_wrong_rounding_large_error_and_nonfinite_output() {
+        let reference = projection_reference::LinearReference {
+            unrounded: vec![1.0],
+            normalized: vec![0x3f80],
+            absolute_sums: vec![2.0],
+        };
+        assert_eq!(
+            compare(&[0x3f80], &[1.0], &reference).unwrap()["passed"],
+            true
+        );
+        assert_eq!(
+            compare(&[0x3f81], &[1.0], &reference).unwrap()["passed"],
+            false
+        );
+        assert_eq!(
+            compare(&[0x4000], &[2.0], &reference).unwrap()["passed"],
+            false
+        );
+        assert!(compare(&[0x7fc0], &[f32::NAN], &reference).is_err());
+        assert!(compare(&[], &[1.0], &reference).is_err());
+    }
 }

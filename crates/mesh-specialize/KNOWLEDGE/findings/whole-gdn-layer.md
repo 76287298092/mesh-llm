@@ -53,3 +53,8 @@ Reproduce with `just specialize-tools-build`, then the existing
 `target/specialize/qwen-layer-reference-20260927/`. Model performance/context
 fields remain null. Timing from this harness includes independent CPU execution
 and cannot represent inference throughput.
+
+Local tests (143) and Clippy passed; Linux passed 154 library and 17 validator
+ tests, then its CUDA-only Clippy path rejected placing `compare_layer` after the
+ test module. Moving that helper before the tests fixes source ordering without
+ changing behavior. Preserve the initial Linux Clippy log alongside the rerun.
