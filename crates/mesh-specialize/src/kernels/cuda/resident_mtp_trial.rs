@@ -56,6 +56,29 @@ pub(in crate::kernels) fn run(
     };
     let control = runner.control()?;
     let verification_profile = runner.verification_profile(&control)?;
+    let forced_acceptance = resident_speculation::run(
+        &ctx,
+        &module,
+        &target,
+        &draft,
+        config,
+        &resident_speculation::Request {
+            tokens: request.tokens,
+            output_tokens: request.output_tokens,
+            depth: 1,
+            forced_first_draft: Some(control.tokens[1]),
+        },
+    )?;
+    ensure!(
+        forced_acceptance.all_accepted_rounds > 0,
+        "forced correct draft did not exercise a positive all-accepted round"
+    );
+    let acceptance_report = compare_run(&forced_acceptance, &control)?;
+    ensure!(
+        acceptance_report["all_passed"] == true,
+        "forced all-accepted run differs from target-only output/state: {acceptance_report}"
+    );
+    drop(forced_acceptance);
     let forced = runner.speculate(Some(
         (control.tokens[1] + 1) % u32::try_from(config.vocabulary)?,
     ))?;
@@ -87,7 +110,7 @@ pub(in crate::kernels) fn run(
     Ok(
         json!({"schema_version":1,"kind":"resident-greedy-mtp-qualification","all_passed":true,
         "device":info,"fp8_probe":fp8_probe,"head":head,"prompt_token_ids":request.tokens,"output_tokens":request.output_tokens,
-        "depth":request.depth,"control":control.report(),"verification_profile":verification_profile,"forced_rejection":forced_report,"trials":trials,
+        "depth":request.depth,"control":control.report(),"verification_profile":verification_profile,"forced_acceptance":acceptance_report,"forced_rejection":forced_report,"trials":trials,
         "memory":{"before_free_bytes":before.0,"after_release_free_bytes":after.0,"arena_memory_release_observed":after.0>=before.0},
         "scope":"bounded greedy single sequence; no stochastic or serving qualification"}),
     )
@@ -288,7 +311,7 @@ fn compare_run(run: &resident_speculation::Run<'_>, control: &Control) -> Result
         && run.target_session.cursor.past() == control.past;
     Ok(
         json!({"all_passed":exact,"tokens":run.tokens,"target_state_sha256":hash,"target_past":run.target_session.cursor.past(),
-        "rounds":run.rounds,"drafted":run.drafted,"accepted":run.accepted,"verify_rows":run.verify_rows,"replay_rows":run.replay_rows,
+        "rounds":run.rounds,"all_accepted_rounds":run.all_accepted_rounds,"drafted":run.drafted,"accepted":run.accepted,"verify_rows":run.verify_rows,"replay_rows":run.replay_rows,
         "prefill_seconds":run.prefill_seconds,"decode_seconds":run.decode_seconds,"phase_seconds":run.phase_seconds,
         "decode_tokens_per_second":(run.tokens.len()-1) as f64/run.decode_seconds,
         "accepted_fraction":if run.drafted>0 {run.accepted as f64/run.drafted as f64}else{0.0},

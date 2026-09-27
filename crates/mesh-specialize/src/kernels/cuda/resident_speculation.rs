@@ -28,6 +28,7 @@ pub(super) struct Run<'ctx> {
     pub(super) tokens: Vec<u32>,
     pub(super) target_session: Session<'ctx>,
     pub(super) rounds: usize,
+    pub(super) all_accepted_rounds: usize,
     pub(super) drafted: usize,
     pub(super) accepted: usize,
     pub(super) verify_rows: usize,
@@ -104,6 +105,7 @@ pub(super) fn run<'ctx>(
     let mut output_tokens = vec![state.pending];
     let mut forced_first_draft = request.forced_first_draft;
     let mut rounds = 0_usize;
+    let mut all_accepted_rounds = 0_usize;
     let mut drafted = 0_usize;
     let mut accepted = 0_usize;
     let mut verify_rows = 0_usize;
@@ -125,6 +127,13 @@ pub(super) fn run<'ctx>(
             !round.emitted.is_empty() && round.emitted.len() <= remaining,
             "speculative round made invalid output progress"
         );
+        if round.drafted > 0 && round.accepted == round.drafted {
+            checked_add_counter(
+                &mut all_accepted_rounds,
+                1,
+                "all-accepted speculation round",
+            )?;
+        }
         output_tokens.extend(round.emitted);
         checked_add_counter(&mut rounds, 1, "speculation round")?;
         checked_add_counter(&mut drafted, round.drafted, "drafted token")?;
@@ -160,6 +169,7 @@ pub(super) fn run<'ctx>(
         tokens: output_tokens,
         target_session: state.target,
         rounds,
+        all_accepted_rounds,
         drafted,
         accepted,
         verify_rows,

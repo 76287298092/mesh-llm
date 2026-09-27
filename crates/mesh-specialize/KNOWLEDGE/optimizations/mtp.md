@@ -117,3 +117,10 @@ FP8 kernel for four-to-fifteen rows. The new kernel remains an explicitly
 experimental probe, with no resident-model dispatch. Offline compilation uses
 64 registers with no spills; zero spills alone does not establish performance.
 Ninfer was restored at 15:08:42 EDT, PID 3400966, HTTP 200; ComfyUI unchanged.
+
+Follow-up candidate: select the transposed tile only for small batches with at
+least 16,384 output channels. The profile shows the 17,408-channel MLP projections
+fall from 6.52 to 4.44 ms and the vocabulary head from 5.57 to 2.41 ms, while
+narrow projections regress. The wider matrices launch enough channel tiles to
+make this shape useful; keep the old four-row kernel for narrower matrices.
+This is a measured dispatch hypothesis, pending end-to-end qualification.
