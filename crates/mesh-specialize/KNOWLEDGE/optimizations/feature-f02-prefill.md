@@ -96,3 +96,5 @@ The process-fixed internal selector `MESH_SPECIALIZE_FP8_PROFILE=native-prefill`
 Initial Linux Clippy caught diagnostic helper placement after the test module; moved it before tests. No GPU trial had started.
 
 The first 128-token model ablation reduced profiled prefill GPU time from 393.98 to 225.68 ms, but failed strict partition equivalence. Prefill logit normalized L2 drift was 0.09462. Decode drift compared different greedy continuation inputs and must not be read as a same-input operator error. Added last-row hidden drift for every layer and explicit continuation-token IDs to localize divergence. The candidate remains experimental.
+
+Diagnostic review found the initial synthetic projection fixtures emphasized power-of-two FP8 magnitudes. The parent broadened the input generator to cover every finite sign/exponent/mantissa code under the same fixed error budgets. This strengthens operator evidence before further model-level interpretation; the new cases have not yet been run.

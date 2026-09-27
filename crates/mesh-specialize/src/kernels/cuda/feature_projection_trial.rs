@@ -52,11 +52,12 @@ fn floats(values: &[f32]) -> Vec<u8> {
     values.iter().flat_map(|v| v.to_le_bytes()).collect()
 }
 fn codes(count: usize, multiplier: usize) -> Vec<u8> {
-    const VALUES: [u8; 12] = [
-        0, 1, 0x18, 0x28, 0x38, 0x40, 0x48, 0x81, 0x98, 0xb8, 0xc0, 0xc8,
-    ];
+    // Exercise every finite E4M3 sign/exponent/mantissa code, not only powers of two.
     (0..count)
-        .map(|i| VALUES[(i * multiplier + i / 7) % VALUES.len()])
+        .map(|i| {
+            let value = ((i * multiplier + i / 7 + 37) % 254) as u8;
+            if value >= 127 { value + 1 } else { value }
+        })
         .collect()
 }
 
