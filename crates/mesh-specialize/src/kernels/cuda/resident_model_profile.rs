@@ -18,10 +18,11 @@ use std::time::Instant;
 const MAX_PREFIX_TOKENS: usize = 128;
 const MAX_CAPACITY: usize = 129;
 const MEMORY_RESERVE_BYTES: u64 = 1024 * 1024 * 1024;
-const REQUIRED_KERNELS: [&str; 18] = [
+const REQUIRED_KERNELS: [&str; 19] = [
     "embedding_norm_bf16",
     "fp8_quantize_bf16",
     "fp8_linear_exact",
+    "fp8_linear_exact4",
     "bf16_linear_decode",
     "causal_conv4_bf16",
     "gdn_qk_norm",

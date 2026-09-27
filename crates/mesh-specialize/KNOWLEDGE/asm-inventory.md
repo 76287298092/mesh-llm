@@ -70,3 +70,8 @@ qualification are required; status is recorded with the performance iterations.
 
 The `nvfp4_linear_warp4` experiment was rejected after unchanged timings. Its
 entrypoint is removed; the candidate commit and raw evidence preserve the trial.
+
+`fp8_linear_exact4.rs` reuses the qualified signed-integer dot instructions and
+paired-word warp reduction across four activation rows per weight load. Its only
+new assembly site reads CTA/thread coordinates. Both variants run independent
+finite-code/tail/cancellation fixtures; retained results are in the optimization log.

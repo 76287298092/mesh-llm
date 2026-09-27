@@ -21,7 +21,9 @@ fn shuffle_down_u32(value: u32, offset: u32) -> u32 {
 /// Reduces 256 FP64 partials with the original shared-tree addition order.
 ///
 /// The first three tree levels are evaluated by warp zero. Its final five
-/// levels use full-mask warp shuffles; the result is then published through
+/// Keep this convergent operation out of line: inlining lets LLVM thread the
+/// following lane-zero softmax branch through its final block barrier.
+/// The final levels use full-mask warp shuffles; the result is published through
 /// shared slot zero for every CTA thread to consume.
 ///
 /// # Safety
@@ -29,7 +31,7 @@ fn shuffle_down_u32(value: u32, offset: u32) -> u32 {
 /// its `%tid.x` in `0..256` and the same CTA-local shared-memory base. `shared`
 /// must name an aligned 2,048-byte array of 256 FP64 values, and each thread
 /// must own the corresponding slot. All callers must reach both block barriers.
-#[inline(always)]
+#[inline(never)]
 pub(super) fn reduce_dot(shared: u32, thread: u32, partial: f64) -> f64 {
     store_partial(shared, thread, partial);
     block_barrier();

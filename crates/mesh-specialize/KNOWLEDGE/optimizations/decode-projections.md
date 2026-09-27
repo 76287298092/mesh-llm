@@ -101,3 +101,18 @@ are effectively unchanged from the one-warp control. NVFP4 event totals are also
 unchanged. The candidate dispatch and entrypoint are removed; the source commit,
 PTX and `warp4-round/` evidence retain the experiment. Keep the simpler original
 geometry. Ninfer restored09:29:45 EDT, PID3228133, HTTP200; ComfyUI unchanged.
+
+
+The final prefill candidate reuses each FP8 weight load and decoded integer across
+four input rows, with four separate exact i64 partials per lane. Single-token
+decode keeps the one-row kernel. This preserves dot/scaling/rounding arithmetic
+and adds no canonical weight copy. Independent fixtures run both kernels,
+including full four-row tiles plus row/K/output tails. Timings decide retention.
+
+The first attention candidate at bcbf7ca00 timed out after 240 seconds in the
+component-first check, with no result JSON. Ninfer restored at 09:37:13 EDT,
+PID3231397, HTTP200; ComfyUI unchanged. Failed evidence is retained in
+`attention-round/`. PTX inspection shows LLVM threaded the following lane-zero
+branch through the inlined reduction barrier, splitting the first warp across
+barrier paths. The next candidate keeps the reduction out of line to prevent
+that transformation. This diagnosis is provisional until GPU checks pass.

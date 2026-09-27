@@ -26,7 +26,7 @@ fn coordinates() -> (u32, u32, u32, u32) {
 }
 
 #[inline(always)]
-fn e4m3fn_units(code: u8) -> i32 {
+pub(super) fn e4m3fn_units(code: u8) -> i32 {
     let magnitude = code & 0x7f;
     let exponent = i32::from(magnitude >> 3);
     let fraction = i32::from(magnitude & 7);
@@ -39,7 +39,7 @@ fn e4m3fn_units(code: u8) -> i32 {
 }
 
 #[inline(always)]
-fn multiply_wide_s32(left: i32, right: i32) -> i64 {
+pub(super) fn multiply_wide_s32(left: i32, right: i32) -> i64 {
     let product: i64;
     // SAFETY: This scalar signed integer operation has no memory or stack effects.
     unsafe {
@@ -55,7 +55,7 @@ fn multiply_wide_s32(left: i32, right: i32) -> i64 {
 }
 
 #[inline(always)]
-fn add_s64(left: i64, right: i64) -> i64 {
+pub(super) fn add_s64(left: i64, right: i64) -> i64 {
     let sum: i64;
     // SAFETY: This scalar signed integer operation has no memory or stack effects.
     unsafe {
@@ -87,7 +87,7 @@ fn warp_xor_u32(value: u32, lane_mask: u32) -> u32 {
 }
 
 #[inline(always)]
-fn warp_reduce_s64(value: i64) -> i64 {
+pub(super) fn warp_reduce_s64(value: i64) -> i64 {
     let mut sum = value;
     let mut offset = WARP_SIZE / 2;
     while offset > 0 {
@@ -102,7 +102,7 @@ fn warp_reduce_s64(value: i64) -> i64 {
 }
 
 #[inline(always)]
-fn i64_to_f32_rn(value: i64) -> f32 {
+pub(super) fn i64_to_f32_rn(value: i64) -> f32 {
     let converted: f32;
     // SAFETY: This scalar conversion has no memory or stack effects.
     unsafe {
@@ -117,7 +117,7 @@ fn i64_to_f32_rn(value: i64) -> f32 {
 }
 
 #[inline(always)]
-fn fp32_multiply_rn(left: f32, right: f32) -> f32 {
+pub(super) fn fp32_multiply_rn(left: f32, right: f32) -> f32 {
     let product: f32;
     // SAFETY: This scalar FP32 operation has no memory or stack effects.
     unsafe {
@@ -133,12 +133,12 @@ fn fp32_multiply_rn(left: f32, right: f32) -> f32 {
 }
 
 #[inline(always)]
-fn decode_bf16(bits: u16) -> f32 {
+pub(super) fn decode_bf16(bits: u16) -> f32 {
     f32::from_bits((bits as u32) << 16)
 }
 
 #[inline(always)]
-fn encode_bf16_rne(value: f32) -> u16 {
+pub(super) fn encode_bf16_rne(value: f32) -> u16 {
     let bits = value.to_bits();
     let exponent = bits & 0x7f80_0000;
     let mantissa = bits & 0x007f_ffff;

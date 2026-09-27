@@ -39,6 +39,7 @@ pub(in crate::kernels) fn run(
         "embedding_norm_bf16",
         "fp8_quantize_bf16",
         "fp8_linear_exact",
+        "fp8_linear_exact4",
         "bf16_linear_decode",
         "causal_conv4_bf16",
         "gdn_qk_norm",

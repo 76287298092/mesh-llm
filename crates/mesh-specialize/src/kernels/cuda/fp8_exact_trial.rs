@@ -13,6 +13,7 @@ pub(super) fn run(ctx: &Context, module: &Module<'_>) -> Result<Value> {
     for (shape, kind) in [
         ([254, 254, 1], 0),
         ([2, 9, 513], 1),
+        ([5, 9, 513], 1),
         ([1, 5, 32768], 2),
         ([1, 5, 5120], 3),
     ] {
@@ -74,22 +75,24 @@ pub(super) fn run(ctx: &Context, module: &Module<'_>) -> Result<Value> {
             &sw,
             k,
         )?;
-        let (actual, unrounded) = execute(ctx, module, shape, &a, &w, &sa, &sw)?;
-        let bf16_differences = actual
-            .iter()
-            .zip(&expected.normalized)
-            .filter(|(a, b)| a != b)
-            .count();
-        let fp32_differences = unrounded
-            .iter()
-            .zip(&expected.unrounded)
-            .filter(|(a, b)| a != b)
-            .count();
-        let finite = unrounded.iter().all(|v| v.is_finite());
-        cases.push(json!({"shape":shape,"fixture":kind,"outputs":m*n,"bf16_differences":bf16_differences,"fp32_differences":fp32_differences,"all_passed":finite&&bf16_differences==0&&fp32_differences==0}));
+        for tile_rows in [1, 4] {
+            let (actual, unrounded) = execute(ctx, module, [m, n, k, tile_rows], &a, &w, &sa, &sw)?;
+            let bf16_differences = actual
+                .iter()
+                .zip(&expected.normalized)
+                .filter(|(a, b)| a != b)
+                .count();
+            let fp32_differences = unrounded
+                .iter()
+                .zip(&expected.unrounded)
+                .filter(|(a, b)| a != b)
+                .count();
+            let finite = unrounded.iter().all(|v| v.is_finite());
+            cases.push(json!({"shape":shape,"tile_rows":tile_rows,"fixture":kind,"outputs":m*n,"bf16_differences":bf16_differences,"fp32_differences":fp32_differences,"all_passed":finite&&bf16_differences==0&&fp32_differences==0}));
+        }
     }
     Ok(
-        json!({"all_passed":cases.iter().all(|c|c["all_passed"]==true),"cases":cases,"resources":module.function("fp8_linear_exact")?.resources()?}),
+        json!({"all_passed":cases.iter().all(|c|c["all_passed"]==true),"cases":cases,"resources":module.function("fp8_linear_exact")?.resources()?,"tiled_resources":module.function("fp8_linear_exact4")?.resources()?}),
     )
 }
 
@@ -102,13 +105,13 @@ fn upload<'a>(ctx: &'a Context, bytes: &[u8]) -> Result<Buffer<'a>> {
 fn execute(
     ctx: &Context,
     module: &Module<'_>,
-    shape: [usize; 3],
+    shape: [usize; 4],
     a: &[u8],
     w: &[u8],
     sa: &[f32],
     sw: &[u16],
 ) -> Result<(Vec<u16>, Vec<f32>)> {
-    let [m, n, k] = shape;
+    let [m, n, k, tile_rows] = shape;
     ensure!(
         a.len() == m * k && w.len() == n * k && sa.len() == m && sw.len() == n,
         "fixture extents"
@@ -142,12 +145,22 @@ fn execute(
     // SAFETY: The checked finite fixtures have complete row-major extents and disjoint
     // typed allocations; four warps own four columns, and all buffers live through sync.
     unsafe {
-        module.function("fp8_linear_exact")?.launch(
-            [u32::try_from(n.div_ceil(4))?, u32::try_from(m)?, 1],
-            [128, 1, 1],
-            0,
-            &mut args,
-        )?;
+        module
+            .function(if tile_rows == 4 {
+                "fp8_linear_exact4"
+            } else {
+                "fp8_linear_exact"
+            })?
+            .launch(
+                [
+                    u32::try_from(n.div_ceil(4))?,
+                    u32::try_from(m.div_ceil(tile_rows))?,
+                    1,
+                ],
+                [128, 1, 1],
+                0,
+                &mut args,
+            )?;
     }
     ctx.synchronize()?;
     let mut bytes = vec![0; m * n * 2];

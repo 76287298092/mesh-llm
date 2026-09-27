@@ -73,7 +73,12 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
         let weight_pointer = self.owner.pointer(&self.weight_name)?;
         let scale_pointer = self.owner.pointer(&self.scale_name)?;
         let quantize = module.function("fp8_quantize_bf16")?;
-        let linear = module.function("fp8_linear_exact")?;
+        let tile_rows = if rows >= 4 { 4 } else { 1 };
+        let linear = module.function(if tile_rows == 4 {
+            "fp8_linear_exact4"
+        } else {
+            "fp8_linear_exact"
+        })?;
         let codes = Buffer::new(context, extents.code_bytes)?;
         let row_scales = Buffer::new(context, extents.row_scale_bytes)?;
         let output = Buffer::new(context, extents.output_bytes)?;
@@ -103,7 +108,7 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
         );
         let grid = [
             u32::try_from(self.channels.div_ceil(4))?,
-            u32::try_from(rows)?,
+            u32::try_from(rows.div_ceil(tile_rows))?,
             1,
         ];
         if let Err(error) =
