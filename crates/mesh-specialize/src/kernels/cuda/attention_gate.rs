@@ -143,7 +143,13 @@ pub(super) fn fixtures(context: &Context, module: &Module<'_>) -> Result<Vec<Val
             .map(|i| round_bf16([0.0, -0.0, -90.0, 90.0, -1e20, 1e20, -1.25, 0.5][i % 8]))
             .collect();
         let attention: Vec<_> = (0..count)
-            .map(|i| round_bf16(((i * 7 % 13) as f32 - 6.0) / 4.0))
+            .map(|i| {
+                if i % 13 == 1 {
+                    0x8000
+                } else {
+                    round_bf16(((i * 7 % 13) as f32 - 6.0) / 4.0)
+                }
+            })
             .collect();
         let gd = upload(context, &word_bytes(&gate))?;
         let ud = upload(context, &word_bytes(&attention))?;
@@ -162,7 +168,11 @@ pub(super) fn fixtures(context: &Context, module: &Module<'_>) -> Result<Vec<Val
             checked.words == expected.output,
             "attention gate edge fixture BF16 mismatch"
         );
-        reports.push(checked.report);
+        let mut report = checked.report;
+        report["edge_fixture_bf16_exact"] = json!(true);
+        report["negative_zero_attention_inputs"] =
+            json!(attention.iter().filter(|&&v| v == 0x8000).count());
+        reports.push(report);
     }
     Ok(reports)
 }

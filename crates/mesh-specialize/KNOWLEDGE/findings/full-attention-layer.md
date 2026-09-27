@@ -41,3 +41,9 @@ fixture now uses its fixed 16-element dimensions and expresses the exact sigmoid
 midpoint as 0.5 + 1/512. Failed logs are retained. The resulting 164 host tests,
 focused Clippy, no-console check and Rust NVPTX compilation pass on macOS.
 Linux compilation and execution remain pending at this source checkpoint.
+
+Launch review confirmed pointer order, extents, tail guards and numeric boundaries.
+It found that CUDA fixtures had negative-zero gates but no negative-zero attention
+inputs. The edge fixtures now include those inputs, require exact scalar BF16
+outputs, and record the negative-zero count. This tests product sign preservation
+as well as the nonzero subnormal sigmoid case on the GPU.
