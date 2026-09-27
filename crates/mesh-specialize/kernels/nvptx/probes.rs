@@ -100,6 +100,7 @@ mod nvfp4_quantize;
 
 mod nvfp4_linear;
 mod nvfp4_decode;
+mod nvfp4_decode_exact;
 
 mod mlp_activation;
 mod residual_add;

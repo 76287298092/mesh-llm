@@ -49,7 +49,7 @@ pub(in crate::kernels) fn run(
         "residual_norm_bf16",
         "nvfp4_quantize_bf16",
         "nvfp4_linear",
-        "nvfp4_decode",
+        "nvfp4_decode_exact",
         "mlp_silu_product",
         "residual_add_bf16",
         "attention_qk_prepare",
@@ -68,6 +68,12 @@ pub(in crate::kernels) fn run(
         "attention fixtures failed"
     );
     let nvfp4_tail_probes = super::nvfp4_linear::fixtures(&context, &module)?;
+    let nvfp4_exact_probe = super::nvfp4_exact_trial::run(&context, &module)?;
+    if nvfp4_exact_probe["all_passed"] != true {
+        return Ok(
+            json!({"all_passed":false,"full_model_executed":false,"nvfp4_exact_probe":nvfp4_exact_probe}),
+        );
+    }
     let fp8_exact_probe = super::fp8_exact_trial::run(&context, &module)?;
     if fp8_exact_probe["all_passed"] != true {
         return Ok(
@@ -175,7 +181,7 @@ pub(in crate::kernels) fn run(
     context.synchronize()?;
     let after = context.memory()?;
     Ok(
-        json!({"schema_version":1,"kind":"qwen-resident-full-model-correctness","device":info,"tokens":reference.tokens,"layers":layers,"logits":logits,"activation_probe":activation_probe,"bf16_probe":bf16_probe,"fp8_exact_probe":fp8_exact_probe,"nvfp4_tail_probes":nvfp4_tail_probes,"attention_probes":attention_probes,
+        json!({"schema_version":1,"kind":"qwen-resident-full-model-correctness","device":info,"tokens":reference.tokens,"layers":layers,"logits":logits,"activation_probe":activation_probe,"bf16_probe":bf16_probe,"fp8_exact_probe":fp8_exact_probe,"nvfp4_tail_probes":nvfp4_tail_probes,"nvfp4_exact_probe":nvfp4_exact_probe,"attention_probes":attention_probes,
         "selected_token":output.token,"reference_token":expected_token,"greedy_token_exact":output.token==expected_token,
         "whole_vs_token_logits_and_state_bit_exact":partition_exact,"prefix_committed_correctly":prefix_correct,"failed_session_reuse_rejected":poison_rejected,
         "all_passed":layers.iter().all(|r|r["all_passed"]==true)&&logits["all_passed"]==true&&output.token==expected_token&&partition_exact&&prefix_correct&&poison_rejected&&after.0>=before.0,

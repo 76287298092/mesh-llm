@@ -5,6 +5,7 @@ Start with [the implementation plan](../PLAN.md) and the
 
 | Entry | Status |
 | --- | --- |
+| [Dedicated decode continuation](optimizations/dedicated-decode.md) | Transposed MMA passes correctness with less than 1% model gain; exact grouped-dot candidate under qualification |
 | [Performance iteration](optimizations/decode-projections.md) | Matched medians: 20.07 short decode, 18.15 after128 inputs, 136.83 prefill tokens/s; exact checks, sanitizers and memory-release checks pass |
 | [Ninfer source comparison](findings/ninfer-performance-comparison.md) | Pinned shape dispatch, GEMV, tiling, fusion and graph/workspace differences; parity remains open |
 | [Full-decode kernel profile](findings/model-profile.md) | Control/profile logits and state exactly agree; FP8 projections account for 83.39% of short-prefix event time |

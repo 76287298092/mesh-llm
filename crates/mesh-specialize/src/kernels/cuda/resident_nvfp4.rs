@@ -90,7 +90,7 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
         let channels_u32 = u32::try_from(self.channels)?;
         let quantize = module.function("nvfp4_quantize_bf16")?;
         let linear = module.function(if rows == 1 {
-            "nvfp4_decode"
+            "nvfp4_decode_exact"
         } else {
             "nvfp4_linear"
         })?;
@@ -122,7 +122,7 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
             dimensions: [rows_u32, channels_u32, width_u32],
             global_factor: self.global_factor,
             grid: if rows == 1 {
-                [channels_u32.div_ceil(16), 1, 1]
+                [channels_u32.div_ceil(4), 1, 1]
             } else {
                 extents.linear_grid
             },
@@ -292,7 +292,18 @@ fn launch_linear(function: &Function<'_, '_>, launch: LinearLaunch<'_, '_>) -> R
     arguments.push((&mut global_factor as *mut f32).cast());
     // SAFETY: The verified resident weight views, generated activation buffers, and distinct
     // output allocations match the six-pointer/mnk/factor ABI and remain live through sync.
-    unsafe { function.launch(launch.grid, [32, 1, 1], 0, &mut arguments) }
+    unsafe {
+        function.launch(
+            launch.grid,
+            if launch.dimensions[0] == 1 {
+                [128, 1, 1]
+            } else {
+                [32, 1, 1]
+            },
+            0,
+            &mut arguments,
+        )
+    }
 }
 
 fn synchronize_after_failed_launch(

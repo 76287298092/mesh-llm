@@ -90,3 +90,8 @@ passes both profiles and all sanitizers. See the preserved failed evidence.
 packed loaders and output conversion with weight/activation operands transposed.
 Independent signed/tail and whole-model checks qualify the new layout. Status:
 pending in [dedicated decode](optimizations/dedicated-decode.md).
+
+`nvfp4_decode_exact.rs` adds packed signed-byte DP4A and coordinates, reusing the
+qualified i64 warp reduction and conversion helpers. Reference: independent
+logical NVFP4 oracle and [NVIDIA DP4A semantics](https://docs.nvidia.com/cuda/parallel-thread-execution/index.html#integer-arithmetic-instructions-dp4a).
+Qualification pending in the dedicated-decode record.

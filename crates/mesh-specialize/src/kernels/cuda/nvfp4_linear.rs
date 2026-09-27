@@ -105,17 +105,17 @@ pub(super) fn check<'a>(
     unsafe {
         module
             .function(if rows == 1 {
-                "nvfp4_decode"
+                "nvfp4_decode_exact"
             } else {
                 "nvfp4_linear"
             })?
             .launch(
                 if rows == 1 {
-                    [dimensions[1].div_ceil(16), 1, 1]
+                    [dimensions[1].div_ceil(4), 1, 1]
                 } else {
                     [dimensions[1].div_ceil(8), dimensions[0].div_ceil(16), 1]
                 },
-                [32, 1, 1],
+                if rows == 1 { [128, 1, 1] } else { [32, 1, 1] },
                 0,
                 &mut args,
             )?;
@@ -143,8 +143,16 @@ pub(super) fn check<'a>(
         "NVFP4 projection numerical mismatch: {report}"
     );
     if rows == 1 {
+        ensure!(
+            report["bf16_reference_differences"] == 0,
+            "exact NVFP4 decode differs from independent BF16 reference"
+        );
+        let control_output = upload(context, &vec![0xa5; count * 2])?;
+        let control_unrounded = upload(context, &vec![0xff; count * 4])?;
+        pointers[4] = control_output.pointer();
+        pointers[5] = control_unrounded.pointer();
         // SAFETY: The same checked buffers/ABI also satisfy the original linear
-        // kernel; only its output-channel tile geometry differs. Wait before reads.
+        // kernel as a diagnostic comparison of accumulation order. Wait before reads.
         unsafe {
             module.function("nvfp4_linear")?.launch(
                 [dimensions[1].div_ceil(8), 1, 1],
@@ -156,8 +164,8 @@ pub(super) fn check<'a>(
         context.synchronize()?;
         let mut control_words = vec![0_u8; count * 2];
         let mut control_floats = vec![0_u8; count * 4];
-        output.download(&mut control_words)?;
-        unrounded.download(&mut control_floats)?;
+        control_output.download(&mut control_words)?;
+        control_unrounded.download(&mut control_floats)?;
         let bf16_exact = words
             .iter()
             .zip(control_words.as_chunks::<2>().0)
@@ -166,10 +174,7 @@ pub(super) fn check<'a>(
             .iter()
             .zip(control_floats.as_chunks::<4>().0)
             .all(|(&actual, bytes)| actual.to_bits() == u32::from_le_bytes(*bytes));
-        ensure!(
-            bf16_exact && fp32_exact,
-            "dedicated NVFP4 decode differs from original MMA"
-        );
+
         report["original_mma_bf16_exact"] = json!(bf16_exact);
         report["original_mma_fp32_exact"] = json!(fp32_exact);
     }
