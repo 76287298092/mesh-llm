@@ -37,7 +37,7 @@ user's direction and cannot establish clean speedup percentages.
 
 | Ninfer performance feature | Our equivalent implementation and actual gap | Performance shortfall against this Ninfer feature |
 | --- | --- | --- |
-| **F01. Shape-specific decode and small-batch GEMV.** Direct BF16 activations with FP8/NVFP4 weights; vector loads, multiple independent accumulators, shape/token thresholds. | Dedicated exact quantized decode exists: FP8 A8 integer dots and NVFP4 A4 grouped DP4A/i64 dots. It is a different arithmetic path, still quantizes inputs, and does not implement Ninfer's A16 GEMV routes. | **Unmeasured.** No same-shape, same-arithmetic Ninfer GEMV timing. |
+| **F01. Shape-specific decode and small-batch GEMV.** Direct BF16 activations with FP8/NVFP4 weights; vector loads, multiple independent accumulators, shape/token thresholds. | Dedicated exact quantized decode exists: FP8 A8 integer dots and NVFP4 A4 grouped DP4A/i64 dots. The default still quantizes inputs. An experimental one-row A16 FP8 route now measures about 26.4–26.6 tokens/s against 24.2 exact on two short prompts, with same-input logit diagnostics; broad quality and consistent MTP verification remain open. | **Unmeasured.** No same-shape, same-arithmetic Ninfer GEMV timing. |
 | **F02. Native tensor-core, pipelined prefill GEMM.** FP8 MMA; typical 64×128×128 tile, two shared-memory stages, asynchronous copies and fragment pipelining. NVFP4 also has native block-scaled MMA routes. | NVFP4 already uses native block-scaled MMA, but small warp tiles. FP8 uses 16×8×32 exact integer decomposition: nine INT8 MMAs plus i64 reconstruction for each K tile, direct global loads, no shared-memory pipeline. This is a major algorithm/hardware mismatch. | **Unmeasured.** Overall unmatched prefill is 95.0–97.2% behind, but that cannot be assigned solely to GEMM. |
 | **F03. Fused projection and epilogues.** Joined attention Q/gate/K/V and GDN QKV/Z entrypoints; gate/up projections with SwiGLU output; residual and norm/control specializations. | Separate projections repeatedly quantize the same input; gate/up outputs and activation intermediates are materialized. BF16 rounding boundaries differ from Ninfer's fused FP32 epilogues. | **Unmeasured.** Need fusion-on/off timings with a declared rounding contract. |
 | **F04. Chunked GDN prefill.** Matrix-based chunk preparation, state passing and output kernels; recurrent route for decode/tails. | All 48 GDN layers use a token-serial recurrence even during prefill, repeatedly reading/writing the recurrent matrix. Increasing the outer prompt batch does not remove this serial algorithm. | **Unmeasured.** Need equal-length GDN hidden/state comparisons and timings. |
@@ -120,7 +120,7 @@ exist, keep the percentage column unmeasured.
 
 | Feature | Dedicated subagent | First bounded implementation status |
 | --- | --- | --- |
-| F01 | `feature_decode_gemv` | A16 FP8 synthetic GPU checks and all three sanitizers pass; model integration pending |
+| F01 | `feature_decode_gemv` | A16 FP8 one-row model integration and sanitizers pass; modest decode gain, broader quality and MTP qualification pending |
 | F02 | `feature_native_prefill` | Full-model experimental integration measures about +51% prefill throughput but fails numerical equivalence; not promoted |
 | F03 | `feature_fusion` | Exact FP8 gate/up and SwiGLU fusion delivered; CPU tests and PTX compilation pass |
 | F04 | `feature_chunked_gdn` | Chunked operator delivered; CPU tests and PTX compilation pass |

@@ -219,3 +219,19 @@ generating past end-of-turn, so post-end text is excluded from answer assessment
 this does not qualify serving EOS behavior. One sample per profile is insufficient
 for broad semantic-quality conclusions. Timings share GPU0 with ComfyUI and are
 not matched Ninfer measurements. Ninfer remained inactive before and after.
+
+
+### Next exact small-batch experiment
+
+The current five-row MTP profile (`compact-bench-1/python-full-forward.json`)
+attributes 44.91 ms of 86.44 ms recorded kernel time to `fp8_linear_exact4`.
+The saved MTP notes already rejected routing every narrow shape to the existing
+8-row/16-channel transposed tensor tile; do not repeat that unchanged experiment.
+A new candidate is split-K parallelism for the exact integer tensor tile, with
+int64 partial dots and one exact integer reduction before the unchanged scale
+and BF16 epilogue. Narrow N currently exposes few one-warp CTAs. More K tiles may
+improve occupancy but adds partial storage and a launch. No kernel is implemented
+and no gain is predicted here. Preserve existing scalar/tensor dispatch as the
+control and qualify every raw FP32/BF16 result against the independent exact
+reference before model use. Unlike native FP8 reassociation, bounded integer
+partial reduction can preserve the established arithmetic contract.

@@ -1,0 +1,52 @@
+Note: mold is unavailable or failed the active target/toolchain link probe.
+Falling back to lld or the platform linker for this build.
+
+
+    Checking mesh-specialize v0.76.1 (/home/ndizazzo/dev/mesh/mesh-llm/crates/mesh-specialize)
+error[E0277]: the trait bound `Array<u8, UInt<UInt<UInt<UInt<..., ...>, ...>, ...>, ...>>: LowerHex` is not satisfied
+  --> crates/mesh-specialize/src/kernels/cuda/resident_logit_dump.rs:34:90
+   |
+34 |         files.push(json!({"file":filename,"elements":words.len(),"sha256":format!("{:x}",Sha256::digest(&bytes))}));
+   |                                                                                    ----  ^^^^^^^^^^^^^^^^^^^^^^ the trait `std::fmt::LowerHex` is not implemented for `Array<u8, UInt<UInt<UInt<UInt<UInt<..., ...>, ...>, ...>, ...>, ...>>`
+   |                                                                                    |
+   |                                                                                    required by this formatting parameter
+   |
+   = help: the following other types implement trait `std::fmt::LowerHex`:
+             &T
+             &mut T
+             compiler_builtins::math::libm_math::support::big::i256
+             compiler_builtins::math::libm_math::support::big::u256
+             compiler_builtins::math::libm_math::support::hex_float::hex_fmt::Hex<T>
+             i128
+             i16
+             i32
+           and 54 others
+   = note: the full name for the type has been written to '/home/ndizazzo/dev/mesh/mesh-llm/target/debug/deps/mesh_specialize-9884721bbf9f687a.long-type-7210204778708947878.txt'
+   = note: consider using `--verbose` to print the full type name to the console
+
+For more information about this error, try `rustc --explain E0277`.
+error: could not compile `mesh-specialize` (lib) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error[E0277]: the trait bound `Array<u8, UInt<UInt<UInt<UInt<..., ...>, ...>, ...>, ...>>: LowerHex` is not satisfied
+  --> crates/mesh-specialize/src/kernels/cuda/resident_logit_dump.rs:34:90
+   |
+34 |         files.push(json!({"file":filename,"elements":words.len(),"sha256":format!("{:x}",Sha256::digest(&bytes))}));
+   |                                                                                    ----  ^^^^^^^^^^^^^^^^^^^^^^ the trait `std::fmt::LowerHex` is not implemented for `Array<u8, UInt<UInt<UInt<UInt<UInt<..., ...>, ...>, ...>, ...>, ...>>`
+   |                                                                                    |
+   |                                                                                    required by this formatting parameter
+   |
+   = help: the following other types implement trait `std::fmt::LowerHex`:
+             &T
+             &mut T
+             compiler_builtins::math::libm_math::support::big::i256
+             compiler_builtins::math::libm_math::support::big::u256
+             compiler_builtins::math::libm_math::support::hex_float::hex_fmt::Hex<T>
+             i128
+             i16
+             i32
+           and 54 others
+   = note: the full name for the type has been written to '/home/ndizazzo/dev/mesh/mesh-llm/target/debug/deps/mesh_specialize-ffa72aca2892f88c.long-type-13718568461753973866.txt'
+   = note: consider using `--verbose` to print the full type name to the console
+
+error: could not compile `mesh-specialize` (lib test) due to 1 previous error
+error: recipe `with-lld` failed with exit code 101

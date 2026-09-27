@@ -2,7 +2,9 @@
 
 Status: synthetic GPU checks and sanitizers pass. Parent one-row resident
 integration is authored behind `MESH_SPECIALIZE_FP8_PROFILE=a16-decode`;
-real-model timing and arithmetic/quality comparison are pending.
+initial real-model timings and same-input logit differences are measured, and
+one-row model sanitizers pass. Bounded complete-answer checks are recorded;
+broad quality and MTP qualification remain open.
 This is a separate A16 arithmetic profile; it does not replace or relax any A8
 decode qualification gate.
 
@@ -116,3 +118,65 @@ metrics alone are not an A16-versus-exact comparison. Neither throughput nor
 quality improvement is claimed before real-model evidence exists.
 
 Initial Linux compilation caught unsupported hexadecimal formatting on the current SHA digest type in the diagnostic exporter. It now uses the existing hex encoder; no GPU trial had started.
+
+
+## First resident ablation, 2026-09-27
+
+Source `a17e7b8a73c5cff4d77a0bb7ba042009a9a08f13`, unchanged PTX
+`089e027984eb7937fef47f5de3c01e92f08108d832eda1937ffae68eddbfd782`.
+Three repetitions per profile, two natural-language prompts, 32 fixed output
+tokens, same verified artifact and GPU0. Sequential exact/A16 batches share the
+GPU with ComfyUI; these are not matched Ninfer measurements.
+
+| Prompt | Exact median tokens/s | A16 median tokens/s |
+| --- | ---: | ---: |
+| Python Fibonacci | 24.25 | 26.42 |
+| Bicycle prose | 24.18 | 26.65 |
+
+Cross-process raw BF16 logit exports verify equal weights, PTX, prompts and the
+same teacher-forced continuation token. Python prefill/next-position KL(exact||A16)
+is 0.00000471 / 0.00000782; prose is 0.002103 / 0.00005645. Greedy tokens agree
+at both sampled positions. Python's next-position relative L2 is 0.24091 despite
+its small KL: unnormalized-logit norm drift alone is not semantic-quality
+measurement. Python's first 32 generated tokens match; prose diverges at index8.
+Two positions per prompt and two short completions do not establish broad quality.
+
+Same-profile control/profile output and state are exact. Whole-versus-token
+partition checks fail as expected for hybrid A16/A8 scheduling and are not
+relaxed. One-token prefill plus one teacher-forced decode uses A16 throughout;
+full-model memcheck, racecheck and synccheck all pass with zero errors/hazards,
+and that one-row schedule's strict same-profile checks pass. This is not MTP
+qualification; non-exact MTP remains rejected.
+
+Evidence: `../evidence/iterate-20260927/a16-model-2/`, including raw logits,
+hashed manifests, comparison script, exact input IDs, process sampling and
+compiler logs. The preceding `a16-model-1/` stopped on incorrect placement of
+the optional `--teacher-token` suffix before A16 execution; it is retained.
+Ninfer remained inactive before/after, and unrelated processes were preserved.
+No default promotion. Full answers and broader teacher-forced coverage remain open.
+
+
+The current Python teacher-token profile has 1,476 exact launches and 31.63 ms
+recorded event time versus 1,243 A16 launches and 28.60 ms. FP8 projection time
+itself is 9.91 versus 9.47 ms; eliminating 233 activation-quantization launches
+removes another 2.61 ms. Thus this sample's gain is mainly avoided quantization,
+not a large speedup of the projection dot. NVFP4 decode accounts for 8.24 ms in
+the current exact profile. The much older 83.39% FP8 attribution in the initial
+model profile must not be treated as the current optimized decoder breakdown.
+CUDA event intervals are instrumentation evidence, not isolated hardware
+instruction occupancy or bandwidth measurements.
+
+
+### Complete answer follow-up
+
+`../evidence/iterate-20260927/a16-answers-1/` records same-source exact/A16
+512-output trials for both prompts, pinned to the same tokenizer used in earlier
+text trials. All four answers reach end-of-turn. Python answer text before the
+first end-of-turn is identical across profiles; after inspection, both functions
+pass independent checks at n=-1,0,1,2,3,10,100. Prose differs: the A16 answer
+contains the incomplete phrase "a few working together". Complete generation is
+therefore not itself a qualitative pass. Scientific accuracy is not independently
+qualified here. Raw post-end-of-turn output is retained but excluded from answer
+assessment. These samples do not qualify serving EOS behavior or broad model
+quality, and A16 remains experimental. Initial service state was inactive and
+was preserved; unrelated processes remained running.
