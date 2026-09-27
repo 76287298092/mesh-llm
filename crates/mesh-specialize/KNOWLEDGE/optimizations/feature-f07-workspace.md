@@ -48,3 +48,16 @@ allocator/driver tracing yet. Dynamic host argument vectors and function lookup
 remain, and input values are deterministic fixtures, not recorded activations.
 Linux compilation, GPU correctness/reuse, sanitizer and timing evidence remain
 pending. No performance claim is made from this prepared implementation.
+
+First normal GPU trial `workspace-check-1` at `670963c16` passed every case
+and all seven exposed buffers exactly through repeated reuse. Representative
+screening medians, existing/persistent-with-waits/one-wait milliseconds:
+NVFP4 rows1 0.1947/0.1690/0.1554; rows128 1.8702/1.3141/1.2984;
+FP8 rows1 0.3033/0.2827/0.2720; rows512 22.2203/21.0402/21.1282.
+Fixed order and only three repeats prevent a stable speed claim. The largest
+workspace was232.51MiB. Inputs are deterministic BF16 fixtures with real weights;
+this is not measured whole-model throughput. PTX is unchanged `features-splitk`
+SHA256 e18df0fb02524af65d00e3b313183da18ce549fce93a65a6a22011ccfc3c6136.
+Ninfer remained inactive and ComfyUI remained resident. Mac259tests, Clippy on
+both hosts and release tools build passed. Explicit address-stability checks and
+post-gate abort/drain/poison checks were then added for the next sanitizer trial.

@@ -151,6 +151,51 @@ impl<'w, 'ctx> Chain<'w, 'ctx> {
         }
         step.complete()
     }
+    /// Diagnostic address inspection outside timed execution.
+    pub(super) fn addresses(&mut self) -> Result<Vec<u64>> {
+        let names = self
+            .workspace
+            .layout()
+            .regions()
+            .iter()
+            .map(|r| r.name.clone())
+            .collect::<Vec<_>>();
+        let step = self.workspace.begin_step()?;
+        let addresses = names
+            .iter()
+            .map(|n| Ok(step.region(n)?.pointer()))
+            .collect::<Result<Vec<_>>>()?;
+        step.complete()?;
+        Ok(addresses)
+    }
+    /// Qualification-only failure after queued work: dropping the lease must drain
+    /// and poison it, so subsequent attempts cannot reuse partially written storage.
+    pub(super) fn abort_after_gate(
+        &mut self,
+        module: &Module<'_>,
+        input: &Buffer<'_>,
+    ) -> Result<()> {
+        ensure!(
+            module.belongs_to(self.context)
+                && input.belongs_to(self.context)
+                && input.len() == self.rows * self.width * 2,
+            "MLP abort probe input/context mismatch"
+        );
+        let step = self.workspace.begin_step()?;
+        // SAFETY: Same validated input and planned disjoint regions as run; dropping
+        // this incomplete lease drains queued work and poisons the owner.
+        unsafe {
+            self.projections[0].enqueue(
+                self.context,
+                module,
+                &step,
+                "gate",
+                input.pointer(),
+                self.rows,
+            )?;
+        }
+        anyhow::bail!("injected MLP workspace failure after gate")
+    }
     pub(super) fn snapshot(&self) -> Result<Vec<(String, Vec<u8>)>> {
         self.workspace
             .layout()

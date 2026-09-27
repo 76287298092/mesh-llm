@@ -67,6 +67,7 @@ fn check(
         [rows, case.width, case.channels],
         kind,
     )?;
+    let addresses = chain.addresses()?;
     let mut variants = Vec::new();
     for operator_waits in [true, false] {
         chain.run(module, &input, operator_waits)?;
@@ -82,6 +83,10 @@ fn check(
             chain.snapshot()?.into_iter().collect::<BTreeMap<_, _>>() == expected,
             "workspace reuse changed output"
         );
+        ensure!(
+            chain.addresses()? == addresses,
+            "workspace addresses changed across reuse"
+        );
         variants.push(
             json!({"operator_waits":operator_waits,"all_passed":exact,"wall_seconds":timings}),
         );
@@ -93,9 +98,31 @@ fn check(
         drop(output);
         control_times.push(start.elapsed().as_secs_f64());
     }
+    let abort_checked = rows == 1;
+    if abort_checked {
+        let mut aborted = Chain::new(
+            ctx,
+            weights,
+            &case.prefix,
+            [rows, case.width, case.channels],
+            kind,
+        )?;
+        let failure = aborted
+            .abort_after_gate(module, &input)
+            .err()
+            .ok_or_else(|| anyhow::anyhow!("injected gate failure unexpectedly succeeded"))?;
+        ensure!(
+            failure.to_string().contains("injected"),
+            "abort did not reach queued gate"
+        );
+        ensure!(
+            aborted.run(module, &input, false).is_err(),
+            "aborted workspace was reused"
+        );
+    }
     Ok(
         json!({"prefix":case.prefix,"rows":rows,"width":case.width,"channels":case.channels,"fp8":case.fp8,
-        "workspace_bytes":chain.bytes(),"control_wall_seconds":control_times,"variants":variants,
+        "stable_addresses":true,"abort_after_gate_checked":abort_checked,"workspace_bytes":chain.bytes(),"control_wall_seconds":control_times,"variants":variants,
         "all_passed":variants.iter().all(|v|v["all_passed"]==true),"compared_buffers":expected.len(),
         "input_fixture":"deterministic signed BF16, not recorded model activations","timing_order":"workspace-waits,workspace-one-wait,control; screening only"}),
     )
