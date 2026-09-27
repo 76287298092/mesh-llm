@@ -55,6 +55,7 @@ fn virtual_route(plugin_name: &str, model_id: &str) -> VirtualModelRoute {
         supports_tools: false,
         supports_streaming: false,
         requires_candidates: false,
+        progress_lines: Vec::new(),
     }
 }
 

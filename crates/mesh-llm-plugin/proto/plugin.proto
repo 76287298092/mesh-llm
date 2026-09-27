@@ -198,6 +198,11 @@ message VirtualModelManifest {
   bool supports_tools = 5;
   bool supports_streaming = 6;
   bool requires_candidates = 7;
+  // Lines the host drips onto a streaming client while it waits for this
+  // virtual model's single response. A plugin turns are request/response and
+  // can be silent for seconds, so a streaming caller otherwise sees no bytes
+  // at all until the turn completes. Empty (the default) means no drip.
+  repeated string progress_lines = 8;
 }
 
 message PluginWebUiManifest {

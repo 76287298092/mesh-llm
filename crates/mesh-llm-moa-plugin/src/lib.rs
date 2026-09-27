@@ -12,6 +12,18 @@ use std::time::Duration;
 pub const PLUGIN_ID: &str = "mesh-moa";
 pub const HANDLER: &str = "chat";
 
+/// Lines the host drips onto a streaming caller while the committee works.
+/// Played once in order, then the last line repeats. See
+/// `VirtualModelBuilder::progress_lines`.
+pub const PROGRESS_LINES: [&str; 6] = [
+    "Routing through mesh…",
+    "Querying peer models…",
+    "Comparing responses…",
+    "Waiting on a slow peer…",
+    "Still gathering responses…",
+    "Hold on, this one's taking a moment…",
+];
+
 pub async fn run(stream: mesh_llm_plugin::LocalStream) -> anyhow::Result<()> {
     PluginRuntime::run_with_stream(plugin(), stream).await
 }
@@ -58,6 +70,12 @@ pub fn plugin() -> SimplePlugin {
             .supports_streaming(true)
             .requires_candidates(true)
             .input_modalities(["text", "image", "audio"])
+            // The host drips these onto a streaming caller while the committee
+            // works, so the client's thinking pane shows live activity instead
+            // of a stalled spinner. Played once in order, then the last line
+            // repeats. Short, factual, and grounded in what the mesh is
+            // actually doing — not invented model "thoughts".
+            .progress_lines(PROGRESS_LINES)
     ];
     let mut router = VirtualModelRouter::new();
     let turn_public_mesh = Arc::clone(&public_mesh);

@@ -604,6 +604,7 @@ mod tests {
             supports_tools: true,
             supports_streaming: true,
             requires_candidates: true,
+            progress_lines: Vec::new(),
         }];
         let body = models_list_json_with_virtual(&models, &[], &runtimes, &virtual_models);
         let mesh = body["data"]
@@ -639,6 +640,7 @@ mod tests {
             supports_tools: false,
             supports_streaming: false,
             requires_candidates: true,
+            progress_lines: Vec::new(),
         }];
 
         let body = models_list_json_with_virtual(&models, &[], &[], &virtual_models);

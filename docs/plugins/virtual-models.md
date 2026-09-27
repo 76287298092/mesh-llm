@@ -50,9 +50,12 @@ The first implementation is buffered chat completions. Streaming is additive:
 the host and plugin negotiate an event stream correlated to the same request.
 A streaming virtual model is framed by the host from the plugin's complete
 body: the buffered chat completion is translated into the matching
-`/v1/chat/completions` or `/v1/responses` event sequence, so
-`message.tool_calls` reaches the client as `function_call` items instead of
-being flattened to text.
+`/v1/chat/completions`, `/v1/responses`, or Anthropic Messages
+`/v1/messages` event sequence, so `message.tool_calls` reaches the client as
+`function_call` items or tool-use blocks instead of being flattened to text.
+Because that body only arrives once the plugin's turn is over, a route that
+declares `progress_lines` also gets a head-first progress drip while the turn
+runs (see the manifest section).
 
 ## Manifest
 
@@ -74,8 +77,26 @@ message VirtualModelManifest {
   bool supports_tools = 5;
   bool supports_streaming = 6;
   bool requires_candidates = 7;
+  repeated string progress_lines = 8;
 }
 ```
+
+`progress_lines` are the lines the host drips onto a *streaming* caller while
+the plugin's single response is still in flight. A virtual-model turn is one
+request/response exchange, so without them a streaming caller sees no bytes at
+all — not even response headers — until the turn finishes. The host commits the
+response head, drips the declared lines into the caller's reasoning channel
+(`reasoning_content` for chat completions, `response.reasoning_text.delta` for
+the Responses API, a `ping` event for the Anthropic Messages protocol), and
+then writes the buffered body as a continuation of the same stream. Lines play
+once in order, then the last one repeats. Leave the field empty (the default)
+for a model whose turn is short enough not to need it.
+
+Committing the head up front has two consequences: the plugin's
+result-derived headers only reach the caller on the non-streaming path, and a
+plugin-side rejection of a streaming request is delivered in-band — HTTP 200,
+an error event, then the stream sentinel — because the status is already on the
+wire.
 
 V1 validation rules:
 

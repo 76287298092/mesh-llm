@@ -202,6 +202,9 @@ pub struct VirtualModelRoute {
     pub supports_tools: bool,
     pub supports_streaming: bool,
     pub requires_candidates: bool,
+    /// Lines to drip onto a streaming caller while the plugin's single
+    /// response is still in flight; empty means no drip.
+    pub progress_lines: Vec<String>,
 }
 
 #[cfg(test)]

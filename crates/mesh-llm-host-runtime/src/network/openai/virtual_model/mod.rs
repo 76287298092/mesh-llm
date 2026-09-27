@@ -7,7 +7,9 @@ use mesh_llm_events::logging::events::TokenUsage;
 use mesh_llm_plugin::{HostInferenceRequest, HostInferenceResponse};
 use mesh_llm_plugin::{VirtualModelCandidate, VirtualModelInvocation};
 use std::sync::Arc;
-use tokio::io::AsyncWriteExt;
+
+mod progress;
+mod stream_adapters;
 
 pub(crate) fn advertisable_routes(
     routes: Vec<crate::plugin::VirtualModelRoute>,
@@ -347,36 +349,7 @@ pub(crate) async fn try_handle_virtual_model(
         .get("stream")
         .and_then(serde_json::Value::as_bool)
         .unwrap_or(false);
-    let descriptors = node.all_served_model_descriptors().await;
-    let runtimes = node.all_model_runtime_descriptors().await;
-    let mut candidates = candidate_models
-        .into_iter()
-        .filter(|candidate| !virtual_ids.contains(candidate))
-        .map(|model_id| {
-            let descriptor = descriptors
-                .iter()
-                .find(|descriptor| descriptor.identity.model_name == model_id);
-            let runtime = runtimes
-                .iter()
-                .find(|runtime| runtime.model_name == model_id);
-            VirtualModelCandidate {
-                model_id,
-                parameter_count_b: descriptor
-                    .and_then(|descriptor| descriptor.metadata.as_ref())
-                    .and_then(|metadata| metadata.parameter_count_b),
-                context_length: runtime.and_then(|runtime| runtime.advertised_context_length()),
-                supports_tools: descriptor.is_some_and(|descriptor| {
-                    descriptor.capabilities.tool_use != crate::models::CapabilityLevel::None
-                }),
-                supports_vision: descriptor
-                    .is_some_and(|descriptor| descriptor.capabilities.supports_vision_runtime()),
-                supports_audio: descriptor
-                    .is_some_and(|descriptor| descriptor.capabilities.supports_audio_runtime()),
-            }
-        })
-        .collect::<Vec<_>>();
-    candidates.sort_by(|left, right| left.model_id.cmp(&right.model_id));
-    candidates.dedup_by(|left, right| left.model_id == right.model_id);
+    let candidates = virtual_model_candidates(node, candidate_models, &virtual_ids).await;
     let invocation = VirtualModelInvocation {
         request: request_body,
         candidates,
@@ -395,62 +368,112 @@ pub(crate) async fn try_handle_virtual_model(
             return VirtualModelDispatchResult::Responded(response_outcome(500, result));
         }
     };
-    let response = match plugins
-        .invoke_virtual_model(
-            &route,
-            &input_json,
-            Some(std::time::Duration::from_secs(300)),
-        )
-        .await
-    {
-        Ok(response) => response,
-        Err(error) => {
-            let result = proxy::send_error_observed(
-                tcp_stream,
-                502,
-                &format!("virtual model '{}' failed: {error}", route.model_id),
-                route_observer,
-            )
-            .await;
-            return VirtualModelDispatchResult::Responded(response_outcome(502, result));
-        }
-    };
-    if !(200..=599).contains(&response.status_code) {
-        let result = proxy::send_error_observed(
-            tcp_stream,
-            502,
-            &format!(
-                "virtual model '{}' returned invalid HTTP status {}",
-                route.model_id, response.status_code
-            ),
-            route_observer,
-        )
-        .await;
-        return VirtualModelDispatchResult::Responded(response_outcome(502, result));
-    }
-    let headers = response
-        .headers
-        .iter()
-        .take(32)
-        .filter(|(name, value)| virtual_response_header_allowed(name, value))
-        .map(|(name, value)| (name.as_str(), value.clone()))
-        .collect::<Vec<_>>();
+    let invocation = plugins.invoke_virtual_model(
+        &route,
+        &input_json,
+        Some(std::time::Duration::from_secs(300)),
+    );
+    // A virtual model answers once, so a streaming caller would otherwise wait
+    // out the whole turn with nothing on the wire. When the route declares
+    // progress lines the host commits the head and drips them while the turn
+    // runs; see `progress` for what that commit costs.
+    let plan = progress::ProgressPlan::for_route(&route, response_adapter, requests_stream);
+    let (tcp_stream, response, continuation) =
+        match progress::drive(plan, tcp_stream, invocation).await {
+            progress::Driven::Buffered { stream, response } => {
+                if !(200..=599).contains(&response.status_code) {
+                    let result = proxy::send_error_observed(
+                        stream,
+                        502,
+                        &format!(
+                            "virtual model '{}' returned invalid HTTP status {}",
+                            route.model_id, response.status_code
+                        ),
+                        route_observer,
+                    )
+                    .await;
+                    return VirtualModelDispatchResult::Responded(response_outcome(502, result));
+                }
+                (stream, response, None)
+            }
+            progress::Driven::Committed {
+                stream,
+                response,
+                continuation,
+            } => (stream, response, Some(continuation)),
+            progress::Driven::WorkFailed { stream, error } => {
+                let result = proxy::send_error_observed(
+                    stream,
+                    502,
+                    &format!("virtual model '{}' failed: {error}", route.model_id),
+                    route_observer,
+                )
+                .await;
+                return VirtualModelDispatchResult::Responded(response_outcome(502, result));
+            }
+            progress::Driven::FailedAfterCommit { reason } => {
+                // The head is committed, so the turn's failure was already
+                // delivered in-band and only the outcome is left to record.
+                return VirtualModelDispatchResult::Responded(
+                    proxy::RouteDispatchOutcome::FailedWithStatus {
+                        status_code: 200,
+                        reason,
+                    },
+                );
+            }
+            progress::Driven::ClientGone => {
+                return VirtualModelDispatchResult::Responded(
+                    proxy::RouteDispatchOutcome::Dropped("virtual_model_progress_write_failed"),
+                );
+            }
+        };
     let status = response.status_code;
+    let headers: Vec<(&str, String)> = if continuation.is_some() {
+        // The committed path sent its own head first, so the plugin's
+        // result-derived headers can no longer reach the caller.
+        Vec::new()
+    } else {
+        response
+            .headers
+            .iter()
+            .take(32)
+            .filter(|(name, value)| virtual_response_header_allowed(name, value))
+            .map(|(name, value)| (name.as_str(), value.clone()))
+            .collect()
+    };
     let write = if requests_stream && (200..300).contains(&status) {
+        let header_already_sent = continuation.is_some();
         match response_adapter {
             proxy::ResponseAdapter::OpenAiResponsesStream => {
-                send_responses_sse(tcp_stream, &response.body, &headers).await
+                stream_adapters::send_responses_sse(
+                    tcp_stream,
+                    &response.body,
+                    &headers,
+                    continuation,
+                )
+                .await
             }
-            _ => send_chat_sse(tcp_stream, &response.body, &headers).await,
+            proxy::ResponseAdapter::AnthropicMessagesStream => {
+                stream_adapters::send_anthropic_messages_sse(
+                    tcp_stream,
+                    &response.body,
+                    &headers,
+                    header_already_sent,
+                )
+                .await
+            }
+            _ => {
+                stream_adapters::send_chat_sse(
+                    tcp_stream,
+                    &response.body,
+                    &headers,
+                    header_already_sent,
+                )
+                .await
+            }
         }
     } else {
-        let body = if response_adapter == proxy::ResponseAdapter::OpenAiResponsesJson
-            && (200..300).contains(&status)
-        {
-            chat_completion_to_responses_json(&response.body)
-        } else {
-            response.body.clone()
-        };
+        let body = translated_json_body(&response.body, response_adapter, status);
         proxy::send_json_with_status_and_headers_observed(
             tcp_stream,
             status,
@@ -481,6 +504,46 @@ pub(crate) async fn try_handle_virtual_model(
         proxy::RouteDispatchOutcome::Responded(status)
     };
     VirtualModelDispatchResult::Responded(outcome)
+}
+
+/// The concrete models a virtual model may route to, with the capability and
+/// sizing facts a plugin needs to choose between them.
+async fn virtual_model_candidates(
+    node: &mesh::Node,
+    candidate_models: Vec<String>,
+    virtual_ids: &std::collections::BTreeSet<String>,
+) -> Vec<VirtualModelCandidate> {
+    let descriptors = node.all_served_model_descriptors().await;
+    let runtimes = node.all_model_runtime_descriptors().await;
+    let mut candidates = candidate_models
+        .into_iter()
+        .filter(|candidate| !virtual_ids.contains(candidate))
+        .map(|model_id| {
+            let descriptor = descriptors
+                .iter()
+                .find(|descriptor| descriptor.identity.model_name == model_id);
+            let runtime = runtimes
+                .iter()
+                .find(|runtime| runtime.model_name == model_id);
+            VirtualModelCandidate {
+                model_id,
+                parameter_count_b: descriptor
+                    .and_then(|descriptor| descriptor.metadata.as_ref())
+                    .and_then(|metadata| metadata.parameter_count_b),
+                context_length: runtime.and_then(|runtime| runtime.advertised_context_length()),
+                supports_tools: descriptor.is_some_and(|descriptor| {
+                    descriptor.capabilities.tool_use != crate::models::CapabilityLevel::None
+                }),
+                supports_vision: descriptor
+                    .is_some_and(|descriptor| descriptor.capabilities.supports_vision_runtime()),
+                supports_audio: descriptor
+                    .is_some_and(|descriptor| descriptor.capabilities.supports_audio_runtime()),
+            }
+        })
+        .collect::<Vec<_>>();
+    candidates.sort_by(|left, right| left.model_id.cmp(&right.model_id));
+    candidates.dedup_by(|left, right| left.model_id == right.model_id);
+    candidates
 }
 
 fn virtual_response_header_allowed(name: &str, value: &str) -> bool {
@@ -514,138 +577,24 @@ fn parse_usage(body: &serde_json::Value) -> Option<TokenUsage> {
     super::response::parse_token_usage_from_json_body(body.to_string().as_bytes())
 }
 
-async fn write_sse_headers(
-    stream: &mut ClientStream,
-    extra_headers: &[(&str, String)],
-) -> std::io::Result<()> {
-    let mut header = String::from(
-        "HTTP/1.1 200 OK\r\n\
-         Content-Type: text/event-stream\r\n\
-         Transfer-Encoding: chunked\r\n\
-         Cache-Control: no-cache\r\n\
-         Connection: close\r\n",
-    );
-    for (name, value) in extra_headers {
-        proxy::append_safe_header(&mut header, name, value);
-    }
-    header.push_str("\r\n");
-    stream.write_all(header.as_bytes()).await
-}
-
-async fn write_sse_event(
-    stream: &mut ClientStream,
-    event: &serde_json::Value,
-) -> std::io::Result<()> {
-    write_sse_data(stream, &event.to_string()).await
-}
-
-async fn write_sse_data(stream: &mut ClientStream, data: &str) -> std::io::Result<()> {
-    let payload = format!("data: {data}\n\n");
-    let framed = format!("{:x}\r\n{}\r\n", payload.len(), payload);
-    stream.write_all(framed.as_bytes()).await
-}
-
-async fn finish_sse(stream: &mut ClientStream) -> std::io::Result<()> {
-    write_sse_data(stream, "[DONE]").await?;
-    stream.write_all(b"0\r\n\r\n").await?;
-    stream.shutdown().await
-}
-
-async fn send_chat_sse(
-    mut stream: ClientStream,
-    response: &serde_json::Value,
-    extra_headers: &[(&str, String)],
-) -> std::io::Result<()> {
-    write_sse_headers(&mut stream, extra_headers).await?;
-    let id = response
-        .get("id")
-        .and_then(serde_json::Value::as_str)
-        .unwrap_or("chatcmpl-virtual");
-    let model = response
-        .get("model")
-        .and_then(serde_json::Value::as_str)
-        .unwrap_or("virtual-model");
-    let message = response
-        .pointer("/choices/0/message")
-        .cloned()
-        .unwrap_or_else(|| serde_json::json!({}));
-    let tool_calls = message.get("tool_calls").cloned();
-    let delta = match tool_calls.as_ref() {
-        Some(tool_calls) => serde_json::json!({
-            "role": "assistant",
-            "tool_calls": tool_calls,
-        }),
-        None => serde_json::json!({
-            "role": "assistant",
-            "content": message.get("content").cloned().unwrap_or(serde_json::Value::String(String::new())),
-        }),
-    };
-    write_sse_event(
-        &mut stream,
-        &serde_json::json!({
-            "id": id,
-            "object": "chat.completion.chunk",
-            "model": model,
-            "choices": [{"index": 0, "delta": delta, "finish_reason": null}],
-        }),
-    )
-    .await?;
-    write_sse_event(
-        &mut stream,
-        &serde_json::json!({
-            "id": id,
-            "object": "chat.completion.chunk",
-            "model": model,
-            "choices": [{
-                "index": 0,
-                "delta": {},
-                "finish_reason": if tool_calls.is_some() { "tool_calls" } else { "stop" },
-            }],
-        }),
-    )
-    .await?;
-    finish_sse(&mut stream).await
-}
-
-async fn send_responses_sse(
-    mut stream: ClientStream,
-    response: &serde_json::Value,
-    extra_headers: &[(&str, String)],
-) -> std::io::Result<()> {
-    write_sse_headers(&mut stream, extra_headers).await?;
-    // Expand the same Responses body the non-streaming adapter serves, so a
-    // buffered answer keeps message text *and* the `function_call` items that
-    // `message.tool_calls` produces.
-    let responses = chat_completion_to_responses_json(response);
-    for event in openai_frontend::responses::responses_stream_events_for_response(&responses) {
-        write_named_sse_event(&mut stream, &event).await?;
-    }
-    finish_sse(&mut stream).await
-}
-
-/// Write one `/v1/responses` SSE frame. Responses streams name their events,
-/// matching the framing the host uses for a served stream, so the frame name
-/// comes from the event's own `type`.
-async fn write_named_sse_event(
-    stream: &mut ClientStream,
-    event: &serde_json::Value,
-) -> std::io::Result<()> {
-    let Some(name) = event.get("type").and_then(serde_json::Value::as_str) else {
-        return write_sse_event(stream, event).await;
-    };
-    let payload = format!("event: {name}\ndata: {event}\n\n");
-    let framed = format!("{:x}\r\n{}\r\n", payload.len(), payload);
-    stream.write_all(framed.as_bytes()).await
-}
-
-fn chat_completion_to_responses_json(chat: &serde_json::Value) -> serde_json::Value {
-    let bytes = serde_json::to_vec(chat).unwrap_or_default();
-    match super::response_adapter::translate_chat_completion_to_responses(&bytes) {
-        Ok(translated) => serde_json::from_slice(&translated).unwrap_or_else(|_| chat.clone()),
-        Err(error) => {
-            tracing::warn!("virtual-model response translation failed: {error}");
-            chat.clone()
+/// Adapt a buffered body to the caller's non-streaming protocol.
+///
+/// A failed turn that carries no top-level `error` object is still translated
+/// for the Anthropic adapter: the Messages envelope has no way to express a
+/// chat completion whose `finish_reason` is `error`.
+fn translated_json_body(
+    body: &serde_json::Value,
+    response_adapter: proxy::ResponseAdapter,
+    status: u16,
+) -> serde_json::Value {
+    match response_adapter {
+        proxy::ResponseAdapter::OpenAiResponsesJson if (200..300).contains(&status) => {
+            stream_adapters::chat_completion_to_responses_json(body)
         }
+        proxy::ResponseAdapter::AnthropicMessagesJson => {
+            stream_adapters::chat_completion_to_messages_json(body, !(200..300).contains(&status))
+        }
+        _ => body.clone(),
     }
 }
 
@@ -663,6 +612,7 @@ mod tests {
             supports_tools: false,
             supports_streaming: false,
             requires_candidates,
+            progress_lines: Vec::new(),
         }
     }
 

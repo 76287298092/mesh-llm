@@ -968,6 +968,11 @@ impl PluginManager {
                     supports_tools: model.supports_tools,
                     supports_streaming: model.supports_streaming,
                     requires_candidates: model.requires_candidates,
+                    progress_lines: model
+                        .progress_lines
+                        .into_iter()
+                        .filter(|line| !line.trim().is_empty())
+                        .collect(),
                 });
             }
         }

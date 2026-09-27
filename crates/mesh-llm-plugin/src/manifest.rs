@@ -111,6 +111,7 @@ pub fn virtual_model(
             supports_tools: false,
             supports_streaming: false,
             requires_candidates: false,
+            progress_lines: Vec::new(),
         },
     }
 }
@@ -128,6 +129,18 @@ impl VirtualModelBuilder {
 
     pub fn requires_candidates(mut self, value: bool) -> Self {
         self.inner.requires_candidates = value;
+        self
+    }
+
+    /// Lines the host drips onto a streaming client while it waits for this
+    /// virtual model's response. Played once in order, then the last line
+    /// repeats for as long as the turn runs.
+    pub fn progress_lines<I, S>(mut self, values: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        self.inner.progress_lines = values.into_iter().map(Into::into).collect();
         self
     }
 
@@ -1824,7 +1837,8 @@ mod tests {
                     .output_modalities(["text"])
                     .supports_tools(true)
                     .supports_streaming(true)
-                    .requires_candidates(true),
+                    .requires_candidates(true)
+                    .progress_lines(["Routing through mesh…"]),
             )
             .build();
 
@@ -1837,6 +1851,7 @@ mod tests {
         assert!(model.supports_tools);
         assert!(model.supports_streaming);
         assert!(model.requires_candidates);
+        assert_eq!(model.progress_lines, ["Routing through mesh…"]);
     }
 
     #[test]

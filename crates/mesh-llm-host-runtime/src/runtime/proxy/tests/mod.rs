@@ -727,6 +727,77 @@ pub(crate) fn standalone_virtual_model_plugin(
 
 pub(crate) const STANDALONE_VIRTUAL_MODEL_PLUGIN_ID: &str = "test-standalone-virtual-model";
 
+/// The progress line [`dripping_virtual_model_plugin`] declares. The host
+/// drips it verbatim while a turn is still running.
+pub(crate) const DRIP_LINE: &str = "Consulting peers…";
+
+pub(crate) const DRIPPING_VIRTUAL_MODEL_PLUGIN_ID: &str = "test-dripping-virtual-model";
+
+/// A manifest-declared virtual model that declares progress lines and answers
+/// `delay` after the request, so a test can observe what a streaming caller
+/// receives *while* the turn is still running.
+pub(crate) fn dripping_virtual_model_plugin(
+    model_id: &'static str,
+    response: serde_json::Value,
+    delay: std::time::Duration,
+) -> mesh_llm_plugin::SimplePlugin {
+    use mesh_llm_plugin as sdk;
+
+    let manifest = sdk::plugin_manifest![
+        sdk::virtual_model(model_id, "chat")
+            .supports_streaming(true)
+            .progress_lines([DRIP_LINE])
+    ];
+    let mut router = sdk::VirtualModelRouter::new();
+    router.add_raw(
+        sdk::operation_with_schema(
+            "chat",
+            "Drip progress, then answer with a canned chat completion",
+            serde_json::Map::new(),
+        ),
+        move |_request, _context| {
+            let response = response.clone();
+            Box::pin(async move {
+                tokio::time::sleep(delay).await;
+                sdk::structured_tool_result(sdk::VirtualModelResponse {
+                    status_code: 200,
+                    body: response,
+                    headers: Vec::new(),
+                    event_stream: true,
+                })
+            })
+        },
+    );
+    let plugin_id = DRIPPING_VIRTUAL_MODEL_PLUGIN_ID;
+    sdk::SimplePlugin::new(sdk::PluginMetadata::new(
+        plugin_id,
+        env!("CARGO_PKG_VERSION"),
+        sdk::plugin_server_info(
+            plugin_id,
+            env!("CARGO_PKG_VERSION"),
+            "Dripping virtual model",
+            "Test double for the virtual-model progress drip",
+            None::<String>,
+        ),
+    ))
+    .with_manifest(manifest)
+    .with_virtual_model_router(router)
+}
+
+/// Start an in-process plugin manager whose only plugin is
+/// [`dripping_virtual_model_plugin`].
+pub(crate) async fn start_dripping_virtual_model_plugin_manager(
+    model_id: &'static str,
+    response: serde_json::Value,
+    delay: std::time::Duration,
+) -> plugin::PluginManager {
+    start_in_process_plugin_manager(
+        dripping_virtual_model_plugin(model_id, response, delay),
+        mesh_llm_plugin::MeshVisibility::Private,
+    )
+    .await
+}
+
 /// Start an in-process plugin manager whose only plugin is
 /// [`standalone_virtual_model_plugin`].
 pub(crate) async fn start_standalone_virtual_model_plugin_manager(

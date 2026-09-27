@@ -265,10 +265,7 @@ async fn test_builtin_moa_virtual_model_runs_end_to_end_through_plugin_api() {
         spawn_repeating_upstream(&worker_response).await;
     let plugin_manager = start_moa_plugin_manager().await;
     let (proxy_addr, proxy_handle) = spawn_api_proxy_test_harness_with_plugin_manager(
-        local_targets(&[
-            ("worker-a", worker_a_port),
-            ("worker-b", worker_b_port),
-        ]),
+        local_targets(&[("worker-a", worker_a_port), ("worker-b", worker_b_port)]),
         plugin_manager.clone(),
     )
     .await;
@@ -385,6 +382,155 @@ async fn test_streamed_virtual_model_responses_preserves_tool_calls() {
     assert_eq!(call["name"], "lookup");
     assert_eq!(call["call_id"], "call_lookup");
     assert_eq!(call["arguments"], "{\"q\":\"hi\"}");
+
+    proxy_handle.abort();
+}
+
+#[tokio::test]
+async fn anthropic_virtual_model_serves_messages_envelopes() {
+    let answer = json!({
+        "id": "chatcmpl-anthropic",
+        "object": "chat.completion",
+        "created": 1_700_000_000u64,
+        "model": "test-anthropic",
+        "choices": [{
+            "index": 0,
+            "message": {"role": "assistant", "content": "hello from the committee"},
+            "finish_reason": "stop"
+        }],
+        "usage": {"prompt_tokens": 7, "completion_tokens": 4, "total_tokens": 11}
+    });
+    let plugin_manager =
+        start_standalone_virtual_model_plugin_manager("test-anthropic", answer).await;
+    let (proxy_addr, proxy_handle) =
+        spawn_api_proxy_test_harness_with_plugin_manager(local_targets(&[]), plugin_manager).await;
+
+    // Non-streaming: an Anthropic Messages envelope, not a chat completion.
+    let body = json!({
+        "model": "test-anthropic",
+        "max_tokens": 32,
+        "messages": [{"role": "user", "content": "hello"}],
+    })
+    .to_string();
+    let request = format!(
+        "POST /v1/messages HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}",
+        body.len(),
+        body
+    );
+    let response = send_request_and_read_response(proxy_addr, vec![request.into_bytes()]).await;
+    assert!(response.starts_with("HTTP/1.1 200 OK"), "{response}");
+    let translated: serde_json::Value =
+        serde_json::from_str(response.split_once("\r\n\r\n").unwrap().1).unwrap();
+    assert_eq!(translated["type"], "message");
+    assert_eq!(translated["content"][0]["type"], "text");
+    assert_eq!(translated["content"][0]["text"], "hello from the committee");
+    assert_eq!(translated["usage"]["input_tokens"], 7);
+
+    // Streaming: Anthropic named events, never a chat-shaped chunk.
+    let body = json!({
+        "model": "test-anthropic",
+        "max_tokens": 32,
+        "stream": true,
+        "messages": [{"role": "user", "content": "hello"}],
+    })
+    .to_string();
+    let request = format!(
+        "POST /v1/messages HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}",
+        body.len(),
+        body
+    );
+    let response = send_request_and_read_response(proxy_addr, vec![request.into_bytes()]).await;
+    assert!(response.starts_with("HTTP/1.1 200 OK"), "{response}");
+    assert!(response.contains("event: message_start"), "{response}");
+    assert!(
+        response.contains("event: content_block_delta"),
+        "{response}"
+    );
+    assert!(response.contains("hello from the committee"), "{response}");
+    assert!(response.contains("event: message_stop"), "{response}");
+    assert!(
+        !response.contains("chat.completion.chunk"),
+        "an Anthropic client must never see a chat-shaped body: {response}"
+    );
+
+    proxy_handle.abort();
+}
+
+/// The completion id of the first chat chunk on the wire.
+fn first_chat_chunk_id(text: &str) -> String {
+    let marker = "\"id\":\"";
+    let start = text
+        .find(marker)
+        .unwrap_or_else(|| panic!("no chunk id in {text}"))
+        + marker.len();
+    let rest = &text[start..];
+    rest[..rest.find('"').expect("closing quote")].to_string()
+}
+
+#[tokio::test]
+async fn streaming_virtual_model_drips_progress_while_the_turn_runs() {
+    let answer = json!({
+        "id": "chatcmpl-drip",
+        "object": "chat.completion",
+        "created": 1_700_000_000u64,
+        "model": "test-drip",
+        "choices": [{
+            "index": 0,
+            "message": {"role": "assistant", "content": "committee answer"},
+            "finish_reason": "stop"
+        }],
+        "usage": {"prompt_tokens": 3, "completion_tokens": 2, "total_tokens": 5}
+    });
+    // The turn takes 1.5s; the drip ticks at 1s, so what reaches the wire
+    // before the answer is exactly the progress phase.
+    let plugin_manager = start_dripping_virtual_model_plugin_manager(
+        "test-drip",
+        answer,
+        Duration::from_millis(1500),
+    )
+    .await;
+    let (proxy_addr, proxy_handle) =
+        spawn_api_proxy_test_harness_with_plugin_manager(local_targets(&[]), plugin_manager).await;
+
+    let body = json!({
+        "model": "test-drip",
+        "stream": true,
+        "messages": [{"role": "user", "content": "answer me"}],
+    })
+    .to_string();
+    let request = format!(
+        "POST /v1/chat/completions HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}",
+        body.len(),
+        body
+    );
+    let mut stream = TcpStream::connect(proxy_addr).await.unwrap();
+    stream.write_all(request.as_bytes()).await.unwrap();
+    stream.shutdown().await.unwrap();
+
+    let progress =
+        read_until_contains(&mut stream, DRIP_LINE.as_bytes(), Duration::from_secs(5)).await;
+    let progress = String::from_utf8_lossy(&progress);
+    assert!(
+        progress.starts_with("HTTP/1.1 200 OK"),
+        "the head precedes the drip: {progress}"
+    );
+    assert!(
+        !progress.contains("committee answer"),
+        "the drip must arrive before the answer it precedes: {progress}"
+    );
+    assert!(
+        progress.contains(r#""reasoning_content":"Consulting peers…\n""#),
+        "the declared line is dripped into the reasoning channel: {progress}"
+    );
+    let drip_id = first_chat_chunk_id(&progress);
+
+    let full = read_until_contains(&mut stream, b"[DONE]", Duration::from_secs(5)).await;
+    let full = String::from_utf8_lossy(&full);
+    assert!(full.contains("committee answer"), "{full}");
+    assert!(
+        full.matches(&format!("\"id\":\"{drip_id}\"")).count() >= 2,
+        "the drip and the answer must share one completion id: {full}"
+    );
 
     proxy_handle.abort();
 }
@@ -539,9 +685,11 @@ async fn test_builtin_moa_uses_plugin_inference_model_as_its_only_candidate() {
             models: vec!["plugin-worker".into()],
         }])
         .await;
-    let (proxy_addr, proxy_handle) =
-        spawn_api_proxy_test_harness_with_plugin_manager(local_targets(&[]), plugin_manager.clone())
-            .await;
+    let (proxy_addr, proxy_handle) = spawn_api_proxy_test_harness_with_plugin_manager(
+        local_targets(&[]),
+        plugin_manager.clone(),
+    )
+    .await;
     crate::network::openai::virtual_model::install_inference_bridge(
         &plugin_manager,
         proxy_addr.port(),
@@ -570,8 +718,14 @@ async fn test_builtin_moa_uses_plugin_inference_model_as_its_only_candidate() {
     );
     let response = send_request_and_read_response(proxy_addr, vec![request.into_bytes()]).await;
 
-    assert!(response.starts_with("HTTP/1.1 200 OK"), "response: {response}");
-    assert!(response.contains("plugin candidate"), "response: {response}");
+    assert!(
+        response.starts_with("HTTP/1.1 200 OK"),
+        "response: {response}"
+    );
+    assert!(
+        response.contains("plugin candidate"),
+        "response: {response}"
+    );
     assert!(
         worker_requests.load(std::sync::atomic::Ordering::Relaxed) >= 1,
         "the virtual model must receive and invoke plugin inference candidates"
@@ -598,13 +752,12 @@ async fn test_builtin_moa_single_model_preserves_small_context_request() {
     let (worker_port, worker_requests, worker_handle) =
         spawn_repeating_upstream(&worker_response).await;
     let plugin_manager = start_moa_plugin_manager().await;
-    let (proxy_addr, proxy_handle) =
-        spawn_api_proxy_test_harness_with_plugin_manager_and_contexts(
-            local_targets(&[("worker-a", worker_port)]),
-            plugin_manager.clone(),
-            &[("worker-a", 256)],
-        )
-        .await;
+    let (proxy_addr, proxy_handle) = spawn_api_proxy_test_harness_with_plugin_manager_and_contexts(
+        local_targets(&[("worker-a", worker_port)]),
+        plugin_manager.clone(),
+        &[("worker-a", 256)],
+    )
+    .await;
     crate::network::openai::virtual_model::install_inference_bridge(
         &plugin_manager,
         proxy_addr.port(),
@@ -1495,7 +1648,8 @@ async fn anthropic_count_upstream_error_uses_anthropic_envelope() {
     );
     let response = send_request_and_read_response(addr, vec![request.into_bytes()]).await;
     assert!(response.starts_with("HTTP/1.1 404"), "{response}");
-    let error: serde_json::Value = serde_json::from_str(response.split_once("\r\n\r\n").unwrap().1).unwrap();
+    let error: serde_json::Value =
+        serde_json::from_str(response.split_once("\r\n\r\n").unwrap().1).unwrap();
     assert_eq!(error["type"], "error");
     assert_eq!(error["error"]["type"], "api_error");
     proxy.abort();
