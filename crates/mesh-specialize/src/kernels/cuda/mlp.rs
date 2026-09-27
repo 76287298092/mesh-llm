@@ -80,7 +80,7 @@ pub(super) fn check(
     )?;
     let report = json!({"all_passed":true,"gate":gate.report,"up":up.report,"activation":activated.report,"down":down.report,"residual":residual.report,
         "device_intermediates_resident":true,"component_checks_only":true,
-        "scope":"layer-zero GPU component chain complete; each component uses actual preceding device outputs for its scalar comparison; independent full-layer/logit comparison is reported separately by the layer harness"});
+        "scope":"decoder MLP GPU component chain complete; each component uses actual preceding device outputs for its scalar comparison; independent full-layer/logit comparison is reported separately by the layer harness"});
     Ok(CheckedMlp {
         words: residual.words,
         report,

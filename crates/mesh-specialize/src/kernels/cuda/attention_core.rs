@@ -21,7 +21,18 @@ pub(super) struct Input<'a, 'ctx> {
     pub(super) width: usize,
 }
 
-pub(super) fn check(context: &Context, module: &Module<'_>, input: Input<'_, '_>) -> Result<Value> {
+pub(super) struct Checked<'a> {
+    pub(super) device: Buffer<'a>,
+    pub(super) words: Vec<u16>,
+    pub(super) k_cache: Vec<u16>,
+    pub(super) v_cache: Vec<u16>,
+    pub(super) report: Value,
+}
+pub(super) fn check<'a>(
+    context: &'a Context,
+    module: &Module<'_>,
+    input: Input<'_, '_>,
+) -> Result<Checked<'a>> {
     validate(&input)?;
     let mut partitions = vec![vec![input.rows]];
     if input.rows > 1 {
@@ -52,13 +63,18 @@ pub(super) fn check(context: &Context, module: &Module<'_>, input: Input<'_, '_>
             json!(report["all_passed"] == true && words_exact && fp32_exact && state_exact);
         reports.push(report);
     }
-    Ok(
-        json!({"all_passed":reports.iter().all(|r|r["all_passed"]==true),"partitions":reports,
+    let report = json!({"all_passed":reports.iter().all(|r|r["all_passed"]==true),"partitions":reports,
         "rows":input.rows,"query_heads":input.query_heads,"kv_heads":input.kv_heads,"width":input.width,"cache_capacity":input.rows+3,
         "cache_format":"BF16 token-major K/V; NaN poison after initialized prefix","device_inputs_resident":true,
         "arithmetic_profile":"FP32 QK and stable online softmax/value accumulation; BF16 output; independent f64 oracle",
-        "scope":"causal attention core and persistent KV state; output gate/projection and full layer not executed"}),
-    )
+        "scope":"causal attention core and persistent KV state; the consuming layer harness reports subsequent components"});
+    Ok(Checked {
+        device: whole.device,
+        words: whole.output,
+        k_cache: whole.k,
+        v_cache: whole.v,
+        report,
+    })
 }
 
 fn validate(input: &Input<'_, '_>) -> Result<()> {
@@ -91,7 +107,8 @@ fn validate(input: &Input<'_, '_>) -> Result<()> {
     Ok(())
 }
 
-struct Sequence {
+struct Sequence<'a> {
+    device: Buffer<'a>,
     output: Vec<u16>,
     unrounded: Vec<f32>,
     k: Vec<u16>,
@@ -111,12 +128,12 @@ fn shape(input: &Input<'_, '_>, past: usize, rows: usize) -> reference::Shape {
     }
 }
 
-fn sequence(
-    context: &Context,
+fn sequence<'a>(
+    context: &'a Context,
     module: &Module<'_>,
     input: &Input<'_, '_>,
     partition: &[usize],
-) -> Result<Sequence> {
+) -> Result<Sequence<'a>> {
     ensure!(
         partition.iter().all(|&n| n > 0) && partition.iter().sum::<usize>() == input.rows,
         "invalid attention partition"
@@ -177,6 +194,7 @@ fn sequence(
             .iter()
             .all(|b| b["cache_prefix_and_poison_tail_exact"] == true);
     Ok(Sequence {
+        device: output,
         output: actual,
         unrounded: fp32,
         k: words(&k, expected_k.len())?,
@@ -331,7 +349,7 @@ pub(super) fn fixtures(context: &Context, module: &Module<'_>) -> Result<Vec<Val
         let q_device = upload_words(context, &q)?;
         let k_device = upload_words(context, &k)?;
         let v_device = upload_words(context, &v)?;
-        let mut report = check(
+        let checked = check(
             context,
             module,
             Input {
@@ -347,6 +365,7 @@ pub(super) fn fixtures(context: &Context, module: &Module<'_>) -> Result<Vec<Val
                 width,
             },
         )?;
+        let mut report = checked.report;
         report["fixture_mode"] = json!(mode);
         reports.push(report);
     }

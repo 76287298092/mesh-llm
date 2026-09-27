@@ -17,6 +17,9 @@ pub struct Fp8Projection {
 }
 
 pub struct AttentionInput {
+    pub output_projection: Fp8Projection,
+    pub post_attention_norm: ResidualNormWeights,
+    pub mlp: Nvfp4Mlp,
     pub entry: EmbeddingNormInput,
     pub projections: [Fp8Projection; 3],
     pub q_norm: Vec<u8>,

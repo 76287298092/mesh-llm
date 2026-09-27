@@ -18,6 +18,8 @@ pub(super) struct Input<'a, 'ctx> {
 }
 
 pub(super) struct Checked<'a> {
+    pub(super) gate: Buffer<'a>,
+    pub(super) gate_words: Vec<u16>,
     pub(super) device: Buffer<'a>,
     pub(super) words: Vec<u16>,
     pub(super) report: Value,
@@ -130,6 +132,8 @@ pub(super) fn check<'a>(
         "norm_bf16_scalar_differences":scalar_norm_differences,"output_bf16_scalar_differences":scalar_output_differences,"independent_operation_reference":full_reference,
         "device_projection_input_resident":true,"scope":"Q/K normalization, partial RoPE and Q gate split only; no attention scores or KV cache"});
     Ok(Checked {
+        gate,
+        gate_words: actual_gate,
         device: output,
         words: actual,
         report,

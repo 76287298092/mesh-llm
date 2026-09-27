@@ -178,6 +178,7 @@ that control's rates directly to MTP4 as an isolated speedup across different in
 | Q03 independent whole-layer reference | Partial: one/17-token layer-zero hidden/history/state pass fixed 1% L2 and 0.9999 cosine budgets, including every partition | `KNOWLEDGE/findings/whole-gdn-layer.md`; full-model/logit parity pending |
 | Q02 full-attention preparation | Partial: 258,048 layer-3 projection and 129,024 prepared Q/K values pass; all three sanitizers clean | `KNOWLEDGE/findings/attention-preparation.md`; attention/KV cache and full layer still pending |
 | Q02 causal attention and KV | Partial: 110,592 real outputs pass; whole/chunk/token FP32/BF16 outputs and KV states exact; sanitizers clean | `KNOWLEDGE/findings/causal-attention.md`; full attention layer/model pending |
+| Q02 complete attention layer | Implementation pending qualification | `KNOWLEDGE/findings/full-attention-layer.md`; resident gate/output/MLP and whole-layer reference |
 | H03 discovery and H04 ABI | Pending | No executable specialized model yet |
 | Full model performance/context trial | Pending | None |
 

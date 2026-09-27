@@ -2,6 +2,8 @@
 
 pub(super) mod attention;
 mod attention_core;
+mod attention_finish;
+mod attention_gate;
 mod attention_prepare;
 
 mod causal_conv4;

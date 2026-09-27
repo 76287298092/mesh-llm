@@ -1,8 +1,8 @@
-//! Full-attention input-stage trial, separate from full model execution.
+//! Complete full-attention layer trial, separate from full model execution.
 use super::{
-    attention_core, attention_prepare,
+    attention_core, attention_finish, attention_gate, attention_prepare,
     driver::{Buffer, Context, Module},
-    embedding_norm, projections,
+    embedding_norm, mlp, projections, residual_norm,
 };
 use crate::{
     attention_prepare_reference as reference, entry_reference,
@@ -28,6 +28,7 @@ pub(in crate::kernels) fn run(ptx: &str, device: i32, input: &AttentionInput) ->
     let module = Module::load(&context, ptx)?;
     let fixtures = attention_prepare::fixtures(&context, &module)?;
     let core_fixtures = attention_core::fixtures(&context, &module)?;
+    let gate_fixtures = attention_gate::fixtures(&context, &module)?;
     let table = upload(&context, &input.entry.table)?;
     let norm = upload(&context, &input.entry.weight)?;
     let mut cases = Vec::new();
@@ -40,10 +41,10 @@ pub(in crate::kernels) fn run(ptx: &str, device: i32, input: &AttentionInput) ->
     drop(norm);
     let after = context.memory()?;
     Ok(
-        json!({"schema_version":2,"kind":"qwen-causal-attention-trial","all_passed":fixtures.iter().chain(&core_fixtures).chain(&cases).all(|v|v["all_passed"]==true),
-        "device":info,"cases":cases,"fixtures":fixtures,"causal_attention_fixtures":core_fixtures,"causal_attention_resources":module.function("causal_attention_bf16")?.resources()?,"kv_append_resources":module.function("attention_kv_append")?.resources()?,"prepare_resources":module.function("attention_qk_prepare")?.resources()?,
+        json!({"schema_version":3,"kind":"qwen-full-attention-layer-trial","all_passed":fixtures.iter().chain(&core_fixtures).chain(&gate_fixtures).chain(&cases).all(|v|v["all_passed"]==true),
+        "device":info,"cases":cases,"gate_fixtures":gate_fixtures,"gate_resources":module.function("attention_gate_bf16")?.resources()?,"fixtures":fixtures,"causal_attention_fixtures":core_fixtures,"causal_attention_resources":module.function("causal_attention_bf16")?.resources()?,"kv_append_resources":module.function("attention_kv_append")?.resources()?,"prepare_resources":module.function("attention_qk_prepare")?.resources()?,
         "memory_before":{"free_bytes":before.0,"total_bytes":before.1},"memory_after":{"free_bytes":after.0,"total_bytes":after.1},
-        "causal_attention_core_executed":true,"full_attention_executed":false,"full_model_executed":false,"timing_collected":false,
+        "causal_attention_core_executed":true,"full_attention_executed":true,"full_model_executed":false,"timing_collected":false,
         "input_scope":"embedding rows used as synthetic hidden input to layer 3; layers 0..2 are not executed",
         "rope_scope":"text positions with equal T/H/W; explicit CPU-generated BF16 coefficient profile, not full multimodal RoPE or tested usable context"}),
     )
@@ -62,7 +63,7 @@ fn validate(input: &AttentionInput) -> Result<()> {
         "attention head shape invalid"
     );
     ensure!(
-        (2..=1024).contains(&input.head_width)
+        (2..=256).contains(&input.head_width)
             && input.rotary_dim >= 2
             && input.rotary_dim <= input.head_width
             && input.rotary_dim.is_multiple_of(2),
@@ -98,10 +99,20 @@ fn validate(input: &AttentionInput) -> Result<()> {
         input.kv_heads * input.head_width,
         input.kv_heads * input.head_width,
     ];
-    for (p, channels) in input.projections.iter().zip(widths) {
+    for (p, channels, width) in input
+        .projections
+        .iter()
+        .zip(widths)
+        .map(|(p, c)| (p, c, input.entry.width))
+        .chain(std::iter::once((
+            &input.output_projection,
+            input.entry.width,
+            input.query_heads * input.head_width,
+        )))
+    {
         ensure!(
             p.channels == channels
-                && p.weights.len() == channels * input.entry.width
+                && p.weights.len() == channels * width
                 && p.scales.len() == channels * 2,
             "attention projection extent invalid"
         );
@@ -117,10 +128,14 @@ fn validate(input: &AttentionInput) -> Result<()> {
             "attention FP8 scale invalid"
         );
     }
+    residual_norm::validate(&input.post_attention_norm, input.entry.width)?;
+    mlp::validate(&input.mlp, input.entry.width)?;
     Ok(())
 }
 
 struct Entry<'a> {
+    residual: Buffer<'a>,
+    residual_words: Vec<u16>,
     codes: Buffer<'a>,
     scales: Buffer<'a>,
     quantized: projection_reference::QuantizedRows,
@@ -162,9 +177,10 @@ fn entry<'a>(
     )?;
     context.synchronize()?;
     let norm_words = words(&normalized, count)?;
+    let residual_words = words(&residual, count)?;
     let report = embedding_norm::compare(
         tokens,
-        &words(&residual, count)?,
+        &residual_words,
         &norm_words,
         &floats(&unrounded, count)?,
         &expected,
@@ -188,6 +204,8 @@ fn entry<'a>(
         "attention input FP8 quantization mismatch"
     );
     Ok(Entry {
+        residual,
+        residual_words,
         codes,
         scales,
         quantized,
@@ -255,11 +273,15 @@ fn run_case(
                     shape: &shape,
                 },
             )?;
-            let value = (checked.device, checked.words);
             if index == 0 {
-                q = Some(value);
+                q = Some((
+                    checked.device,
+                    checked.words,
+                    checked.gate,
+                    checked.gate_words,
+                ));
             } else {
-                k = Some(value);
+                k = Some((checked.device, checked.words));
             }
             Some(checked.report)
         } else {
@@ -270,7 +292,7 @@ fn run_case(
             && preparation.as_ref().is_none_or(|v| v["all_passed"] == true);
         reports.push(json!({"projection_name":p.name,"all_passed":passed,"projection":projection,"preparation":preparation,"shape_mnk":[tokens.len(),p.channels,input.entry.width]}));
     }
-    let (q, q_words) = q.context("missing prepared Q")?;
+    let (q, q_words, gate, gate_words) = q.context("missing prepared Q")?;
     let (k, k_words) = k.context("missing prepared K")?;
     let (v, v_words) = v.context("missing projected V")?;
     let core = attention_core::check(
@@ -289,8 +311,25 @@ fn run_case(
             width: input.head_width,
         },
     )?;
+    let finish = attention_finish::check(
+        context,
+        module,
+        attention_finish::Input {
+            attention: &core.device,
+            attention_words: &core.words,
+            gate: &gate,
+            gate_words: &gate_words,
+            residual: &entry.residual,
+            residual_words: &entry.residual_words,
+            k_cache: &core.k_cache,
+            v_cache: &core.v_cache,
+        },
+        input,
+        tokens,
+        positions,
+    )?;
     Ok(
-        json!({"all_passed":entry.report["passed"]==true && reports.iter().all(|r|r["all_passed"]==true) && core["all_passed"]==true,"tokens":tokens,"positions":positions,"entry":entry.report,"input_activation_quantization_exact":true,"projections":reports,"causal_attention":core}),
+        json!({"all_passed":entry.report["passed"]==true && reports.iter().all(|r|r["all_passed"]==true) && core.report["all_passed"]==true && finish["all_passed"]==true,"tokens":tokens,"positions":positions,"entry":entry.report,"input_activation_quantization_exact":true,"projections":reports,"causal_attention":core.report,"finish":finish}),
     )
 }
 
