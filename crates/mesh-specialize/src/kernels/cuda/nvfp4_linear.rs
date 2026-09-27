@@ -151,6 +151,12 @@ pub(super) fn check<'a>(
         let control_unrounded = upload(context, &vec![0xff; count * 4])?;
         pointers[4] = control_output.pointer();
         pointers[5] = control_unrounded.pointer();
+        let mut control_args = pointers
+            .iter_mut()
+            .map(|p| (p as *mut u64).cast())
+            .collect::<Vec<*mut c_void>>();
+        control_args.extend(dimensions.iter_mut().map(|p| (p as *mut u32).cast()));
+        control_args.push((&mut factor as *mut f32).cast());
         // SAFETY: The same checked buffers/ABI also satisfy the original linear
         // kernel as a diagnostic comparison of accumulation order. Wait before reads.
         unsafe {
@@ -158,7 +164,7 @@ pub(super) fn check<'a>(
                 [dimensions[1].div_ceil(8), 1, 1],
                 [32, 1, 1],
                 0,
-                &mut args,
+                &mut control_args,
             )?;
         }
         context.synchronize()?;

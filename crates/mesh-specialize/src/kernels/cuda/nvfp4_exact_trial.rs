@@ -39,12 +39,9 @@ pub(super) fn run(ctx: &Context, module: &Module<'_>) -> Result<Value> {
         check_fixture(
             ctx,
             module,
-            16,
-            16,
-            &[code | (code << 4); 8],
-            &weights,
-            &[0x38],
-            &[0x38; 16],
+            [16, 16],
+            [&[code | (code << 4); 8], &weights],
+            [&[0x38], &[0x38; 16]],
             &mut code_counts,
         )?;
     }
@@ -59,12 +56,9 @@ pub(super) fn run(ctx: &Context, module: &Module<'_>) -> Result<Value> {
         check_fixture(
             ctx,
             module,
-            scale_n,
-            scale_k,
-            &scale_activation,
-            &scale_weights,
-            &[activation_scale],
-            &weight_scales,
+            [scale_n, scale_k],
+            [&scale_activation, &scale_weights],
+            [&[activation_scale], &weight_scales],
             &mut scale_counts,
         )?;
     }
@@ -84,12 +78,9 @@ pub(super) fn run(ctx: &Context, module: &Module<'_>) -> Result<Value> {
     check_fixture(
         ctx,
         module,
-        wide_n,
-        wide_k,
-        &wide_activation,
-        &wide_weights,
-        &wide_activation_scales,
-        &wide_weight_scales,
+        [wide_n, wide_k],
+        [&wide_activation, &wide_weights],
+        [&wide_activation_scales, &wide_weight_scales],
         &mut wide_counts,
     )?;
 
@@ -109,14 +100,14 @@ pub(super) fn run(ctx: &Context, module: &Module<'_>) -> Result<Value> {
 fn check_fixture(
     ctx: &Context,
     module: &Module<'_>,
-    n: usize,
-    k: usize,
-    activation: &[u8],
-    weights: &[u8],
-    activation_scales: &[u8],
-    weight_scales: &[u8],
+    shape: [usize; 2],
+    packed: [&[u8]; 2],
+    scales: [&[u8]; 2],
     counts: &mut CaseCounts,
 ) -> Result<()> {
+    let [n, k] = shape;
+    let [activation, weights] = packed;
+    let [activation_scales, weight_scales] = scales;
     let expected = reference::run(
         Matrix {
             packed: activation,
@@ -132,16 +123,7 @@ fn check_fixture(
         },
         k,
     )?;
-    let (actual_bf16, actual_fp32) = execute(
-        ctx,
-        module,
-        n,
-        k,
-        activation,
-        weights,
-        activation_scales,
-        weight_scales,
-    )?;
+    let (actual_bf16, actual_fp32) = execute(ctx, module, shape, packed, scales)?;
     ensure!(
         actual_bf16.len() == expected.normalized.len()
             && actual_fp32.len() == expected.unrounded.len(),
@@ -170,13 +152,13 @@ fn check_fixture(
 fn execute(
     ctx: &Context,
     module: &Module<'_>,
-    n: usize,
-    k: usize,
-    activation: &[u8],
-    weights: &[u8],
-    activation_scales: &[u8],
-    weight_scales: &[u8],
+    shape: [usize; 2],
+    packed: [&[u8]; 2],
+    scales: [&[u8]; 2],
 ) -> Result<(Vec<u16>, Vec<f32>)> {
+    let [n, k] = shape;
+    let [activation, weights] = packed;
+    let [activation_scales, weight_scales] = scales;
     ensure!(
         activation.len() == k / 2
             && weights.len() == n * k / 2
