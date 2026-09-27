@@ -29,6 +29,16 @@ pub struct ObjectSource {
     pub shape: Vec<u64>,
     pub layout: String,
     pub path: PathBuf,
+    /// Absolute byte range in `path`; `None` selects the entire regular file.
+    pub range: Option<SourceRange>,
+    /// Optional expected digest of the selected bytes, not of the enclosing file.
+    pub expected_sha256: Option<String>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SourceRange {
+    pub offset: u64,
+    pub length: u64,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -39,7 +49,10 @@ pub struct WrittenArtifact {
 
 struct SourceFile {
     path: PathBuf,
+    file_len: u64,
+    offset: u64,
     length: u64,
+    expected_sha256: Option<String>,
 }
 
 struct Preflight {
@@ -145,10 +158,25 @@ fn open_sources(
         let file = File::open(&item.path).with_context(|| "open artifact source object")?;
         let metadata = file.metadata().context("read artifact source metadata")?;
         ensure!(metadata.is_file(), "artifact source must be a regular file");
-        let length = metadata.len();
+        let file_len = metadata.len();
+        if let Some(expected_sha256) = &item.expected_sha256 {
+            validate_expected_sha256(expected_sha256)?;
+        }
+        let range = item.range.clone().unwrap_or(SourceRange {
+            offset: 0,
+            length: file_len,
+        });
+        let range_end = range
+            .offset
+            .checked_add(range.length)
+            .context("artifact source range extent overflows u64")?;
+        ensure!(
+            range_end <= file_len,
+            "artifact source range exceeds source file length"
+        );
         let offset = align_up(previous_end)?;
         previous_end = offset
-            .checked_add(length)
+            .checked_add(range.length)
             .context("artifact payload extent overflows u64")?;
         objects.push(Object {
             name: item.name.clone(),
@@ -157,12 +185,15 @@ fn open_sources(
             shape: item.shape.clone(),
             layout: item.layout.clone(),
             offset,
-            length,
+            length: range.length,
             sha256: "0".repeat(64),
         });
         inputs.push(SourceFile {
             path: item.path.clone(),
-            length,
+            file_len,
+            offset: range.offset,
+            length: range.length,
+            expected_sha256: item.expected_sha256.clone(),
         });
     }
 
@@ -223,7 +254,15 @@ impl Write for CountingWriter {
 
 fn hash_sources(sources: &[SourceFile], directory: &mut Directory) -> Result<()> {
     for (source, object) in sources.iter().zip(&mut directory.objects) {
-        object.sha256 = stream_source(&mut open_source(source)?, source.length, &mut io::sink())?;
+        let sha256 = stream_source(&mut open_source(source)?, source, &mut io::sink())?;
+        if let Some(expected_sha256) = &source.expected_sha256 {
+            ensure!(
+                sha256 == *expected_sha256,
+                "artifact source slice SHA-256 does not match the expected digest for {}",
+                object.name
+            );
+        }
+        object.sha256 = sha256;
         if object.kind == ObjectKind::Recipe {
             directory.recipe_sha256.clone_from(&object.sha256);
         }
@@ -231,13 +270,13 @@ fn hash_sources(sources: &[SourceFile], directory: &mut Directory) -> Result<()>
     Ok(())
 }
 
-fn stream_source(file: &mut File, expected_len: u64, output: &mut impl Write) -> Result<String> {
-    verify_source_length(file, expected_len)?;
-    file.seek(SeekFrom::Start(0))
-        .context("seek artifact source to its beginning")?;
+fn stream_source(file: &mut File, source: &SourceFile, output: &mut impl Write) -> Result<String> {
+    verify_source_length(file, source.file_len)?;
+    file.seek(SeekFrom::Start(source.offset))
+        .context("seek artifact source to its selected range")?;
     let mut digest = Sha256::new();
     let mut buffer = [0; COPY_BUFFER_BYTES];
-    let mut remaining = expected_len;
+    let mut remaining = source.length;
     while remaining != 0 {
         let count = usize::try_from(remaining.min(COPY_BUFFER_BYTES as u64))?;
         let chunk = &mut buffer[..count];
@@ -247,7 +286,7 @@ fn stream_source(file: &mut File, expected_len: u64, output: &mut impl Write) ->
         digest.update(&*chunk);
         remaining -= count as u64;
     }
-    verify_source_length(file, expected_len)?;
+    verify_source_length(file, source.file_len)?;
     Ok(hex::encode(digest.finalize()))
 }
 
@@ -257,6 +296,7 @@ fn open_source(source: &SourceFile) -> Result<File> {
         file.metadata()?.is_file(),
         "artifact source must be a regular file"
     );
+    verify_source_length(&file, source.file_len)?;
     Ok(file)
 }
 
@@ -267,6 +307,17 @@ fn verify_source_length(file: &File, expected_len: u64) -> Result<()> {
             .len()
             == expected_len,
         "artifact source length changed during writing"
+    );
+    Ok(())
+}
+
+fn validate_expected_sha256(value: &str) -> Result<()> {
+    ensure!(
+        value.len() == 64
+            && value
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte)),
+        "expected source SHA-256 must be 64 lowercase hexadecimal characters"
     );
     Ok(())
 }
@@ -290,7 +341,7 @@ fn write_artifact_contents(
     let mut previous_end = 0_u64;
     for (source, object) in sources.iter().zip(&directory.objects) {
         write_zero_bytes(writer, object.offset - previous_end)?;
-        let digest = stream_source(&mut open_source(source)?, source.length, writer)?;
+        let digest = stream_source(&mut open_source(source)?, source, writer)?;
         ensure!(
             digest == object.sha256,
             "artifact source bytes changed between hashing and assembly"

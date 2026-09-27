@@ -1,6 +1,6 @@
 use super::{
-    ObjectSource, SourceCheckpoint, hash_sources, open_sources, validate_for_write, write_artifact,
-    write_artifact_contents,
+    ObjectSource, SourceCheckpoint, SourceRange, hash_sources, open_sources, validate_for_write,
+    write_artifact, write_artifact_contents,
 };
 use crate::artifact::{
     header::Header,
@@ -39,6 +39,8 @@ fn write_source(
         shape,
         layout: "raw-v1".to_string(),
         path,
+        range: None,
+        expected_sha256: None,
     }
 }
 
@@ -63,6 +65,21 @@ fn fixture_sources(directory: &Path, tensor: &[u8]) -> Vec<ObjectSource> {
     ]
 }
 
+fn set_tensor_range(
+    sources: &mut [ObjectSource],
+    offset: u64,
+    length: u64,
+    expected_sha256: Option<String>,
+) {
+    sources[0].shape = vec![length];
+    sources[0].range = Some(SourceRange { offset, length });
+    sources[0].expected_sha256 = expected_sha256;
+}
+
+fn sha256(bytes: &[u8]) -> String {
+    hex::encode(Sha256::digest(bytes))
+}
+
 #[test]
 fn writes_a_verified_artifact_and_copies_source_objects() {
     let temporary = tempfile::tempdir().unwrap();
@@ -80,6 +97,98 @@ fn writes_a_verified_artifact_and_copies_source_objects() {
     let mut recipe = Vec::new();
     artifact.copy_object("z.recipe", &mut recipe).unwrap();
     assert_eq!(recipe, b"recipe-v1!");
+}
+
+#[test]
+fn imports_only_the_selected_source_range() {
+    let temporary = tempfile::tempdir().unwrap();
+    let prefix = b"checkpoint-prefix:";
+    let selected = [11, 22, 33, 44];
+    let suffix = b":checkpoint-suffix";
+    let combined = [prefix.as_slice(), selected.as_slice(), suffix].concat();
+    let mut sources = fixture_sources(temporary.path(), &selected);
+    fs::write(&sources[0].path, &combined).unwrap();
+    set_tensor_range(
+        &mut sources,
+        prefix.len() as u64,
+        selected.len() as u64,
+        Some(sha256(&selected)),
+    );
+    let output = temporary.path().join("slice.mspec");
+
+    let written = write_artifact(&output, "fixture:model", source_checkpoint(), &sources).unwrap();
+    assert_eq!(written.directory.objects[0].length, selected.len() as u64);
+    assert_eq!(written.directory.objects[0].sha256, sha256(&selected));
+    let mut artifact = VerifiedArtifact::open(&output).unwrap();
+    let mut copied = Vec::new();
+    artifact.copy_object("a.tensor", &mut copied).unwrap();
+    assert_eq!(copied, selected.to_vec());
+}
+
+#[test]
+fn source_range_can_end_at_file_boundary_but_rejects_out_of_bounds_and_overflow() {
+    let temporary = tempfile::tempdir().unwrap();
+    let source_bytes = [1, 2, 3];
+    let boundary_sources = fixture_sources(temporary.path(), &source_bytes);
+    let boundary_output = temporary.path().join("boundary.mspec");
+    let mut boundary_sources = boundary_sources;
+    set_tensor_range(
+        &mut boundary_sources,
+        1,
+        2,
+        Some(sha256(&source_bytes[1..])),
+    );
+    write_artifact(
+        &boundary_output,
+        "fixture:model",
+        source_checkpoint(),
+        &boundary_sources,
+    )
+    .unwrap();
+    let mut artifact = VerifiedArtifact::open(&boundary_output).unwrap();
+    let mut copied = Vec::new();
+    artifact.copy_object("a.tensor", &mut copied).unwrap();
+    assert_eq!(copied, vec![2, 3]);
+
+    let mut beyond_eof = fixture_sources(temporary.path(), &source_bytes);
+    set_tensor_range(&mut beyond_eof, 3, 1, None);
+    assert_failure_without_output(temporary.path(), "beyond-eof.mspec", &beyond_eof);
+
+    let mut out_of_bounds = fixture_sources(temporary.path(), &source_bytes);
+    set_tensor_range(&mut out_of_bounds, 1, 3, None);
+    assert_failure_without_output(temporary.path(), "out-of-bounds.mspec", &out_of_bounds);
+
+    let mut overflow = fixture_sources(temporary.path(), &source_bytes);
+    set_tensor_range(&mut overflow, u64::MAX, 1, None);
+    assert_failure_without_output(temporary.path(), "overflow.mspec", &overflow);
+}
+
+#[test]
+fn expected_slice_digest_must_be_valid_and_match_before_output() {
+    let temporary = tempfile::tempdir().unwrap();
+    let mut malformed = fixture_sources(temporary.path(), &[1, 2, 3]);
+    malformed[0].expected_sha256 = Some("A".repeat(64));
+    assert_failure_without_output(temporary.path(), "malformed-hash.mspec", &malformed);
+
+    let mut mismatch = fixture_sources(temporary.path(), &[1, 2, 3]);
+    mismatch[0].expected_sha256 = Some("0".repeat(64));
+    let mismatch_output = temporary.path().join("wrong-hash.mspec");
+    let error = write_artifact(
+        &mismatch_output,
+        "fixture:model",
+        source_checkpoint(),
+        &mismatch,
+    )
+    .unwrap_err()
+    .to_string();
+    assert!(error.contains("expected digest"));
+    assert!(!mismatch_output.exists());
+
+    let mut matching = fixture_sources(temporary.path(), &[1, 2, 3]);
+    matching[0].expected_sha256 = Some(sha256(&[1, 2, 3]));
+    let output = temporary.path().join("matching-hash.mspec");
+    write_artifact(&output, "fixture:model", source_checkpoint(), &matching).unwrap();
+    assert!(output.exists());
 }
 
 #[test]
@@ -173,6 +282,51 @@ fn rejects_same_size_and_length_mutations_between_passes() {
         fs::remove_file(path).unwrap();
         fs::write(path, [9, 8, 7]).unwrap();
     });
+}
+
+#[test]
+fn range_stream_rejects_whole_file_length_change_after_hashing() {
+    let temporary = tempfile::tempdir().unwrap();
+    let prefix = b"before";
+    let selected = b"slice-data";
+    let suffix = b"after";
+    let combined = [prefix.as_slice(), selected.as_slice(), suffix.as_slice()].concat();
+    let mut sources = fixture_sources(temporary.path(), selected);
+    fs::write(&sources[0].path, &combined).unwrap();
+    set_tensor_range(
+        &mut sources,
+        prefix.len() as u64,
+        selected.len() as u64,
+        Some(sha256(selected)),
+    );
+
+    let (inputs, mut directory, payload_len) =
+        open_sources("fixture:model", source_checkpoint(), &sources).unwrap();
+    validate_for_write(&directory, payload_len).unwrap();
+    hash_sources(&inputs, &mut directory).unwrap();
+    directory.identity.weights_id =
+        crate::artifact::weights_identity(&directory, payload_len).unwrap();
+    let directory_bytes = serde_json::to_vec(&directory).unwrap();
+    let directory_digest: [u8; 32] = Sha256::digest(&directory_bytes).into();
+    let header = Header::new(directory_bytes.len() as u64, directory_digest).unwrap();
+    let mut temporary_output = NamedTempFile::new_in(temporary.path()).unwrap();
+
+    OpenOptions::new()
+        .append(true)
+        .open(&sources[0].path)
+        .unwrap()
+        .write_all(b"grown")
+        .unwrap();
+    let error = write_artifact_contents(
+        &mut temporary_output,
+        &header,
+        &directory_bytes,
+        &inputs,
+        &directory,
+        payload_len,
+    )
+    .unwrap_err();
+    assert!(error.to_string().contains("source length changed"));
 }
 
 #[test]

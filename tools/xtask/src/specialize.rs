@@ -1,5 +1,6 @@
 mod admission;
 mod baseline;
+mod checkpoint;
 mod fixtures;
 mod observations;
 mod probe;
@@ -8,6 +9,7 @@ use crate::command::DynResult;
 
 pub(crate) fn run(args: &[String]) -> DynResult<()> {
     match args {
+        [command, rest @ ..] if command == "checkpoint-import" => checkpoint::run(rest),
         [command, rest @ ..] if command == "admission-probe" => admission::run(rest),
         [command, rest @ ..] if command == "baseline" => baseline::run(rest),
         [command, rest @ ..] if command == "baseline-plan" => fixtures::run(rest),
