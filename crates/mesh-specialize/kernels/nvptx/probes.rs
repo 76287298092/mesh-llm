@@ -3,6 +3,12 @@
 
 use core::arch::asm;
 
+mod memory;
+mod nvfp4_gemm;
+mod ordinary_mma;
+mod register_budget;
+mod rms_norm;
+
 #[panic_handler]
 fn panic(_: &core::panic::PanicInfo<'_>) -> ! {
     // SAFETY: an unexpected device panic must terminate the kernel.

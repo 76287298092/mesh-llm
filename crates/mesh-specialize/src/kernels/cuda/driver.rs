@@ -489,24 +489,42 @@ pub(super) struct Module<'ctx> {
 impl<'ctx> Module<'ctx> {
     /// JIT-load PTX with bounded information and error logs.
     pub(super) fn load(context: &'ctx Context, ptx: &str) -> Result<Self> {
+        Self::load_with_register_limit(context, ptx, None)
+    }
+
+    /// Specify the JIT register limit for an explicit register-budget experiment.
+    /// This is a compiler limit; callers must inspect the actual function resource
+    /// count before relying on it for `setmaxnreg` preconditions.
+    pub(super) fn load_with_register_limit(
+        context: &'ctx Context,
+        ptx: &str,
+        register_limit: Option<u32>,
+    ) -> Result<Self> {
+        if register_limit.is_some_and(|limit| !(24..=256).contains(&limit) || limit % 8 != 0) {
+            bail!("register limit must be a multiple of eight from 24 through 256");
+        }
         let ptx =
             CString::new(ptx).map_err(|error| anyhow!("PTX contains an interior NUL: {error}"))?;
         let mut info_buffer = vec![0 as c_char; JIT_LOG_BUFFER_BYTES];
         let mut error_buffer = vec![0 as c_char; JIT_LOG_BUFFER_BYTES];
-        let mut options = [
+        let mut options = vec![
             CU_JIT_INFO_LOG_BUFFER,
             CU_JIT_INFO_LOG_BUFFER_SIZE_BYTES,
             CU_JIT_ERROR_LOG_BUFFER,
             CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES,
             CU_JIT_LOG_VERBOSE,
         ];
-        let mut option_values = [
+        let mut option_values = vec![
             info_buffer.as_mut_ptr().cast::<c_void>(),
             ptr::without_provenance_mut::<c_void>(JIT_LOG_BUFFER_BYTES),
             error_buffer.as_mut_ptr().cast::<c_void>(),
             ptr::without_provenance_mut::<c_void>(JIT_LOG_BUFFER_BYTES),
             ptr::without_provenance_mut::<c_void>(1),
         ];
+        if let Some(limit) = register_limit {
+            options.push(0); // CU_JIT_MAX_REGISTERS
+            option_values.push(ptr::without_provenance_mut::<c_void>(limit as usize));
+        }
         let mut raw = ptr::null_mut();
         let _current_context = context.activate()?;
         // SAFETY: PTX and the two log buffers stay live for this call. CUDA's JIT size and verbose

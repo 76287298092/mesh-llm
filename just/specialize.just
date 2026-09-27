@@ -10,3 +10,8 @@ specialize-ptx:
     mkdir -p target/specialize
     RUSTC="$(rustup which --toolchain nightly-2026-09-25 rustc)" RUSTC_WRAPPER= RUSTFLAGS='-Ctarget-cpu=sm_120a' rustup run nightly-2026-09-25 cargo build --manifest-path crates/mesh-specialize/kernels/nvptx/Cargo.toml --target nvptx64-nvidia-cuda -Zbuild-std=core --release --target-dir target/specialize/nvptx
     cp target/specialize/nvptx/nvptx64-nvidia-cuda/release/mesh_specialize_nvptx.ptx target/specialize/probes.ptx
+
+# Offline inspection of Rust-emitted PTX; no CUDA C/C++ compilation.
+specialize-sass ptx="target/specialize/probes.ptx":
+    ptxas --gpu-name sm_120a --maxrregcount 64 --verbose "{{ptx}}" --output-file target/specialize/probes.cubin
+    nvdisasm target/specialize/probes.cubin > target/specialize/probes.sass

@@ -7,9 +7,17 @@ use std::{
 };
 
 pub(super) fn run(args: &[String]) -> DynResult<()> {
+    run_probe(args, false)
+}
+
+pub(super) fn instructions(args: &[String]) -> DynResult<()> {
+    run_probe(args, true)
+}
+
+fn run_probe(args: &[String], instructions: bool) -> DynResult<()> {
     let [ptx_flag, ptx_path, device_flag, device, output_flag, output] = args else {
         return Err(
-            "usage: xtask specialize nvfp4-probe --ptx PATH --device ORDINAL --output NEW_FILE"
+            "usage: xtask specialize <nvfp4-probe|instruction-probe> --ptx PATH --device ORDINAL --output NEW_FILE"
                 .into(),
         );
     };
@@ -21,7 +29,11 @@ pub(super) fn run(args: &[String]) -> DynResult<()> {
         .write(true)
         .create_new(true)
         .open(output)?;
-    let result = mesh_specialize::kernels::nvfp4_probe(&ptx, device.parse()?);
+    let result = if instructions {
+        mesh_specialize::kernels::instruction_probe(&ptx, device.parse()?)
+    } else {
+        mesh_specialize::kernels::nvfp4_probe(&ptx, device.parse()?)
+    };
     let (mut report, error) = match result {
         Ok(report) => (report, None),
         Err(error) => (
@@ -37,7 +49,7 @@ pub(super) fn run(args: &[String]) -> DynResult<()> {
     print_json(&json!({"output": output, "all_passed": report["all_passed"]}))?;
     if report["all_passed"] != true {
         return Err(error
-            .unwrap_or_else(|| "NVFP4 probe numerical mismatch".into())
+            .unwrap_or_else(|| "instruction qualification failed; inspect the saved report".into())
             .into());
     }
     Ok(())
