@@ -17,12 +17,24 @@ pub struct Layer {
     pub k_cache: Vec<u16>,
     /// Projected V rows in `[rows, kv_heads, head_width]` order.
     pub v_cache: Vec<u16>,
+    pub stages: Vec<Stage>,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Stage {
+    /// Stable identifier for the BF16 boundary represented by this snapshot.
+    pub name: &'static str,
+    /// Row-major BF16 values at this stage.
+    pub words: Vec<u16>,
+    /// Number of feature values in one row.
+    pub width: usize,
 }
 
 struct Dimensions {
     rows: usize,
     hidden: usize,
     query_inner: usize,
+    kv_inner: usize,
     mlp_inner: usize,
 }
 
@@ -30,6 +42,12 @@ struct AttentionStage {
     projection: Vec<u16>,
     k_cache: Vec<u16>,
     v_cache: Vec<u16>,
+    stages: Vec<Stage>,
+}
+
+struct MlpStage {
+    output: Vec<u16>,
+    stages: Vec<Stage>,
 }
 
 /// Run the logical attention layer from original weights, token IDs, and positions.
@@ -50,7 +68,13 @@ pub fn run(input: &kernels::AttentionInput, tokens: &[u32], positions: &[u32]) -
         dimensions.hidden,
         input.entry.epsilon,
     )?;
+    let mut stages = vec![stage(
+        "entry_norm",
+        entry.normalized.clone(),
+        dimensions.hidden,
+    )];
     let attention = run_attention_stage(input, &entry.normalized, &dimensions, &cos, &sin)?;
+    stages.extend(attention.stages);
     let post_attention = residual_norm_reference::run(
         &entry.residual,
         &attention.projection,
@@ -62,13 +86,29 @@ pub fn run(input: &kernels::AttentionInput, tokens: &[u32], positions: &[u32]) -
         dimensions.hidden,
         input.post_attention_norm.epsilon,
     )?;
-    let down = run_mlp(input, &post_attention.normalized, &dimensions)?;
-    let output = residual_add_reference::run(&post_attention.residual, &down)?;
+    stages.push(stage(
+        "post_residual",
+        post_attention.residual.clone(),
+        dimensions.hidden,
+    ));
+    stages.push(stage(
+        "post_norm",
+        post_attention.normalized.clone(),
+        dimensions.hidden,
+    ));
+    let mlp = run_mlp(input, &post_attention.normalized, &dimensions)?;
+    stages.extend(mlp.stages);
+    let output = residual_add_reference::run(&post_attention.residual, &mlp.output)?;
     Ok(Layer {
         output,
         k_cache: attention.k_cache,
         v_cache: attention.v_cache,
+        stages,
     })
+}
+
+fn stage(name: &'static str, words: Vec<u16>, width: usize) -> Stage {
+    Stage { name, words, width }
 }
 
 fn validate_input(
@@ -184,6 +224,7 @@ fn validate_input(
         rows,
         hidden,
         query_inner,
+        kv_inner,
         mlp_inner,
     })
 }
@@ -200,6 +241,23 @@ fn run_attention_stage(
     let q_linear = fp8_linear(&entry_quantized, &input.projections[0], dimensions.hidden)?;
     let k_linear = fp8_linear(&entry_quantized, &input.projections[1], dimensions.hidden)?;
     let v_linear = fp8_linear(&entry_quantized, &input.projections[2], dimensions.hidden)?;
+    let mut stages = vec![
+        stage(
+            "q_projection",
+            q_linear.normalized.clone(),
+            dimensions.query_inner * 2,
+        ),
+        stage(
+            "k_projection",
+            k_linear.normalized.clone(),
+            dimensions.kv_inner,
+        ),
+        stage(
+            "v_projection",
+            v_linear.normalized.clone(),
+            dimensions.kv_inner,
+        ),
+    ];
     let q_prepared = attention_prepare_reference::run(
         &q_linear.normalized,
         &decode_bf16_bytes(&input.q_norm, "Q norm weight")?,
@@ -214,6 +272,11 @@ fn run_attention_stage(
         },
         1e-6,
     )?;
+    stages.push(stage(
+        "q_prepared",
+        q_prepared.output.clone(),
+        dimensions.query_inner,
+    ));
     let k_prepared = attention_prepare_reference::run(
         &k_linear.normalized,
         &decode_bf16_bytes(&input.k_norm, "K norm weight")?,
@@ -228,6 +291,11 @@ fn run_attention_stage(
         },
         1e-6,
     )?;
+    stages.push(stage(
+        "k_prepared",
+        k_prepared.output.clone(),
+        dimensions.kv_inner,
+    ));
     let causal = causal_attention_reference::run(
         &q_prepared.output,
         &k_prepared.output,
@@ -242,7 +310,17 @@ fn run_attention_stage(
             scale: 1.0 / (input.head_width as f32).sqrt(),
         },
     )?;
+    stages.push(stage(
+        "causal_attention",
+        causal.output.clone(),
+        dimensions.query_inner,
+    ));
     let gated = attention_gate_reference::run(&causal.output, &q_prepared.gate)?;
+    stages.push(stage(
+        "attention_gate",
+        gated.output.clone(),
+        dimensions.query_inner,
+    ));
     let gated_quantized =
         projection_reference::quantize(&gated.output, dimensions.rows, dimensions.query_inner)?;
     let projected = fp8_linear(
@@ -250,10 +328,16 @@ fn run_attention_stage(
         &input.output_projection,
         dimensions.query_inner,
     )?;
+    stages.push(stage(
+        "output_projection",
+        projected.normalized.clone(),
+        dimensions.hidden,
+    ));
     Ok(AttentionStage {
         projection: projected.normalized,
         k_cache: k_prepared.output,
         v_cache: v_linear.normalized,
+        stages,
     })
 }
 
@@ -261,7 +345,7 @@ fn run_mlp(
     input: &kernels::AttentionInput,
     normalized: &[u16],
     dimensions: &Dimensions,
-) -> Result<Vec<u16>> {
+) -> Result<MlpStage> {
     let gate = nvfp4_linear(
         normalized,
         dimensions.rows,
@@ -274,14 +358,31 @@ fn run_mlp(
         dimensions.hidden,
         &input.mlp.up,
     )?;
+    let mut stages = vec![
+        stage("mlp_gate", gate.normalized.clone(), dimensions.mlp_inner),
+        stage("mlp_up", up.normalized.clone(), dimensions.mlp_inner),
+    ];
     let activation = crate::mlp_activation_reference::run(&gate.normalized, &up.normalized)?;
+    stages.push(stage(
+        "mlp_activation",
+        activation.output.clone(),
+        dimensions.mlp_inner,
+    ));
     let down = nvfp4_linear(
         &activation.output,
         dimensions.rows,
         dimensions.mlp_inner,
         &input.mlp.down,
     )?;
-    Ok(down.normalized)
+    stages.push(stage(
+        "mlp_down",
+        down.normalized.clone(),
+        dimensions.hidden,
+    ));
+    Ok(MlpStage {
+        output: down.normalized,
+        stages,
+    })
 }
 
 fn fp8_linear(
@@ -510,6 +611,35 @@ mod tests {
             assert_eq!(result.output, expected);
             assert_eq!(result.k_cache, vec![0; tokens.len() * 8]);
             assert_eq!(result.v_cache, vec![0; tokens.len() * 8]);
+        }
+    }
+
+    #[test]
+    fn captures_the_fifteen_bf16_layer_stages_with_row_widths() {
+        let input = tiny_input(2);
+        let result = run(&input, &[1, 0], &[0, 1]).unwrap();
+        let expected = [
+            ("entry_norm", 16),
+            ("q_projection", 64),
+            ("k_projection", 8),
+            ("v_projection", 8),
+            ("q_prepared", 16),
+            ("k_prepared", 8),
+            ("causal_attention", 16),
+            ("attention_gate", 16),
+            ("output_projection", 16),
+            ("post_residual", 16),
+            ("post_norm", 16),
+            ("mlp_gate", 16),
+            ("mlp_up", 16),
+            ("mlp_activation", 16),
+            ("mlp_down", 16),
+        ];
+        assert_eq!(result.stages.len(), expected.len());
+        for (actual, (name, width)) in result.stages.iter().zip(expected) {
+            assert_eq!(actual.name, name);
+            assert_eq!(actual.width, width);
+            assert_eq!(actual.words.len(), 2 * width);
         }
     }
 

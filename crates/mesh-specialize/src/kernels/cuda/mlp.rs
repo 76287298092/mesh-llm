@@ -4,7 +4,7 @@ use super::{
     mlp_activation, nvfp4_linear, residual_add,
     residual_norm::CheckedNorm,
 };
-use crate::kernels::Nvfp4Mlp;
+use crate::{kernels::Nvfp4Mlp, qwen_attention_layer_reference::Stage};
 use anyhow::{Result, ensure};
 use serde_json::{Value, json};
 
@@ -23,6 +23,7 @@ pub(super) fn validate(weights: &Nvfp4Mlp, width: usize) -> Result<()> {
     Ok(())
 }
 pub(super) struct CheckedMlp {
+    pub(super) stages: Vec<Stage>,
     pub(super) words: Vec<u16>,
     pub(super) report: Value,
 }
@@ -81,7 +82,30 @@ pub(super) fn check(
     let report = json!({"all_passed":true,"gate":gate.report,"up":up.report,"activation":activated.report,"down":down.report,"residual":residual.report,
         "device_intermediates_resident":true,"component_checks_only":true,
         "scope":"decoder MLP GPU component chain complete; each component uses actual preceding device outputs for its scalar comparison; independent full-layer/logit comparison is reported separately by the layer harness"});
+    let stages = vec![
+        Stage {
+            name: "mlp_gate",
+            words: gate.words,
+            width: weights.gate.channels,
+        },
+        Stage {
+            name: "mlp_up",
+            words: up.words,
+            width: weights.up.channels,
+        },
+        Stage {
+            name: "mlp_activation",
+            words: activated.words,
+            width: weights.gate.channels,
+        },
+        Stage {
+            name: "mlp_down",
+            words: down.words,
+            width: shape[1],
+        },
+    ];
     Ok(CheckedMlp {
+        stages,
         words: residual.words,
         report,
     })

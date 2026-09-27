@@ -47,3 +47,13 @@ It found that CUDA fixtures had negative-zero gates but no negative-zero attenti
 inputs. The edge fixtures now include those inputs, require exact scalar BF16
 outputs, and record the negative-zero count. This tests product sign preservation
 as well as the nonzero subnormal sigmoid case on the GPU.
+
+The first complete real-weight trial, source `cffc88757`, failed the original
+whole-layer gate. One token passes with normalized L2 0.00013146. Seventeen tokens
+reach aggregate normalized L2 0.01345972 and worst-token L2 0.03488956, so this
+layer is not qualified. Each component comparison passes and initialized K/V
+comparisons pass. Ninfer restarted successfully and health returned HTTP 200.
+`normal.json` and its logs are preserved. Sanitizers were not attempted after
+this numerical failure. The next diagnostic trial records independently derived
+scalar intermediate stages against actual GPU intermediates, without replacing
+inputs or changing any arithmetic or tolerance.

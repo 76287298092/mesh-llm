@@ -5,8 +5,10 @@ use super::{
     mlp, projections, residual_norm,
 };
 use crate::{
-    entry_reference::bf16_to_f32, kernels::AttentionInput, layer_comparison_reference,
-    projection_reference, qwen_attention_layer_reference,
+    entry_reference::bf16_to_f32,
+    kernels::AttentionInput,
+    layer_comparison_reference, projection_reference,
+    qwen_attention_layer_reference::{self, Stage},
 };
 use anyhow::{Result, ensure};
 use serde_json::{Value, json};
@@ -29,6 +31,7 @@ pub(super) fn check(
     weights: &AttentionInput,
     tokens: &[u32],
     positions: &[u32],
+    stages: &mut Vec<Stage>,
 ) -> Result<Value> {
     let gated = attention_gate::check(
         context,
@@ -60,6 +63,27 @@ pub(super) fn check(
         &weights.mlp,
         [tokens.len(), weights.entry.width],
     )?;
+    stages.push(Stage {
+        name: "attention_gate",
+        words: gated.words,
+        width: weights.query_heads * weights.head_width,
+    });
+    stages.push(Stage {
+        name: "output_projection",
+        words: projected.words,
+        width: weights.entry.width,
+    });
+    stages.push(Stage {
+        name: "post_residual",
+        words: post_norm.residual_words,
+        width: weights.entry.width,
+    });
+    stages.push(Stage {
+        name: "post_norm",
+        words: post_norm.words,
+        width: weights.entry.width,
+    });
+    stages.extend(mlp.stages);
     let whole = whole_layer(
         weights,
         tokens,
@@ -67,6 +91,7 @@ pub(super) fn check(
         &mlp.words,
         input.k_cache,
         input.v_cache,
+        stages,
     )?;
     Ok(
         json!({"all_passed":gated.report["all_passed"]==true && projected.report["passed"]==true && post_norm.report["all_passed"]==true && mlp.report["all_passed"]==true && whole["all_passed"]==true,
@@ -151,9 +176,30 @@ fn whole_layer(
     output: &[u16],
     k_cache: &[u16],
     v_cache: &[u16],
+    stages: &[Stage],
 ) -> Result<Value> {
     let expected = qwen_attention_layer_reference::run(input, tokens, positions)?;
+    let mut stage_reports = Vec::new();
+    ensure!(
+        stages.len() == expected.stages.len(),
+        "attention diagnostic stage count mismatch"
+    );
+    for expected_stage in &expected.stages {
+        let stage = stages
+            .iter()
+            .find(|s| s.name == expected_stage.name)
+            .ok_or_else(|| anyhow::anyhow!("missing attention stage {}", expected_stage.name))?;
+        ensure!(
+            stage.width == expected_stage.width,
+            "attention diagnostic width mismatch"
+        );
+        let mut report = compare(&stage.words, &expected_stage.words, stage.width)?;
+        report["name"] = json!(stage.name);
+        report["diagnostics_only"] = json!(true);
+        stage_reports.push(report);
+    }
     let count = tokens.len() * input.kv_heads * input.head_width;
+
     ensure!(
         k_cache.len() >= count && v_cache.len() >= count,
         "attention cache prefix missing"
@@ -163,7 +209,7 @@ fn whole_layer(
     let v = compare(&v_cache[..count], &expected.v_cache, input.head_width)?;
     Ok(
         json!({"all_passed":hidden["all_passed"]==true && k["all_passed"]==true && v["all_passed"]==true,
-        "hidden":hidden,"k_cache":k,"v_cache":v,
+        "hidden":hidden,"k_cache":k,"v_cache":v,"stage_diagnostics":stage_reports,
         "reference_inputs":"original checkpoint weights, token IDs and text positions only; no GPU intermediate substitution",
         "budget":"each token hidden vector and cached token/head vector: normalized L2 <=0.01 and cosine >=0.9999; aggregate also required",
         "scope":"synthetic embedding input through layer 3 only; selected BF16/FP32 arithmetic profile; no preceding layers or logits"}),

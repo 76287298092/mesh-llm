@@ -8,6 +8,7 @@ use crate::{
     attention_prepare_reference as reference, entry_reference,
     kernels::{AttentionInput, EmbeddingNormInput},
     projection_reference,
+    qwen_attention_layer_reference::Stage,
 };
 use anyhow::{Context as _, Result, ensure};
 use serde_json::{Value, json};
@@ -134,6 +135,7 @@ fn validate(input: &AttentionInput) -> Result<()> {
 }
 
 struct Entry<'a> {
+    words: Vec<u16>,
     residual: Buffer<'a>,
     residual_words: Vec<u16>,
     codes: Buffer<'a>,
@@ -204,6 +206,7 @@ fn entry<'a>(
         "attention input FP8 quantization mismatch"
     );
     Ok(Entry {
+        words: norm_words,
         residual,
         residual_words,
         codes,
@@ -225,6 +228,11 @@ fn run_case(
     let entry = entry(context, module, &input.entry, tokens, table, norm)?;
     let (cos, sin) = reference::text_rope_tables(positions, input.rotary_dim, input.rope_theta)?;
     let mut reports = Vec::new();
+    let mut stages = vec![Stage {
+        name: "entry_norm",
+        words: entry.words.clone(),
+        width: input.entry.width,
+    }];
     let mut q = None;
     let mut k = None;
     let mut v = None;
@@ -245,6 +253,11 @@ fn run_case(
             input.entry.width,
         )?;
         let projection = projections::compare(&words, &unrounded, &expected)?;
+        stages.push(Stage {
+            name: ["q_projection", "k_projection", "v_projection"][index],
+            words: words.clone(),
+            width: p.channels,
+        });
         let preparation = if index < 2 {
             let shape = reference::Shape {
                 rows: tokens.len(),
@@ -273,6 +286,15 @@ fn run_case(
                     shape: &shape,
                 },
             )?;
+            stages.push(Stage {
+                name: if index == 0 {
+                    "q_prepared"
+                } else {
+                    "k_prepared"
+                },
+                words: checked.words.clone(),
+                width: shape.heads * shape.width,
+            });
             if index == 0 {
                 q = Some((
                     checked.device,
@@ -311,6 +333,11 @@ fn run_case(
             width: input.head_width,
         },
     )?;
+    stages.push(Stage {
+        name: "causal_attention",
+        words: core.words.clone(),
+        width: input.query_heads * input.head_width,
+    });
     let finish = attention_finish::check(
         context,
         module,
@@ -327,6 +354,7 @@ fn run_case(
         input,
         tokens,
         positions,
+        &mut stages,
     )?;
     Ok(
         json!({"all_passed":entry.report["passed"]==true && reports.iter().all(|r|r["all_passed"]==true) && core.report["all_passed"]==true && finish["all_passed"]==true,"tokens":tokens,"positions":positions,"entry":entry.report,"input_activation_quantization_exact":true,"projections":reports,"causal_attention":core.report,"finish":finish}),
