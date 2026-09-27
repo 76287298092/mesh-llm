@@ -20,27 +20,75 @@ pub enum RuntimeSelection {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CandidateRejection {
-    MeshVersionMismatch { expected: String, actual: String },
-    SkippyAbiMismatch { expected: String, actual: String },
-    OsMismatch { expected: String, actual: String },
-    ArchMismatch { expected: String, actual: String },
-    TargetTripleMismatch { expected: String, actual: String },
-    GlibcVersionTooOld { required: String, available: String },
-    BackendNotSupported { backend: NativeRuntimeBackendKind },
+    ModelIdentityMissing,
+    ModelNotServed {
+        requested: crate::model_identity::ModelIdentity,
+        serves: Vec<crate::model_identity::ModelIdentity>,
+    },
+    MeshVersionMismatch {
+        expected: String,
+        actual: String,
+    },
+    SkippyAbiMismatch {
+        expected: String,
+        actual: String,
+    },
+    OsMismatch {
+        expected: String,
+        actual: String,
+    },
+    ArchMismatch {
+        expected: String,
+        actual: String,
+    },
+    TargetTripleMismatch {
+        expected: String,
+        actual: String,
+    },
+    GlibcVersionTooOld {
+        required: String,
+        available: String,
+    },
+    BackendNotSupported {
+        backend: NativeRuntimeBackendKind,
+    },
     CudaProfileMissing,
-    CudaToolkitMajorMismatch { required: u32, installed: Vec<u32> },
-    CudaToolkitMajorAboveDriver { required: u32, driver_max: u32 },
-    CudaToolkitNotDetected { required: u32 },
-    CudaGpuArchUnsupported { supported: Vec<String> },
+    CudaToolkitMajorMismatch {
+        required: u32,
+        installed: Vec<u32>,
+    },
+    CudaToolkitMajorAboveDriver {
+        required: u32,
+        driver_max: u32,
+    },
+    CudaToolkitNotDetected {
+        required: u32,
+    },
+    CudaGpuArchUnsupported {
+        supported: Vec<String>,
+    },
     RocmProfileMissing,
-    RocmGpuArchUnsupported { supported: Vec<String> },
+    RocmGpuArchUnsupported {
+        supported: Vec<String>,
+    },
     VulkanProfileMissing,
-    SelectionMismatch { selection: String },
+    SelectionMismatch {
+        selection: String,
+    },
 }
 
 impl std::fmt::Display for CandidateRejection {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::ModelIdentityMissing => write!(
+                f,
+                "specialized runtime requires a verified resident model and weight identity"
+            ),
+            Self::ModelNotServed { requested, .. } => write!(
+                f,
+                "runtime does not serve exact model {} and weights {}",
+                requested.model_id, requested.weights_id
+            ),
             Self::MeshVersionMismatch { expected, actual } => {
                 write!(
                     f,
@@ -309,7 +357,9 @@ impl NativeRuntimeResolver {
             artifact.mesh_version_or(&self.mesh_version),
             artifact.native_runtime_id(),
         )?;
-        if let Some(installed) = installed {
+        if let Some(installed) = installed
+            && artifact_identity_matches(&installed.manifest.runtime, artifact)
+        {
             return Ok(NativeRuntimeSource::Installed {
                 path: installed.path,
             });
@@ -441,7 +491,21 @@ fn evaluate_artifact(
     skippy_abi: Option<&str>,
     selection: &RuntimeSelection,
 ) -> CandidateEvaluation {
+    evaluate_artifact_for_model(artifact, profile, mesh_version, skippy_abi, selection, None)
+}
+
+pub(crate) fn evaluate_artifact_for_model(
+    artifact: &NativeRuntimeArtifact,
+    profile: &HostRuntimeProfile,
+    mesh_version: &str,
+    skippy_abi: Option<&str>,
+    selection: &RuntimeSelection,
+    requested: Option<&crate::model_identity::ModelIdentity>,
+) -> CandidateEvaluation {
     let mut reasons = Vec::new();
+    if let Some(reason) = crate::model_selection::rejection(&artifact.serves, requested) {
+        reasons.push(reason);
+    }
     if artifact.mesh_version.as_deref() != Some(mesh_version) {
         let actual = artifact
             .mesh_version
@@ -520,6 +584,7 @@ fn artifact_identity_matches(
     selected: &NativeRuntimeArtifact,
 ) -> bool {
     candidate.id == selected.id
+        && candidate.serves == selected.serves
         && candidate.mesh_version.as_deref() == selected.mesh_version.as_deref()
         && candidate.skippy_abi == selected.skippy_abi
 }
@@ -703,7 +768,7 @@ fn selection_mismatch(
     }
 }
 
-fn best_candidate(evaluated: &[CandidateEvaluation]) -> Option<&CandidateEvaluation> {
+pub(crate) fn best_candidate(evaluated: &[CandidateEvaluation]) -> Option<&CandidateEvaluation> {
     evaluated
         .iter()
         .filter(|candidate| candidate.compatible)
@@ -727,6 +792,7 @@ mod tests {
 
     fn artifact(id: &str, backend: NativeRuntimeBackend) -> NativeRuntimeArtifact {
         NativeRuntimeArtifact {
+            serves: Vec::new(),
             id: id.to_string(),
             mesh_version: Some("0.68.0".to_string()),
             skippy_abi: "0.1.25".to_string(),

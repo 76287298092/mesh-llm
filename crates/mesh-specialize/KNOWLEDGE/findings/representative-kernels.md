@@ -31,8 +31,8 @@ memory is a full-model serving measurement.
 Use `just specialize-ptx`, `just specialize-tools-build`, then
 `xtask specialize workload-probe --ptx PATH --device 0 --output NEW_FILE`.
 For sanitizers, use `workload-check` with the same arguments to execute each
-numerical case once, with no timing repetitions. Independent CUDA-library
-comparison is pending.
+numerical case once, with no timing repetitions. The subsequent
+[independent CUDA-library comparison](cuda-library-reference.md) passed.
 Nsight Compute/System executables were not found in carrack's PATH or the checked
 `/opt/cuda/nsight*`, `/usr/local/cuda/nsight*`, `/opt/nvidia` locations; profiler
 usability remains unqualified. System ptxas, nvdisasm and compute-sanitizer work.

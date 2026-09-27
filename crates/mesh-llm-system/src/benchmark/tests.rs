@@ -344,6 +344,7 @@ fn test_runtime_tool_selection_excludes_preferred_legacy_runtime_without_tool() 
         path: PathBuf::from(format!("/test/{id}")),
         manifest: NativeRuntimeManifest {
             runtime: NativeRuntimeArtifact {
+                serves: Vec::new(),
                 id: id.to_string(),
                 mesh_version: Some("0.74.0".to_string()),
                 skippy_abi: "0.1.0".to_string(),

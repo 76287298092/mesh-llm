@@ -1,8 +1,8 @@
 # Specialized Qwen runtime implementation plan
 
 Status: deployed-profile baseline, required instruction probes and first GEMM/RMSNorm
-GPU trials complete. Library comparison, profiling and specialized model inference
-remain open.
+GPU trials and independent cuBLAS comparison complete. Profiling and specialized
+model inference remain open.
 
 ## Objective and boundaries
 

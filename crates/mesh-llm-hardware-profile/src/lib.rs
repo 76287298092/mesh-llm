@@ -278,6 +278,7 @@ mod tests {
             vulkan: None,
         };
         let artifact = |id: &str, backend: NativeRuntimeBackend| NativeRuntimeArtifact {
+            serves: Vec::new(),
             id: id.to_string(),
             mesh_version: Some("test".to_string()),
             skippy_abi: "test-abi".to_string(),

@@ -420,6 +420,7 @@ mod tests {
         fs::write(dir.join("lib/libmeshllm_ffi.so"), b"native runtime").unwrap();
         let manifest = NativeRuntimeManifest {
             runtime: NativeRuntimeArtifact {
+                serves: Vec::new(),
                 id: id.to_string(),
                 mesh_version: Some(version.to_string()),
                 skippy_abi: "0.1.25".to_string(),

@@ -5,6 +5,8 @@ mod flavor;
 pub mod host;
 mod load_plan;
 mod manifest;
+pub mod model_identity;
+pub mod model_selection;
 mod resolver;
 
 pub use cache::{

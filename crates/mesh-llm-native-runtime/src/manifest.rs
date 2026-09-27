@@ -25,6 +25,10 @@ pub struct NativeRuntimePlatform {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct NativeRuntimeArtifact {
     pub id: String,
+    /// Exact model and weight identities accepted by a specialized runtime.
+    /// Empty preserves general-purpose runtime selection.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub serves: Vec<crate::model_identity::ModelIdentity>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mesh_version: Option<String>,
     pub skippy_abi: String,
@@ -163,6 +167,11 @@ impl NativeRuntimeReleaseManifest {
 }
 
 fn validate_artifact(artifact: &NativeRuntimeArtifact) -> Result<()> {
+    for identity in &artifact.serves {
+        identity
+            .validate()
+            .with_context(|| format!("invalid model identity for runtime {}", artifact.id))?;
+    }
     if artifact.id.trim().is_empty() {
         bail!("native runtime artifact id is empty");
     }
@@ -391,6 +400,7 @@ mod tests {
         fs::write(&library, b"native runtime").unwrap();
         let manifest = NativeRuntimeManifest {
             runtime: NativeRuntimeArtifact {
+                serves: Vec::new(),
                 id: "meshllm-runtime-linux-x86_64-cpu".to_string(),
                 mesh_version: Some("0.68.0".to_string()),
                 skippy_abi: "0.1.25".to_string(),
@@ -430,6 +440,7 @@ mod tests {
         fs::write(&tool, b"benchmark tool").unwrap();
         let manifest = NativeRuntimeManifest {
             runtime: NativeRuntimeArtifact {
+                serves: Vec::new(),
                 id: "meshllm-runtime-linux-x86_64-cuda12".to_string(),
                 mesh_version: Some("0.68.0".to_string()),
                 skippy_abi: "0.1.25".to_string(),
@@ -514,6 +525,7 @@ mod tests {
     #[test]
     fn rejects_runtime_checksum_path_traversal() {
         let artifact = NativeRuntimeArtifact {
+            serves: Vec::new(),
             id: "meshllm-runtime-linux-x86_64-cpu".to_string(),
             mesh_version: Some("0.68.0".to_string()),
             skippy_abi: "0.1.25".to_string(),

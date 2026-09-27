@@ -497,6 +497,7 @@ mod tests {
         skippy_abi: &str,
     ) -> NativeRuntimeArtifact {
         NativeRuntimeArtifact {
+            serves: Vec::new(),
             id: runtime_id.to_string(),
             mesh_version: mesh_version.map(ToString::to_string),
             skippy_abi: skippy_abi.to_string(),
@@ -522,6 +523,7 @@ mod tests {
         std::fs::write(path.join("lib/libllama.so"), b"native runtime").unwrap();
         NativeRuntimeManifest {
             runtime: NativeRuntimeArtifact {
+                serves: Vec::new(),
                 id: runtime_id.to_string(),
                 mesh_version: Some(CURRENT_MESH_VERSION.to_string()),
                 skippy_abi: "0.1.25".to_string(),
@@ -551,6 +553,7 @@ mod tests {
         skippy_abi: &str,
     ) -> NativeRuntimeArtifact {
         NativeRuntimeArtifact {
+            serves: Vec::new(),
             id: runtime_id.to_string(),
             mesh_version: Some(mesh_version.to_string()),
             skippy_abi: skippy_abi.to_string(),

@@ -348,6 +348,7 @@ mod tests {
 
     fn fake_install_outcome(mesh_version: &str) -> NativeRuntimeInstallOutcome {
         let artifact = NativeRuntimeArtifact {
+            serves: Vec::new(),
             id: "meshllm-runtime-linux-x86_64-cpu".to_string(),
             mesh_version: Some(mesh_version.to_string()),
             skippy_abi: "0.1.25".to_string(),

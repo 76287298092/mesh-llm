@@ -757,6 +757,7 @@ mod dynamic {
             fs::write(dir.join(&library_rel_path), b"native runtime").unwrap();
             let manifest = NativeRuntimeManifest {
                 runtime: NativeRuntimeArtifact {
+                    serves: Vec::new(),
                     id: id.to_string(),
                     mesh_version: version.map(ToString::to_string),
                     skippy_abi: "0.1.25".to_string(),
@@ -1444,6 +1445,7 @@ mod dynamic {
                 artifacts: Vec::new(),
             };
             let artifact = NativeRuntimeArtifact {
+                serves: Vec::new(),
                 id: runtime_id.to_string(),
                 mesh_version: Some(release_version.to_string()),
                 skippy_abi: "0.1.25".to_string(),
@@ -1958,6 +1960,7 @@ mod dynamic {
             edit(&mut backend);
             let manifest = NativeRuntimeManifest {
                 runtime: NativeRuntimeArtifact {
+                    serves: Vec::new(),
                     id: id.to_string(),
                     mesh_version: version.map(ToString::to_string),
                     // Match the ABI the flavor-derived startup selection
@@ -1991,6 +1994,7 @@ mod dynamic {
             backend: NativeRuntimeBackend,
         ) -> mesh_llm_native_runtime::NativeRuntimeArtifact {
             mesh_llm_native_runtime::NativeRuntimeArtifact {
+                serves: Vec::new(),
                 id: id.to_string(),
                 mesh_version: Some(crate::RELEASE_VERSION.to_string()),
                 skippy_abi: crate::system::native_runtime_install::current_skippy_abi_version(),

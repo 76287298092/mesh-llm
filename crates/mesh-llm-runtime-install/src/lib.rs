@@ -62,6 +62,7 @@ mod tests {
 
     fn artifact_with_sha(signature: Option<&str>) -> NativeRuntimeArtifact {
         NativeRuntimeArtifact {
+            serves: Vec::new(),
             id: "meshllm-runtime-linux-x86_64-cpu".to_string(),
             mesh_version: Some(CURRENT_MESH_VERSION.to_string()),
             skippy_abi: current_skippy_abi_version(),

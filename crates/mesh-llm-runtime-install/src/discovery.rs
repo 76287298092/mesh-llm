@@ -312,6 +312,7 @@ mod tests {
         fs::write(path.join("lib/libllama.so"), b"runtime").unwrap();
         NativeRuntimeManifest {
             runtime: NativeRuntimeArtifact {
+                serves: Vec::new(),
                 id: id.to_string(),
                 mesh_version: Some("0.75.0".to_string()),
                 skippy_abi: "0.1.25".to_string(),

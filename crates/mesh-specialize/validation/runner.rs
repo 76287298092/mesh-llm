@@ -47,8 +47,6 @@ pub(super) fn run(args: &[String]) -> Result<()> {
     serde_json::to_writer_pretty(&mut file, &report)?;
     file.write_all(b"\n")?;
     file.sync_all()?;
-    let summary = json!({"output":output,"all_passed":report["all_passed"]});
-    serde_json::to_writer(std::io::stdout().lock(), &summary)?;
     ensure!(
         report["all_passed"] == true,
         "library validation failed; inspect saved report"

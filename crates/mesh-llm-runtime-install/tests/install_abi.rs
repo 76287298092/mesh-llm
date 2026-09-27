@@ -13,6 +13,7 @@ fn write_bundle(root: &Path, id: &str, version: &str, abi: &str) -> NativeRuntim
     let profile = host_runtime_profile();
     let min_glibc = (profile.os == "linux").then(|| "2.17".to_string());
     let artifact = NativeRuntimeArtifact {
+        serves: Vec::new(),
         id: id.to_string(),
         mesh_version: Some(version.to_string()),
         skippy_abi: abi.to_string(),
