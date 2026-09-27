@@ -26,3 +26,12 @@ pub mod reference;
 
 #[path = "../reference/nvfp4_quantize.rs"]
 pub mod nvfp4_quantize_reference;
+
+#[path = "../reference/nvfp4_linear.rs"]
+pub mod nvfp4_linear_reference;
+
+#[path = "../reference/mlp_activation.rs"]
+pub mod mlp_activation_reference;
+
+#[path = "../reference/residual_add.rs"]
+pub mod residual_add_reference;

@@ -5,14 +5,21 @@ use anyhow::{Result, ensure};
 use serde_json::{Value, json};
 use std::ffi::c_void;
 
-pub(super) fn check(
-    context: &Context,
-    module: &Module<'_>,
+pub(super) struct Quantized<'a> {
+    pub(super) packed: Buffer<'a>,
+    pub(super) scales: Buffer<'a>,
+    pub(super) host: reference::Quantized,
+    pub(super) report: Value,
+}
+
+pub(super) fn check<'a>(
+    context: &'a Context,
+    module: &Module<'a>,
     input: &Buffer<'_>,
     words: &[u16],
     shape: [usize; 2],
     global: f32,
-) -> Result<Value> {
+) -> Result<Quantized<'a>> {
     let [rows, width] = shape;
     let expected = reference::run(words, rows, width, global)?;
     let packed = upload(context, &vec![0xa5; expected.packed.len()])?;
@@ -64,11 +71,15 @@ pub(super) fn check(
         actual_effective == expected_effective,
         "NVFP4 activation effective scales differ"
     );
-    Ok(
-        json!({"all_passed":true,"shape":shape,"elements":words.len(),"groups":expected.scales.len(),"input_global_scale":global,
+    let report = json!({"all_passed":true,"shape":shape,"elements":words.len(),"groups":expected.scales.len(),"input_global_scale":global,
         "packed_codes_exact":true,"local_scales_exact":true,"effective_scales_exact":true,"device_input_resident":true,
-        "profile":"FP32 (amax/6)*global -> E4M3FN RNE/saturate; zero scale -> 0.125; effective=local/global; signed E2M1 RNE/saturate; low nibble first"}),
-    )
+        "profile":"FP32 (amax/6)*global -> E4M3FN RNE/saturate; zero scale -> 0.125; effective=local/global; signed E2M1 RNE/saturate; low nibble first"});
+    Ok(Quantized {
+        packed,
+        scales,
+        host: expected,
+        report,
+    })
 }
 
 pub(super) fn fixtures(context: &Context, module: &Module<'_>) -> Result<Vec<Value>> {
@@ -90,14 +101,7 @@ pub(super) fn fixtures(context: &Context, module: &Module<'_>) -> Result<Vec<Val
             .collect();
         let bytes: Vec<_> = words.iter().flat_map(|w| w.to_le_bytes()).collect();
         let input = upload(context, &bytes)?;
-        reports.push(check(
-            context,
-            module,
-            &input,
-            &words,
-            [rows, width],
-            global,
-        )?);
+        reports.push(check(context, module, &input, &words, [rows, width], global)?.report);
     }
     Ok(reports)
 }

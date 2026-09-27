@@ -3,7 +3,7 @@ use crate::{
     artifact::reader::VerifiedArtifact,
     kernels::{
         Bf16Projection, CausalConv4Weights, EmbeddingNormInput, Fp8Projection, GdnOutputWeights,
-        GdnWeights, ProjectionInput, ResidualNormWeights,
+        GdnWeights, Nvfp4Mlp, Nvfp4Projection, ProjectionInput, ResidualNormWeights,
     },
 };
 use anyhow::Result;
@@ -88,21 +88,13 @@ pub fn trial(path: &Path, ptx: &str, device: i32) -> Result<Value> {
         "tensors/model.language_model.layers.0.post_attention_layernorm.weight",
         &mut post_attention_weight,
     )?;
-    let mut mlp_input_scales = Vec::new();
-    for name in ["gate_proj", "up_proj"] {
-        let mut bytes = Vec::new();
-        artifact.copy_object(
-            &format!("tensors/model.language_model.layers.0.mlp.{name}.input_global_scale"),
-            &mut bytes,
-        )?;
-        let raw: [u8; 4] = bytes
-            .try_into()
-            .map_err(|_| anyhow::anyhow!("MLP input global scale extent mismatch"))?;
-        mlp_input_scales.push((name.into(), f32::from_le_bytes(raw)));
-    }
+    let mlp = Nvfp4Mlp {
+        gate: load_nvfp4(&mut artifact, "gate_proj", 17408)?,
+        up: load_nvfp4(&mut artifact, "up_proj", 17408)?,
+        down: load_nvfp4(&mut artifact, "down_proj", 5120)?,
+    };
     let input = ProjectionInput {
-        mlp_input_scales,
-
+        mlp: Some(mlp),
         post_attention_norm: Some(ResidualNormWeights {
             weight: post_attention_weight,
             epsilon: 1e-6,
@@ -147,4 +139,33 @@ pub fn trial(path: &Path, ptx: &str, device: i32) -> Result<Value> {
         report[key] = Value::Null;
     }
     Ok(report)
+}
+
+fn load_nvfp4(
+    artifact: &mut VerifiedArtifact,
+    name: &str,
+    channels: usize,
+) -> Result<Nvfp4Projection> {
+    let prefix = format!("tensors/model.language_model.layers.0.mlp.{name}");
+    let mut packed = Vec::new();
+    let mut scales = Vec::new();
+    artifact.copy_object(&format!("{prefix}.weight_packed"), &mut packed)?;
+    artifact.copy_object(&format!("{prefix}.weight_scale"), &mut scales)?;
+    Ok(Nvfp4Projection {
+        name: name.into(),
+        packed,
+        scales,
+        channels,
+        input_global: load_scalar(artifact, &format!("{prefix}.input_global_scale"))?,
+        weight_global: load_scalar(artifact, &format!("{prefix}.weight_global_scale"))?,
+    })
+}
+
+fn load_scalar(artifact: &mut VerifiedArtifact, key: &str) -> Result<f32> {
+    let mut bytes = Vec::new();
+    artifact.copy_object(key, &mut bytes)?;
+    let raw: [u8; 4] = bytes
+        .try_into()
+        .map_err(|_| anyhow::anyhow!("NVFP4 global scale extent mismatch"))?;
+    Ok(f32::from_le_bytes(raw))
 }

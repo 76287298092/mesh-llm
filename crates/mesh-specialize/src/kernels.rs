@@ -24,7 +24,23 @@ pub struct ProjectionInput {
     pub gdn: Option<GdnWeights>,
     pub gdn_output: Option<GdnOutputWeights>,
     pub post_attention_norm: Option<ResidualNormWeights>,
-    pub mlp_input_scales: Vec<(String, f32)>,
+    pub mlp: Option<Nvfp4Mlp>,
+}
+
+/// Logical packed weights; local FP8 scales divide by each global multiplier.
+pub struct Nvfp4Projection {
+    pub name: String,
+    pub packed: Vec<u8>,
+    pub scales: Vec<u8>,
+    pub input_global: f32,
+    pub weight_global: f32,
+    pub channels: usize,
+}
+
+pub struct Nvfp4Mlp {
+    pub gate: Nvfp4Projection,
+    pub up: Nvfp4Projection,
+    pub down: Nvfp4Projection,
 }
 
 pub struct ResidualNormWeights {

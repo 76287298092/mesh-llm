@@ -2,7 +2,8 @@
 use super::{
     causal_conv4,
     driver::{Buffer, Context, Function, Module},
-    embedding_norm, gdn_output, gdn_prepare, gdn_recurrent, nvfp4_quantize, residual_norm,
+    embedding_norm, gdn_output, gdn_prepare, gdn_recurrent, mlp, mlp_activation, nvfp4_linear,
+    nvfp4_quantize, residual_add, residual_norm,
 };
 use crate::{
     entry_reference, gdn_recurrent_reference,
@@ -30,6 +31,9 @@ pub(in crate::kernels) fn run(ptx: &str, device: i32, input: &ProjectionInput) -
     let before = context.memory()?;
     let module = Module::load(&context, ptx)?;
     let nvfp4_quantization_fixtures = nvfp4_quantize::fixtures(&context, &module)?;
+    let nvfp4_linear_fixtures = nvfp4_linear::fixtures(&context, &module)?;
+    let mlp_activation_fixtures = mlp_activation::fixtures(&context, &module)?;
+    let residual_add_fixtures = residual_add::fixtures(&context, &module)?;
     let quantization_fixtures = quantization_fixtures(&context, &module)?;
     let convolution_fixtures = causal_conv4::fixtures(&context, &module)?;
     let residual_norm_fixtures = residual_norm::fixtures(&context, &module)?;
@@ -41,11 +45,11 @@ pub(in crate::kernels) fn run(ptx: &str, device: i32, input: &ProjectionInput) -
     let cases = run_input(&context, &module, input)?;
     let after = context.memory()?;
     Ok(
-        json!({"schema_version":7,"kind":"qwen-post-attention-trial","device":info,
+        json!({"schema_version":8,"kind":"qwen-layer-zero-components-trial","device":info,
         "all_passed":cases.iter().chain(&fixture_cases).all(|c|c["passed"]==true),
         "cases":cases,"fixture_cases":fixture_cases,"quantization_fixtures":quantization_fixtures,
         "convolution_fixtures":convolution_fixtures,
-        "nvfp4_quantization_fixtures":nvfp4_quantization_fixtures,"residual_norm_fixtures":residual_norm_fixtures,"gated_norm_fixtures":gated_norm_fixtures,"gdn_fixtures":gdn_fixtures,"recurrent_fixtures":recurrent_fixtures,
+        "nvfp4_linear_fixtures":nvfp4_linear_fixtures,"mlp_activation_fixtures":mlp_activation_fixtures,"residual_add_fixtures":residual_add_fixtures,"nvfp4_quantization_fixtures":nvfp4_quantization_fixtures,"residual_norm_fixtures":residual_norm_fixtures,"gated_norm_fixtures":gated_norm_fixtures,"gdn_fixtures":gdn_fixtures,"recurrent_fixtures":recurrent_fixtures,
         "memory_before":{"free_bytes":before.0,"total_bytes":before.1},
         "memory_after":{"free_bytes":after.0,"total_bytes":after.1},
         "quantize_resources":module.function("fp8_quantize_bf16")?.resources()?,
@@ -53,9 +57,9 @@ pub(in crate::kernels) fn run(ptx: &str, device: i32, input: &ProjectionInput) -
         "bf16_linear_resources":module.function("bf16_linear")?.resources()?,
         "convolution_resources":module.function("causal_conv4_bf16")?.resources()?,
         "qk_norm_resources":module.function("gdn_qk_norm")?.resources()?,
-        "nvfp4_quantize_resources":module.function("nvfp4_quantize_bf16")?.resources()?,"residual_norm_resources":module.function("residual_norm_bf16")?.resources()?,"gated_norm_resources":module.function("gdn_gated_rms_norm")?.resources()?,"gate_resources":module.function("gdn_gates")?.resources()?,"recurrent_resources":module.function("gdn_recurrent")?.resources()?,
+        "nvfp4_linear_resources":module.function("nvfp4_linear")?.resources()?,"mlp_activation_resources":module.function("mlp_silu_product")?.resources()?,"residual_add_resources":module.function("residual_add_bf16")?.resources()?,"nvfp4_quantize_resources":module.function("nvfp4_quantize_bf16")?.resources()?,"residual_norm_resources":module.function("residual_norm_bf16")?.resources()?,"gated_norm_resources":module.function("gdn_gated_rms_norm")?.resources()?,"gate_resources":module.function("gdn_gates")?.resources()?,"recurrent_resources":module.function("gdn_recurrent")?.resources()?,
         "activation_profile":"E4M3FN dynamic token scale in FP32; amax/448, zero scale replaced with 1; RNE finite saturation",
-        "gpu_chain":"embedding/norm -> FP8 quantization -> QKV -> convolution/SiLU -> Q/K normalization; normalized BF16 -> A/B -> beta/log-decay/decay gates -> recurrent matrix update -> gated RMSNorm using resident Z -> FP8 output projection -> BF16 residual add and zero-centered post-attention norm -> MLP NVFP4 input quantization; device intermediates stay resident",
+        "gpu_chain":"embedding/norm -> FP8 quantization -> QKV -> convolution/SiLU -> Q/K normalization; normalized BF16 -> A/B -> beta/log-decay/decay gates -> recurrent matrix update -> gated RMSNorm using resident Z -> FP8 output projection -> BF16 residual add and zero-centered post-attention norm -> MLP NVFP4 gate/up -> BF16 SiLU product -> NVFP4 down -> second BF16 residual; device intermediates stay resident",
         "timing_collected":false,"full_model_executed":false}),
     )
 }
@@ -144,15 +148,12 @@ fn validate(input: &ProjectionInput) -> Result<()> {
     if let Some(output) = &input.gdn_output {
         gdn_output::validate(input, output)?;
     }
-    ensure!(
-        input.mlp_input_scales.len() <= 2,
-        "too many MLP input scales"
-    );
-    for (_, scale) in &input.mlp_input_scales {
+    if let Some(weights) = &input.mlp {
         ensure!(
-            input.post_attention_norm.is_some() && scale.is_finite() && *scale > 0.0,
-            "invalid MLP activation connection/scale"
+            input.post_attention_norm.is_some(),
+            "MLP requires post-attention norm"
         );
+        mlp::validate(weights, input.entry.width)?;
     }
     if let Some(norm) = &input.post_attention_norm {
         ensure!(
@@ -481,24 +482,23 @@ fn check_gdn(
     } else {
         None
     };
-    let mut mlp_quantization = Vec::new();
-    if let Some(norm) = &post_attention {
-        for (name, scale) in &input.mlp_input_scales {
-            let mut report = nvfp4_quantize::check(
-                context,
-                module,
-                &norm.normalized,
-                &norm.words,
-                [tokens.len(), input.entry.width],
-                *scale,
-            )?;
-            report["projection"] = json!(name);
-            mlp_quantization.push(report);
-        }
-    }
+    let mlp_report = if let Some(weights) = &input.mlp {
+        let norm = post_attention
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("missing resident post-attention norm"))?;
+        Some(mlp::check(
+            context,
+            module,
+            norm,
+            weights,
+            [tokens.len(), input.entry.width],
+        )?)
+    } else {
+        None
+    };
     Ok(
-        json!({"operation":"post_attention","tokens":tokens,"passed":true,
-        "preparation":prepared.report,"recurrence":recurrent.report,"output":output.map(|v|v.report),"post_attention":post_attention.map(|v|v.report),"mlp_input_quantization":mlp_quantization}),
+        json!({"operation":"layer_zero_components","tokens":tokens,"passed":true,
+        "preparation":prepared.report,"recurrence":recurrent.report,"output":output.map(|v|v.report),"post_attention":post_attention.map(|v|v.report),"mlp":mlp_report}),
     )
 }
 
@@ -651,7 +651,7 @@ fn fixture() -> Result<ProjectionInput> {
         gdn: None,
         gdn_output: None,
         post_attention_norm: None,
-        mlp_input_scales: Vec::new(),
+        mlp: None,
     })
 }
 

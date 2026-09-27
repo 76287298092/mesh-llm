@@ -85,3 +85,8 @@ pub unsafe extern "ptx-kernel" fn probe_nvfp4_mma(
 }
 
 mod nvfp4_quantize;
+
+mod nvfp4_linear;
+
+mod mlp_activation;
+mod residual_add;

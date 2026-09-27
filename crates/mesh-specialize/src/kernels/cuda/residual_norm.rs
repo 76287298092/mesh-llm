@@ -17,6 +17,8 @@ pub(super) struct Input<'a, 'ctx> {
 }
 
 pub(super) struct CheckedNorm<'a> {
+    pub(super) residual: Buffer<'a>,
+    pub(super) residual_words: Vec<u16>,
     pub(super) normalized: Buffer<'a>,
     pub(super) words: Vec<u16>,
     pub(super) report: Value,
@@ -100,6 +102,8 @@ pub(super) fn check<'a>(
     report["shape"] = json!(shape);
     report["device_inputs_resident"] = json!(true);
     Ok(CheckedNorm {
+        residual: sum,
+        residual_words: actual.residual,
         normalized,
         words: actual.normalized,
         report,

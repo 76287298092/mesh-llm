@@ -187,3 +187,9 @@ fn compare(actual: &[f32], expected: &[f32]) -> Result<(f32, usize)> {
 }
 
 mod nvfp4_quantize;
+
+mod nvfp4_linear;
+
+mod mlp;
+mod mlp_activation;
+mod residual_add;

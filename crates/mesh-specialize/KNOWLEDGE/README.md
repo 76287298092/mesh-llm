@@ -24,6 +24,7 @@ Start with [the implementation plan](../PLAN.md) and the
 | [GDN recurrence](findings/gdn-recurrence.md) | 110,592 real outputs and recurrent state match scalar exactly; partition equivalence and sanitizers pass |
 | [GDN output](findings/gdn-output.md) | 110,592 gated-norm and 92,160 output-projection values pass component bounds; sanitizers clean |
 | [Post-attention operations](findings/post-attention.md) | 92,160 residual/norm values and both MLP input quantizations pass; sanitizers clean |
+| [Layer-zero MLP](findings/qwen-mlp.md) | NVFP4 projections, SiLU product and final residual implemented; qualification pending |
 | [Prebuilt core target mismatch](dead-ends/prebuilt-core-target-mismatch.md) | Resolved by rebuilding core; emitted PTX executed |
 | [Racecheck timing repetitions](dead-ends/racecheck-timing-repetitions.md) | Failed with host OOM; bounded check-only recovery passed |
 
