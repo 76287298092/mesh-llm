@@ -690,6 +690,7 @@ impl<'ctx> Module<'ctx> {
         Ok(Function {
             module: self,
             raw,
+            name,
             _thread_bound: PhantomData,
         })
     }
@@ -720,6 +721,7 @@ pub(super) struct FunctionResources {
 pub(super) struct Function<'module, 'ctx> {
     module: &'module Module<'ctx>,
     raw: CuFunction,
+    name: CString,
     _thread_bound: PhantomData<Rc<()>>,
 }
 impl Function<'_, '_> {
@@ -765,6 +767,13 @@ impl Function<'_, '_> {
         } else {
             args.as_mut_ptr()
         };
+        let timing = super::launch_profile::begin(
+            self.module.context,
+            self.name.to_str()?,
+            grid,
+            block,
+            shared_bytes,
+        )?;
         // SAFETY: The caller upholds the documented kernel argument and lifetime contract; the
         // function's module and context remain borrowed and valid for this call.
         check_cuda(
@@ -784,7 +793,11 @@ impl Function<'_, '_> {
                 )
             },
             "cuLaunchKernel",
-        )
+        )?;
+        if let Some(timing) = timing {
+            timing.finish()?;
+        }
+        Ok(())
     }
     fn attribute(&self, attribute: c_int, label: &str) -> Result<c_int> {
         let _current_context = self.module.context.activate()?;

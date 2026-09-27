@@ -203,3 +203,14 @@ that control's rates directly to MTP4 as an isolated speedup across different in
 Validation belongs to the parent: serial focused Rust tests/check/Clippy, formatting,
 repository no-console and crate-coverage checks where affected, and explicit
 remote evidence. Update this ledger after each measured gate. Keep failed attempts.
+
+## First full-model profile
+
+The initial full-model timing is now measured. P01 owns a bounded, scoped CUDA
+launch recorder in `launch_profile.rs`; P02 owns one profiled decode replay versus
+an unprofiled session in `resident_model_profile.rs`. The parent owns driver
+hooks, package/CLI wiring, current-source builds, the protected Carrack service
+pause, and the next optimization decision. These workers implement the specified
+interfaces without changing kernels or expanding the design. The next change
+must be selected from measured full-model attribution rather than assumed from
+an isolated arithmetic probe.

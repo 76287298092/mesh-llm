@@ -7,6 +7,7 @@ pub mod attention;
 pub mod decoder;
 pub mod fp8_mlp;
 pub mod model_benchmark;
+pub mod model_profile;
 pub mod model_reference;
 mod model_weights;
 pub mod residency;

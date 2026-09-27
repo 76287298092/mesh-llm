@@ -44,6 +44,23 @@ pub fn model_check(
     }
 }
 
+pub fn model_profile(
+    ptx: &str,
+    device: i32,
+    artifact: &mut crate::artifact::reader::VerifiedArtifact,
+    objects: &[crate::artifact::schema::Object],
+    config: &DecoderConfig,
+    tokens: &[u32],
+) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::resident_model_profile::run(ptx, device, artifact, objects, config, tokens);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device, artifact, objects, config, tokens);
+        anyhow::bail!("Model profiling requires Linux")
+    }
+}
+
 pub struct ModelBenchRequest<'a> {
     pub tokens: &'a [u32],
     pub output_tokens: usize,
