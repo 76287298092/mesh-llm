@@ -53,3 +53,7 @@ failed attempts in a findings/dead-ends entry before promoting these rows.
 NVFP4 logical linear loads now use aligned complete `u32` words with the existing
 byte fallback for tails/unaligned scale rows. MMA operands and order are unchanged;
 K16/K80 independent fixtures and full-model tests qualify this load-only change.
+
+`nvfp4_linear_warp4` shares the existing instructions and arithmetic, with a
+thread-coordinate read to select four independent N tiles per CTA. Qualified
+results are recorded in the decode projection optimization entry.

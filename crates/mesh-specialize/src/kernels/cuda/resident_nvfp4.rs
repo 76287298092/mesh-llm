@@ -89,7 +89,7 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
         let width_u32 = u32::try_from(self.width)?;
         let channels_u32 = u32::try_from(self.channels)?;
         let quantize = module.function("nvfp4_quantize_bf16")?;
-        let linear = module.function("nvfp4_linear")?;
+        let linear = module.function("nvfp4_linear_warp4")?;
         let activation = ActivationBuffers::new(context, &extents)?;
         let output = Buffer::new(context, extents.output_bytes)?;
         let unrounded = Buffer::new(context, extents.unrounded_bytes)?;
@@ -183,7 +183,7 @@ fn run_extents(rows: usize, width: usize, channels: usize) -> Result<RunExtents>
         unrounded_bytes: checked_product(output_values, 4, "NVFP4 FP32 output bytes")?,
         quantizer_grid: [u32::try_from(groups)?, 1, 1],
         linear_grid: [
-            u32::try_from(channels.div_ceil(8))?,
+            u32::try_from(channels.div_ceil(32))?,
             u32::try_from(rows.div_ceil(16))?,
             1,
         ],
@@ -284,7 +284,7 @@ fn launch_linear(function: &Function<'_, '_>, launch: LinearLaunch<'_, '_>) -> R
     arguments.push((&mut global_factor as *mut f32).cast());
     // SAFETY: The verified resident weight views, generated activation buffers, and distinct
     // output allocations match the six-pointer/mnk/factor ABI and remain live through sync.
-    unsafe { function.launch(launch.grid, [32, 1, 1], 0, &mut arguments) }
+    unsafe { function.launch(launch.grid, [128, 1, 1], 0, &mut arguments) }
 }
 
 fn synchronize_after_failed_launch(
@@ -336,7 +336,7 @@ mod tests {
         assert_eq!(extents.output_bytes, 17 * 13 * 2);
         assert_eq!(extents.unrounded_bytes, 17 * 13 * 4);
         assert_eq!(extents.quantizer_grid, [34, 1, 1]);
-        assert_eq!(extents.linear_grid, [2, 2, 1]);
+        assert_eq!(extents.linear_grid, [1, 2, 1]);
         assert!(run_extents(0, 16, 1).is_err());
         assert!(run_extents(MAX_ROWS + 1, 16, 1).is_err());
     }

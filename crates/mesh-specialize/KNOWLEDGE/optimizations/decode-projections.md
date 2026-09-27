@@ -66,3 +66,10 @@ samples give 14.395, 14.391, 14.390. Prefill remains 19.66 tokens/s. The profile
 measures BF16 gates at 2.677 ms, down from 71.568 ms, and NVFP4 at 24.328 ms.
 Raw evidence: `target/specialize/perf-20260927/bf16-round/` on both hosts.
 Ninfer restored 09:20:18 EDT, PID3221946, HTTP200; ComfyUI448118 unchanged.
+
+
+The next NVFP4 candidate groups four independent warp MMA tiles into each CTA.
+Logical N tiles are CTA.x*4+warp; K order and arithmetic are unchanged. The original
+one-warp entrypoint remains compiled as a control. This tests scheduling geometry,
+not a numerical or quantization change. Compare the same two/128-token cases
+before retaining it; higher thread count alone does not establish a speedup.

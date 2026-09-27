@@ -6,22 +6,26 @@ const TILE_K: usize = 64;
 const K_GROUP: usize = 16;
 
 #[inline(always)]
-fn warp_and_tile() -> (u32, u32, u32) {
+fn warp_and_tile<const WARPS: u32>() -> (u32, u32, u32) {
     let lane: u32;
+    let thread_x: u32;
     let tile_n: u32;
     let tile_m: u32;
-    // SAFETY: Reads the calling thread's lane and CTA coordinates without memory effects.
+    // SAFETY: Reads the calling thread's lane, thread, and CTA coordinates without memory effects.
     unsafe {
         asm!(
             "mov.u32 {lane}, %laneid;",
+            "mov.u32 {thread_x}, %tid.x;",
             "mov.u32 {tile_n}, %ctaid.x;",
             "mov.u32 {tile_m}, %ctaid.y;",
             lane = out(reg32) lane,
+            thread_x = out(reg32) thread_x,
             tile_n = out(reg32) tile_n,
             tile_m = out(reg32) tile_m,
             options(nomem, nostack),
         )
     };
+    let tile_n = tile_n * WARPS + thread_x / 32;
     (lane, tile_n, tile_m)
 }
 
@@ -230,7 +234,67 @@ pub unsafe extern "ptx-kernel" fn nvfp4_linear(
     k: u32,
     global_factor: f32,
 ) {
-    let (lane, tile_n, tile_m) = warp_and_tile();
+    // SAFETY: The caller must use the single-warp launch geometry and satisfy the
+    // documented pointer, extent, and lifetime requirements for this kernel.
+    unsafe { nvfp4_linear_impl::<1>(a, w, sa, sw, out, unrounded, m, n, k, global_factor) }
+}
+
+/// Four-warp CTA variant of the row-major block-scaled NVFP4 GEMM.
+///
+/// The arithmetic and per-warp MMA tile are identical to `nvfp4_linear`; each
+/// CTA runs four independent warp tiles along N.
+///
+/// # Safety
+/// Launch `grid = [ceil(n / 32), ceil(m / 16), 1]` and `block = [128, 1, 1]`.
+/// Require `1 <= m <= 2048`, `1 <= n <= 32768`, and `k` a multiple of 16 in
+/// `16..=32768`; dimension products, padded K offsets, and launch dimensions must
+/// fit the device address space and hardware limits. `a` and `w` must each cover
+/// respectively `m * (k / 2)` and `n * (k / 2)` readable bytes of low-first packed
+/// E2M1 values. `sa` and `sw` must cover respectively `m * (k / 16)` and
+/// `n * (k / 16)` readable unsigned E4M3 bytes with codes in `0..=126`. The base
+/// addresses of `a`, `w`, `sa`, and `sw` must be four-byte aligned for packed loads.
+/// `global_factor` must be finite and positive. `out` and `unrounded` must each
+/// cover `m * n` writable BF16 and FP32 elements. All pointers must be correctly
+/// aligned, mutually disjoint, and live until completion. The host must reject
+/// nonfinite FP32 results before accepting the output.
+#[unsafe(no_mangle)]
+pub unsafe extern "ptx-kernel" fn nvfp4_linear_warp4(
+    a: *const u8,
+    w: *const u8,
+    sa: *const u8,
+    sw: *const u8,
+    out: *mut u16,
+    unrounded: *mut f32,
+    m: u32,
+    n: u32,
+    k: u32,
+    global_factor: f32,
+) {
+    // SAFETY: The caller must use the four-warp launch geometry and satisfy the
+    // documented pointer, extent, and lifetime requirements for this kernel.
+    unsafe { nvfp4_linear_impl::<4>(a, w, sa, sw, out, unrounded, m, n, k, global_factor) }
+}
+
+/// Shared implementation for the one- and four-warp CTA entry points.
+///
+/// # Safety
+/// `WARPS` must be 1 or 4. The caller must satisfy the public kernel's pointer,
+/// extent, and lifetime requirements and launch with `grid.x = ceil(n / (8 * WARPS))`,
+/// `grid.y = ceil(m / 16)`, and `block = [32 * WARPS, 1, 1]`.
+#[inline(always)]
+unsafe fn nvfp4_linear_impl<const WARPS: u32>(
+    a: *const u8,
+    w: *const u8,
+    sa: *const u8,
+    sw: *const u8,
+    out: *mut u16,
+    unrounded: *mut f32,
+    m: u32,
+    n: u32,
+    k: u32,
+    global_factor: f32,
+) {
+    let (lane, tile_n, tile_m) = warp_and_tile::<WARPS>();
     let lane_group = (lane >> 2) as usize;
     let thread_in_group = (lane & 3) as usize;
     let row_start = tile_m as usize * TILE_M;
