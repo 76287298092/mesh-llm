@@ -86,6 +86,44 @@ impl WorkspaceLayout {
         )
     }
 
+    /// Shared MLP layout covers FP8 and NVFP4 scratch without per-layer arenas.
+    pub fn mlp_chain(shape: [usize; 3]) -> Result<Self> {
+        let [rows, width, channels] = shape;
+        ensure!(
+            (1..=512).contains(&rows)
+                && (1..=32768).contains(&width)
+                && (1..=32768).contains(&channels),
+            "invalid model MLP workspace shape"
+        );
+        let mut entries = Vec::new();
+        for (name, k, n) in [
+            ("gate", width, channels),
+            ("up", width, channels),
+            ("down", channels, width),
+        ] {
+            let input = checked_product(rows, k, "MLP input")?;
+            let output = checked_product(rows, n, "MLP output")?;
+            for (suffix, bytes) in [
+                ("codes", input),
+                ("scales", (rows * 4).max(input / 16)),
+                ("effective", 4.max(input / 16 * 4)),
+                ("values", output * 2),
+                ("raw", output * 4),
+            ] {
+                entries.push((format!("{name}.{suffix}"), bytes));
+            }
+        }
+        for (suffix, bytes) in [
+            ("values", rows * channels * 2),
+            ("silu", rows * channels * 4),
+            ("activated", rows * channels * 2),
+            ("raw", rows * channels * 4),
+        ] {
+            entries.push((format!("activation.{suffix}"), bytes));
+        }
+        Self::new(512 * 1024 * 1024, entries)
+    }
+
     /// Find a planned region using the canonical layout's sorted name index.
     pub fn region(&self, name: &str) -> Result<&Region> {
         self.placement
@@ -189,5 +227,32 @@ mod tests {
         );
         assert!(WorkspaceLayout::fp8_projection_chain(usize::MAX, 2, 1, usize::MAX).is_err());
         assert!(WorkspaceLayout::fp8_projection_chain(0, 1, 1, 1_024).is_err());
+    }
+}
+
+#[cfg(test)]
+mod mlp_chain_tests {
+    use super::WorkspaceLayout;
+    #[test]
+    fn covers_both_quantizers_and_all_buffers_with_one_bounded_arena() {
+        for rows in [1, 5, 128, 512] {
+            let p = WorkspaceLayout::mlp_chain([rows, 5120, 17408]).unwrap();
+            assert!(p.high_water_bytes() < 256 * 1024 * 1024);
+            assert_eq!(p.regions().len(), 19);
+            assert!(p.region("gate.codes").unwrap().length >= (rows * 5120) as u64);
+            assert!(p.region("down.effective").unwrap().length >= (rows * 17408 / 16 * 4) as u64);
+            assert_eq!(
+                p.region("down.values").unwrap().length,
+                (rows * 5120 * 2) as u64
+            );
+        }
+        for s in [
+            [0, 5120, 17408],
+            [513, 5120, 17408],
+            [1, 0, 17408],
+            [1, 5120, usize::MAX],
+        ] {
+            assert!(WorkspaceLayout::mlp_chain(s).is_err());
+        }
     }
 }

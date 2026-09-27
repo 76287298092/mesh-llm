@@ -202,7 +202,7 @@ pub(in crate::kernels) fn run(
         "all_passed": all_passed,
         "device": info,
         "arithmetic_profile": crate::kernels::fp8_profile::current()?.name(),
-        "fp8_split_k":super::resident_fp8_splitk::configured_splits()?,
+        "mlp_workspace":super::model_workspace::enabled()?, "fp8_split_k":super::resident_fp8_splitk::configured_splits()?,
         "prefix_token_ids": tokens,
         "decode_input_token": decode_input_token,
         "teacher_forced_token": teacher_token,

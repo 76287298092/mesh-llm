@@ -51,6 +51,9 @@ impl<'ctx> ResidentWeights<'ctx> {
         })
     }
 
+    pub(super) fn context(&self) -> &'ctx Context {
+        self.arena.context()
+    }
     /// Return the device pointer at the start of a named tensor region.
     pub(super) fn pointer(&self, name: &str) -> Result<u64> {
         let region = self.layout.region(name)?;

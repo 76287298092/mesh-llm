@@ -37,6 +37,9 @@ pub(super) struct Step {
     pub capacity: usize,
 }
 impl<'w, 'ctx> Layer<'w, 'ctx> {
+    pub(super) fn attach_workspace(&mut self, workspace: super::model_workspace::Shared<'ctx>) {
+        self.mlp.attach_workspace(workspace);
+    }
     pub(super) fn new(
         owner: &'w ResidentWeights<'ctx>,
         prefix: &str,
@@ -223,12 +226,19 @@ impl<'w, 'ctx> Layer<'w, 'ctx> {
             .add(ctx, module, hidden, &branch.values, step.rows)?;
         observe(&mut observer, "post_residual", &post.residual)?;
         observe(&mut observer, "post_norm", &post.normalized)?;
-        let mlp = self.mlp.run(ctx, module, &post.normalized, step.rows)?;
-        observe(&mut observer, "mlp_gate", &mlp.gate.values)?;
-        observe(&mut observer, "mlp_up", &mlp.up.values)?;
-        observe(&mut observer, "mlp_activation", &mlp.activation)?;
-        observe(&mut observer, "mlp_down", &mlp.down.values)?;
-        let output = residual_add(ctx, module, &post.residual, &mlp.down.values)?;
+        let output = if self.mlp.has_workspace() && observer.is_none() {
+            let down = self
+                .mlp
+                .workspace_output(ctx, module, &post.normalized, step.rows)?;
+            residual_add(ctx, module, &post.residual, &down)?
+        } else {
+            let mlp = self.mlp.run(ctx, module, &post.normalized, step.rows)?;
+            observe(&mut observer, "mlp_gate", &mlp.gate.values)?;
+            observe(&mut observer, "mlp_up", &mlp.up.values)?;
+            observe(&mut observer, "mlp_activation", &mlp.activation)?;
+            observe(&mut observer, "mlp_down", &mlp.down.values)?;
+            residual_add(ctx, module, &post.residual, &mlp.down.values)?
+        };
         observe(&mut observer, "hidden", &output)?;
         Ok(output)
     }

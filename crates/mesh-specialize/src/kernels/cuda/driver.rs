@@ -467,6 +467,9 @@ impl<'ctx> Buffer<'ctx> {
             _thread_bound: PhantomData,
         })
     }
+    pub(super) fn context(&self) -> &'ctx Context {
+        self.context
+    }
     /// Return the CUDA device pointer as an integer for kernel argument construction.
     pub(super) fn pointer(&self) -> CuDevicePtr {
         self.pointer

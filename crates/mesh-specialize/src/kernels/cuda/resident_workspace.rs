@@ -46,10 +46,30 @@ impl<'ctx> ResidentWorkspace<'ctx> {
         })
     }
 
+    pub(super) fn belongs_to(&self, context: &Context) -> bool {
+        std::ptr::eq(self.context, context)
+    }
+
     pub(super) fn layout(&self) -> &WorkspaceLayout {
         &self.layout
     }
 
+    /// Copy one completed result into an owning buffer before the scratch is reused.
+    pub(super) fn copy_region<'a>(&self, ctx: &'a Context, name: &str) -> Result<Buffer<'a>> {
+        ensure!(
+            !self.poisoned && std::ptr::eq(ctx, self.context),
+            "invalid workspace result copy"
+        );
+        let region = self.layout.region(name)?;
+        let result = Buffer::new(ctx, usize::try_from(region.length)?)?;
+        result.copy_from_at(
+            0,
+            &self.allocation,
+            usize::try_from(region.offset)?,
+            result.len(),
+        )?;
+        Ok(result)
+    }
     /// Read completed scratch for diagnostics, never during an active mutable lease.
     pub(super) fn read_region(&self, name: &str) -> Result<Vec<u8>> {
         ensure!(!self.poisoned, "cannot read poisoned workspace");

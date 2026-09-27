@@ -82,74 +82,15 @@ impl<'w, 'ctx> Chain<'w, 'ctx> {
         input: &Buffer<'_>,
         operator_waits: bool,
     ) -> Result<()> {
-        ensure!(
-            module.belongs_to(self.context)
-                && input.belongs_to(self.context)
-                && input.len() == self.rows * self.width * 2,
-            "MLP workspace input/context mismatch"
-        );
-        let step = self.workspace.begin_step()?;
-        for (name, projection) in ["gate", "up"].into_iter().zip(&self.projections) {
-            // SAFETY: Checked input/context and this chain's fixed-shape regions remain
-            // live under the exclusive lease through completion or error draining.
-            unsafe {
-                projection.enqueue(
-                    self.context,
-                    module,
-                    &step,
-                    name,
-                    input.pointer(),
-                    self.rows,
-                )?;
-            }
-            if operator_waits {
-                self.context.synchronize()?;
-            }
-        }
-        let names = [
-            "gate.values",
-            "up.values",
-            "activation.values",
-            "activation.silu",
-            "activation.activated",
-            "activation.raw",
-        ];
-        let mut pointers = names
-            .iter()
-            .map(|name| Ok(step.region(name)?.pointer()))
-            .collect::<Result<Vec<_>>>()?;
-        let mut count = (self.rows * self.channels) as u32;
-        let mut args = pointers
-            .iter_mut()
-            .map(|p| (p as *mut u64).cast::<c_void>())
-            .collect::<Vec<_>>();
-        args.push((&mut count as *mut u32).cast());
-        // SAFETY: Planned disjoint BF16/FP32 regions match the six-pointer activation ABI.
-        // The same stream orders both projections before this consumer; lease drains errors.
-        unsafe {
-            module.function("mlp_silu_product")?.launch(
-                [count.div_ceil(256), 1, 1],
-                [256, 1, 1],
-                0,
-                &mut args,
-            )?;
-        }
-        if operator_waits {
-            self.context.synchronize()?;
-        }
-        // SAFETY: Activation was queued on the same ordered stream into the planned
-        // BF16 region; downstream scratch is disjoint and the lease remains live.
-        unsafe {
-            self.projections[2].enqueue(
-                self.context,
-                module,
-                &step,
-                "down",
-                step.region("activation.values")?.pointer(),
-                self.rows,
-            )?;
-        }
-        step.complete()
+        enqueue_chain(
+            self.context,
+            module,
+            &mut self.workspace,
+            &self.projections,
+            input,
+            [self.rows, self.width, self.channels],
+            operator_waits,
+        )
     }
     /// Diagnostic address inspection outside timed execution.
     pub(super) fn addresses(&mut self) -> Result<Vec<u64>> {
@@ -211,4 +152,97 @@ impl<'w, 'ctx> Chain<'w, 'ctx> {
     pub(super) fn bytes(&self) -> usize {
         self.workspace.layout().high_water_bytes()
     }
+}
+
+/// Run identical kernels using a caller-owned exclusive scratch arena.
+pub(super) fn enqueue_chain(
+    ctx: &Context,
+    module: &Module<'_>,
+    workspace: &mut ResidentWorkspace<'_>,
+    projections: &[Binding<'_, '_>; 3],
+    input: &Buffer<'_>,
+    shape: [usize; 3],
+    operator_waits: bool,
+) -> Result<()> {
+    let [rows, width, channels] = shape;
+    ensure!(
+        module.belongs_to(ctx)
+            && workspace.belongs_to(ctx)
+            && input.belongs_to(ctx)
+            && input.len() == rows * width * 2,
+        "MLP workspace input/context mismatch"
+    );
+    ensure!(
+        (1..=512).contains(&rows)
+            && (1..=32768).contains(&width)
+            && (1..=32768).contains(&channels)
+            && projections[0].width == width
+            && projections[0].channels == channels
+            && projections[1].width == width
+            && projections[1].channels == channels
+            && projections[2].width == channels
+            && projections[2].channels == width,
+        "MLP workspace projection geometry mismatch"
+    );
+    let step = workspace.begin_step()?;
+    for (name, bytes) in [("values", 2), ("silu", 4), ("activated", 2), ("raw", 4)] {
+        ensure!(
+            step.region(&format!("activation.{name}"))?.bytes() >= rows * channels * bytes,
+            "undersized MLP activation region"
+        );
+    }
+    for (name, projection) in ["gate", "up"].into_iter().zip(projections) {
+        // SAFETY: Checked input/context and this chain's fixed-shape regions remain
+        // live under the exclusive lease through completion or error draining.
+        unsafe {
+            projection.enqueue(ctx, module, &step, name, input.pointer(), rows)?;
+        }
+        if operator_waits {
+            ctx.synchronize()?;
+        }
+    }
+    let names = [
+        "gate.values",
+        "up.values",
+        "activation.values",
+        "activation.silu",
+        "activation.activated",
+        "activation.raw",
+    ];
+    let mut pointers = names
+        .iter()
+        .map(|name| Ok(step.region(name)?.pointer()))
+        .collect::<Result<Vec<_>>>()?;
+    let mut count = (rows * channels) as u32;
+    let mut args = pointers
+        .iter_mut()
+        .map(|p| (p as *mut u64).cast::<c_void>())
+        .collect::<Vec<_>>();
+    args.push((&mut count as *mut u32).cast());
+    // SAFETY: Planned disjoint BF16/FP32 regions match the six-pointer activation ABI.
+    // The same stream orders both projections before this consumer; lease drains errors.
+    unsafe {
+        module.function("mlp_silu_product")?.launch(
+            [count.div_ceil(256), 1, 1],
+            [256, 1, 1],
+            0,
+            &mut args,
+        )?;
+    }
+    if operator_waits {
+        ctx.synchronize()?;
+    }
+    // SAFETY: Activation was queued on the same ordered stream into the planned
+    // BF16 region; downstream scratch is disjoint and the lease remains live.
+    unsafe {
+        projections[2].enqueue(
+            ctx,
+            module,
+            &step,
+            "down",
+            step.region("activation.values")?.pointer(),
+            rows,
+        )?;
+    }
+    step.complete()
 }

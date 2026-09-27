@@ -56,6 +56,12 @@ impl Binding<'_, '_> {
             self.owner.belongs_to(ctx) && module.belongs_to(ctx),
             "workspace projection context mismatch"
         );
+        for (region_name, bytes) in self.regions(name, rows) {
+            ensure!(
+                step.region(&region_name)?.bytes() >= bytes,
+                "undersized MLP workspace region {region_name}"
+            );
+        }
         let region = |suffix: &str| -> Result<u64> {
             Ok(step.region(&format!("{name}.{suffix}"))?.pointer())
         };

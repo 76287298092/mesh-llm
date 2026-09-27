@@ -266,3 +266,5 @@ mod mlp_workspace_projection;
 mod resident_mlp_workspace;
 
 pub(super) mod mlp_workspace_trial;
+
+mod model_workspace;

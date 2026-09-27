@@ -73,13 +73,14 @@ impl<'w, 'ctx> Model<'w, 'ctx> {
                 && config.attention_shape.hidden == config.hidden,
             "decoder hidden widths disagree"
         );
+        let workspace = super::model_workspace::shared(weights.context())?;
         let mut blocks = Vec::new();
         for layer in &config.layers {
             let quantization = match layer.mlp {
                 DecoderMlpKind::Nvfp4 => Quantization::Nvfp4,
                 DecoderMlpKind::Fp8 => Quantization::Fp8,
             };
-            blocks.push(match layer.block {
+            let mut block = match layer.block {
                 DecoderBlockKind::Gdn => Block::Gdn(Box::new(resident_gdn::Layer::new(
                     weights,
                     &layer.prefix,
@@ -96,7 +97,14 @@ impl<'w, 'ctx> Model<'w, 'ctx> {
                         quantization,
                     )?))
                 }
-            });
+            };
+            if let Some(shared) = workspace.as_ref() {
+                match &mut block {
+                    Block::Gdn(layer) => layer.attach_workspace(shared.clone()),
+                    Block::Attention(layer) => layer.attach_workspace(shared.clone()),
+                }
+            }
+            blocks.push(block);
         }
         Ok(Self {
             embedding: Embedding::new(

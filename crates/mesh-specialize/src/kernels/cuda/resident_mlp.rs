@@ -14,6 +14,8 @@ pub(super) struct Mlp<'w, 'ctx> {
     up: Projection<'w, 'ctx>,
     down: Projection<'w, 'ctx>,
     channels: usize,
+    width: usize,
+    workspace: Option<super::model_workspace::Shared<'ctx>>,
 }
 
 impl<'w, 'ctx> Mlp<'w, 'ctx> {
@@ -47,7 +49,53 @@ impl<'w, 'ctx> Mlp<'w, 'ctx> {
                 quantization,
             )?,
             channels,
+            width,
+            workspace: None,
         })
+    }
+
+    pub(super) fn attach_workspace(&mut self, workspace: super::model_workspace::Shared<'ctx>) {
+        self.workspace = Some(workspace);
+    }
+    pub(super) fn has_workspace(&self) -> bool {
+        self.workspace.is_some()
+    }
+    pub(super) fn workspace_output<'a>(
+        &self,
+        ctx: &'a Context,
+        module: &Module<'_>,
+        input: &Buffer<'_>,
+        rows: usize,
+    ) -> Result<Buffer<'a>> {
+        let binding = |p: &Projection<'w, 'ctx>| match p {
+            Projection::Fp8(p) => p.workspace_binding(),
+            Projection::Nvfp4(p) => Ok(p.workspace_binding()),
+            Projection::Bf16(_) => anyhow::bail!("BF16 MLP workspace is unsupported"),
+        };
+        let projections = [
+            binding(&self.gate)?,
+            binding(&self.up)?,
+            binding(&self.down)?,
+        ];
+        let shared = self
+            .workspace
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("missing model workspace"))?;
+        let mut cache = shared
+            .try_borrow_mut()
+            .map_err(|_| anyhow::anyhow!("model workspace is already borrowed"))?;
+        let shape = [rows, self.width, self.channels];
+        let arena = cache.prepare(shape)?;
+        super::resident_mlp_workspace::enqueue_chain(
+            ctx,
+            module,
+            arena,
+            &projections,
+            input,
+            shape,
+            false,
+        )?;
+        arena.copy_region(ctx, "down.values")
     }
 
     pub(super) fn run<'a>(

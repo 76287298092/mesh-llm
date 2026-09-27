@@ -69,3 +69,20 @@ its arena only to qualify one block; that ownership is not the model design.
 Keep diagnostic outputs in the qualification lane while adding an explicit
 output-only consumer path. Workspace lease must cover the final residual
 consumer or a checked ordered output copy before scratch reuse.
+
+
+Second isolated GPU trial `workspace-check-2` at `efaa76f3f` passed all eight
+cases, stable addresses and both injected post-gate abort/poison checks. Memcheck,
+racecheck and synccheck reported zero errors/hazards. Evidence is retained beside
+this note. Ninfer remained inactive; ComfyUI remained resident.
+
+Experimental model integration now uses `MESH_SPECIALIZE_MLP_WORKSPACE=on`
+(default `off`). One model-owned arena is shared across all sequential MLPs and
+reallocated only when row/width/channel geometry changes. Its common layout
+admits both FP8 and NVFP4 scratch, including distinct projection quantizers.
+Any aborted step poisons reuse even across geometry changes. Each completed
+chain copies its down output into an owning buffer before releasing the shared
+cache; this still costs one allocation and a device copy per MLP. Stage-level
+diagnostics retain the original detailed path. Exact arithmetic and split-K off
+are required. Host tests and Clippy passed; Linux compilation and whole-model
+output/state equivalence and throughput remain pending. No default promotion.
