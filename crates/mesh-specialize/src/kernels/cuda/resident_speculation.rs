@@ -7,6 +7,7 @@ use super::{
 };
 use crate::kernels::DecoderConfig;
 use anyhow::{Context as _, Result, ensure};
+use serde::Serialize;
 use std::time::Instant;
 
 const MIN_PROMPT_ROWS: usize = 1;
@@ -33,6 +34,15 @@ pub(super) struct Run<'ctx> {
     pub(super) replay_rows: usize,
     pub(super) prefill_seconds: f64,
     pub(super) decode_seconds: f64,
+    pub(super) phase_seconds: PhaseSeconds,
+}
+
+#[derive(Default, Serialize)]
+pub(super) struct PhaseSeconds {
+    pub(super) draft: f64,
+    pub(super) verification: f64,
+    pub(super) replay: f64,
+    pub(super) teacher: f64,
 }
 
 struct Engines<'m, 'ctx, 'tw, 'dw> {
@@ -62,6 +72,7 @@ struct RoundResult {
     accepted: usize,
     verify_rows: usize,
     replay_rows: usize,
+    phase_seconds: PhaseSeconds,
 }
 
 pub(super) fn run<'ctx>(
@@ -97,6 +108,7 @@ pub(super) fn run<'ctx>(
     let mut accepted = 0_usize;
     let mut verify_rows = 0_usize;
     let mut replay_rows = 0_usize;
+    let mut phase_seconds = PhaseSeconds::default();
 
     let decode_start = Instant::now();
     while output_tokens.len() < request.output_tokens {
@@ -119,6 +131,10 @@ pub(super) fn run<'ctx>(
         checked_add_counter(&mut accepted, round.accepted, "accepted token")?;
         checked_add_counter(&mut verify_rows, round.verify_rows, "verification row")?;
         checked_add_counter(&mut replay_rows, round.replay_rows, "replay row")?;
+        phase_seconds.draft += round.phase_seconds.draft;
+        phase_seconds.verification += round.phase_seconds.verification;
+        phase_seconds.replay += round.phase_seconds.replay;
+        phase_seconds.teacher += round.phase_seconds.teacher;
         let expected_past = request
             .tokens
             .len()
@@ -150,6 +166,7 @@ pub(super) fn run<'ctx>(
         replay_rows,
         prefill_seconds,
         decode_seconds,
+        phase_seconds,
     })
 }
 
@@ -286,11 +303,14 @@ impl<'m, 'ctx, 'tw, 'dw> Engines<'m, 'ctx, 'tw, 'dw> {
             base_past == state.cache.past && state.draft.cursor.past() == state.cache.past,
             "target and draft cursors differ before verification"
         );
+        let draft_start = Instant::now();
         let proposals = self.proposals(state, proposal_count, forced_first)?;
+        let draft_seconds = draft_start.elapsed().as_secs_f64();
         let mut verify_inputs = Vec::with_capacity(proposals.len() + 1);
         verify_inputs.push(state.pending);
         verify_inputs.extend_from_slice(&proposals);
 
+        let verification_start = Instant::now();
         let mut verification_session = state.target.fork(self.context)?;
         let verified = self.target.forward_detailed(
             self.context,
@@ -300,6 +320,7 @@ impl<'m, 'ctx, 'tw, 'dw> Engines<'m, 'ctx, 'tw, 'dw> {
             LogitsSelection::All,
             None,
         )?;
+        let verification_seconds = verification_start.elapsed().as_secs_f64();
         let verify_past = base_past
             .checked_add(verify_inputs.len())
             .context("target verification cursor overflows usize")?;
@@ -313,14 +334,15 @@ impl<'m, 'ctx, 'tw, 'dw> Engines<'m, 'ctx, 'tw, 'dw> {
         emitted.extend_from_slice(&proposals[..accepted]);
         emitted.push(correction);
 
-        let replay_rows = if accepted == proposals.len() {
+        let (replay_rows, replay_seconds) = if accepted == proposals.len() {
             state.target = verification_session;
-            0
+            (0, 0.0)
         } else {
             drop(verification_session);
             let mut replay_inputs = Vec::with_capacity(accepted + 1);
             replay_inputs.push(state.pending);
             replay_inputs.extend_from_slice(&proposals[..accepted]);
+            let replay_start = Instant::now();
             let replay = self.target.forward(
                 self.context,
                 self.module,
@@ -339,9 +361,10 @@ impl<'m, 'ctx, 'tw, 'dw> Engines<'m, 'ctx, 'tw, 'dw> {
                 replay.past == replay_past && state.target.cursor.past() == replay_past,
                 "target replay cursor advanced unexpectedly"
             );
-            replay_inputs.len()
+            (replay_inputs.len(), replay_start.elapsed().as_secs_f64())
         };
 
+        let teacher_start = Instant::now();
         let teacher_rows = accepted + 1;
         let raw_prefix = copy_hidden_rows(
             self.context,
@@ -388,12 +411,19 @@ impl<'m, 'ctx, 'tw, 'dw> Engines<'m, 'ctx, 'tw, 'dw> {
             last_hidden,
             past: draft_output.past,
         };
+        let teacher_seconds = teacher_start.elapsed().as_secs_f64();
         Ok(RoundResult {
             emitted,
             drafted: proposals.len(),
             accepted,
             verify_rows: verify_inputs.len(),
             replay_rows,
+            phase_seconds: PhaseSeconds {
+                draft: draft_seconds,
+                verification: verification_seconds,
+                replay: replay_seconds,
+                teacher: teacher_seconds,
+            },
         })
     }
 }

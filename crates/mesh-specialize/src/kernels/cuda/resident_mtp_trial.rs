@@ -50,6 +50,7 @@ pub(in crate::kernels) fn run(
         request,
     };
     let control = runner.control()?;
+    let verification_profile = runner.verification_profile(&control)?;
     let forced = runner.speculate(Some(
         (control.tokens[1] + 1) % u32::try_from(config.vocabulary)?,
     ))?;
@@ -81,7 +82,7 @@ pub(in crate::kernels) fn run(
     Ok(
         json!({"schema_version":1,"kind":"resident-greedy-mtp-qualification","all_passed":true,
         "device":info,"head":head,"prompt_token_ids":request.tokens,"output_tokens":request.output_tokens,
-        "depth":request.depth,"control":control.report(),"forced_rejection":forced_report,"trials":trials,
+        "depth":request.depth,"control":control.report(),"verification_profile":verification_profile,"forced_rejection":forced_report,"trials":trials,
         "memory":{"before_free_bytes":before.0,"after_release_free_bytes":after.0,"arena_memory_release_observed":after.0>=before.0},
         "scope":"bounded greedy single sequence; no stochastic or serving qualification"}),
     )
@@ -133,7 +134,9 @@ fn check_head(
     let raw = upload(ctx, &r.raw_target_hidden)?;
     let input = draft.target_hidden(ctx, module, &raw, rows)?;
     let mut whole = resident_mtp::Session::new(ctx, config)?;
-    let output = draft.forward(ctx, module, &r.shifted_tokens, &input, &mut whole)?;
+    let (output, kernel_profile) = super::launch_profile::capture(ctx, || {
+        draft.forward(ctx, module, &r.shifted_tokens, &input, &mut whole)
+    })?;
     let hidden = words(&output.hidden)?;
     let hidden_report = comparison(&hidden, &r.hidden, config.hidden)?;
     let logits_report = comparison(&output.logits, &r.logits, config.vocabulary)?;
@@ -154,7 +157,7 @@ fn check_head(
     let greedy = output.token == sampling::greedy(&r.logits)?;
     Ok(
         json!({"all_passed":hidden_report["all_passed"]==true && logits_report["all_passed"]==true && cache_report["all_passed"]==true && partition && greedy,
-        "hidden":hidden_report,"logits":logits_report,"cache":cache_report,"whole_token_partition_bit_exact":partition,"greedy_matches_reference":greedy}),
+        "kernel_profile":kernel_profile,"hidden":hidden_report,"logits":logits_report,"cache":cache_report,"whole_token_partition_bit_exact":partition,"greedy_matches_reference":greedy}),
     )
 }
 fn check_cache(state: &ResidentState<'_>, config: &DecoderConfig, r: &Reference) -> Result<Value> {
@@ -227,6 +230,35 @@ impl<'ctx> Runner<'_, '_, 'ctx> {
             decode,
         })
     }
+    fn verification_profile(&self, control: &Control) -> Result<Value> {
+        let mut session = Session::new(self.ctx, self.config)?;
+        self.target.forward(
+            self.ctx,
+            self.module,
+            self.request.tokens,
+            &mut session,
+            None,
+        )?;
+        let rows = (self.request.depth + 1).min(control.tokens.len() - 1);
+        let (output, profile) = super::launch_profile::capture(self.ctx, || {
+            self.target.forward_detailed(
+                self.ctx,
+                self.module,
+                &control.tokens[..rows],
+                &mut session,
+                super::resident_model::LogitsSelection::All,
+                None,
+            )
+        })?;
+        ensure!(
+            output.tokens == control.tokens[1..=rows],
+            "profiled verification tokens differ from target-only decode"
+        );
+        Ok(
+            json!({"rows":rows,"tokens_match_control":true,"kernel_profile":profile,
+            "scope":"separate instrumented verification of a known target prefix; excluded from unprofiled timings"}),
+        )
+    }
     fn speculate(&self, forced: Option<u32>) -> Result<resident_speculation::Run<'ctx>> {
         resident_speculation::run(
             self.ctx,
@@ -252,7 +284,7 @@ fn compare_run(run: &resident_speculation::Run<'_>, control: &Control) -> Result
     Ok(
         json!({"all_passed":exact,"tokens":run.tokens,"target_state_sha256":hash,"target_past":run.target_session.cursor.past(),
         "rounds":run.rounds,"drafted":run.drafted,"accepted":run.accepted,"verify_rows":run.verify_rows,"replay_rows":run.replay_rows,
-        "prefill_seconds":run.prefill_seconds,"decode_seconds":run.decode_seconds,
+        "prefill_seconds":run.prefill_seconds,"decode_seconds":run.decode_seconds,"phase_seconds":run.phase_seconds,
         "decode_tokens_per_second":(run.tokens.len()-1) as f64/run.decode_seconds,
         "accepted_fraction":if run.drafted>0 {run.accepted as f64/run.drafted as f64}else{0.0},
         "speedup_over_control":control.decode/run.decode_seconds,

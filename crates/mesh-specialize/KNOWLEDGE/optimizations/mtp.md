@@ -52,3 +52,13 @@ Qualification requires 3–128 outputs so at least one draft can be rejected.
 The runtime loop itself permits two outputs. Host checks: 213 macOS library tests,
 Clippy and no-console check pass; Linux/GPU qualification still pending.
 No new PTX instructions are introduced in this implementation step.
+
+First GPU run at `8b8659da985732492a206d8ffd51f2a26cb6f368` passes the
+independent head's unchanged 1% L2 / 0.9999 cosine budgets and greedy token check,
+exact MTP whole/token partitioning, target-only token/state equality and forced
+rejection replay. The independent CPU/GPU head is not bit exact: 434 hidden values
+and 94,159 logits differ, with maximum absolute differences 0.125 / 0.0625.
+Five of eight drafts were accepted on the synthetic eight-output fixture;
+23.36 tokens/s is slower than its 25.45 target-only control. Full text/sanitizer
+qualification is in progress. Added phase wall attribution and separate head /
+verification event captures to select the next change from measured costs.
