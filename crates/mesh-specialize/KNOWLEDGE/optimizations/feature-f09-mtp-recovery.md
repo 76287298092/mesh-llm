@@ -3,8 +3,8 @@
 Status: the primitive is device-qualified and integrated behind an experimental
 compact-recovery selector. Full-model normal checks pass all four forced rejection
 positions and all-accepted commits with exact target tokens and state. Full-model
-memory, race, and synchronization checks also pass. Repeated text timings are
-in progress.
+memory, race, and synchronization checks pass. Repeated text trials improve
+low-acceptance prose while slightly regressing all-accepted Python.
 Full-forward recovery remains the default. Earlier pending statements below
 record the original worker delivery; parent results follow.
 
@@ -149,3 +149,30 @@ no-console-print pass. Saved copied test logs normalize trailing blank lines;
 original logs remain in the ignored working output directory. Subsequent source
 changes only add the recording geometry guard and preserve the legacy JSON
 field; they do not alter the valid tested Qwen arithmetic or recovery path.
+
+
+## Repeated text timing, 2026-09-27
+
+Source `165789f809e665add3a482afdcf6981115831c92`, same F09 PTX above.
+Three repetitions per mode, 32 fixed output tokens, depth four, exact arithmetic,
+same prompt IDs and artifact; sequential full-forward then compact batches.
+GPU0 remained shared with ComfyUI. Evidence and reproduction script:
+`../evidence/iterate-20260927/compact-bench-1/`.
+
+| Prompt | Draft acceptance | Full-forward median tokens/s | Compact median tokens/s | Change |
+| --- | ---: | ---: | ---: | ---: |
+| Python Fibonacci | 100% | 40.11 | 39.14 | -2.42% |
+| Bicycle prose | 32.08% | 13.29 | 18.76 | +41.17% |
+
+These percentages compare our two recovery paths, not either path against Ninfer.
+All repetitions, forced positions, and all-accepted cases pass target token/full
+state equality. Cross-mode generated tokens and target hashes also match.
+For prose, median recovery time drops from 761.15 to 41.97 ms; verification rises
+from 1,338.70 to 1,372.10 ms. For Python there is no rejection recovery, and
+verification rises from 631.51 to 647.43 ms. The extra recording work has a cost.
+These are one pair of sequential batches with shared-GPU timing, not balanced
+order or isolated-hardware attribution. Ordinary greedy decoding in these runs
+is about 24.3 tokens/s, so even the improved low-acceptance depth-four run remains
+slower than ordinary decoding. No default promotion follows. Full-state forking,
+record allocation overhead, and adaptive speculation remain further opportunities.
+Ninfer remained inactive before and after; neither unrelated GPU was altered.
