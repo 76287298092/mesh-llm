@@ -1,0 +1,18 @@
+Note: mold is unavailable or failed the active target/toolchain link probe.
+Falling back to lld or the platform linker for this build.
+
+
+    Checking mesh-specialize v0.76.1 (/home/ndizazzo/dev/mesh/mesh-llm/crates/mesh-specialize)
+error: unused import: `Context`
+ --> crates/mesh-specialize/src/kernels/cuda/resident_fp8.rs:2:14
+  |
+2 | use anyhow::{Context as _, Result, anyhow, ensure};
+  |              ^^^^^^^
+  |
+  = note: `-D unused-imports` implied by `-D warnings`
+  = help: to override `-D warnings` add `#[allow(unused_imports)]`
+
+error: could not compile `mesh-specialize` (lib) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `mesh-specialize` (lib test) due to 1 previous error
+error: recipe `with-lld` failed with exit code 101
