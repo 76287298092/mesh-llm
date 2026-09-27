@@ -1,0 +1,182 @@
+{
+  "before_medians": {
+    "two": {
+      "prefill_input_tokens_per_second": 3.0785854372786425,
+      "decode_tokens_per_second": 1.5471985386856564
+    },
+    "128": {
+      "prefill_input_tokens_per_second": 19.184445039015028,
+      "decode_tokens_per_second": 1.5527332644426253
+    }
+  },
+  "iterations": [
+    {
+      "trial": "fp8-exact-round",
+      "source": "451f960ec5cac0e82db8af118fdbc364dea0f0b4",
+      "two": {
+        "prefill_input_tokens_per_second": {
+          "median": 3.2669121844824787,
+          "min": 3.2662164182979088,
+          "max": 3.2671468783402338
+        },
+        "decode_tokens_per_second": {
+          "median": 8.029164531616232,
+          "min": 8.028825078621468,
+          "max": 8.031199401507678
+        }
+      },
+      "128": {
+        "prefill_input_tokens_per_second": {
+          "median": 19.289592259852423,
+          "min": 19.27972664674573,
+          "max": 19.293413172264536
+        },
+        "decode_tokens_per_second": {
+          "median": 7.242856618326511,
+          "min": 7.242225059884641,
+          "max": 7.2442706636362955
+        }
+      }
+    },
+    {
+      "trial": "bf16-round",
+      "source": "600c30cc0857abcca199835565356735f0f04fbd",
+      "two": {
+        "prefill_input_tokens_per_second": {
+          "median": 3.7120937987303377,
+          "min": 3.7077998337734015,
+          "max": 3.7121664257458287
+        },
+        "decode_tokens_per_second": {
+          "median": 17.93086685123591,
+          "min": 17.92784947224381,
+          "max": 17.93498866890475
+        }
+      },
+      "128": {
+        "prefill_input_tokens_per_second": {
+          "median": 19.65818381014,
+          "min": 19.656732629135984,
+          "max": 19.662592626426136
+        },
+        "decode_tokens_per_second": {
+          "median": 14.390966466346745,
+          "min": 14.390109360431879,
+          "max": 14.394793418026772
+        }
+      }
+    },
+    {
+      "trial": "word-round",
+      "source": "b8214880c102d90d0a9851953912d73bda50c52e",
+      "two": {
+        "prefill_input_tokens_per_second": {
+          "median": 36.006253998269464,
+          "min": 35.99185813780322,
+          "max": 36.1282457345006
+        },
+        "decode_tokens_per_second": {
+          "median": 19.991253769358035,
+          "min": 19.98197956573118,
+          "max": 19.992370682863186
+        }
+      },
+      "128": {
+        "prefill_input_tokens_per_second": {
+          "median": 112.56157111344501,
+          "min": 112.51678002077371,
+          "max": 112.66741476715134
+        },
+        "decode_tokens_per_second": {
+          "median": 15.684970926158634,
+          "min": 15.679656658167854,
+          "max": 15.688472935076861
+        }
+      }
+    },
+    {
+      "trial": "warp4-round",
+      "source": "a39676071fe5b69bcd5fae75be75eaaa4dd88f67",
+      "two": {
+        "prefill_input_tokens_per_second": {
+          "median": 36.15733313924077,
+          "min": 35.71184519229374,
+          "max": 36.22026994967193
+        },
+        "decode_tokens_per_second": {
+          "median": 20.072161369992223,
+          "min": 20.061038460744946,
+          "max": 20.12965209847511
+        }
+      },
+      "128": {
+        "prefill_input_tokens_per_second": {
+          "median": 112.51869913538364,
+          "min": 112.4201379306737,
+          "max": 112.62193485601505
+        },
+        "decode_tokens_per_second": {
+          "median": 15.662155982897383,
+          "min": 15.6465202169213,
+          "max": 15.663646095866532
+        }
+      }
+    },
+    {
+      "trial": "reuse4-round",
+      "source": "eff80d4854dbeb71fef0eca2e5aa2c7c60b6e766",
+      "two": {
+        "prefill_input_tokens_per_second": {
+          "median": 35.85251187269375,
+          "min": 35.47670707617335,
+          "max": 35.85736428148977
+        },
+        "decode_tokens_per_second": {
+          "median": 19.98208851259077,
+          "min": 19.960775763915784,
+          "max": 20.012760994099597
+        }
+      },
+      "128": {
+        "prefill_input_tokens_per_second": {
+          "median": 132.77137145019128,
+          "min": 131.91283369375063,
+          "max": 136.4054672121166
+        },
+        "decode_tokens_per_second": {
+          "median": 18.037119861869055,
+          "min": 17.57573485208238,
+          "max": 18.08807599972835
+        }
+      }
+    },
+    {
+      "trial": "inline-round",
+      "source": "30c1e3e6b94129bede413211b2c79301734b0b4f",
+      "two": {
+        "prefill_input_tokens_per_second": {
+          "median": 35.95597665277759,
+          "min": 35.94875634198972,
+          "max": 36.03842171461945
+        },
+        "decode_tokens_per_second": {
+          "median": 20.071270788711196,
+          "min": 20.05194249454661,
+          "max": 20.07692629187879
+        }
+      },
+      "128": {
+        "prefill_input_tokens_per_second": {
+          "median": 136.8303832652815,
+          "min": 136.73521562311876,
+          "max": 137.14340645117977
+        },
+        "decode_tokens_per_second": {
+          "median": 18.146001603852497,
+          "min": 18.137224964108572,
+          "max": 18.151109521834535
+        }
+      }
+    }
+  ]
+}

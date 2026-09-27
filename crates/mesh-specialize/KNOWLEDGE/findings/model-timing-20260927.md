@@ -1,5 +1,8 @@
 # First connected-model timing, 2026-09-27
 
+Historical pre-optimization evidence. See the [subsequent measured performance
+iteration](../optimizations/decode-projections.md) for current results.
+
 The Rust-only 64-layer prototype runs on Carrack's RTX 5090, but this untuned
 implementation is far below Ninfer's measured speed. This is the first model
 measurement, not a matched performance or language-quality comparison.

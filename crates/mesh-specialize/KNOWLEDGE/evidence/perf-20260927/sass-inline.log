@@ -1,0 +1,215 @@
+ptxas --gpu-name sm_120a --maxrregcount 64 --verbose "target/specialize/perf-20260927/reuse4-inline.ptx" --output-file target/specialize/probes.cubin
+ptxas info    : Overriding maximum register limit 256 for 'silu_bf16_probe' with  64 of maxrregcount option
+ptxas info    : Overriding maximum register limit 256 for 'rms_norm_f32' with  64 of maxrregcount option
+ptxas info    : Overriding maximum register limit 256 for 'residual_norm_bf16' with  64 of maxrregcount option
+ptxas info    : Overriding maximum register limit 256 for 'residual_add_bf16' with  64 of maxrregcount option
+ptxas info    : Overriding maximum register limit 256 for 'probe_shared_load' with  64 of maxrregcount option
+ptxas info    : Overriding maximum register limit 256 for 'probe_register_budget' with  64 of maxrregcount option
+ptxas info    : Overriding maximum register limit 256 for 'probe_nvfp4_mma' with  64 of maxrregcount option
+ptxas info    : Overriding maximum register limit 256 for 'probe_int8_mma' with  64 of maxrregcount option
+ptxas info    : Overriding maximum register limit 256 for 'probe_fp16_mma' with  64 of maxrregcount option
+ptxas info    : Overriding maximum register limit 256 for 'probe_bf16_mma' with  64 of maxrregcount option
+ptxas info    : Overriding maximum register limit 256 for 'nvfp4_quantize_bf16' with  64 of maxrregcount option
+ptxas info    : Overriding maximum register limit 256 for 'nvfp4_linear' with  64 of maxrregcount option
+ptxas info    : Overriding maximum register limit 256 for 'nvfp4_gemm_packed' with  64 of maxrregcount option
+ptxas info    : Overriding maximum register limit 256 for 'mlp_silu_product' with  64 of maxrregcount option
+ptxas info    : Overriding maximum register limit 256 for 'gdn_recurrent' with  64 of maxrregcount option
+ptxas info    : Overriding maximum register limit 256 for 'gdn_qk_norm' with  64 of maxrregcount option
+ptxas info    : Overriding maximum register limit 256 for 'gdn_gates' with  64 of maxrregcount option
+ptxas info    : Overriding maximum register limit 256 for 'gdn_gated_rms_norm' with  64 of maxrregcount option
+ptxas info    : Overriding maximum register limit 256 for 'fp8_quantize_bf16' with  64 of maxrregcount option
+ptxas info    : Overriding maximum register limit 256 for 'fp8_linear_wide' with  64 of maxrregcount option
+ptxas info    : Overriding maximum register limit 256 for 'fp8_linear_exact4' with  64 of maxrregcount option
+ptxas info    : Overriding maximum register limit 256 for 'fp8_linear_exact' with  64 of maxrregcount option
+ptxas info    : Overriding maximum register limit 256 for 'fp8_linear' with  64 of maxrregcount option
+ptxas info    : Overriding maximum register limit 256 for 'embedding_norm_bf16' with  64 of maxrregcount option
+ptxas info    : Overriding maximum register limit 256 for 'causal_conv4_bf16' with  64 of maxrregcount option
+ptxas info    : Overriding maximum register limit 256 for 'causal_attention_bf16' with  64 of maxrregcount option
+ptxas info    : Overriding maximum register limit 256 for 'bf16_linear_decode' with  64 of maxrregcount option
+ptxas info    : Overriding maximum register limit 256 for 'bf16_linear' with  64 of maxrregcount option
+ptxas info    : Overriding maximum register limit 256 for 'attention_qk_prepare' with  64 of maxrregcount option
+ptxas info    : Overriding maximum register limit 256 for 'attention_kv_append' with  64 of maxrregcount option
+ptxas info    : Overriding maximum register limit 256 for 'attention_gate_bf16' with  64 of maxrregcount option
+ptxas info    : 136 bytes gmem
+ptxas info    : Compiling entry function 'silu_bf16_probe' for 'sm_120a'
+ptxas info    : Function properties for silu_bf16_probe
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 28 registers, used 0 barriers
+ptxas info    : Compile time = 5.608 ms
+ptxas info    : Compiling entry function 'rms_norm_f32' for 'sm_120a'
+ptxas info    : Function properties for rms_norm_f32
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 22 registers, used 1 barriers, 1024 bytes smem
+ptxas info    : Compile time = 8.387 ms
+ptxas info    : Compiling entry function 'residual_norm_bf16' for 'sm_120a'
+ptxas info    : Function properties for residual_norm_bf16
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 22 registers, used 1 barriers, 1024 bytes smem
+ptxas info    : Compile time = 7.692 ms
+ptxas info    : Compiling entry function 'residual_add_bf16' for 'sm_120a'
+ptxas info    : Function properties for residual_add_bf16
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 14 registers, used 0 barriers
+ptxas info    : Compile time = 0.820 ms
+ptxas info    : Compiling entry function 'probe_shared_load' for 'sm_120a'
+ptxas info    : Function properties for probe_shared_load
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 14 registers, used 1 barriers, 512 bytes smem
+ptxas info    : Compile time = 1.293 ms
+ptxas info    : Compiling entry function 'probe_register_budget' for 'sm_120a'
+ptxas info    : Function properties for probe_register_budget
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 64 registers, used 1 barriers
+ptxas info    : Compile time = 0.845 ms
+ptxas info    : Compiling entry function 'probe_nvfp4_mma' for 'sm_120a'
+ptxas info    : Function properties for probe_nvfp4_mma
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 20 registers, used 0 barriers
+ptxas info    : Compile time = 0.948 ms
+ptxas info    : Compiling entry function 'probe_int8_mma' for 'sm_120a'
+ptxas info    : Function properties for probe_int8_mma
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 18 registers, used 0 barriers
+ptxas info    : Compile time = 0.723 ms
+ptxas info    : Compiling entry function 'probe_fp16_mma' for 'sm_120a'
+ptxas info    : Function properties for probe_fp16_mma
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 18 registers, used 0 barriers
+ptxas info    : Compile time = 0.724 ms
+ptxas info    : Compiling entry function 'probe_bf16_mma' for 'sm_120a'
+ptxas info    : Function properties for probe_bf16_mma
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 18 registers, used 0 barriers
+ptxas info    : Compile time = 0.713 ms
+ptxas info    : Compiling entry function 'nvfp4_quantize_bf16' for 'sm_120a'
+ptxas info    : Function properties for nvfp4_quantize_bf16
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 21 registers, used 0 barriers
+ptxas info    : Compile time = 7.884 ms
+ptxas info    : Compiling entry function 'nvfp4_linear' for 'sm_120a'
+ptxas info    : Function properties for nvfp4_linear
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 57 registers, used 0 barriers
+ptxas info    : Compile time = 10.657 ms
+ptxas info    : Compiling entry function 'nvfp4_gemm_packed' for 'sm_120a'
+ptxas info    : Function properties for nvfp4_gemm_packed
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 57 registers, used 0 barriers
+ptxas info    : Compile time = 6.994 ms
+ptxas info    : Compiling entry function 'mlp_silu_product' for 'sm_120a'
+ptxas info    : Function properties for mlp_silu_product
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 28 registers, used 0 barriers
+ptxas info    : Compile time = 5.433 ms
+ptxas info    : Compiling entry function 'gdn_recurrent' for 'sm_120a'
+ptxas info    : Function properties for gdn_recurrent
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 37 registers, used 0 barriers
+ptxas info    : Compile time = 8.608 ms
+ptxas info    : Function properties for _RNvNtCsh1ITmHSuwn0_4core9panicking9panic_fmt
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _RNvNtNtCsh1ITmHSuwn0_4core9panicking11panic_const23panic_const_div_by_zero
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Compiling entry function 'gdn_qk_norm' for 'sm_120a'
+ptxas info    : Function properties for gdn_qk_norm
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 23 registers, used 1 barriers, 2048 bytes smem
+ptxas info    : Compile time = 9.483 ms
+ptxas info    : Function properties for _RNvNtCsh1ITmHSuwn0_4core9panicking9panic_fmt
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _RNvNtNtCsh1ITmHSuwn0_4core9panicking11panic_const23panic_const_div_by_zero
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Compiling entry function 'gdn_gates' for 'sm_120a'
+ptxas info    : Function properties for gdn_gates
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 21 registers, used 0 barriers
+ptxas info    : Compile time = 7.921 ms
+ptxas info    : Function properties for _RNvNtCsh1ITmHSuwn0_4core9panicking9panic_fmt
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _RNvNtNtCsh1ITmHSuwn0_4core9panicking11panic_const23panic_const_rem_by_zero
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Compiling entry function 'gdn_gated_rms_norm' for 'sm_120a'
+ptxas info    : Function properties for gdn_gated_rms_norm
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 32 registers, used 1 barriers, 1024 bytes smem
+ptxas info    : Compile time = 11.261 ms
+ptxas info    : Compiling entry function 'fp8_quantize_bf16' for 'sm_120a'
+ptxas info    : Function properties for fp8_quantize_bf16
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 22 registers, used 1 barriers, 1024 bytes smem
+ptxas info    : Compile time = 8.921 ms
+ptxas info    : Compiling entry function 'fp8_linear_wide' for 'sm_120a'
+ptxas info    : Function properties for fp8_linear_wide
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 50 registers, used 0 barriers
+ptxas info    : Compile time = 15.242 ms
+ptxas info    : Compiling entry function 'fp8_linear_exact4' for 'sm_120a'
+ptxas info    : Function properties for fp8_linear_exact4
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 40 registers, used 0 barriers
+ptxas info    : Compile time = 7.401 ms
+ptxas info    : Compiling entry function 'fp8_linear_exact' for 'sm_120a'
+ptxas info    : Function properties for fp8_linear_exact
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 36 registers, used 0 barriers
+ptxas info    : Compile time = 5.814 ms
+ptxas info    : Compiling entry function 'fp8_linear' for 'sm_120a'
+ptxas info    : Function properties for fp8_linear
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 35 registers, used 0 barriers
+ptxas info    : Compile time = 7.225 ms
+ptxas info    : Compiling entry function 'embedding_norm_bf16' for 'sm_120a'
+ptxas info    : Function properties for embedding_norm_bf16
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 22 registers, used 1 barriers, 1024 bytes smem
+ptxas info    : Compile time = 7.671 ms
+ptxas info    : Compiling entry function 'causal_conv4_bf16' for 'sm_120a'
+ptxas info    : Function properties for causal_conv4_bf16
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 34 registers, used 0 barriers
+ptxas info    : Compile time = 11.062 ms
+ptxas info    : Function properties for _RNvNtCsh1ITmHSuwn0_4core9panicking9panic_fmt
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _RNvNtNtCsh1ITmHSuwn0_4core9panicking11panic_const23panic_const_div_by_zero
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Compiling entry function 'causal_attention_bf16' for 'sm_120a'
+ptxas info    : Function properties for causal_attention_bf16
+    152 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 63 registers, used 1 barriers, 152 bytes cumulative stack size, 2048 bytes smem
+ptxas info    : Compile time = 32.322 ms
+ptxas info    : Function properties for _RNvNtCsh1ITmHSuwn0_4core9panicking9panic_fmt
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _RNvNtNtCsh1ITmHSuwn0_4core9panicking11panic_const23panic_const_div_by_zero
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Compiling entry function 'bf16_linear_decode' for 'sm_120a'
+ptxas info    : Function properties for bf16_linear_decode
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 37 registers, used 0 barriers
+ptxas info    : Compile time = 3.891 ms
+ptxas info    : Compiling entry function 'bf16_linear' for 'sm_120a'
+ptxas info    : Function properties for bf16_linear
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 46 registers, used 0 barriers
+ptxas info    : Compile time = 14.724 ms
+ptxas info    : Compiling entry function 'attention_qk_prepare' for 'sm_120a'
+ptxas info    : Function properties for attention_qk_prepare
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 32 registers, used 1 barriers, 1024 bytes smem
+ptxas info    : Compile time = 10.731 ms
+ptxas info    : Function properties for _RNvNtCsh1ITmHSuwn0_4core9panicking9panic_fmt
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _RNvNtNtCsh1ITmHSuwn0_4core9panicking11panic_const23panic_const_div_by_zero
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Function properties for _RNvNtNtCsh1ITmHSuwn0_4core9panicking11panic_const23panic_const_rem_by_zero
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Compiling entry function 'attention_kv_append' for 'sm_120a'
+ptxas info    : Function properties for attention_kv_append
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 14 registers, used 0 barriers
+ptxas info    : Compile time = 1.151 ms
+ptxas info    : Compiling entry function 'attention_gate_bf16' for 'sm_120a'
+ptxas info    : Function properties for attention_gate_bf16
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 20 registers, used 0 barriers
+ptxas info    : Compile time = 4.622 ms
+nvdisasm target/specialize/probes.cubin > target/specialize/probes.sass

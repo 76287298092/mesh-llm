@@ -1,127 +1,137 @@
-# Decode projection performance iteration
+# Decode and prefill performance iteration
 
-The user requested direct inspection of Ninfer and performance iteration on
-September 27. The parent archived tracked Ninfer source at Carrack revision
-`9e163eee4b8acec21ab0ac765107b6a3f287b217` into ignored
-`target/specialize/perf-20260927/ninfer-source/`. This is a source archive, not a
-Git checkout. The working-tree serving configuration modification is excluded.
-The installed binary's source provenance remains unverified. No Ninfer source is
-copied into the runtime or independent reference.
+The September 27 performance pass retains parallel exact FP8 projections,
+warp-parallel BF16 gates, packed NVFP4 loads, four-row FP8 prefill reuse and an
+attention reduction with fewer synchronization barriers. These changes improve
+our own runtime materially. They do not establish Ninfer performance parity.
 
-The short-prefix profile attributes 83.39% of kernel-event time to FP8 projections
-and 11.26% to BF16 gate projections. The first experiment replaces single-row FP8
-execution with four warp-owned exact dot products per block. Finite E4M3 values
-are signed integers divided by 512. Product sums at width at most 32768 are exact
-in i64 and fit below 2^51. This removes positive-product MMA, FP64 tile accumulation
-and divergent serial recomputation. Conversion to FP32 followed by the exact
-power-of-two scale and existing row/channel products preserves the independent
-FP64-dot contract. Prefill keeps the prior kernel.
+## Matched before and after
 
-Independent fixtures cover every finite code pair, K/output tails, maximum-width
-same-sign totals and cancellation. Full-model one/two-token checks, partition
-state equivalence and sanitizers must pass before retaining the optimization.
-The existing raw-token model timing and kernel profile are the before control.
-Status: implementation under qualification, no speedup claim yet.
+Three fresh-session samples per case, identical raw token IDs, eight fixed output
+tokens and one untimed warmup. The table uses sample medians. The before control
+is the preserved pre-optimization executable/PTX, rerun during this pass.
 
+| Measurement | Before tokens/s | After tokens/s | Ratio |
+| --- | ---: | ---: | ---: |
+| Decode after two inputs | 1.547 | 20.071 | 12.97x |
+| Decode after 128 inputs | 1.553 | 18.146 | 11.69x |
+| Prefill, 128 inputs | 19.184 | 136.830 | 7.13x |
 
-A second bounded candidate uses a warp-parallel FP64 dot for the small BF16 A/B
-projections. It avoids computing padded 16-row tiles and ambiguous-rounding serial
-fallback. It retains FP64 arithmetic, but the summation order differs from the
-sequential CPU reference. Component and full-model exact-output gates decide
-acceptance; no universal BF16-input equality is asserted. It applies to the small
-BF16 projections for all row counts; unrelated BF16 MMA controls remain available.
+Prefill includes final logits and the first greedy output; decode includes seven
+subsequent complete forwards, logit download and CPU greedy selection. Weight
+loading, JIT warmup, session allocation and diagnostic reference work are outside
+the timed intervals. Every sample retains the same eight output IDs. The 128-input
+case exercises 135 positions, not a long-context quality qualification.
 
-First trial source `451f960ec5cac0e82db8af118fdbc364dea0f0b4`, PTX SHA256
-`19bc7879f2d6497813f7f461566c3648e5fa8f1381083d7b0c5012b381cbd190`.
-All 64,544 standalone FP8 outputs match the independent FP64 dot at FP32 and BF16.
-Two-token full-model hidden/logits and whole/token state agree exactly. Three
-samples give short-prefix decode 8.029, 8.029, 8.031 tokens/s and 128-prefix decode
-7.244, 7.242, 7.243 tokens/s, with unchanged output IDs. Prefill remains about
-19.29 tokens/s. Profile total falls from 633.56 to 115.38 event milliseconds;
-BF16 gates now account for 71.57 ms. This motivates the second candidate.
-Raw evidence: `target/specialize/perf-20260927/fp8-exact-round/` on both hosts.
-Ninfer restored 09:15:47 EDT, PID3218546, HTTP200; ComfyUI448118 unchanged.
-Sanitizers for the final combined candidate remain pending.
+## What changed and why
 
+The original short-prefix profile attributed 83.39% of its 633.56 ms summed
+kernel-event time to FP8 projections and another 11.26% to BF16 gates. The costly
+FP8 implementation used MMA followed by FP64 error bounds and serial refinement.
+Finite E4M3 values are exact signed integers divided by 512; at supported widths,
+their product sum fits below 2^51. Warp-parallel i64 dots preserve the independent
+FP64-dot result without the serial fallback. The conversion and scale order are
+unchanged. Prefill now reuses a decoded weight across four token rows; decode
+keeps one row. Both paths have zero reported local storage, with 36/40 registers.
 
-The next candidate also evaluates the exact FP8 kernel for prefill rows, retaining
-its existing multi-row launch contract. This is an experiment against the same
-128-token prompt, not a general large-batch GEMM claim. The old wide kernel stays
-available as an arithmetic/performance control. No activation-quantization policy
-or output conversion changes accompany this dispatch experiment.
+The small BF16 A/B gates use parallel FP64 dots. Their reduction order differs
+from the sequential reference, so fixture agreement is not a universal bit-equality
+claim. NVFP4 reads aligned full four-byte data/scale words with the existing
+bounds-checked byte fallback for tails. Its MMA arithmetic and order are unchanged.
 
+Attention keeps the original FP64 reduction tree and exponential polynomial,
+reduces the dot with first-warp shuffles, and computes the online-softmax scalar
+updates once before broadcasting them. The convergent reduction stays inside
+one inline PTX block so LLVM cannot thread a later lane-zero branch through its
+barriers. This is a synchronization change, not reduced arithmetic precision.
 
-NVFP4 now reads aligned full four-byte data/scale words rather than reconstructing
-each from four separate byte reads. All MMA instructions, operand bits, reduction
-order and launch geometry remain unchanged. Bounds/alignment-checked tails keep
-the byte path. The model trial also runs the existing independent signed/tail
-NVFP4 fixtures at K16 and K80 to exercise both paths and unaligned scale rows.
-Resident arena objects and CUDA buffers provide the required base alignment.
+| Iteration | Short decode | 128-prefix decode | 128-input prefill | Decision |
+| --- | ---: | ---: | ---: | --- |
+| Exact FP8 decode | 8.029 | 7.243 | 19.290 | Retained |
+| Parallel BF16 gates | 17.931 | 14.391 | 19.658 | Retained |
+| Exact FP8 prefill and NVFP4 word loads | 19.991 | 15.685 | 112.562 | Retained |
+| Four-warp NVFP4 block | 20.072 | 15.662 | 112.519 | Rejected |
+| Four-row FP8 and out-of-line attention | 19.982 | 18.037 | 132.771 | Replaced after memory check |
+| Four-row FP8 and inline attention | 20.071 | 18.146 | 136.830 | Retained |
 
-Second trial source `600c30cc0857abcca199835565356735f0f04fbd`, PTX SHA256
-`f8cec86413ab74197e06cee2a5a9e82613472c687ed58deccef6e503ad54edfc`.
-BF16 cancellation/tail probes and all full-model exact-output/state checks pass.
-Three short-prefix samples give 17.935, 17.928, 17.931 decode tokens/s; 128-prefix
-samples give 14.395, 14.391, 14.390. Prefill remains 19.66 tokens/s. The profile
-measures BF16 gates at 2.677 ms, down from 71.568 ms, and NVFP4 at 24.328 ms.
-Raw evidence: `target/specialize/perf-20260927/bf16-round/` on both hosts.
-Ninfer restored 09:20:18 EDT, PID3221946, HTTP200; ComfyUI448118 unchanged.
+The retained short-prefix profile sums to 40.741 ms across 1,476 launches,
+versus 633.564 ms before. NVFP4 accounts for 18.627 ms, exact FP8 for 9.927 ms,
+BF16 gates for 2.705 ms and FP8 quantization for 2.605 ms. After 128 inputs the
+sum is 46.227 ms, including 5.634 ms of causal attention. Both profiles pass
+control-versus-instrumented output/state equality and memory release. Event
+instrumentation changes scheduling; these totals are not model throughput and
+the difference from wall time does not isolate allocator or launch overhead.
 
+## Qualification and failed candidates
 
-The next NVFP4 candidate groups four independent warp MMA tiles into each CTA.
-Logical N tiles are CTA.x*4+warp; K order and arithmetic are unchanged. The original
-one-warp entrypoint remains compiled as a control. This tests scheduling geometry,
-not a numerical or quantization change. Compare the same two/128-token cases
-before retaining it; higher thread count alone does not establish a speedup.
+The retained code passes the two-token independent full-model reference with zero
+BF16 hidden-state differences in all 64 layers, exact final logits and exact
+whole-sequence versus token-at-a-time state. Both FP8 variants pass all 129,178
+independent FP32/BF16 output checks, including every finite code pair, row/K/output
+tails, maximum supported K and cancellation. BF16, NVFP4 and attention component
+fixtures also pass. Memcheck and synccheck report zero errors; racecheck reports
+zero hazards, errors or warnings. This does not establish natural-text quality or
+agreement with Ninfer's different arithmetic profile.
 
-Third trial source `b8214880c102d90d0a9851953912d73bda50c52e`, PTX SHA256
-`28ee5779ee2d37d4875ab9dca3a9c230550b4531b28a98588aebd9f183de8f73`.
-The exact FP8 path for prefill plus aligned NVFP4 loads passes signed/tail fixtures
-and all exact full-model gates. The 128-input prefill rises to 112.517-112.667
-tokens/s across three samples. Decode reaches 19.982-19.992 at the short prefix
-and 15.680-15.688 at the 128-token prefix. Output IDs are unchanged. NVFP4 summed
-event time drops to 18.633 ms. Ninfer restored 09:25:27 EDT, PID3224976, HTTP200;
-ComfyUI448118 unchanged. Raw directory: `word-round/` under the experiment root.
+Host tests and Clippy pass on macOS and Carrack. CUDA assembly and the repository
+console-output policy check pass. The retained benchmarks observe return to their
+pre-model free-memory baseline after release. Payload residency is unchanged:
+20.160 GiB weights and 20.312 GiB weights plus state at capacity135. Those are
+payload/checkpoint measurements, not transient memory peaks.
 
+The four-warp NVFP4 experiment passed arithmetic but did not improve timings; its
+entrypoint was removed. The first inlined attention reduction timed out after
+240 seconds during component checks. PTX showed a barrier duplicated across
+lane-zero control paths. The out-of-line workaround passed all arithmetic and
+sanitizers but failed the short profile's global free-memory check, leaving
+1,117,061,120 fewer free bytes after model release. Its short benchmark also
+missed the release baseline, while its 128-input benchmark returned to baseline.
 
-The attention candidate preserves the original FP64 reduction addition tree while
-replacing its final five CTA-wide barriers with warp shuffles. Only thread zero
-now computes the identical score/online-softmax scalars, which it publishes in
-shared slots1..3 before a CTA barrier. Shared slot0 remains the reduction result
-until every thread has consumed it. The end-of-token barrier protects reuse.
-The old implementation performed the same exponentials on all256 threads.
-Qualification must preserve full-model logits/state and benchmark output IDs;
-all three sanitizers cover the changed synchronization.
+The initial stack-allocation explanation was not established: offline SASS reports
+the same 152-byte attention frame for the old and revised kernels, and that
+64-register offline build is distinct from the unrestricted runtime JIT. The final
+inline block removes the helper call and passes both benchmark and both profile release checks.
+Keep the failed report rather than attributing its memory delta solely to stack
+size. Failed compilation evidence also records the Rust named-assembly-label lint;
+PTX's block-scoped labels use a local documented lint allowance and assemble cleanly.
 
+## What remains between this runtime and Ninfer
 
-The four-warp NVFP4 candidate at `a39676071fe5b69bcd5fae75be75eaaa4dd88f67`
-passed exact checks but did not improve performance materially. Short decode
-20.06-20.13, 128-prefix decode15.65-15.66, and prefill112.42-112.62 tokens/s
-are effectively unchanged from the one-warp control. NVFP4 event totals are also
-unchanged. The candidate dispatch and entrypoint are removed; the source commit,
-PTX and `warp4-round/` evidence retain the experiment. Keep the simpler original
-geometry. Ninfer restored09:29:45 EDT, PID3228133, HTTP200; ComfyUI unchanged.
+The [pinned Ninfer source comparison](../findings/ninfer-performance-comparison.md)
+identifies concrete remaining work:
 
+- Dedicated single-token FP8/NVFP4 GEMV with BF16 activations. Ninfer selects these
+  paths by shape and token count. Our current activation quantization and rounding
+  boundaries differ, so this needs a separate reference and quality qualification.
+- Pipelined prefill matrix tiles with shared-memory reuse. Our four-row integer
+  kernel remains far smaller than Ninfer's 64-by-128-by-128 FP8 tile and does not
+  use FP8 tensor cores. Larger tiled kernels are the main remaining prefill project.
+- Fused projections and activations, reusable workspace, and CUDA graph replay.
+  These can remove repeated quantization, allocations and launches; the current
+  event profile does not isolate host-side savings.
+- MTP, FP8 KV, tokenization/chat serving and long-context qualification. These
+  remain separate runtime capabilities, not claimed by this performance pass.
 
-The final prefill candidate reuses each FP8 weight load and decoded integer across
-four input rows, with four separate exact i64 partials per lane. Single-token
-decode keeps the one-row kernel. This preserves dot/scaling/rounding arithmetic
-and adds no canonical weight copy. Independent fixtures run both kernels,
-including full four-row tiles plus row/K/output tails. Timings decide retention.
+Ninfer's measured deployed profile was 164.2-201.0 decode tokens/s and
+5,956-10,416 cold-prefill tokens/s on different requests, with MTP4 and FP8 KV.
+Our synthetic prompts, output length and timing boundaries are not matched to that
+baseline. The gap remains substantial; do not present the ratios above as an
+engine comparison with Ninfer. A fixed text corpus and a non-speculative Ninfer
+control are needed before assigning the remaining gap to individual components.
 
-The first attention candidate at bcbf7ca00 timed out after 240 seconds in the
-component-first check, with no result JSON. Ninfer restored at 09:37:13 EDT,
-PID3231397, HTTP200; ComfyUI unchanged. Failed evidence is retained in
-`attention-round/`. PTX inspection shows LLVM threaded the following lane-zero
-branch through the inlined reduction barrier, splitting the first warp across
-barrier paths. The next candidate keeps the reduction out of line to prevent
-that transformation. This diagnosis is provisional until GPU checks pass.
+## Reproduction and provenance
 
-The out-of-line reduction at eff80d485 passes normal, memcheck, racecheck and
-synccheck with exact two-token hidden/logits/state. Its three-sample medians are
-19.982 short decode, 18.037 128-prefix decode and 132.771 prefill tokens/s.
-However, the short profile fails only its memory-release gate: 1,117,061,120 bytes
-remain allocated after freeing model/state, consistent with the device-call stack
-allocation. SASS reports a 152-byte frame. Do not retain this memory cost. The
-next variant encloses the entire reduction in one inline PTX block, preserving
-its addition order and uniform barriers without a callable device function.
+Final source `30c1e3e6b94129bede413211b2c79301734b0b4f`; PTX SHA256
+`fc44eab0434edbdad7407fbd795ede1d9d79595e896cd433291c7304f20d6e88`.
+Carrack RTX5090 UUID `GPU-80ded6bd-1a89-2628-3d94-902187dbab1d`, driver615.71.09,
+CUDA13.4.92 and Rust1.98.1; Rust PTX compiler nightly-2026-09-25. No power/clock
+settings were changed. The model, independent-reference hash, all trial source
+commits, executable/PTX hashes, exact wrappers, build logs, JSON samples and
+service/GPU snapshots are in [the evidence directory](../evidence/perf-20260927/README.md).
+Raw evidence remains under `target/specialize/perf-20260927/` on both hosts.
+Ninfer source was inspected at `9e163eee4b8acec21ab0ac765107b6a3f287b217`; deployed
+binary provenance was not established. No Ninfer source entered the Rust engine
+or its independent reference.
+
+The final trial restored Ninfer at 09:53:32 EDT, PID3244818, with HTTP200.
+ComfyUI PID448118 remained running at 498 MiB throughout the recorded handoffs.

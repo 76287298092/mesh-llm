@@ -46,9 +46,9 @@ failed attempts in a findings/dead-ends entry before promoting these rows.
 
 | Source | Instructions | Reference | Status |
 | --- | --- | --- | --- |
-| `kernels/nvptx/fp8_linear_exact.rs` | Thread/CTA coordinates, wide signed integer product and sum, paired-word warp shuffle, rounded i64-to-FP32 conversion and scale products | Independent decoded FP64 dots; all finite code pairs, tails, width32768 and cancellation | Qualification pending; see [decode projections](optimizations/decode-projections.md) |
+| `kernels/nvptx/fp8_linear_exact.rs` | Thread/CTA coordinates, wide signed integer product and sum, paired-word warp shuffle, rounded i64-to-FP32 conversion and scale products | Independent decoded FP64 dots; all finite code pairs, tails, width32768 and cancellation | Independent fixture/full-model checks and all three sanitizers pass; see [decode projections](optimizations/decode-projections.md) |
 
-| `kernels/nvptx/bf16_linear_decode.rs` | Thread/CTA coordinates, rounded FP64 product/sum, paired-word warp shuffle, rounded FP64-to-FP32 conversion | Independent sequential BF16 FP64 dot, cancellation/tails and full-model gates | Qualification pending; parallel reduction is not universally bit equal to sequential FP64 |
+| `kernels/nvptx/bf16_linear_decode.rs` | Thread/CTA coordinates, rounded FP64 product/sum, paired-word warp shuffle, rounded FP64-to-FP32 conversion | Independent sequential BF16 FP64 dot, cancellation/tails and full-model gates | Fixtures/full-model checks and all three sanitizers pass; parallel reduction is not universally bit equal to sequential FP64 |
 
 NVFP4 logical linear loads now use aligned complete `u32` words with the existing
 byte fallback for tails/unaligned scale rows. MMA operands and order are unchanged;
@@ -80,5 +80,6 @@ The reduction's final form keeps shared loads/stores, exact FP64 tree additions,
 paired-word shuffles and both barriers in one opaque inline PTX block. This avoids
 LLVM branch threading without a device function call. Existing logical attention
 fixtures and the full-model comparison remain the independent oracle. The interim
-out-of-line variant passed sanitizers but retained about 1 GiB of CUDA stack
-storage, failing the profiler's memory-release gate; evidence is preserved.
+out-of-line variant passed sanitizers but failed the profiler's global free-memory
+gate. Stack allocation was suspected, not established; the final inline variant
+passes both profiles and all sanitizers. See the preserved failed evidence.

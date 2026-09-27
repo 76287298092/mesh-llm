@@ -1,5 +1,8 @@
 # Full-decode kernel attribution
 
+Historical pre-optimization evidence. See the [subsequent measured performance
+iteration](../optimizations/decode-projections.md) for current results.
+
 Status: the instrumented decode matches the control exactly. FP8 projections
 account for 83.39% of the summed CUDA-event intervals in this short-prefix run.
 The preceding [model timing](model-timing-20260927.md) measures about 645 ms per

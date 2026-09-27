@@ -1,11 +1,13 @@
 # Specialized Qwen runtime implementation plan
 
-Status: deployed-profile baseline, kernel and resident-block qualification complete.
-The connected 64-layer GPU decoder matches independent one/two-token hidden/logit
-fixtures bit-for-bit, with two-token state equivalence and all three sanitizers
-passing. Initial raw-token timing is 19.2 tokens/s prefill at 128 inputs and 1.55
-tokens/s decode, exercising 135 positions. Profiling, text quality, longer-context
-qualification and a matched Ninfer performance comparison remain open.
+Status: connected 64-layer GPU decoder and first performance iteration qualified.
+The retained two-token hidden/logit/state reference matches exactly and all three
+CUDA sanitizers pass. Matched three-sample medians improved short-prefix decode
+from 1.55 to 20.07 tokens/s, 128-prefix decode from 1.55 to 18.15, and 128-input
+prefill from 19.18 to 136.83. Both short/128-prefix profiles pass equality and
+memory-release checks. See [performance results and remaining gaps](KNOWLEDGE/optimizations/decode-projections.md).
+Text quality, longer-context qualification and matched Ninfer performance remain
+open. This pass does not establish performance parity or serving readiness.
 
 Host policy now checks exact model/weights and explicit selected-device admission.
 The [live device-policy trial](KNOWLEDGE/findings/selected-device-admission.md)

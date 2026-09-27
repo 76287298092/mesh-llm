@@ -57,6 +57,44 @@ BF16 gate/up projection outputs, BF16-rounds the SiLU gate, then multiplies
 path is a launch and intermediate-traffic candidate, not a matching numerical
 contract or parity claim.
 
+## NVFP4 decode also has a distinct A16 route
+
+Ninfer's ordinary `[5120,17408]` NVFP4 down projection chooses A16 GEMV for one
+token. Its A4 policy threshold is eight current input tokens, checked by the
+dispatcher using the actual token count
+([shape](https://github.com/Neroued/ninfer/blob/9e163eee4b8acec21ab0ac765107b6a3f287b217/src/ops/linear/nvfp4/shapes/n5120_k17408.cu#L43),
+[dispatch](https://github.com/Neroued/ninfer/blob/9e163eee4b8acec21ab0ac765107b6a3f287b217/src/ops/linear/nvfp4/nvfp4_dispatch.cpp#L32)).
+Its GEMV schedule uses eight warps, two output rows per warp, vectorized FP4-code
+loads and staged raw scales with warp broadcasts
+([GEMV](https://github.com/Neroued/ninfer/blob/9e163eee4b8acec21ab0ac765107b6a3f287b217/src/ops/linear/nvfp4/nvfp4_gemv.cuh#L28)).
+The fused NVFP4 gate/up operation also selects A16 for single-token decode, even
+when A4 is permitted
+([route](https://github.com/Neroued/ninfer/blob/9e163eee4b8acec21ab0ac765107b6a3f287b217/src/ops/linear_swiglu/nvfp4/nvfp4_linear_swiglu_plan.cpp#L28)).
+Our resident MLP quantizes activations to A4 and uses a 16-by-8 warp MMA tile even
+for one token. This is a different numerical and execution path. A dedicated
+BF16-activation/NVFP4-weight GEMV is a strong next candidate because NVFP4 now
+accounts for the largest measured kernel total. It needs a separate independent
+reference and end-to-end quality qualification; replacing A4 with A16 will not
+preserve current fixture bits. Increasing the current MMA block to four warps
+was tested and rejected, so that geometry change alone is not the solution.
+
+## Prefill tiling and weight reuse
+
+Ninfer's default A8 schedule is a 64-token by 128-output tile with K128 tiles,
+two shared-memory stages and a ping-pong fragment pipeline
+([schedule](https://github.com/Neroued/ninfer/blob/9e163eee4b8acec21ab0ac765107b6a3f287b217/src/ops/linear/fp8/fp8_a8_schedule.cuh#L6)).
+Its implementation stages inputs, loads shared matrix fragments and overlaps
+subsequent tiles
+([kernel](https://github.com/Neroued/ninfer/blob/9e163eee4b8acec21ab0ac765107b6a3f287b217/src/ops/linear/fp8/fp8_a8_mma.cuh#L145)).
+Our new exact FP8 path has no shared-memory matrix tile: the prefill experiment
+reuses one decoded weight across only four tokens, and the decode variant owns
+one output column per warp. This explains an architectural opportunity, not a
+measured attribution of the complete Ninfer gap. A pipelined prefill GEMM is the
+next substantial kernel project. The current exact integer dot removes a costly
+FP64 fallback, but it does not exploit FP8 tensor cores. Adopting a different
+accumulation profile must retain an independent oracle and qualify model quality;
+Ninfer's FP32 accumulation cannot be assumed bit-identical to our scalar contract.
+
 ## Fused projection entrypoints
 
 Ninfer provides a single attention input-projection entrypoint that produces

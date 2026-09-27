@@ -5,19 +5,17 @@ Assessed September 26, 2026, America/Toronto. MeshLLM revision
 
 Subsequent implementation evidence is in the
 [runtime work ledger](../../../../crates/mesh-specialize/PLAN.md).
-The authorized experiment now executes all 64 decoder layers on Carrack in Rust.
-Independent one/two-token hidden/logit fixtures match bit-for-bit; the two-token
-run passes state-equivalence checks and all three sanitizers. The first untuned
-model measurement is **19.2 tokens/s prefill at 128 raw input tokens and 1.55
-tokens/s decode**, far below the measured deployed Ninfer rates. See the
-[model timing and comparison limits](../../../../crates/mesh-specialize/KNOWLEDGE/findings/model-timing-20260927.md)
-and [numerical evidence](../../../../crates/mesh-specialize/KNOWLEDGE/findings/resident-model.md).
-This establishes execution feasibility, not competitive performance or useful
-language quality. Serving integration and long-context qualification remain open.
-The [decode profile](../../../../crates/mesh-specialize/KNOWLEDGE/findings/model-profile.md)
-attributes 83.39% of summed short-prefix kernel-event time to FP8 projections.
-I would make that the next bounded optimization experiment before expanding
-serving integration. Performance parity remains unproven.
+The experiment now executes all 64 decoder layers on Carrack in Rust. The latest
+performance pass raises matched short-prefix decode from 1.55 to 20.07 tokens/s
+and 128-input prefill from 19.18 to 136.83 tokens/s, using three samples per case.
+Two-token independent hidden/logit/state checks remain exact; all three CUDA
+sanitizers and both profile memory-release checks pass. See the
+[performance report](../../../../crates/mesh-specialize/KNOWLEDGE/optimizations/decode-projections.md)
+and [Ninfer source comparison](../../../../crates/mesh-specialize/KNOWLEDGE/findings/ninfer-performance-comparison.md).
+Ninfer remains substantially faster in its differently configured deployed
+benchmark. Dedicated decode GEMV, pipelined prefill tiles, workspace/graph reuse,
+MTP, serving integration and long-context quality remain open. Performance parity
+is unproven; the raw-token fixtures do not establish useful language quality.
 The original assessment below records the initial snapshot; its service and
 implementation observations are historical.
 
