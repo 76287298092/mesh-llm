@@ -40,6 +40,7 @@ pub(in crate::kernels) fn run(
         "fp8_quantize_bf16",
         "fp8_linear_exact",
         "fp8_linear_exact4",
+        "fp8_prefill_exact",
         "bf16_linear_decode",
         "causal_conv4_bf16",
         "gdn_qk_norm",

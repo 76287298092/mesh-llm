@@ -16,6 +16,7 @@ mod embedding_norm;
 mod fp8_linear;
 mod fp8_linear_exact;
 mod fp8_linear_exact4;
+mod fp8_prefill_exact;
 mod fp8_linear_rounding;
 mod fp8_quantize;
 mod gated_rms_norm;

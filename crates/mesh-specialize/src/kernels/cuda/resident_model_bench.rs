@@ -16,11 +16,12 @@ use serde_json::{Value, json};
 use std::time::Instant;
 
 const MEMORY_RESERVE_BYTES: u64 = 1024 * 1024 * 1024;
-const REQUIRED_KERNELS: [&str; 20] = [
+const REQUIRED_KERNELS: [&str; 21] = [
     "embedding_norm_bf16",
     "fp8_quantize_bf16",
     "fp8_linear_exact",
     "fp8_linear_exact4",
+    "fp8_prefill_exact",
     "bf16_linear_decode",
     "causal_conv4_bf16",
     "gdn_qk_norm",

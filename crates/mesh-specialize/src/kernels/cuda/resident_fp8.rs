@@ -73,12 +73,14 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
         let weight_pointer = self.owner.pointer(&self.weight_name)?;
         let scale_pointer = self.owner.pointer(&self.scale_name)?;
         let quantize = module.function("fp8_quantize_bf16")?;
-        let tile_rows = if rows >= 4 { 4 } else { 1 };
-        let linear = module.function(if tile_rows == 4 {
-            "fp8_linear_exact4"
+        let (tile_rows, tile_columns, threads, kernel) = if rows >= 16 {
+            (16, 8, 32, "fp8_prefill_exact")
+        } else if rows >= 4 {
+            (4, 4, 128, "fp8_linear_exact4")
         } else {
-            "fp8_linear_exact"
-        })?;
+            (1, 4, 128, "fp8_linear_exact")
+        };
+        let linear = module.function(kernel)?;
         let codes = Buffer::new(context, extents.code_bytes)?;
         let row_scales = Buffer::new(context, extents.row_scale_bytes)?;
         let output = Buffer::new(context, extents.output_bytes)?;
@@ -107,7 +109,7 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
                 .map(|dimension| (dimension as *mut u32).cast()),
         );
         let grid = [
-            u32::try_from(self.channels.div_ceil(4))?,
+            u32::try_from(self.channels.div_ceil(tile_columns))?,
             u32::try_from(rows.div_ceil(tile_rows))?,
             1,
         ];
@@ -122,8 +124,8 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
         }
         // SAFETY: Metadata and run extents validate the row-major inputs, resident weights,
         // temporary FP8/scales, BF16/FP32 outputs, and u32 dimensions. All buffers live through
-        // the synchronization below; four warps each own one column in the exact-dot kernel.
-        if let Err(error) = unsafe { linear.launch(grid, [128, 1, 1], 0, &mut arguments) } {
+        // the synchronization below; the selected kernel receives its exact tile/block geometry.
+        if let Err(error) = unsafe { linear.launch(grid, [threads, 1, 1], 0, &mut arguments) } {
             return Err(synchronize_after_failed_launch(
                 context,
                 "exact FP8 projection",

@@ -18,11 +18,12 @@ use std::time::Instant;
 const MAX_PREFIX_TOKENS: usize = 512;
 const MAX_CAPACITY: usize = 513;
 const MEMORY_RESERVE_BYTES: u64 = 1024 * 1024 * 1024;
-const REQUIRED_KERNELS: [&str; 20] = [
+const REQUIRED_KERNELS: [&str; 21] = [
     "embedding_norm_bf16",
     "fp8_quantize_bf16",
     "fp8_linear_exact",
     "fp8_linear_exact4",
+    "fp8_prefill_exact",
     "bf16_linear_decode",
     "causal_conv4_bf16",
     "gdn_qk_norm",
@@ -98,6 +99,7 @@ pub(in crate::kernels) fn run(
     drop(partitioned);
     let profiled = run_profiled(&context, &module, &model, config, tokens)?;
     validate_kernel_profile(&profiled.kernel_profile)?;
+    validate_kernel_profile(&profiled.prefill_kernel_profile)?;
 
     let DecodeRun {
         prefill_logits: control_prefill_logits,
@@ -108,6 +110,7 @@ pub(in crate::kernels) fn run(
         state_sha256: control_state_sha256,
         cursor_past: control_cursor_past,
         kernel_profile: _,
+        prefill_kernel_profile: _,
     } = control;
     let DecodeRun {
         prefill_logits: profiled_prefill_logits,
@@ -118,6 +121,7 @@ pub(in crate::kernels) fn run(
         state_sha256: profiled_state_sha256,
         cursor_past: profiled_cursor_past,
         kernel_profile,
+        prefill_kernel_profile,
     } = profiled;
     let prefill_exact = control_prefill_logits == profiled_prefill_logits
         && control_prefill_token == profiled_prefill_token
@@ -167,6 +171,7 @@ pub(in crate::kernels) fn run(
         "unprofiled_decode_wall_seconds": unprofiled_seconds,
         "profiled_decode_wall_seconds": profiled_seconds,
         "kernel_profile": kernel_profile,
+        "prefill_kernel_profile": prefill_kernel_profile,
         "warmup": warmup,
         "allocation_bytes": {
             "weight_arena": layout.bytes,
@@ -176,7 +181,7 @@ pub(in crate::kernels) fn run(
         "memory_before": {"free_bytes": memory_before.0, "total_bytes": memory_before.1},
         "memory_after_free": {"free_bytes": memory_after_free.0, "total_bytes": memory_after_free.1},
         "memory_released": memory_released,
-        "scope": "One profiled full-decoder token after the supplied prefix; event instrumentation is not model throughput or an independent quality check.",
+        "scope": "Profiled full-prefix execution and one full-decoder token; event instrumentation is not model throughput or an independent quality check.",
     }))
 }
 
@@ -189,6 +194,7 @@ struct DecodeRun {
     state_sha256: String,
     cursor_past: usize,
     kernel_profile: Value,
+    prefill_kernel_profile: Value,
 }
 
 fn validate_request(
@@ -302,6 +308,7 @@ fn run_unprofiled(
         state_sha256,
         cursor_past,
         kernel_profile: Value::Null,
+        prefill_kernel_profile: Value::Null,
     })
 }
 
@@ -313,8 +320,10 @@ fn run_profiled(
     tokens: &[u32],
 ) -> Result<DecodeRun> {
     let mut session = Session::new(context, config)?;
-    let (prefill_logits, prefill_token, prefill_past) =
-        run_prefill(context, module, model, tokens, &mut session)?;
+    let ((prefill_logits, prefill_token, prefill_past), prefill_kernel_profile) =
+        super::launch_profile::capture(context, || {
+            run_prefill(context, module, model, tokens, &mut session)
+        })?;
     let (output, kernel_profile, wall_seconds) =
         profiled_forward(context, module, model, prefill_token, &mut session)?;
     check_committed(&session, &output, tokens.len() + 1)?;
@@ -331,6 +340,7 @@ fn run_profiled(
         state_sha256,
         cursor_past,
         kernel_profile,
+        prefill_kernel_profile,
     })
 }
 

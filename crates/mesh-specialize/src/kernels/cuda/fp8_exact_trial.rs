@@ -14,6 +14,7 @@ pub(super) fn run(ctx: &Context, module: &Module<'_>) -> Result<Value> {
         ([254, 254, 1], 0),
         ([2, 9, 513], 1),
         ([5, 9, 513], 1),
+        ([17, 19, 513], 1),
         ([1, 5, 32768], 2),
         ([1, 5, 5120], 3),
     ] {
@@ -75,7 +76,7 @@ pub(super) fn run(ctx: &Context, module: &Module<'_>) -> Result<Value> {
             &sw,
             k,
         )?;
-        for tile_rows in [1, 4] {
+        for tile_rows in [1, 4, 16] {
             let (actual, unrounded) = execute(ctx, module, [m, n, k, tile_rows], &a, &w, &sa, &sw)?;
             let bf16_differences = actual
                 .iter()
@@ -92,7 +93,7 @@ pub(super) fn run(ctx: &Context, module: &Module<'_>) -> Result<Value> {
         }
     }
     Ok(
-        json!({"all_passed":cases.iter().all(|c|c["all_passed"]==true),"cases":cases,"resources":module.function("fp8_linear_exact")?.resources()?,"tiled_resources":module.function("fp8_linear_exact4")?.resources()?}),
+        json!({"all_passed":cases.iter().all(|c|c["all_passed"]==true),"cases":cases,"resources":module.function("fp8_linear_exact")?.resources()?,"tiled_resources":module.function("fp8_linear_exact4")?.resources()?,"prefill_resources":module.function("fp8_prefill_exact")?.resources()?}),
     )
 }
 
@@ -143,21 +144,24 @@ fn execute(
         .collect::<Vec<*mut c_void>>();
     args.extend(dims.iter_mut().map(|p| (p as *mut u32).cast()));
     // SAFETY: The checked finite fixtures have complete row-major extents and disjoint
-    // typed allocations; four warps own four columns, and all buffers live through sync.
+    // typed allocations; each variant receives its required tile/block geometry.
+    // All buffers live through synchronization.
     unsafe {
         module
-            .function(if tile_rows == 4 {
+            .function(if tile_rows == 16 {
+                "fp8_prefill_exact"
+            } else if tile_rows == 4 {
                 "fp8_linear_exact4"
             } else {
                 "fp8_linear_exact"
             })?
             .launch(
                 [
-                    u32::try_from(n.div_ceil(4))?,
+                    u32::try_from(n.div_ceil(if tile_rows == 16 { 8 } else { 4 }))?,
                     u32::try_from(m.div_ceil(tile_rows))?,
                     1,
                 ],
-                [128, 1, 1],
+                [if tile_rows == 16 { 32 } else { 128 }, 1, 1],
                 0,
                 &mut args,
             )?;
