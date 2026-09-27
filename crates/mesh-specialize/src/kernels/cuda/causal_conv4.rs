@@ -8,14 +8,20 @@ use anyhow::{Result, ensure};
 use serde_json::{Value, json};
 use std::ffi::c_void;
 
-pub(super) fn check(
-    context: &Context,
-    module: &Module<'_>,
-    input: &Buffer<'_>,
+pub(super) struct CheckedConvolution<'a> {
+    pub(super) output: Buffer<'a>,
+    pub(super) words: Vec<u16>,
+    pub(super) report: Value,
+}
+
+pub(super) fn check<'a>(
+    context: &'a Context,
+    module: &Module<'a>,
+    input: &Buffer<'a>,
     input_words: &[u16],
     weights: &[u8],
     shape: [usize; 2],
-) -> Result<Value> {
+) -> Result<CheckedConvolution<'a>> {
     let history = vec![0; shape[1] * 3];
     check_history(
         context,
@@ -28,15 +34,15 @@ pub(super) fn check(
     )
 }
 
-fn check_history(
-    context: &Context,
-    module: &Module<'_>,
-    input: &Buffer<'_>,
+fn check_history<'a>(
+    context: &'a Context,
+    module: &Module<'a>,
+    input: &Buffer<'a>,
     input_words: &[u16],
     weights: &[u8],
     history: &[u16],
     shape: [usize; 2],
-) -> Result<Value> {
+) -> Result<CheckedConvolution<'a>> {
     let [rows, channels] = shape;
     ensure!(
         weights.len().is_multiple_of(2),
@@ -84,20 +90,31 @@ fn check_history(
         );
         reports.push(chunked.report);
     }
-    Ok(
-        json!({"all_passed":true,"shape_tc":shape,"elements":rows*channels,
+    let report = json!({"all_passed":true,"shape_tc":shape,"elements":rows*channels,
         "partitions":reports,"chunk_outputs_exact":true,"chunk_final_history_exact":true,
         "history_words":3*channels,"history_order":"oldest-to-newest, time-major, raw pre-convolution input",
         "profile":"FP32 ordered multiply/add, BF16 convolution rounding, FP32 SiLU, BF16 output",
         "reference_input":"host BF16 mirror for independent oracle; device input is never replaced between chunks",
-        "state_transport":"out-of-place device history with ping-pong buffers; no host history replacement"}),
-    )
+        "state_transport":"out-of-place device history with ping-pong buffers; no host history replacement"});
+    Ok(CheckedConvolution {
+        output: whole.device,
+        words: whole.output,
+        report,
+    })
 }
 
-struct Sequence {
+struct Sequence<'a> {
     output: Vec<u16>,
     history: Vec<u16>,
     report: Value,
+    device: Buffer<'a>,
+}
+
+struct ConvOutput<'a> {
+    device: Buffer<'a>,
+    words: Vec<u16>,
+    conv: Vec<f32>,
+    silu: Vec<f32>,
 }
 
 struct Trial<'a, 'context, 'module> {
@@ -111,8 +128,8 @@ struct Trial<'a, 'context, 'module> {
     channels: usize,
 }
 
-impl Trial<'_, '_, '_> {
-    fn sequence(&self, partition: &[usize]) -> Result<Sequence> {
+impl<'a> Trial<'_, 'a, '_> {
+    fn sequence(&self, partition: &[usize]) -> Result<Sequence<'a>> {
         let channels = self.channels;
         ensure!(partition.iter().all(|&n| n > 0), "empty convolution chunk");
         ensure!(
@@ -125,6 +142,7 @@ impl Trial<'_, '_, '_> {
         let mut expected_state = self.history.to_vec();
         let mut output = Vec::with_capacity(self.input_words.len());
         let mut reports = Vec::new();
+        let mut last_device = None;
         let mut offset = 0;
         for &rows in partition {
             let count = rows * channels;
@@ -141,7 +159,7 @@ impl Trial<'_, '_, '_> {
                 &next,
                 rows,
             )?;
-            let report = compare(&actual.0, &actual.1, &actual.2, &expected)?;
+            let report = compare(&actual.words, &actual.conv, &actual.silu, &expected)?;
             ensure!(
                 report["passed"] == true,
                 "causal convolution numerical check failed: {report}"
@@ -152,7 +170,8 @@ impl Trial<'_, '_, '_> {
                 "causal convolution history mismatch"
             );
             expected_state = expected.next_history;
-            output.extend(actual.0);
+            output.extend(actual.words);
+            last_device = Some(actual.device);
             reports.push(report);
             std::mem::swap(&mut state, &mut next);
             offset += count;
@@ -161,6 +180,7 @@ impl Trial<'_, '_, '_> {
             output,
             history: words(&state, 3 * channels)?,
             report: json!({"chunks":partition,"checks":reports,"history_exact_at_every_boundary":true}),
+            device: last_device.ok_or_else(|| anyhow::anyhow!("empty convolution partition"))?,
         })
     }
 
@@ -170,7 +190,7 @@ impl Trial<'_, '_, '_> {
         state: &Buffer<'_>,
         next: &Buffer<'_>,
         rows: usize,
-    ) -> Result<(Vec<u16>, Vec<f32>, Vec<f32>)> {
+    ) -> Result<ConvOutput<'a>> {
         let count = rows * self.channels;
         let output = upload(self.context, &vec![0xa5; count * 2])?;
         let conv = upload(self.context, &vec![0xff; count * 4])?;
@@ -203,11 +223,12 @@ impl Trial<'_, '_, '_> {
             )?;
         }
         self.context.synchronize()?;
-        Ok((
-            words(&output, count)?,
-            floats(&conv, count)?,
-            floats(&silu, count)?,
-        ))
+        Ok(ConvOutput {
+            words: words(&output, count)?,
+            conv: floats(&conv, count)?,
+            silu: floats(&silu, count)?,
+            device: output,
+        })
     }
 }
 
@@ -290,7 +311,7 @@ pub(super) fn fixtures(context: &Context, module: &Module<'_>) -> Result<Vec<Val
     let bytes: Vec<_> = input.iter().flat_map(|v| v.to_le_bytes()).collect();
     let device = upload(context, &bytes)?;
     let extremes = check(context, module, &device, &input, &weights, [1, input.len()])?;
-    Ok(vec![signed, extremes])
+    Ok(vec![signed.report, extremes.report])
 }
 
 fn upload<'a>(context: &'a Context, bytes: &[u8]) -> Result<Buffer<'a>> {

@@ -3,6 +3,7 @@
 mod causal_conv4;
 mod driver;
 pub(super) mod embedding_norm;
+mod gdn_prepare;
 mod gemm;
 pub(super) mod instructions;
 pub(super) mod projections;

@@ -2,7 +2,7 @@
 use super::{
     causal_conv4,
     driver::{Buffer, Context, Function, Module},
-    embedding_norm,
+    embedding_norm, gdn_prepare,
 };
 use crate::{
     entry_reference,
@@ -31,23 +31,27 @@ pub(in crate::kernels) fn run(ptx: &str, device: i32, input: &ProjectionInput) -
     let module = Module::load(&context, ptx)?;
     let quantization_fixtures = quantization_fixtures(&context, &module)?;
     let convolution_fixtures = causal_conv4::fixtures(&context, &module)?;
+    let gdn_fixtures = gdn_prepare::fixtures(&context, &module)?;
     let fixture = fixture()?;
     let fixture_cases = run_input(&context, &module, &fixture)?;
     let cases = run_input(&context, &module, input)?;
     let after = context.memory()?;
     Ok(
-        json!({"schema_version":3,"kind":"qwen-projection-convolution-trial","device":info,
+        json!({"schema_version":4,"kind":"qwen-gdn-preparation-trial","device":info,
         "all_passed":cases.iter().chain(&fixture_cases).all(|c|c["passed"]==true),
         "cases":cases,"fixture_cases":fixture_cases,"quantization_fixtures":quantization_fixtures,
         "convolution_fixtures":convolution_fixtures,
+        "gdn_fixtures":gdn_fixtures,
         "memory_before":{"free_bytes":before.0,"total_bytes":before.1},
         "memory_after":{"free_bytes":after.0,"total_bytes":after.1},
         "quantize_resources":module.function("fp8_quantize_bf16")?.resources()?,
         "linear_resources":module.function("fp8_linear")?.resources()?,
         "bf16_linear_resources":module.function("bf16_linear")?.resources()?,
         "convolution_resources":module.function("causal_conv4_bf16")?.resources()?,
+        "qk_norm_resources":module.function("gdn_qk_norm")?.resources()?,
+        "gate_resources":module.function("gdn_gates")?.resources()?,
         "activation_profile":"E4M3FN dynamic token scale in FP32; amax/448, zero scale replaced with 1; RNE finite saturation",
-        "gpu_chain":"embedding/norm -> FP8 quantization -> QKV projection -> causal convolution/SiLU; same normalized BF16 -> BF16 A/B; no host replacement of intermediate device data",
+        "gpu_chain":"embedding/norm -> FP8 quantization -> QKV -> convolution/SiLU -> Q/K normalization; normalized BF16 -> A/B -> beta/log-decay/decay gates; device intermediates stay resident",
         "timing_collected":false,"full_model_executed":false}),
     )
 }
@@ -130,6 +134,9 @@ fn validate(input: &ProjectionInput) -> Result<()> {
             "nonfinite convolution weight"
         );
     }
+    if let Some(gdn) = &input.gdn {
+        gdn_prepare::validate_connections(input, gdn)?;
+    }
     Ok(())
 }
 
@@ -179,6 +186,8 @@ fn run_input(
         .collect::<Result<_>>()?;
     let mut cases = Vec::new();
     for tokens in &input.entry.batches {
+        let mut convolution = None;
+        let mut bf16_outputs = Vec::new();
         let expected = entry_reference::embedding_norm(
             &input.entry.table,
             tokens,
@@ -274,8 +283,12 @@ fn run_input(
                     &conv.weights,
                     [tokens.len(), projection.channels],
                 )?;
-                ensure!(result["all_passed"] == true, "chained convolution failed");
-                report["convolution"] = result;
+                ensure!(
+                    result.report["all_passed"] == true,
+                    "chained convolution failed"
+                );
+                report["convolution"] = result.report.clone();
+                convolution = Some(result);
             }
             cases.push(report);
         }
@@ -309,6 +322,29 @@ fn run_input(
             report["tokens"] = json!(tokens);
             report["free_device_bytes_with_allocations"] = json!(context.memory()?.0);
             cases.push(report);
+            bf16_outputs.push((device_output, actual.0));
+        }
+        if let Some(gdn) = &input.gdn {
+            let convolution = convolution
+                .as_ref()
+                .ok_or_else(|| anyhow::anyhow!("missing resident convolution"))?;
+            let a = &bf16_outputs[gdn.a_projection];
+            let b = &bf16_outputs[gdn.b_projection];
+            let report = gdn_prepare::check(
+                context,
+                module,
+                gdn_prepare::Input {
+                    qkv: &convolution.output,
+                    qkv_words: &convolution.words,
+                    a: &a.0.bf16,
+                    a_words: &a.1,
+                    b: &b.0.bf16,
+                    b_words: &b.1,
+                },
+                gdn,
+                tokens.len(),
+            )?;
+            cases.push(json!({"operation":"gdn_prepare","tokens":tokens,"passed":true,"preparation":report}));
         }
     }
     Ok(cases)
@@ -460,6 +496,7 @@ fn fixture() -> Result<ProjectionInput> {
                 })
                 .collect(),
         }),
+        gdn: None,
     })
 }
 

@@ -10,6 +10,8 @@ pub mod entry_reference;
 
 #[path = "../reference/causal_conv4.rs"]
 pub mod causal_conv4_reference;
+#[path = "../reference/gdn_prepare.rs"]
+pub mod gdn_prepare_reference;
 #[path = "../reference/projections.rs"]
 pub mod projection_reference;
 

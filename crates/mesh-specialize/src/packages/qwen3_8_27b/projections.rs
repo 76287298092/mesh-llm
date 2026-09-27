@@ -2,7 +2,8 @@
 use crate::{
     artifact::reader::VerifiedArtifact,
     kernels::{
-        Bf16Projection, CausalConv4Weights, EmbeddingNormInput, Fp8Projection, ProjectionInput,
+        Bf16Projection, CausalConv4Weights, EmbeddingNormInput, Fp8Projection, GdnWeights,
+        ProjectionInput,
     },
 };
 use anyhow::Result;
@@ -62,6 +63,16 @@ pub fn trial(path: &Path, ptx: &str, device: i32) -> Result<Value> {
         "tensors/model.language_model.layers.0.linear_attn.conv1d.weight",
         &mut conv_weights,
     )?;
+    let mut a_log = Vec::new();
+    let mut dt_bias = Vec::new();
+    artifact.copy_object(
+        "tensors/model.language_model.layers.0.linear_attn.A_log",
+        &mut a_log,
+    )?;
+    artifact.copy_object(
+        "tensors/model.language_model.layers.0.linear_attn.dt_bias",
+        &mut dt_bias,
+    )?;
     let input = ProjectionInput {
         entry,
         projections,
@@ -69,6 +80,15 @@ pub fn trial(path: &Path, ptx: &str, device: i32) -> Result<Value> {
         convolution: Some(CausalConv4Weights {
             projection: 0,
             weights: conv_weights,
+        }),
+        gdn: Some(GdnWeights {
+            a_projection: 0,
+            b_projection: 1,
+            key_heads: 16,
+            value_heads: 48,
+            width: 128,
+            a_log,
+            dt_bias,
         }),
     };
     let mut report = crate::kernels::projection_check(ptx, device, &input)?;

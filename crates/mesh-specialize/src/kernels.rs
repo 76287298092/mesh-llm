@@ -21,6 +21,17 @@ pub struct ProjectionInput {
     pub projections: Vec<Fp8Projection>,
     pub bf16_projections: Vec<Bf16Projection>,
     pub convolution: Option<CausalConv4Weights>,
+    pub gdn: Option<GdnWeights>,
+}
+
+pub struct GdnWeights {
+    pub a_projection: usize,
+    pub b_projection: usize,
+    pub key_heads: usize,
+    pub value_heads: usize,
+    pub width: usize,
+    pub a_log: Vec<u8>,
+    pub dt_bias: Vec<u8>,
 }
 
 /// Fixed-width causal convolution attached to one FP8 projection output.
