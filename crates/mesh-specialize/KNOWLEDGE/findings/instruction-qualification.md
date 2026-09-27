@@ -29,17 +29,17 @@ from `91bccbd99`. PTX SHA256:
 `227c8911e5ada033a679802934385cd5e007a28ba2fbb399eb9558b4dbb7999a`.
 Linux xtask SHA256:
 `fd71cb52350db490f46f2fe14261ba1600b457904b9991848bf24b06d0e22d4a`.
-Host Rust1.98.1/LLVM22.1.8, device nightly-2026-09-25/LLVM23.1.1,
-offline ptxas13.4.92 and matching CUDA sanitizer tools. Target: carrack RTX5090,
-SM12.0, driver615.71.09 (driver API13040). Trial began September26 at23:18EDT;
-evidence filenames use September27 UTC. Before launch:195MHz,13.60W,29C,
-937MiB total GPU memory; Ninfer stopped and ComfyUI's498MiB remained untouched.
+Host Rust 1.98.1 / LLVM 22.1.8, device nightly-2026-09-25 / LLVM 23.1.1,
+offline ptxas 13.4.92 and matching CUDA sanitizer tools. Target: carrack RTX 5090,
+SM12.0, driver 615.71.09 (driver API 13040). Trial began September 26 at 23:18 EDT;
+evidence filenames use September 27 UTC. Before launch: 195 MHz, 13.60 W, 29 C,
+937 MiB total GPU memory; Ninfer stopped and ComfyUI's 498 MiB remained untouched.
 No continuous clock/power sampling was collected for these correctness probes.
 
-The [full report](../evidence/rust-instructions-20260927.json) contains3,712
-exact output matches:16 shared-copy/load cases,12 ordinary MMA cases, and one
-128-thread register-budget case. JIT resources: shared probe14registers/512bytes
-shared; each ordinary MMA18registers; register probe64registers. All report zero
+The [full report](../evidence/rust-instructions-20260927.json) contains 3,712
+exact output matches: 16 shared-copy/load cases, 12 ordinary MMA cases, and one
+128-thread register-budget case. JIT resources: shared probe 14 registers / 512 bytes
+shared; each ordinary MMA 18 registers; register probe 64 registers. All report zero
 local memory. The JIT honored the register allocation required for this probe.
 
 Separate instrumented runs produced zero errors in
@@ -58,8 +58,8 @@ execution used driver-JIT PTX; they are separate artifacts.
 
 The remote command's trailing log-display command failed because of a shell
 `tail` interpretation; the four GPU runs had already succeeded. The EXIT trap
-restored Ninfer, which logged engine-ready and its1235 listener at23:18:14EDT.
-Linux20 unit tests and focused Clippy with denied warnings passed before launch.
+restored Ninfer, which logged engine-ready and its 1235 listener at 23:18:14 EDT.
+Linux 20 unit tests and focused Clippy with denied warnings passed before launch.
 No GitHub Actions run was required by the feature-branch push.
 
 Model recipe: not applicable. Throughput and context capacity are not measured

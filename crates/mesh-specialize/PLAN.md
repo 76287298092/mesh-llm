@@ -1,7 +1,8 @@
 # Specialized Qwen runtime implementation plan
 
-Status: deployed-profile baseline and required instruction GPU probes complete. No
-specialized model inference exists yet.
+Status: deployed-profile baseline, required instruction probes and first GEMM/RMSNorm
+GPU trials complete. Library comparison, profiling and specialized model inference
+remain open.
 
 ## Objective and boundaries
 
@@ -135,8 +136,8 @@ that control's rates directly to MTP4 as an isolated speedup across different in
 | B01/B02 bounded baseline tool | Complete | 18 focused tests and successful live run |
 | Fresh NInfer baseline | Complete for deployed serial profile | `KNOWLEDGE/findings/ninfer-baseline-20260926.md` |
 | Rust instruction gate | NVFP4 and 29 remaining probe cases pass; sanitizer checks clean | `KNOWLEDGE/findings/instruction-qualification.md` and prior NVFP4 evidence |
-| Representative GEMM/RMSNorm | Source and host fixtures being integrated; execution pending | `KNOWLEDGE/findings/instruction-qualification.md` |
-| Upstream push and carrack branch synchronization | Complete for first GPU trial | `149e1aaa6`; original carrack branch retained |
+| Representative GEMM/RMSNorm | 14 cases / 1,489,305 outputs pass; preliminary timings; library reference and profiler pending | `KNOWLEDGE/findings/representative-kernels.md` |
+| Upstream push and carrack branch synchronization | Complete through kernel trials | `38d656cd1`; original carrack branch retained |
 | First carrack Rust GPU trial | Complete | 32 cases, 4,096 exact output matches; Ninfer restored |
 | Full model performance/context trial | Pending | None |
 

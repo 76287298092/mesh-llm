@@ -11,9 +11,9 @@ Start with [the implementation plan](../PLAN.md) and the
 | [Ninfer baseline](findings/ninfer-baseline-20260926.md) | Nine measured requests; tested through 42,837 input tokens |
 | [Rust NVFP4 probe](findings/rust-nvfp4-probe.md) | 4,096 exact output matches on RTX5090 |
 | [Remaining instruction qualification](findings/instruction-qualification.md) | 29 GPU cases pass; three sanitizer tools clean |
-| [Representative kernels](findings/representative-kernels.md) | GEMM/RMSNorm workloads integrated; execution pending |
+| [Representative kernels](findings/representative-kernels.md) | 14 GPU cases pass; preliminary timings; sanitizer recovery complete |
 | [Prebuilt core target mismatch](dead-ends/prebuilt-core-target-mismatch.md) | Resolved by rebuilding core; emitted PTX executed |
-| [Racecheck timing repetitions](dead-ends/racecheck-timing-repetitions.md) | Failed with host OOM; check-only recovery pending |
+| [Racecheck timing repetitions](dead-ends/racecheck-timing-repetitions.md) | Failed with host OOM; bounded check-only recovery passed |
 
 New entries belong in `findings/`, `pitfalls/`, `optimizations/`, `dead-ends/`,
 or `ah-ha/` according to their subject. Each entry records status, exact model and
