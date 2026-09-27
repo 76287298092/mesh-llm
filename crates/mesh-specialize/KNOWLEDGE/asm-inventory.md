@@ -185,3 +185,15 @@ synccheck, with zero errors/hazards. `splitk-sweep-1` additionally verifies full
 model output/state and forced acceptance/rejection for each 2/4/8/16-way split.
 Source `a06b71bfa`; PTX SHA256
 `e18df0fb02524af65d00e3b313183da18ce549fce93a65a6a22011ccfc3c6136`.
+
+
+Exact GPU greedy reduction: `greedy_bf16.rs` has ten assembly sites, fully
+listed by function in [GPU greedy inventory](optimizations/gpu-greedy.md#complete-per-assembly-site-inventory-for-parent-integration).
+They cover thread/CTA coordinates, two-word warp shuffle for integer winner
+keys, nonfinite-index shuffle, 64-byte shared storage declaration/address,
+64-bit key and 32-bit invalid-index shared loads/stores, and CTA barrier.
+Independent `reference/greedy_bf16.rs` uses direct FP32 comparison and first-index
+ties; GPU `greedy-check` additionally compares existing CPU sampling and exact
+nonfinite positions. This path changes only token selection, not model arithmetic.
+Compilation and GPU qualification are pending; default model execution stays CPU
+selection, with full-logit diagnostics retained even when experimenting.

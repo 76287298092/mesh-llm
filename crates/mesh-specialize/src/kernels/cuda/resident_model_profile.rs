@@ -96,6 +96,19 @@ pub(in crate::kernels) fn run(
         false,
         teacher_token,
     )?;
+    let gpu_selection_check = if super::model_greedy::enabled()? {
+        Some(check_gpu_selection(
+            &context,
+            &module,
+            &model,
+            config,
+            tokens,
+            teacher_token,
+            &control,
+        )?)
+    } else {
+        None
+    };
     let partitioned = run_unprofiled(
         &context,
         &module,
@@ -195,6 +208,7 @@ pub(in crate::kernels) fn run(
         prefill_exact && exact_output_and_state && past_exact && memory_released && partition_exact;
 
     Ok(json!({
+        "gpu_selection_check": gpu_selection_check,
         "projection_audit": super::fp8_projection_audit::take_reports(),
         "schema_version": 1,
         "kind": "resident-model-single-decode-kernel-profile",
@@ -319,6 +333,42 @@ fn run_warmup(
     drop(session);
     context.synchronize()?;
     Ok(report)
+}
+
+fn check_gpu_selection(
+    context: &Context,
+    module: &Module<'_>,
+    model: &Model<'_, '_>,
+    config: &DecoderConfig,
+    tokens: &[u32],
+    teacher: Option<u32>,
+    control: &DecodeRun,
+) -> Result<Value> {
+    let mut session = Session::new(context, config)?;
+    let prefill = model.forward_selected(context, module, tokens, &mut session)?;
+    ensure!(
+        prefill.token == control.prefill_token && prefill.past == control.prefill_past,
+        "GPU prefill selection differs from full-logit control"
+    );
+    let decode = model.forward_selected(
+        context,
+        module,
+        &[teacher.unwrap_or(prefill.token)],
+        &mut session,
+    )?;
+    let state = state_hash(&session)?;
+    ensure!(
+        decode.token == control.output.token
+            && decode.past == control.output.past
+            && state == control.state_sha256
+            && !session.cursor.is_poisoned(),
+        "GPU decode selection/state differs from full-logit control"
+    );
+    Ok(
+        json!({"all_passed":true,"prefill_token":prefill.token,"decode_token":decode.token,
+        "state_sha256":state,"cursor_past":session.cursor.past(),
+        "scope":"device-only ordinary selection versus independent full-logit CPU selection on identical inputs"}),
+    )
 }
 
 fn run_unprofiled(

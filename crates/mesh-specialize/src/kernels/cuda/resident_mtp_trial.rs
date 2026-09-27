@@ -28,6 +28,10 @@ pub(in crate::kernels) fn run(
     request: &SpeculationRequest<'_>,
 ) -> Result<Value> {
     ensure!(
+        !super::model_greedy::enabled()?,
+        "GPU greedy selection is not integrated with MTP"
+    );
+    ensure!(
         crate::kernels::fp8_profile::current()? == crate::kernels::fp8_profile::Profile::Exact,
         "MTP qualification requires the exact FP8 profile until experimental prefill state recovery is qualified"
     );

@@ -564,3 +564,14 @@ pub fn mlp_workspace_trial(
         anyhow::bail!("MLP workspace trial requires Linux")
     }
 }
+
+/// Check GPU greedy selection against independent CPU ordering and rejection.
+pub fn greedy_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::greedy_trial::run(ptx, device);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device);
+        anyhow::bail!("GPU greedy qualification requires Linux")
+    }
+}

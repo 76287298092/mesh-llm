@@ -101,3 +101,12 @@ script; binary logit exports remain in ignored working output. Mac260tests,
 Clippy on both hosts and Linux release tools build passed. Whole-model MTP forced
 rejection and sanitizer qualification is running separately in
 `model-workspace-check-1`; it is not yet claimed passed. The default remains off.
+
+
+`model-workspace-check-1` completed at source `3d72188a4`: both full-forward and
+compact MTP recovery passed exact target token/state checks, all-accepted commits
+and forced rejection at each of four draft positions. The compact path also
+passed memcheck, racecheck and synccheck with zero errors/hazards. Ordinary CPU
+selection and split-K off were retained. Initial/final Ninfer state remained
+inactive; ComfyUI stayed resident. This qualifies model workspace integration for
+these bounded cases; longer-prefill ablation and broader goal gates remain open.

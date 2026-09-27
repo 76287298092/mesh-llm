@@ -28,6 +28,7 @@ mod gated_rms_norm;
 mod gdn_chunked;
 mod gdn_prepare;
 mod gdn_recurrent;
+mod greedy_bf16;
 mod kv_fp8;
 mod memory;
 mod nvfp4_gemm;

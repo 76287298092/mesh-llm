@@ -5,6 +5,7 @@ Start with [the implementation plan](../PLAN.md) and the
 
 | Entry | Status |
 | --- | --- |
+| [Exact GPU greedy selection](optimizations/gpu-greedy.md) | Independent Rust reduction candidate; first-index ties and nonfinite rejection, qualification pending |
 | [Ninfer runtime deep dive](findings/ninfer-runtime-deep-dive.md) | Complete-source execution comparison; workspace/stream ordering first, then GPU selection/graphs, shape-specific kernels, and long-context algorithms |
 | [Ninfer model format](findings/ninfer-model-format.md) | Pinned packer/consumer analysis; row-major FP8, swizzled NVFP4 scales, provenance gaps and isolating experiments |
 | [Ninfer feature parity](findings/ninfer-feature-parity.md) | Parent source assessment of ten performance mechanisms, honest measurement gaps and one owner per feature |

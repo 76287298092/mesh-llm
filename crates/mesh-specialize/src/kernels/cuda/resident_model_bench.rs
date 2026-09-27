@@ -2,7 +2,7 @@
 
 use super::{
     driver::{Context, Module},
-    resident_model::{Model, Output, Session},
+    resident_model::{Model, SelectedOutput, Session},
     resident_weights::ResidentWeights,
 };
 use crate::{
@@ -127,7 +127,7 @@ pub(in crate::kernels) fn run(
         "completed": true,
         "device": info,
         "arithmetic_profile": crate::kernels::fp8_profile::current()?.name(),
-        "mlp_workspace":super::model_workspace::enabled()?, "fp8_split_k":super::resident_fp8_splitk::configured_splits()?,
+        "gpu_greedy":super::model_greedy::enabled()?, "mlp_workspace":super::model_workspace::enabled()?, "fp8_split_k":super::resident_fp8_splitk::configured_splits()?,
         "configured_capacity": config.capacity,
         "prompt_token_ids": request.tokens,
         "prompt_tokens": request.tokens.len(),
@@ -295,7 +295,6 @@ fn run_warmup(
         output_token_id: output.token,
         final_cursor_past: session.cursor.past(),
     };
-    drop(output);
     drop(session);
     context.synchronize()?;
     memory.record(context, "warmup_session_released", None, None)?;
@@ -332,7 +331,6 @@ fn run_repetition(
     let mut previous_token = prefill.token;
     generated.push(previous_token);
     let prefill_past = prefill.past;
-    drop(prefill);
 
     let mut decode_interval_seconds = Vec::with_capacity(request.output_tokens - 1);
     for step in 1..request.output_tokens {
@@ -341,7 +339,7 @@ fn run_repetition(
         previous_token = output.token;
         generated.push(previous_token);
         decode_interval_seconds.push(seconds);
-        drop(output);
+
         memory.record(
             context,
             "decode_forward_completed",
@@ -393,10 +391,10 @@ fn timed_forward(
     model: &Model<'_, '_>,
     tokens: &[u32],
     session: &mut Session<'_>,
-) -> Result<(Output, f64)> {
+) -> Result<(SelectedOutput, f64)> {
     context.synchronize()?;
     let start = Instant::now();
-    let forward = model.forward(context, module, tokens, session, None);
+    let forward = model.forward_selected(context, module, tokens, session);
     let synchronization = context.synchronize();
     let seconds = start.elapsed().as_secs_f64();
     let output = match (forward, synchronization) {

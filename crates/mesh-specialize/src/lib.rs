@@ -91,3 +91,6 @@ pub mod kv_fp8_reference;
 
 #[path = "../reference/gdn_replay.rs"]
 pub mod gdn_replay_reference;
+
+#[path = "../reference/greedy_bf16.rs"]
+pub mod greedy_bf16_reference;

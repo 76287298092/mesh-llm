@@ -268,3 +268,8 @@ mod resident_mlp_workspace;
 pub(super) mod mlp_workspace_trial;
 
 mod model_workspace;
+
+pub(super) mod greedy_trial;
+mod resident_greedy;
+
+mod model_greedy;

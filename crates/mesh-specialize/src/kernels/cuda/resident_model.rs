@@ -14,6 +14,7 @@ use crate::{
     kernels::{DecoderBlockKind, DecoderConfig, DecoderMlpKind},
 };
 use anyhow::{Result, ensure};
+use std::cell::RefCell;
 
 enum Block<'w, 'ctx> {
     Gdn(Box<resident_gdn::Layer<'w, 'ctx>>),
@@ -24,10 +25,15 @@ pub(super) struct Model<'w, 'ctx> {
     blocks: Vec<Block<'w, 'ctx>>,
     head: Head<'w, 'ctx>,
     vocabulary: usize,
+    greedy: Option<RefCell<super::resident_greedy::Selector<'ctx>>>,
 }
 pub(super) struct Session<'ctx> {
     pub state: ResidentState<'ctx>,
     pub cursor: Cursor,
+}
+pub(super) struct SelectedOutput {
+    pub token: u32,
+    pub past: usize,
 }
 pub(super) struct Output {
     pub logits: Vec<u16>,
@@ -38,6 +44,11 @@ pub(super) struct Output {
 pub(super) enum LogitsSelection {
     Last,
     All,
+}
+struct ExecutionOptions {
+    selection: LogitsSelection,
+    record: bool,
+    device_selection: bool,
 }
 pub(super) struct DetailedOutput<'ctx> {
     pub recovery: Vec<super::resident_recovery::LayerRecord<'ctx>>,
@@ -123,6 +134,14 @@ impl<'w, 'ctx> Model<'w, 'ctx> {
                 config.vocabulary,
             )?,
             vocabulary: config.vocabulary,
+            greedy: if super::model_greedy::enabled()? {
+                Some(RefCell::new(super::resident_greedy::Selector::new(
+                    weights.context(),
+                    config.vocabulary,
+                )?))
+            } else {
+                None
+            },
         })
     }
 
@@ -155,6 +174,44 @@ impl<'w, 'ctx> Model<'w, 'ctx> {
         })
     }
 
+    /// Ordinary generation may return only a token. Diagnostic forwards always
+    /// retain full host logits. A failed device selection never commits the cursor.
+    pub(super) fn forward_selected(
+        &self,
+        ctx: &Context,
+        module: &Module<'_>,
+        tokens: &[u32],
+        session: &mut Session<'_>,
+    ) -> Result<SelectedOutput> {
+        if self.greedy.is_none() {
+            let output = self.forward(ctx, module, tokens, session, None)?;
+            return Ok(SelectedOutput {
+                token: output.token,
+                past: output.past,
+            });
+        }
+        let output = self.execute(
+            ctx,
+            module,
+            tokens,
+            session,
+            ExecutionOptions {
+                selection: LogitsSelection::Last,
+                record: false,
+                device_selection: true,
+            },
+            None,
+        )?;
+        ensure!(
+            output.tokens.len() == 1 && output.logits.is_empty(),
+            "invalid device-only selection result"
+        );
+        Ok(SelectedOutput {
+            token: output.tokens[0],
+            past: output.past,
+        })
+    }
+
     pub(super) fn forward_detailed<'a>(
         &self,
         ctx: &'a Context,
@@ -164,7 +221,18 @@ impl<'w, 'ctx> Model<'w, 'ctx> {
         selection: LogitsSelection,
         observer: Option<&mut Observer<'_>>,
     ) -> Result<DetailedOutput<'a>> {
-        self.execute(ctx, module, tokens, session, (selection, false), observer)
+        self.execute(
+            ctx,
+            module,
+            tokens,
+            session,
+            ExecutionOptions {
+                selection,
+                record: false,
+                device_selection: false,
+            },
+            observer,
+        )
     }
 
     pub(super) fn forward_recorded<'a>(
@@ -183,7 +251,11 @@ impl<'w, 'ctx> Model<'w, 'ctx> {
             module,
             tokens,
             session,
-            (LogitsSelection::All, true),
+            ExecutionOptions {
+                selection: LogitsSelection::All,
+                record: true,
+                device_selection: false,
+            },
             None,
         )
     }
@@ -194,10 +266,14 @@ impl<'w, 'ctx> Model<'w, 'ctx> {
         module: &Module<'_>,
         tokens: &[u32],
         session: &mut Session<'_>,
-        options: (LogitsSelection, bool),
+        options: ExecutionOptions,
         mut observer: Option<&mut Observer<'_>>,
     ) -> Result<DetailedOutput<'a>> {
-        let (selection, record) = options;
+        let ExecutionOptions {
+            selection,
+            record,
+            device_selection,
+        } = options;
         let mut recovery = Vec::new();
         ensure!(
             tokens.iter().all(|&id| (id as usize) < self.vocabulary),
@@ -264,24 +340,21 @@ impl<'w, 'ctx> Model<'w, 'ctx> {
             output.values.len() == expected_bytes,
             "decoder logit extent mismatch"
         );
-        let mut raw = vec![0; expected_bytes];
-        output.values.download(&mut raw)?;
-        let logits = raw
-            .as_chunks::<2>()
-            .0
-            .iter()
-            .map(|word| u16::from_le_bytes(*word))
-            .collect::<Vec<_>>();
-        ensure!(
-            logits.len() == expected_bytes / 2,
-            "decoded logit extent mismatch"
-        );
-        let selected_tokens = match selection {
-            LogitsSelection::Last => vec![sampling::greedy(&logits)?],
-            LogitsSelection::All => logits
-                .chunks_exact(self.vocabulary)
-                .map(sampling::greedy)
-                .collect::<Result<Vec<_>>>()?,
+        let (logits, selected_tokens) = if device_selection {
+            ensure!(
+                matches!(selection, LogitsSelection::Last),
+                "device-only selection requires one logit row"
+            );
+            let mut selector = self
+                .greedy
+                .as_ref()
+                .ok_or_else(|| anyhow::anyhow!("missing GPU selector"))?
+                .try_borrow_mut()
+                .map_err(|_| anyhow::anyhow!("GPU selector is already borrowed"))?;
+            let chosen = selector.select(module, &output.values)?;
+            (Vec::new(), vec![chosen.token])
+        } else {
+            download_selection(&output.values, self.vocabulary, selection)?
         };
         let past = transaction.commit();
         Ok(DetailedOutput {
@@ -292,6 +365,29 @@ impl<'w, 'ctx> Model<'w, 'ctx> {
             past,
         })
     }
+}
+
+fn download_selection(
+    values: &Buffer<'_>,
+    vocabulary: usize,
+    selection: LogitsSelection,
+) -> Result<(Vec<u16>, Vec<u32>)> {
+    let mut raw = vec![0; values.len()];
+    values.download(&mut raw)?;
+    let logits = raw
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .map(|word| u16::from_le_bytes(*word))
+        .collect::<Vec<_>>();
+    let selected = match selection {
+        LogitsSelection::Last => vec![sampling::greedy(&logits)?],
+        LogitsSelection::All => logits
+            .chunks_exact(vocabulary)
+            .map(sampling::greedy)
+            .collect::<Result<Vec<_>>>()?,
+    };
+    Ok((logits, selected))
 }
 
 fn checked_logit_bytes(rows: usize, vocabulary: usize) -> Result<usize> {
