@@ -10,7 +10,8 @@ Start with [the implementation plan](../PLAN.md) and the
 | [Baseline harness](findings/baseline-harness.md) | 18 focused tests and successful live baseline |
 | [Ninfer baseline](findings/ninfer-baseline-20260926.md) | Nine measured requests; tested through 42,837 input tokens |
 | [Rust NVFP4 probe](findings/rust-nvfp4-probe.md) | 4,096 exact output matches on RTX5090 |
-| [Remaining instruction qualification](findings/instruction-qualification.md) | Source integrated; GPU trial pending |
+| [Remaining instruction qualification](findings/instruction-qualification.md) | 29 GPU cases pass; three sanitizer tools clean |
+| [Representative kernels](findings/representative-kernels.md) | GEMM/RMSNorm workloads integrated; execution pending |
 | [Prebuilt core target mismatch](dead-ends/prebuilt-core-target-mismatch.md) | Resolved by rebuilding core; emitted PTX executed |
 
 New entries belong in `findings/`, `pitfalls/`, `optimizations/`, `dead-ends/`,

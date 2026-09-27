@@ -1,7 +1,10 @@
 //! Linux CUDA Driver API instruction qualification.
 
 mod driver;
+mod gemm;
 pub(super) mod instructions;
+mod rms_norm;
+pub(super) mod workloads;
 
 use super::{fixtures, nvfp4_layout};
 use anyhow::{Result, anyhow, ensure};

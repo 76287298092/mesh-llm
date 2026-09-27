@@ -7,17 +7,24 @@ use std::{
 };
 
 pub(super) fn run(args: &[String]) -> DynResult<()> {
-    run_probe(args, false)
+    run_probe(args, mesh_specialize::kernels::nvfp4_probe)
 }
 
 pub(super) fn instructions(args: &[String]) -> DynResult<()> {
-    run_probe(args, true)
+    run_probe(args, mesh_specialize::kernels::instruction_probe)
 }
 
-fn run_probe(args: &[String], instructions: bool) -> DynResult<()> {
+pub(super) fn workloads(args: &[String]) -> DynResult<()> {
+    run_probe(args, mesh_specialize::kernels::workload_probe)
+}
+
+fn run_probe<E: std::fmt::Display>(
+    args: &[String],
+    probe: fn(&str, i32) -> Result<serde_json::Value, E>,
+) -> DynResult<()> {
     let [ptx_flag, ptx_path, device_flag, device, output_flag, output] = args else {
         return Err(
-            "usage: xtask specialize <nvfp4-probe|instruction-probe> --ptx PATH --device ORDINAL --output NEW_FILE"
+            "usage: xtask specialize <nvfp4-probe|instruction-probe|workload-probe> --ptx PATH --device ORDINAL --output NEW_FILE"
                 .into(),
         );
     };
@@ -29,11 +36,7 @@ fn run_probe(args: &[String], instructions: bool) -> DynResult<()> {
         .write(true)
         .create_new(true)
         .open(output)?;
-    let result = if instructions {
-        mesh_specialize::kernels::instruction_probe(&ptx, device.parse()?)
-    } else {
-        mesh_specialize::kernels::nvfp4_probe(&ptx, device.parse()?)
-    };
+    let result = probe(&ptx, device.parse()?);
     let (mut report, error) = match result {
         Ok(report) => (report, None),
         Err(error) => (

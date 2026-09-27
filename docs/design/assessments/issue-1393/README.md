@@ -3,6 +3,13 @@
 Assessed September 26, 2026, America/Toronto. MeshLLM revision
 `4b48a298c347cea818e13d339ff069cc6172cd09`.
 
+Subsequent implementation evidence is in the
+[runtime work ledger](../../../../crates/mesh-specialize/PLAN.md).
+The authorized experiment has now measured the deployed Ninfer baseline and
+executed the required Rust instruction probes on carrack. The original assessment
+below records the initial snapshot; its service-state and implementation-state
+observations are historical. End-to-end performance parity remains unproven.
+
 **Recommendation: proceed with a bounded Rust kernel and host-integration experiment.
 Matching ninfer is technically plausible, but it is not demonstrated and the issue
 needs corrections before full implementation.** There is no existing

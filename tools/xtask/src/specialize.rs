@@ -11,6 +11,7 @@ pub(crate) fn run(args: &[String]) -> DynResult<()> {
         [command, rest @ ..] if command == "baseline-plan" => fixtures::run(rest),
         [command, rest @ ..] if command == "nvfp4-probe" => probe::run(rest),
         [command, rest @ ..] if command == "instruction-probe" => probe::instructions(rest),
+        [command, rest @ ..] if command == "workload-probe" => probe::workloads(rest),
         _ => Err("usage: xtask specialize baseline --plan PATH --output NEW_DIRECTORY".into()),
     }
 }

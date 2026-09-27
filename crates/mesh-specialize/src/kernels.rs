@@ -5,11 +5,27 @@ mod cuda;
 #[cfg(any(target_os = "linux", test))]
 mod fixtures;
 #[cfg(any(target_os = "linux", test))]
+mod gemm_fixtures;
+#[cfg(any(target_os = "linux", test))]
 mod memory_fixtures;
 #[cfg(any(target_os = "linux", test))]
 mod nvfp4_layout;
 #[cfg(any(target_os = "linux", test))]
 mod ordinary_fixtures;
+#[cfg(any(target_os = "linux", test))]
+mod rms_norm_fixtures;
+
+/// Run representative RMSNorm and tiled GEMM fixtures with resident GPU timing.
+/// These are kernel workloads, not model prefill/decode measurements.
+pub fn workload_probe(ptx: &str, device: i32) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::workloads::run(ptx, device);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device);
+        anyhow::bail!("CUDA workload trials require Linux")
+    }
+}
 
 /// Qualify shared-memory copies/loads, ordinary MMA, and register budgeting.
 pub fn instruction_probe(ptx: &str, device: i32) -> anyhow::Result<serde_json::Value> {
