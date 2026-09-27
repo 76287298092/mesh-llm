@@ -310,3 +310,31 @@ Ignored PTX/scripts needed for current trials were recovered from Carrack.
 F09 and F10 workers have delivered bounded components; whole-model integration
 and qualification remain open. F02 natural-language evidence is diagnostic and
 neither native profile is promoted.
+
+## Complete-source runtime comparison and next integration sequence
+
+The user requested a deeper codebase investigation rather than further isolated
+kernel tuning. The dedicated research worker inspected complete Ninfer source at
+`e31bc99b13f517c8aae70b997b7c4a49b4dcdc5d`; parent reviewed the report and key
+allocation, ordinary-round, vocabulary-head and NVFP4 dispatch consumers.
+See `KNOWLEDGE/findings/ninfer-runtime-deep-dive.md` for pinned references,
+measurement limits, numerical/quality gates, and five ranked experiments.
+
+Next implementation is an exact resident MLP workspace/stream experiment using
+F07's checked layout/lease. Compare existing execution, persistent storage with
+existing waits, and enqueue-only chain with one completion boundary, keeping
+arithmetic and diagnostic values unchanged. Exercise real FP8 and NVFP4 MLPs at
+rows1/5/128/512, preserve distinct NVFP4 projection input scales, and separately
+measure allocation/free counts, driver/host timing, whole-chain event span and
+uninstrumented wall time. Shared input quantization is a separate ablation.
+Only then extend stable storage and enqueue contracts to whole-model GPU greedy
+selection and ordinary graph replay. The exact profile keeps its current gates.
+
+Independent subsequent tracks are small-batch A16/head specialization, larger
+pipelined NVFP4 tiles, and chunked GDN/tiled attention with long-context quality.
+These are techniques to implement independently in Rust, not imported Ninfer code.
+F03's prepared standalone fusion probe remains unqualified and is not selected
+as the next performance priority. Existing split-K/compact full-model sanitizer
+qualification remains in progress; do not start competing GPU trials or change
+Carrack source/binaries until that process is terminal. Matched Ninfer quality,
+long context, concurrency and serving evidence remain required for completion.

@@ -5,6 +5,7 @@ Start with [the implementation plan](../PLAN.md) and the
 
 | Entry | Status |
 | --- | --- |
+| [Ninfer runtime deep dive](findings/ninfer-runtime-deep-dive.md) | Complete-source execution comparison; workspace/stream ordering first, then GPU selection/graphs, shape-specific kernels, and long-context algorithms |
 | [Ninfer model format](findings/ninfer-model-format.md) | Pinned packer/consumer analysis; row-major FP8, swizzled NVFP4 scales, provenance gaps and isolating experiments |
 | [Ninfer feature parity](findings/ninfer-feature-parity.md) | Parent source assessment of ten performance mechanisms, honest measurement gaps and one owner per feature |
 | [Resident MTP continuation](optimizations/mtp.md) | Independent head, exact target output/state, forced accept/reject and all sanitizers pass; text timing is acceptance-dependent, final set contended |
