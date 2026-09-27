@@ -15,8 +15,8 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::time::Instant;
 
-const MAX_PREFIX_TOKENS: usize = 128;
-const MAX_CAPACITY: usize = 129;
+const MAX_PREFIX_TOKENS: usize = 512;
+const MAX_CAPACITY: usize = 513;
 const MEMORY_RESERVE_BYTES: u64 = 1024 * 1024 * 1024;
 const REQUIRED_KERNELS: [&str; 20] = [
     "embedding_norm_bf16",
@@ -79,7 +79,23 @@ pub(in crate::kernels) fn run(
     let weights = ResidentWeights::load(&context, artifact, objects)?;
     let model = Model::new(&weights, config)?;
     let warmup = run_warmup(&context, &module, &model, config, tokens[0])?;
-    let control = run_unprofiled(&context, &module, &model, config, tokens)?;
+    let control = run_unprofiled(&context, &module, &model, config, tokens, false)?;
+    let partitioned = run_unprofiled(&context, &module, &model, config, tokens, true)?;
+    let partition = json!({
+        "prefill_logits_bit_exact": control.prefill_logits == partitioned.prefill_logits,
+        "decode_logits_bit_exact": control.output.logits == partitioned.output.logits,
+        "state_bit_exact": control.state_sha256 == partitioned.state_sha256,
+        "whole_state_sha256": control.state_sha256,
+        "token_state_sha256": partitioned.state_sha256,
+        "cursor_exact": control.cursor_past == partitioned.cursor_past,
+        "prefill_bf16_differences": control.prefill_logits.iter().zip(&partitioned.prefill_logits).filter(|(a,b)|a!=b).count(),
+        "decode_bf16_differences": control.output.logits.iter().zip(&partitioned.output.logits).filter(|(a,b)|a!=b).count(),
+    });
+    let partition_exact = control.prefill_logits == partitioned.prefill_logits
+        && control.output.logits == partitioned.output.logits
+        && control.state_sha256 == partitioned.state_sha256
+        && control.cursor_past == partitioned.cursor_past;
+    drop(partitioned);
     let profiled = run_profiled(&context, &module, &model, config, tokens)?;
     validate_kernel_profile(&profiled.kernel_profile)?;
 
@@ -128,7 +144,8 @@ pub(in crate::kernels) fn run(
     let past_exact = resulting_past == tokens.len() + 1
         && control_cursor_past == resulting_past
         && profiled_cursor_past == resulting_past;
-    let all_passed = prefill_exact && exact_output_and_state && past_exact && memory_released;
+    let all_passed =
+        prefill_exact && exact_output_and_state && past_exact && memory_released && partition_exact;
 
     Ok(json!({
         "schema_version": 1,
@@ -140,6 +157,8 @@ pub(in crate::kernels) fn run(
         "decode_input_token": decode_input_token,
         "resulting_past": resulting_past,
         "exact_prefill_logits": prefill_exact,
+        "whole_vs_token_partition": partition,
+        "whole_vs_token_partition_exact": partition_exact,
         "exact_output_and_state": exact_output_and_state,
         "control_state_sha256": control_state_sha256,
         "profiled_state_sha256": profiled_state_sha256,
@@ -253,10 +272,20 @@ fn run_unprofiled(
     model: &Model<'_, '_>,
     config: &DecoderConfig,
     tokens: &[u32],
+    token_prefill: bool,
 ) -> Result<DecodeRun> {
     let mut session = Session::new(context, config)?;
-    let (prefill_logits, prefill_token, prefill_past) =
-        run_prefill(context, module, model, tokens, &mut session)?;
+    let (prefill_logits, prefill_token, prefill_past) = if token_prefill {
+        let mut last = None;
+        for &token in tokens {
+            last = Some(model.forward(context, module, &[token], &mut session, None)?);
+        }
+        let output = last.context("empty profile prefix")?;
+        check_committed(&session, &output, tokens.len())?;
+        (output.logits, output.token, output.past)
+    } else {
+        run_prefill(context, module, model, tokens, &mut session)?
+    };
     let (output, wall_seconds) =
         timed_forward(context, module, model, prefill_token, &mut session)?;
     check_committed(&session, &output, tokens.len() + 1)?;

@@ -5,8 +5,8 @@ use std::path::Path;
 
 pub fn run(path: &Path, ptx: &str, device: i32, tokens: &[u32]) -> Result<serde_json::Value> {
     ensure!(
-        (1..=128).contains(&tokens.len()),
-        "model profile requires 1..128 prefix tokens"
+        (1..=512).contains(&tokens.len()),
+        "model profile requires 1..512 prefix tokens"
     );
     let mut artifact = VerifiedArtifact::open(path)?;
     super::inventory::validate(artifact.directory())?;

@@ -169,8 +169,8 @@ fn validate_request(
         "model bench capacity must be in 1..=2048"
     );
     ensure!(
-        (1..=128).contains(&tokens.len()),
-        "model bench prompt must contain 1..=128 tokens"
+        (1..=512).contains(&tokens.len()),
+        "model bench prompt must contain 1..=512 tokens"
     );
     ensure!(
         (2..=16).contains(&output_tokens),
@@ -416,7 +416,7 @@ mod tests {
     fn validates_bounded_fixed_length_requests() {
         assert_eq!(validate_request(&[1, 2], 10, 32, 64, 4, 2).unwrap(), 5);
         assert!(validate_request(&[], 10, 32, 64, 2, 1).is_err());
-        assert!(validate_request(&[1; 129], 256, 256, 64, 2, 1).is_err());
+        assert!(validate_request(&[1; 513], 256, 1024, 64, 2, 1).is_err());
         assert!(validate_request(&[10], 10, 32, 64, 2, 1).is_err());
         assert!(validate_request(&[1], 10, 2, 64, 3, 1).is_err());
         assert!(validate_request(&[1], 10, 32, 63, 2, 1).is_err());
