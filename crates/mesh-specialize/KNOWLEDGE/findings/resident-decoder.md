@@ -25,3 +25,9 @@ No new device arithmetic is planned in this extraction. Pure bounds tests,
 Linux builds and live connected-path/sanitizer evidence remain required. Record
 exact source and hardware evidence when those gates run; do not infer them from
 the earlier check-harness successes.
+
+Initial integration: macOS passed 181 tests, Clippy and no-console checks;
+Linux passed 224 library and 20 validator tests. Linux Clippy caught an unnecessary
+explicit drop of the embedding view, which has no destructor. Remove that drop;
+the view's last use already ends its borrow before freeing the weight arena.
+Preserve the first lint log and rerun Linux qualification on the correction.

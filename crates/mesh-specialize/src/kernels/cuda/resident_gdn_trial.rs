@@ -96,7 +96,6 @@ pub(in crate::kernels) fn run(
         };
         reports.push(trial.check(case)?);
     }
-    drop(embedding);
     drop(layer);
     drop(weights);
     context.synchronize()?;
