@@ -8,7 +8,7 @@ use anyhow::{Result, ensure};
 use serde_json::{Value, json};
 use std::ffi::c_void;
 
-pub(super) fn run(ptx: &str, device: i32) -> Result<Value> {
+pub(crate) fn run(ptx: &str, device: i32) -> Result<Value> {
     let ctx = Context::new(device)?;
     let info = ctx.info();
     ensure!(
