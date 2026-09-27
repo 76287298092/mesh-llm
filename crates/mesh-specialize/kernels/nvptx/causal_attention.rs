@@ -1,7 +1,6 @@
 use core::arch::asm;
 
 const BLOCK_THREADS: u32 = 256;
-const LOG2_E: f32 = core::f32::consts::LOG2_E;
 
 #[inline(always)]
 fn block_and_thread() -> (u32, u32) {
@@ -29,10 +28,10 @@ fn linear_thread_index() -> usize {
 #[inline(always)]
 fn attention_partials_base() -> u32 {
     let base: u32;
-    // SAFETY: Declares one CTA-local FP32 partial for each of its 256 threads.
+    // SAFETY: Declares one CTA-local FP64 partial for each of its 256 threads.
     unsafe {
         asm!(
-            ".shared .align 4 .b8 causal_attention_partials[1024];",
+            ".shared .align 8 .b8 causal_attention_partials[2048];",
             "mov.u32 {base}, causal_attention_partials;",
             base = out(reg32) base,
             options(nostack),
@@ -42,28 +41,28 @@ fn attention_partials_base() -> u32 {
 }
 
 #[inline(always)]
-fn store_partial(base: u32, index: u32, value: f32) {
-    // SAFETY: Callers use indices 0..256 in the CTA's 1024-byte shared array.
-    let address = base + index * 4;
+fn store_partial(base: u32, index: u32, value: f64) {
+    // SAFETY: Callers use indices 0..256 in the CTA's 2048-byte shared array.
+    let address = base + index * 8;
     unsafe {
         asm!(
-            "st.shared.f32 [{address}], {value};",
+            "st.shared.f64 [{address}], {value};",
             address = in(reg32) address,
-            value = in(reg32) value,
+            value = in(reg64) value,
             options(nostack),
         )
     };
 }
 
 #[inline(always)]
-fn load_partial(base: u32, index: u32) -> f32 {
-    let value: f32;
-    // SAFETY: Callers use indices 0..256 in the CTA's 1024-byte shared array.
-    let address = base + index * 4;
+fn load_partial(base: u32, index: u32) -> f64 {
+    let value: f64;
+    // SAFETY: Callers use indices 0..256 in the CTA's 2048-byte shared array.
+    let address = base + index * 8;
     unsafe {
         asm!(
-            "ld.shared.f32 {value}, [{address}];",
-            value = out(reg32) value,
+            "ld.shared.f64 {value}, [{address}];",
+            value = out(reg64) value,
             address = in(reg32) address,
             options(nostack),
         )
@@ -78,15 +77,15 @@ fn block_barrier() {
 }
 
 #[inline(always)]
-fn add_rn(left: f32, right: f32) -> f32 {
-    let sum: f32;
-    // SAFETY: This scalar FP32 operation has no memory or stack effects.
+fn add_rn(left: f64, right: f64) -> f64 {
+    let sum: f64;
+    // SAFETY: This scalar FP64 operation has no memory or stack effects.
     unsafe {
         asm!(
-            "add.rn.f32 {sum}, {left}, {right};",
-            sum = out(reg32) sum,
-            left = in(reg32) left,
-            right = in(reg32) right,
+            "add.rn.f64 {sum}, {left}, {right};",
+            sum = out(reg64) sum,
+            left = in(reg64) left,
+            right = in(reg64) right,
             options(nomem, nostack),
         )
     };
@@ -94,15 +93,15 @@ fn add_rn(left: f32, right: f32) -> f32 {
 }
 
 #[inline(always)]
-fn multiply_rn(left: f32, right: f32) -> f32 {
-    let product: f32;
-    // SAFETY: This scalar FP32 operation has no memory or stack effects.
+fn multiply_rn(left: f64, right: f64) -> f64 {
+    let product: f64;
+    // SAFETY: This scalar FP64 operation has no memory or stack effects.
     unsafe {
         asm!(
-            "mul.rn.f32 {product}, {left}, {right};",
-            product = out(reg32) product,
-            left = in(reg32) left,
-            right = in(reg32) right,
+            "mul.rn.f64 {product}, {left}, {right};",
+            product = out(reg64) product,
+            left = in(reg64) left,
+            right = in(reg64) right,
             options(nomem, nostack),
         )
     };
@@ -110,15 +109,15 @@ fn multiply_rn(left: f32, right: f32) -> f32 {
 }
 
 #[inline(always)]
-fn subtract_rn(left: f32, right: f32) -> f32 {
-    let difference: f32;
-    // SAFETY: This scalar FP32 operation has no memory or stack effects.
+fn subtract_rn(left: f64, right: f64) -> f64 {
+    let difference: f64;
+    // SAFETY: This scalar FP64 operation has no memory or stack effects.
     unsafe {
         asm!(
-            "sub.rn.f32 {difference}, {left}, {right};",
-            difference = out(reg32) difference,
-            left = in(reg32) left,
-            right = in(reg32) right,
+            "sub.rn.f64 {difference}, {left}, {right};",
+            difference = out(reg64) difference,
+            left = in(reg64) left,
+            right = in(reg64) right,
             options(nomem, nostack),
         )
     };
@@ -126,15 +125,15 @@ fn subtract_rn(left: f32, right: f32) -> f32 {
 }
 
 #[inline(always)]
-fn divide_rn(numerator: f32, denominator: f32) -> f32 {
-    let quotient: f32;
-    // SAFETY: This scalar FP32 operation has no memory or stack effects.
+fn divide_rn(numerator: f64, denominator: f64) -> f64 {
+    let quotient: f64;
+    // SAFETY: This scalar FP64 operation has no memory or stack effects.
     unsafe {
         asm!(
-            "div.rn.f32 {quotient}, {numerator}, {denominator};",
-            quotient = out(reg32) quotient,
-            numerator = in(reg32) numerator,
-            denominator = in(reg32) denominator,
+            "div.rn.f64 {quotient}, {numerator}, {denominator};",
+            quotient = out(reg64) quotient,
+            numerator = in(reg64) numerator,
+            denominator = in(reg64) denominator,
             options(nomem, nostack),
         )
     };
@@ -142,24 +141,38 @@ fn divide_rn(numerator: f32, denominator: f32) -> f32 {
 }
 
 #[inline(always)]
-fn exp_approx(value: f32) -> f32 {
-    let exponent = multiply_rn(value, LOG2_E);
-    let result: f32;
-    // SAFETY: This scalar approximate base-2 exponential has no memory or stack effects.
+fn fp32_to_fp64_exact(value: f32) -> f64 {
+    let converted: f64;
+    // SAFETY: This scalar conversion has no memory or stack effects.
     unsafe {
         asm!(
-            "ex2.approx.ftz.f32 {result}, {exponent};",
-            result = out(reg32) result,
-            exponent = in(reg32) exponent,
+            "cvt.f64.f32 {converted}, {value};",
+            converted = out(reg64) converted,
+            value = in(reg32) value,
             options(nomem, nostack),
         )
     };
-    result
+    converted
 }
 
 #[inline(always)]
-fn decode_bf16(bits: u16) -> f32 {
-    f32::from_bits((bits as u32) << 16)
+fn fp64_to_fp32_rn(value: f64) -> f32 {
+    let converted: f32;
+    // SAFETY: This scalar conversion has no memory or stack effects.
+    unsafe {
+        asm!(
+            "cvt.rn.f32.f64 {converted}, {value};",
+            converted = out(reg32) converted,
+            value = in(reg64) value,
+            options(nomem, nostack),
+        )
+    };
+    converted
+}
+
+#[inline(always)]
+fn decode_bf16(bits: u16) -> f64 {
+    fp32_to_fp64_exact(f32::from_bits((bits as u32) << 16))
 }
 
 #[inline(always)]
@@ -233,7 +246,7 @@ pub unsafe extern "ptx-kernel" fn attention_kv_append(
 }
 
 #[inline(always)]
-fn reduce_dot(shared: u32, thread: u32, partial: f32) -> f32 {
+fn reduce_dot(shared: u32, thread: u32, partial: f64) -> f64 {
     store_partial(shared, thread, partial);
     block_barrier();
 
@@ -255,16 +268,17 @@ fn reduce_dot(shared: u32, thread: u32, partial: f32) -> f32 {
 /// `q` and `output` use compact `[rows, query_heads, width]` layout. The persistent
 /// K/V caches use `[capacity, kv_heads, width]`; query heads map evenly onto KV
 /// heads. Row `r` attends to cache tokens `0..=past + r`. The implementation keeps
-/// only one FP32 score reduction and one online softmax accumulator per output
-/// channel, without materializing scores or probabilities. Qualification assumes
-/// finite normal-range scores; approximate exponentiation can flush very small
-/// tail contributions to zero.
+/// only one FP64 score reduction and one online softmax accumulator per output
+/// channel, without materializing scores or probabilities. The online maximum,
+/// weights, normalizer, and weighted-value accumulator also use FP64. A range-reduced
+/// exponential avoids flushing small tail contributions. This accurate baseline is
+/// untuned; performance has not been measured.
 ///
 /// The numerical test profile uses finite Q values and finite K/V values in the
 /// initialized cache prefix `[0, past + rows)` with a positive finite scale. The
 /// unused cache suffix may contain NaN poison and is not read. The harness checks
-/// final FP32 diagnostics for finiteness after launch; arbitrary extreme finite
-/// inputs may overflow FP32 intermediates.
+/// final FP32 diagnostics for finiteness after launch; sufficiently extreme finite
+/// inputs may still overflow when the result is converted to FP32.
 ///
 /// # Safety
 /// Launch `grid = [rows * query_heads, 1, 1]` and `block = [256, 1, 1]`. Require
@@ -323,16 +337,17 @@ pub unsafe extern "ptx-kernel" fn causal_attention_bf16(
     let q_start = block_index * width_usize;
     let kv_row_width = kv_heads as usize * width_usize;
     let kv_head_offset = kv_head * width_usize;
-    let mut query_value = 0.0_f32;
+    let mut query_value = 0.0_f64;
     if thread < width {
         // SAFETY: This active lane owns one in-range BF16 query channel.
         query_value = unsafe { decode_bf16(*q.add(q_start + thread_index)) };
     }
 
     let sequence_len = past + row as u32 + 1;
-    let mut maximum = f32::NEG_INFINITY;
-    let mut normalizer = 0.0_f32;
-    let mut accumulator = 0.0_f32;
+    let mut maximum = f64::NEG_INFINITY;
+    let mut normalizer = 0.0_f64;
+    let mut accumulator = 0.0_f64;
+    let scale = fp32_to_fp64_exact(scale);
     let mut token = 0_u32;
     while token < sequence_len {
         let cache_row = token as usize * kv_row_width + kv_head_offset;
@@ -340,24 +355,24 @@ pub unsafe extern "ptx-kernel" fn causal_attention_bf16(
             // SAFETY: Active channels address this KV head in a token below sequence_len <= capacity.
             unsafe { decode_bf16(*cache_k.add(cache_row + thread_index)) }
         } else {
-            0.0_f32
+            0.0_f64
         };
         let partial = multiply_rn(query_value, key_value);
         let dot = reduce_dot(shared, thread, partial);
         let score = multiply_rn(dot, scale);
         let next_maximum = if score > maximum { score } else { maximum };
         let alpha = if normalizer == 0.0 {
-            0.0_f32
+            0.0_f64
         } else {
-            exp_approx(subtract_rn(maximum, next_maximum))
+            super::exponential::exp_nonpositive(subtract_rn(maximum, next_maximum))
         };
-        let beta = exp_approx(subtract_rn(score, next_maximum));
+        let beta = super::exponential::exp_nonpositive(subtract_rn(score, next_maximum));
         let next_normalizer = add_rn(multiply_rn(normalizer, alpha), beta);
         let value = if thread < width {
             // SAFETY: Active channels address the same in-range token and KV head in the V cache.
             unsafe { decode_bf16(*cache_v.add(cache_row + thread_index)) }
         } else {
-            0.0_f32
+            0.0_f64
         };
         accumulator = add_rn(multiply_rn(accumulator, alpha), multiply_rn(beta, value));
         maximum = next_maximum;
@@ -371,7 +386,7 @@ pub unsafe extern "ptx-kernel" fn causal_attention_bf16(
 
     if thread < width {
         let output_index = q_start + thread_index;
-        let normalized = divide_rn(accumulator, normalizer);
+        let normalized = fp64_to_fp32_rn(divide_rn(accumulator, normalizer));
         let rounded = encode_bf16_rn(normalized);
         // SAFETY: This active lane exclusively owns its output and diagnostic channels.
         unsafe {

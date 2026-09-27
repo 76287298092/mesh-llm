@@ -3,6 +3,7 @@
 
 use core::arch::asm;
 
+mod exponential;
 mod attention_gate;
 mod attention_prepare;
 mod bf16_linear;

@@ -36,6 +36,7 @@ mod resident_head;
 mod resident_layer_diagnostic;
 mod resident_mlp;
 mod resident_model;
+pub(super) mod resident_model_bench;
 pub(super) mod resident_model_trial;
 mod resident_norm;
 mod resident_nvfp4;

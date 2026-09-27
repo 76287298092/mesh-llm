@@ -4,6 +4,7 @@ mod checkpoint;
 mod entry;
 mod fixtures;
 mod model;
+mod model_bench;
 mod observations;
 mod probe;
 
@@ -11,6 +12,7 @@ use crate::command::DynResult;
 
 pub(crate) fn run(args: &[String]) -> DynResult<()> {
     match args {
+        [command, rest @ ..] if command == "qwen-model-bench" => model_bench::run(rest),
         [command, rest @ ..] if command == "qwen-model-trace" => model::trace(rest),
         [command, rest @ ..] if command == "qwen-model-reference" => model::reference(rest),
         [command, rest @ ..] if command == "qwen-model-check" => model::check(rest),

@@ -44,6 +44,28 @@ pub fn model_check(
     }
 }
 
+pub struct ModelBenchRequest<'a> {
+    pub tokens: &'a [u32],
+    pub output_tokens: usize,
+    pub repetitions: usize,
+}
+pub fn model_benchmark(
+    ptx: &str,
+    device: i32,
+    artifact: &mut crate::artifact::reader::VerifiedArtifact,
+    objects: &[crate::artifact::schema::Object],
+    config: &DecoderConfig,
+    request: &ModelBenchRequest<'_>,
+) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::resident_model_bench::run(ptx, device, artifact, objects, config, request);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device, artifact, objects, config, request);
+        anyhow::bail!("Model benchmark requires Linux")
+    }
+}
+
 pub struct ResidentAttentionShape {
     pub hidden: usize,
     pub intermediate: usize,
@@ -387,3 +409,6 @@ pub fn nvfp4_probe(ptx: &str, device: i32) -> anyhow::Result<serde_json::Value> 
 }
 #[path = "../kernels/nvptx/silu.rs"]
 pub mod silu;
+
+#[path = "../kernels/nvptx/exponential.rs"]
+pub mod exponential;

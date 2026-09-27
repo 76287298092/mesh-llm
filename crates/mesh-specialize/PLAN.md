@@ -7,8 +7,8 @@ prefill/decode/context remain open.
 
 Host policy now checks exact model/weights and explicit selected-device admission.
 The [live device-policy trial](KNOWLEDGE/findings/selected-device-admission.md)
-passes. Resident artifact discovery, ABI loading and full model execution are
-still required before this can serve a request.
+passes. The standalone model experiment executes all 64 layers. Resident artifact
+discovery, ABI loading, tokenization and serving integration remain open.
 
 The internal `.mspec` container now has a content-derived identity, bounded
 resident reader and CPU object assembler. Pinned Safetensors import and full
@@ -34,8 +34,8 @@ required to meet the unchanged per-token error budget; its performance cost is
 unmeasured. All 1,620 text tensors now remain resident together in one verified
 device arena, with the 64-layer schedule's state allocated at capacity 131,072.
 Full readback hashes, zeroed state, resident entry operation and three sanitizers
-pass. This is allocation capacity, not tested inference context. Full-model
-scheduling/logit parity and model execution remain open. The final-eight-layer
+pass. This is allocation capacity, not tested inference context. The connected decoder now executes all layers; multi-token logit qualification
+and model performance remain open. The final-eight-layer
 FP8 MLP execution path now uses persistent weights without host intermediate
 readbacks or scalar reference work in the execution path. Layers 56 and 63 pass
 independent one/17-token branch comparisons and all three sanitizers.
@@ -190,7 +190,7 @@ that control's rates directly to MTP4 as an isolated speedup across different in
 | Q02 full-attention preparation | Partial: 258,048 layer-3 projection and 129,024 prepared Q/K values pass; all three sanitizers clean | `KNOWLEDGE/findings/attention-preparation.md`; attention/KV cache and full layer still pending |
 | Q02 causal attention and KV | Partial: 110,592 real outputs pass; whole/chunk/token FP32/BF16 outputs and KV states exact; sanitizers clean | `KNOWLEDGE/findings/causal-attention.md`; full attention layer/model pending |
 | Q02 complete attention layer | Partial: one/17-token full layer and exact initialized K/V pass fixed aggregate/per-token budgets; sanitizers clean | `KNOWLEDGE/findings/full-attention-layer.md`; full-model scheduling/logits and performance remain pending |
-| H03 discovery and H04 ABI | Pending | No executable specialized model yet |
+| H03 discovery and H04 ABI | Pending | Standalone experimental decoder executes; host discovery and ABI integration are not implemented |
 | Persistent text weights and compiled state layout | Allocation/transfer gate passes | `KNOWLEDGE/findings/persistent-residency.md`; all 1,620 hashes and 128 zeroed regions pass, first resident entry exact, sanitizers clean; decoder execution pending |
 | Full model performance/context trial | Pending | None |
 | Connected 64-layer decoder and final vocabulary head | One-token independent hidden/logit comparison bit exact | `KNOWLEDGE/findings/resident-model.md`; initial SiLU rounding failure diagnosed and corrected; multi-token/sanitizer qualification pending |

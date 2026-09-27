@@ -165,3 +165,34 @@ blocks. It replays a selected layer from the saved independent previous-layer
 hidden values and records Q/K/V projection, prepared Q/K/gate, attention, output
 and MLP boundaries. Saved reference structure remains compatible; no arithmetic,
 tolerance or normal execution readback changes are made.
+
+### Attention output rounding
+
+Diagnostic source `e8b63b8566107b9608153e5bf11c43e8164b120c` passes 206 macOS
+and 261 Linux library tests, 20 Linux validator tests, Clippy and the release
+build. Layer 47's normalization, Q/K/V projections, prepared Q/K and query gate
+are exact. The attention output first differs in three BF16 values (indices
+10291, 10318 and 11622), which propagate through gating/projection/residual into
+17 final hidden differences. The MLP branch remains exact for this fixture.
+Raw evidence: `layer47-diagnostic/`, duration 20.297814654 seconds. Ninfer resumes
+at 07:09:37 EDT, PID 3152310, HTTP 200, ComfyUI unchanged.
+
+The correction under test widens dot-product reduction and online softmax/value
+accumulation to FP64, uses a Rust range-reduced exponential polynomial, and rounds
+once to FP32 before BF16. It retains the same causal cache traversal and kernel
+ABI. This is an untuned correctness baseline; FP64 cost on this consumer GPU must
+be measured, and subsequent optimization must retain independent numerical checks.
+
+### Bounded model timing harness
+
+`qwen-model-bench` measures the connected 64-layer model without layer observers,
+CPU reference execution or state hashing. It accepts 1..128 raw prompt tokens,
+2..16 fixed-length greedy output tokens and 1..3 fresh sessions. Weight loading,
+JIT warmup and session allocation precede timing. Prefill includes final logits and
+the first greedy token; decode counts the remaining output-token intervals. The
+harness records generated IDs, wall-clock intervals, state capacity, weight/state
+allocation and memory samples after completed forwards. Those samples cannot
+establish transient peak allocation. Fixed-length raw-token execution does not
+certify tokenizer/chat quality or a matched Ninfer workload. Numerical correctness
+and timing results are reported separately; an executed benchmark is not a parity
+claim. No device instruction sites are introduced by the timing harness.
