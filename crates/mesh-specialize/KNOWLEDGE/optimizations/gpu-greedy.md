@@ -140,3 +140,22 @@ forward, even when the GPU-selection option is enabled. Its separate
 `gpu_selection_check` executes the device-only path on identical inputs and
 compares selected tokens and complete state. Do not attribute the benchmark's
 GPU-selection effect from those diagnostic event totals.
+
+
+Paired model trial `greedy-model-1` at source `11b84609f` held MLP workspace on
+and exact A8/split-K off in both modes. Three repetitions of32 generated tokens
+matched exactly across CPU/GPU selection. Medians: Python25.5903 ->25.7221
+(+0.52%); prose25.6138 ->25.6799 (+0.26%). These sub-percent fixed-order,
+shared-GPU differences are not a demonstrated stable speedup. GPU selection
+reduces the readback contract, but this trial does not identify it as a major
+performance bottleneck.
+
+For both prompts, the separate device-only prefill and teacher-forced decode
+matched CPU-selected tokens, cursors and complete state hashes. Full-logit
+CPU diagnostic forwards retained exact partition/control equivalence across
+modes. Those exported logits are diagnostic outputs, not device-only readbacks;
+the32-token benchmark does not export its final full state. Whole-model sanitizer
+checks are running in `greedy-model-check-1`. Default selection remains CPU.
+Ninfer stayed inactive and ComfyUI remained resident. Next priority is the
+measured longer-context serial attention bottleneck, while ordinary graph work
+remains open.

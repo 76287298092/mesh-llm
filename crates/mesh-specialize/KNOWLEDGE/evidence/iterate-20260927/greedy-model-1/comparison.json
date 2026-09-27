@@ -1,0 +1,43 @@
+{
+  "cases": [
+    {
+      "prompt": "python",
+      "decode_tokens_per_second": {
+        "off": 25.59025749113555,
+        "on": 25.72212228006853
+      },
+      "improvement_percent": 0.5152929351283753,
+      "generated_tokens_exact": true,
+      "diagnostic_logits_exact": true,
+      "diagnostic_state_exact": true,
+      "device_selection_check": {
+        "all_passed": true,
+        "cursor_past": 33,
+        "decode_token": 12305,
+        "prefill_token": 71093,
+        "scope": "device-only ordinary selection versus independent full-logit CPU selection on identical inputs",
+        "state_sha256": "6c8e4577f1888ec14c2cb1aab052f30fd0fcc355382e59e99676c6d289083cd0"
+      }
+    },
+    {
+      "prompt": "explain",
+      "decode_tokens_per_second": {
+        "off": 25.613831738827834,
+        "on": 25.679885765331075
+      },
+      "improvement_percent": 0.2578842055994013,
+      "generated_tokens_exact": true,
+      "diagnostic_logits_exact": true,
+      "diagnostic_state_exact": true,
+      "device_selection_check": {
+        "all_passed": true,
+        "cursor_past": 32,
+        "decode_token": 314,
+        "prefill_token": 37405,
+        "scope": "device-only ordinary selection versus independent full-logit CPU selection on identical inputs",
+        "state_sha256": "2ba0b3816bcf05384f252e43be7b763b7a4629e99d4512c0fc83a3bdcf49ba4a"
+      }
+    }
+  ],
+  "scope": "Shared GPU, 32 output tokens, three repetitions per mode; fixed off/on order. Short natural prompt qualification, not Ninfer parity."
+}
