@@ -3,6 +3,7 @@
 mod causal_conv4;
 mod driver;
 pub(super) mod embedding_norm;
+mod gdn_output;
 mod gdn_prepare;
 mod gdn_recurrent;
 mod gemm;

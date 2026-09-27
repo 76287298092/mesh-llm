@@ -2,8 +2,8 @@
 use crate::{
     artifact::reader::VerifiedArtifact,
     kernels::{
-        Bf16Projection, CausalConv4Weights, EmbeddingNormInput, Fp8Projection, GdnWeights,
-        ProjectionInput,
+        Bf16Projection, CausalConv4Weights, EmbeddingNormInput, Fp8Projection, GdnOutputWeights,
+        GdnWeights, ProjectionInput,
     },
 };
 use anyhow::Result;
@@ -73,6 +73,16 @@ pub fn trial(path: &Path, ptx: &str, device: i32) -> Result<Value> {
         "tensors/model.language_model.layers.0.linear_attn.dt_bias",
         &mut dt_bias,
     )?;
+    let prefix = "tensors/model.language_model.layers.0.linear_attn";
+    let mut output_norm = Vec::new();
+    let mut output_weights = Vec::new();
+    let mut output_scales = Vec::new();
+    artifact.copy_object(&format!("{prefix}.norm.weight"), &mut output_norm)?;
+    artifact.copy_object(&format!("{prefix}.out_proj.weight"), &mut output_weights)?;
+    artifact.copy_object(
+        &format!("{prefix}.out_proj.weight_scale"),
+        &mut output_scales,
+    )?;
     let input = ProjectionInput {
         entry,
         projections,
@@ -80,6 +90,17 @@ pub fn trial(path: &Path, ptx: &str, device: i32) -> Result<Value> {
         convolution: Some(CausalConv4Weights {
             projection: 0,
             weights: conv_weights,
+        }),
+        gdn_output: Some(GdnOutputWeights {
+            z_projection: 1,
+            norm: output_norm,
+            epsilon: 1e-6,
+            projection: Fp8Projection {
+                name: "out_proj".into(),
+                weights: output_weights,
+                scales: output_scales,
+                channels: 5120,
+            },
         }),
         gdn: Some(GdnWeights {
             a_projection: 0,

@@ -14,12 +14,18 @@ pub(super) struct Input<'a, 'ctx> {
     pub(super) host: reference::Input<'a>,
 }
 
+pub(super) struct CheckedRecurrent<'a> {
+    pub(super) output: Buffer<'a>,
+    pub(super) words: Vec<u16>,
+    pub(super) report: Value,
+}
+
 pub(super) fn check<'a>(
     context: &'a Context,
     module: &Module<'a>,
     input: Input<'_, 'a>,
     shape: &reference::Shape,
-) -> Result<Value> {
+) -> Result<CheckedRecurrent<'a>> {
     check_state(
         context,
         module,
@@ -35,7 +41,7 @@ fn check_state<'a>(
     input: Input<'_, 'a>,
     shape: &reference::Shape,
     initial: &[f32],
-) -> Result<Value> {
+) -> Result<CheckedRecurrent<'a>> {
     // Validate all dimensions, exact extents and domains before any device launch.
     let wide = reference::run(&input.host, initial, shape, reference::Reduction::WideF64)?;
     let mut partitions = vec![vec![shape.rows]];
@@ -71,7 +77,7 @@ fn check_state<'a>(
         exact(&chunked.state, &whole.state, "partition final state")?;
         reports.push(chunked.report);
     }
-    Ok(json!({
+    let report = json!({
         "all_passed":true,
         "shape":{"rows":shape.rows,"key_heads":shape.key_heads,"value_heads":shape.value_heads,"width":shape.width},
         "elements":whole.output.len(),"state_elements":whole.state.len(),
@@ -84,10 +90,16 @@ fn check_state<'a>(
         "state_transport":"in-place resident FP32 state, one thread owns each value column; no host replacement between chunks",
         "qk_head_mapping":"value head divided by value/key head ratio",
         "device_inputs_resident":true,"model_executable":false
-    }))
+    });
+    Ok(CheckedRecurrent {
+        output: whole.device,
+        words: whole.output,
+        report,
+    })
 }
 
-struct Sequence {
+struct Sequence<'a> {
+    device: Buffer<'a>,
     output: Vec<u16>,
     unrounded: Vec<f32>,
     state: Vec<f32>,
@@ -102,8 +114,8 @@ struct Trial<'a, 'ctx, 'module> {
     initial: &'a [f32],
 }
 
-impl Trial<'_, '_, '_> {
-    fn sequence(&self, partition: &[usize]) -> Result<Sequence> {
+impl<'ctx> Trial<'_, 'ctx, '_> {
+    fn sequence(&self, partition: &[usize]) -> Result<Sequence<'ctx>> {
         ensure!(
             partition.iter().all(|&n| n > 0) && partition.iter().sum::<usize>() == self.shape.rows,
             "invalid GDN recurrence partition"
@@ -149,6 +161,7 @@ impl Trial<'_, '_, '_> {
             "FP32 output vs scalar",
         )?;
         Ok(Sequence {
+            device: output,
             output: actual_output,
             unrounded: actual_unrounded,
             state: floats(&state, expected_state.len())?,
@@ -347,7 +360,7 @@ fn fixture_shape(
     };
     let nonzero = check_state(context, module, resident(), shape, &state)?;
     let reset = check(context, module, resident(), shape)?;
-    Ok(vec![nonzero, reset])
+    Ok(vec![nonzero.report, reset.report])
 }
 
 #[cfg(test)]

@@ -2,13 +2,12 @@
 use super::{
     causal_conv4,
     driver::{Buffer, Context, Function, Module},
-    embedding_norm, gdn_prepare, gdn_recurrent,
+    embedding_norm, gdn_output, gdn_prepare, gdn_recurrent,
 };
 use crate::{
     entry_reference, gdn_recurrent_reference,
     kernels::{
-        Bf16Projection, CausalConv4Weights, EmbeddingNormInput, Fp8Projection, GdnWeights,
-        ProjectionInput,
+        Bf16Projection, CausalConv4Weights, EmbeddingNormInput, Fp8Projection, ProjectionInput,
     },
     projection_reference,
 };
@@ -32,6 +31,7 @@ pub(in crate::kernels) fn run(ptx: &str, device: i32, input: &ProjectionInput) -
     let module = Module::load(&context, ptx)?;
     let quantization_fixtures = quantization_fixtures(&context, &module)?;
     let convolution_fixtures = causal_conv4::fixtures(&context, &module)?;
+    let gated_norm_fixtures = gdn_output::fixtures(&context, &module)?;
     let gdn_fixtures = gdn_prepare::fixtures(&context, &module)?;
     let recurrent_fixtures = gdn_recurrent::fixtures(&context, &module)?;
     let fixture = fixture()?;
@@ -39,11 +39,11 @@ pub(in crate::kernels) fn run(ptx: &str, device: i32, input: &ProjectionInput) -
     let cases = run_input(&context, &module, input)?;
     let after = context.memory()?;
     Ok(
-        json!({"schema_version":5,"kind":"qwen-gdn-recurrence-trial","device":info,
+        json!({"schema_version":6,"kind":"qwen-gdn-attention-chain-trial","device":info,
         "all_passed":cases.iter().chain(&fixture_cases).all(|c|c["passed"]==true),
         "cases":cases,"fixture_cases":fixture_cases,"quantization_fixtures":quantization_fixtures,
         "convolution_fixtures":convolution_fixtures,
-        "gdn_fixtures":gdn_fixtures,"recurrent_fixtures":recurrent_fixtures,
+        "gated_norm_fixtures":gated_norm_fixtures,"gdn_fixtures":gdn_fixtures,"recurrent_fixtures":recurrent_fixtures,
         "memory_before":{"free_bytes":before.0,"total_bytes":before.1},
         "memory_after":{"free_bytes":after.0,"total_bytes":after.1},
         "quantize_resources":module.function("fp8_quantize_bf16")?.resources()?,
@@ -51,9 +51,9 @@ pub(in crate::kernels) fn run(ptx: &str, device: i32, input: &ProjectionInput) -
         "bf16_linear_resources":module.function("bf16_linear")?.resources()?,
         "convolution_resources":module.function("causal_conv4_bf16")?.resources()?,
         "qk_norm_resources":module.function("gdn_qk_norm")?.resources()?,
-        "gate_resources":module.function("gdn_gates")?.resources()?,"recurrent_resources":module.function("gdn_recurrent")?.resources()?,
+        "gated_norm_resources":module.function("gdn_gated_rms_norm")?.resources()?,"gate_resources":module.function("gdn_gates")?.resources()?,"recurrent_resources":module.function("gdn_recurrent")?.resources()?,
         "activation_profile":"E4M3FN dynamic token scale in FP32; amax/448, zero scale replaced with 1; RNE finite saturation",
-        "gpu_chain":"embedding/norm -> FP8 quantization -> QKV -> convolution/SiLU -> Q/K normalization; normalized BF16 -> A/B -> beta/log-decay/decay gates -> recurrent matrix update and BF16 attention values; device intermediates stay resident",
+        "gpu_chain":"embedding/norm -> FP8 quantization -> QKV -> convolution/SiLU -> Q/K normalization; normalized BF16 -> A/B -> beta/log-decay/decay gates -> recurrent matrix update -> gated RMSNorm using resident Z -> FP8 output projection; device intermediates stay resident",
         "timing_collected":false,"full_model_executed":false}),
     )
 }
@@ -139,6 +139,9 @@ fn validate(input: &ProjectionInput) -> Result<()> {
     if let Some(gdn) = &input.gdn {
         gdn_prepare::validate_connections(input, gdn)?;
     }
+    if let Some(output) = &input.gdn_output {
+        gdn_output::validate(input, output)?;
+    }
     Ok(())
 }
 
@@ -189,6 +192,7 @@ fn run_input(
     let mut cases = Vec::new();
     for tokens in &input.entry.batches {
         let mut convolution = None;
+        let mut z_output = None;
         let mut bf16_outputs = Vec::new();
         let expected = entry_reference::embedding_norm(
             &input.entry.table,
@@ -293,6 +297,13 @@ fn run_input(
                 convolution = Some(result);
             }
             cases.push(report);
+            if input
+                .gdn_output
+                .as_ref()
+                .is_some_and(|o| o.z_projection == index)
+            {
+                z_output = Some((device_output, actual.0));
+            }
         }
         for (projection, w) in input.bf16_projections.iter().zip(&bf16_projections) {
             let shape = [tokens.len(), projection.channels, input.entry.width];
@@ -326,17 +337,18 @@ fn run_input(
             cases.push(report);
             bf16_outputs.push((device_output, actual.0));
         }
-        if let Some(gdn) = &input.gdn {
+        if input.gdn.is_some() {
             let convolution = convolution
                 .as_ref()
                 .ok_or_else(|| anyhow::anyhow!("missing resident convolution"))?;
             cases.push(check_gdn(
                 context,
                 module,
-                gdn,
+                input,
                 convolution,
                 &bf16_outputs,
                 tokens,
+                z_output.as_ref(),
             )?);
         }
     }
@@ -346,11 +358,16 @@ fn run_input(
 fn check_gdn(
     context: &Context,
     module: &Module<'_>,
-    gdn: &GdnWeights,
+    input: &ProjectionInput,
     convolution: &causal_conv4::CheckedConvolution<'_>,
     bf16_outputs: &[(LinearOutput<'_>, Vec<u16>)],
     tokens: &[u32],
+    z: Option<&(LinearOutput<'_>, Vec<u16>)>,
 ) -> Result<Value> {
+    let gdn = input
+        .gdn
+        .as_ref()
+        .ok_or_else(|| anyhow::anyhow!("missing GDN weights"))?;
     let a = &bf16_outputs[gdn.a_projection];
     let b = &bf16_outputs[gdn.b_projection];
     let prepared = gdn_prepare::check(
@@ -391,13 +408,30 @@ fn check_gdn(
             width: gdn.width,
         },
     )?;
+    let output = if let Some(weights) = &input.gdn_output {
+        let z = z.ok_or_else(|| anyhow::anyhow!("missing resident Z"))?;
+        Some(gdn_output::check(
+            context,
+            module,
+            gdn_output::Input {
+                x: &recurrent.output,
+                x_words: &recurrent.words,
+                z: &z.0.bf16,
+                z_words: &z.1,
+            },
+            weights,
+            [tokens.len(), gdn.value_heads, gdn.width],
+        )?)
+    } else {
+        None
+    };
     Ok(
-        json!({"operation":"gdn_recurrent","tokens":tokens,"passed":true,
-        "preparation":prepared.report,"recurrence":recurrent}),
+        json!({"operation":"gdn_attention_chain","tokens":tokens,"passed":true,
+        "preparation":prepared.report,"recurrence":recurrent.report,"output":output}),
     )
 }
 
-fn quantize(
+pub(super) fn quantize(
     function: &Function<'_, '_>,
     input: &Buffer<'_>,
     codes: &Buffer<'_>,
@@ -417,17 +451,17 @@ fn quantize(
     unsafe { function.launch([u32::try_from(rows)?, 1, 1], [256, 1, 1], 0, &mut args) }
 }
 
-struct LinearOutput<'a> {
-    bf16: Buffer<'a>,
+pub(super) struct LinearOutput<'a> {
+    pub(super) bf16: Buffer<'a>,
     unrounded: Buffer<'a>,
 }
 impl LinearOutput<'_> {
-    fn read(&self, count: usize) -> Result<(Vec<u16>, Vec<f32>)> {
+    pub(super) fn read(&self, count: usize) -> Result<(Vec<u16>, Vec<f32>)> {
         Ok((words(&self.bf16, count)?, floats(&self.unrounded, count)?))
     }
 }
 
-fn run_linear<'a>(
+pub(super) fn run_linear<'a>(
     context: &'a Context,
     function: &Function<'_, '_>,
     buffers: &[&Buffer<'_>],
@@ -467,7 +501,7 @@ fn run_linear<'a>(
     })
 }
 
-fn compare(
+pub(super) fn compare(
     bf16: &[u16],
     actual: &[f32],
     reference: &projection_reference::LinearReference,
@@ -544,6 +578,7 @@ fn fixture() -> Result<ProjectionInput> {
                 .collect(),
         }),
         gdn: None,
+        gdn_output: None,
     })
 }
 

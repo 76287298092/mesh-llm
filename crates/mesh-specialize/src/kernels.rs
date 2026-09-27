@@ -22,6 +22,14 @@ pub struct ProjectionInput {
     pub bf16_projections: Vec<Bf16Projection>,
     pub convolution: Option<CausalConv4Weights>,
     pub gdn: Option<GdnWeights>,
+    pub gdn_output: Option<GdnOutputWeights>,
+}
+
+pub struct GdnOutputWeights {
+    pub z_projection: usize,
+    pub norm: Vec<u8>,
+    pub epsilon: f32,
+    pub projection: Fp8Projection,
 }
 
 pub struct GdnWeights {

@@ -22,6 +22,7 @@ Start with [the implementation plan](../PLAN.md) and the
 | [Causal convolution](findings/causal-convolution.md) | 184,320 real outputs pass; whole/chunk/token state exactly agrees; all three sanitizers clean |
 | [GDN normalization and gates](findings/gdn-preparation.md) | 73,728 real Q/K and 2,592 gate values pass; all three sanitizers clean |
 | [GDN recurrence](findings/gdn-recurrence.md) | 110,592 real outputs and recurrent state match scalar exactly; partition equivalence and sanitizers pass |
+| [GDN output](findings/gdn-output.md) | Resident gated normalization and FP8 output projection under validation |
 | [Prebuilt core target mismatch](dead-ends/prebuilt-core-target-mismatch.md) | Resolved by rebuilding core; emitted PTX executed |
 | [Racecheck timing repetitions](dead-ends/racecheck-timing-repetitions.md) | Failed with host OOM; bounded check-only recovery passed |
 
