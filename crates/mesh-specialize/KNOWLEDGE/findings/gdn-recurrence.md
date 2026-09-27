@@ -120,7 +120,8 @@ The [evidence directory](../evidence/qwen-gdn-recurrent-20260927/) contains raw
 reports, service records and test summaries. Build logs and exact PTX remain
 under `target/specialize/qwen-gdn-recurrent-20260927/` on both hosts.
 
-Gated output normalization and output projection remain before this constitutes
-a complete GDN attention layer. Full-attention layers, MLPs, full-model schedule,
+The subsequent [GDN output trial](gdn-output.md) connects gated normalization
+and output projection with component checks. Independent full-layer/logit parity,
+full-attention layers, MLPs, full-model schedule,
 tokenizer/sampling, ABI integration and the requested model performance/context
 comparison remain open.
