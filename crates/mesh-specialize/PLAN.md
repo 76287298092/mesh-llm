@@ -51,8 +51,9 @@ The user requested continuing one area at a time, including dedicated decode,
 larger prefill and MTP. Keep the current arithmetic profile stable while improving
 its schedule; speculative target verification must agree with ordinary decode.
 
-1. Dedicated NVFP4 decode, then remaining decode bottlenecks. Start by transposing
-   the existing MMA operands to fill sixteen output rows for one activation token.
+1. Dedicated NVFP4 decode: first improvement complete. Exact grouped dots reach
+   25.26 short / 22.37 after 128 inputs; independent checks and sanitizers pass.
+   See [dedicated decode evidence](KNOWLEDGE/optimizations/dedicated-decode.md).
 2. Larger prefill tiles and weight reuse, with independent reference and partition
    agreement before measuring. Preserve failed candidates and select by model timing.
 3. Resident MTP head, draft state, target verification and rollback. Prove accepted
