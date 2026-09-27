@@ -45,6 +45,7 @@ pub(crate) fn run(args: &[String]) -> DynResult<()> {
         [command, rest @ ..] if command == "feature-projection-check" => {
             probe::feature_projection(rest)
         }
+        [command, rest @ ..] if command == "fp8-exact-check" => probe::fp8_exact(rest),
         [command, rest @ ..] if command == "instruction-probe" => probe::instructions(rest),
         [command, rest @ ..] if command == "workload-probe" => probe::workloads(rest),
         [command, rest @ ..] if command == "workload-check" => probe::workload_check(rest),

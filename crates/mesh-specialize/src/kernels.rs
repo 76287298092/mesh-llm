@@ -518,3 +518,14 @@ pub fn feature_gdn_replay_trial(ptx: &str, device: i32) -> anyhow::Result<serde_
         anyhow::bail!("GDN replay qualification requires Linux")
     }
 }
+
+/// Synthetic exact projection evidence; does not qualify model performance.
+pub fn fp8_exact_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::fp8_exact_trial::standalone(ptx, device);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device);
+        anyhow::bail!("Exact FP8 qualification requires Linux")
+    }
+}

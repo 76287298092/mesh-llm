@@ -235,3 +235,12 @@ and no gain is predicted here. Preserve existing scalar/tensor dispatch as the
 control and qualify every raw FP32/BF16 result against the independent exact
 reference before model use. Unlike native FP8 reassociation, bounded integer
 partial reduction can preserve the established arithmetic contract.
+
+
+Exact split-K source is now implemented: 8x16x32 integer tiles write split-major
+i64 partials, then one reduction applies the unchanged epilogue. Internal
+`MESH_SPECIALIZE_FP8_SPLIT_K=2|4|8|16` selects it only for rows4..15 and
+channels<16384; absent or `off` retains the control. Arithmetic profile is
+unchanged and reports label scheduling separately. Synthetic qualification
+includes all existing exact variants plus all four split counts. No numerical
+budget is relaxed. PTX compiles; GPU/model correctness and speed remain pending.

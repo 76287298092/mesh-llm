@@ -83,6 +83,16 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
                 [self.channels, self.width],
             );
         }
+        if let Some(splits) = super::resident_fp8_splitk::selected_splits(rows, self.channels)? {
+            return run_split(
+                context,
+                module,
+                input,
+                [weight_pointer, scale_pointer],
+                [rows, self.channels, self.width],
+                splits,
+            );
+        }
         let quantize = module.function("fp8_quantize_bf16")?;
         let (tile_rows, tile_columns, threads, kernel) =
             if let Some(kernel) = self.profile.native_kernel().filter(|_| rows >= 16) {
@@ -170,6 +180,40 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
             unrounded,
         })
     }
+}
+
+fn run_split<'a>(
+    ctx: &'a Context,
+    module: &Module<'_>,
+    input: &Buffer<'_>,
+    weights: [u64; 2],
+    shape: [usize; 3],
+    splits: usize,
+) -> Result<Output<'a>> {
+    let [rows, _, width] = shape;
+    let codes = Buffer::new(ctx, rows * width)?;
+    let scales = Buffer::new(ctx, rows * 4)?;
+    if let Err(error) = projections::quantize(
+        &module.function("fp8_quantize_bf16")?,
+        input,
+        &codes,
+        &scales,
+        rows,
+        width,
+    ) {
+        return Err(synchronize_after_failed_launch(
+            ctx,
+            "split-K input quantization",
+            error,
+        ));
+    }
+    super::resident_fp8_splitk::run(
+        ctx,
+        module,
+        [codes.pointer(), weights[0], scales.pointer(), weights[1]],
+        shape,
+        splits,
+    )
 }
 
 fn synchronize_after_failed_launch(

@@ -166,3 +166,15 @@ for widths 1/2/128; all three sanitizer tools are clean. See
 `evidence/iterate-20260927/features-f09-1/` for the pinned source/PTX and resources.
 This supersedes the primitive's pending-device status above; whole-model recovery
 is still pending.
+
+
+F02 exact split-K experiment in `fp8_verify_exact.rs` factors the existing
+nine-INT8-MMA/i64 dot reconstruction into a shared range function. New
+`fp8_verify_splitk` reads CTA z to select disjoint K32 ranges and writes i64
+partials. `fp8_verify_reduce` reads CTA/thread x, sums partials with existing
+`add.s64`, and uses the unchanged i64-to-FP32/scale/BF16 epilogue. The unchanged
+independent logical FP64 `projection_reference::linear` validates both raw FP32
+and BF16 through `fp8_exact_trial`: all finite code pairs, tails, cancellation,
+maximum K and empty split ranges at 2/4/8/16 splits. The full absolute dot bound
+is below 2^51 for K<=32768, so partial ordering cannot overflow i64 or introduce
+floating reassociation. PTX compilation passes; GPU/model qualification pending.

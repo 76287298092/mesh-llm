@@ -8,6 +8,22 @@ use anyhow::{Result, ensure};
 use serde_json::{Value, json};
 use std::ffi::c_void;
 
+pub(crate) fn standalone(ptx: &str, device: i32) -> Result<Value> {
+    let ctx = Context::new(device)?;
+    let info = ctx.info();
+    ensure!(
+        (info.major, info.minor) == (12, 0),
+        "exact FP8 probe requires SM120"
+    );
+    let module = Module::load(&ctx, ptx)?;
+    let mut result = run(&ctx, &module)?;
+    result["kind"] = json!("exact-fp8-projection-probe");
+    result["device"] = json!(info);
+    result["split_resources"] = json!(module.function("fp8_verify_splitk")?.resources()?);
+    result["reduce_resources"] = json!(module.function("fp8_verify_reduce")?.resources()?);
+    Ok(result)
+}
+
 pub(super) fn run(ctx: &Context, module: &Module<'_>) -> Result<Value> {
     let mut cases = Vec::new();
     for (shape, kind) in [
@@ -76,7 +92,7 @@ pub(super) fn run(ctx: &Context, module: &Module<'_>) -> Result<Value> {
             &sw,
             k,
         )?;
-        for tile_rows in [1, 4, 8, 16] {
+        for tile_rows in [1, 4, 8, 16, 32, 64, 128, 256] {
             let (actual, unrounded) = execute(ctx, module, [m, n, k, tile_rows], &a, &w, &sa, &sw)?;
             let bf16_differences = actual
                 .iter()
@@ -89,7 +105,7 @@ pub(super) fn run(ctx: &Context, module: &Module<'_>) -> Result<Value> {
                 .filter(|(a, b)| a != b)
                 .count();
             let finite = unrounded.iter().all(|v| v.is_finite());
-            cases.push(json!({"shape":shape,"tile_rows":tile_rows,"fixture":kind,"outputs":m*n,"bf16_differences":bf16_differences,"fp32_differences":fp32_differences,"all_passed":finite&&bf16_differences==0&&fp32_differences==0}));
+            cases.push(json!({"shape":shape,"tile_rows":if tile_rows>=32 {8}else{tile_rows},"split_k":if tile_rows>=32 {tile_rows/16}else{1},"fixture":kind,"outputs":m*n,"bf16_differences":bf16_differences,"fp32_differences":fp32_differences,"all_passed":finite&&bf16_differences==0&&fp32_differences==0}));
         }
     }
     Ok(
@@ -127,6 +143,33 @@ fn execute(
         ctx,
         &sw.iter().flat_map(|v| v.to_le_bytes()).collect::<Vec<_>>(),
     )?;
+    if tile_rows >= 32 {
+        let result = super::resident_fp8_splitk::run(
+            ctx,
+            module,
+            [a.pointer(), w.pointer(), sa.pointer(), sw.pointer()],
+            [m, n, k],
+            tile_rows / 16,
+        )?;
+        let mut words = vec![0; m * n * 2];
+        let mut floats = vec![0; m * n * 4];
+        result.values.download(&mut words)?;
+        result.unrounded.download(&mut floats)?;
+        return Ok((
+            words
+                .as_chunks::<2>()
+                .0
+                .iter()
+                .map(|v| u16::from_le_bytes(*v))
+                .collect(),
+            floats
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .map(|v| f32::from_le_bytes(*v))
+                .collect(),
+        ));
+    }
     let out = upload(ctx, &vec![0xa5; m * n * 2])?;
     let raw = upload(ctx, &vec![0xff; m * n * 4])?;
     let mut pointers = [

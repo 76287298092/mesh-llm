@@ -127,6 +127,7 @@ pub(in crate::kernels) fn run(
         "completed": true,
         "device": info,
         "arithmetic_profile": crate::kernels::fp8_profile::current()?.name(),
+        "fp8_split_k":super::resident_fp8_splitk::configured_splits()?,
         "configured_capacity": config.capacity,
         "prompt_token_ids": request.tokens,
         "prompt_tokens": request.tokens.len(),

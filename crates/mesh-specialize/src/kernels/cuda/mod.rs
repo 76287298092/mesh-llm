@@ -10,7 +10,7 @@ mod bf16_trial;
 mod causal_conv4;
 mod driver;
 pub(super) mod embedding_norm;
-mod fp8_exact_trial;
+pub(super) mod fp8_exact_trial;
 pub(super) mod fp8_mlp_trial;
 mod gdn_output;
 mod gdn_prepare;
@@ -257,3 +257,5 @@ pub(super) mod resident_recovery;
 pub(super) mod resident_fp8_a16;
 
 pub(super) mod resident_logit_dump;
+
+pub(super) mod resident_fp8_splitk;

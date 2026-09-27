@@ -78,7 +78,7 @@ pub(in crate::kernels) fn run(
     ctx.synchronize()?;
     let after = ctx.memory()?;
     Ok(
-        json!({"schema_version":1,"kind":"resident-greedy-mtp-qualification","all_passed":true,
+        json!({"fp8_split_k":super::resident_fp8_splitk::configured_splits()?,"schema_version":1,"kind":"resident-greedy-mtp-qualification","all_passed":true,
         "device":info,"fp8_probe":fp8_probe,"head":head,"prompt_token_ids":request.tokens,"output_tokens":request.output_tokens,
         "depth":request.depth,"control":control.report(),"verification_profile":verification_profile,"forced_acceptance":acceptance_report,"forced_rejection":forced_reports.first(),"forced_rejections":forced_reports,"trials":trials,
         "memory":{"before_free_bytes":before.0,"after_release_free_bytes":after.0,"arena_memory_release_observed":after.0>=before.0},

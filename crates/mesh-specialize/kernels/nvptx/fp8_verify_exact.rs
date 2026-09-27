@@ -162,46 +162,22 @@ unsafe fn store_scaled_output(
     }
 }
 
-/// Compute the exact E4M3 projection with weights as MMA rows and input rows as MMA columns.
-///
-/// Each warp computes a 16-channel by 8-token tile. Three signed base-128 digits
-/// and nine signed-INT8 MMAs per K32 tile reconstruct each exact dot before the
-/// existing scale order and BF16 RNE. The result is stored in token-major order.
-///
-/// # Safety
-/// Launch `grid = [ceil(n / 16), ceil(m / 8), 1]`, `block = [32, 1, 1]`, with
-/// `m in 1..=2048`, `n in 1..=262144`, and `k in 1..=32768`. `a` and `w` must
-/// cover row-major matrices of `m * k` and `n * k` readable E4M3FN bytes. Codes
-/// must be finite (not `0x7f` or `0xff`). `sa` must cover `m` readable finite
-/// positive FP32 scales; `sw` must cover `n` readable finite positive BF16
-/// scales. `out` and `unrounded` must cover `m * n` writable BF16 and FP32
-/// values. All products and index arithmetic must fit the device address space.
-/// Pointers must have element alignment, be pairwise disjoint, and remain live
-/// until kernel completion. Every warp lane must execute the same K loop and all
-/// nine MMA instructions for each K tile. The exact dot fits signed 64-bit.
-#[unsafe(no_mangle)]
-pub unsafe extern "ptx-kernel" fn fp8_verify_exact(
+#[inline(always)]
+unsafe fn partial_totals(
     a: *const u8,
     w: *const u8,
-    sa: *const f32,
-    sw: *const u16,
-    out: *mut u16,
-    unrounded: *mut f32,
-    m: u32,
-    n: u32,
-    k: u32,
-) {
-    let (lane, tile_channel, tile_row) = lane_and_tiles();
-    let lane_group = (lane >> 2) as usize;
-    let thread_in_group = (lane & 3) as usize;
-    let channel_start = tile_channel as usize * TILE_CHANNELS;
-    let row_start = tile_row as usize * TILE_ROWS;
-    let m_usize = m as usize;
-    let n_usize = n as usize;
-    let k_usize = k as usize;
+    shape: [usize; 3],
+    coordinates: [usize; 3],
+    first_tile: usize,
+    end_tile: usize,
+) -> Totals {
+    let [m_usize, n_usize, k_usize] = shape;
+    let [lane, channel_start, row_start] = coordinates;
+    let lane_group = lane >> 2;
+    let thread_in_group = lane & 3;
     let mut totals = (0_i64, 0_i64, 0_i64, 0_i64);
 
-    for k_tile in 0..k.div_ceil(TILE_K as u32) {
+    for k_tile in first_tile..end_tile {
         let k_start = k_tile as usize * TILE_K;
         let k_column = k_start + thread_in_group * 4;
         let a_channel0 = channel_start + lane_group;
@@ -243,6 +219,58 @@ pub unsafe extern "ptx-kernel" fn fp8_verify_exact(
         totals = accumulate_digit_pair(totals, a_d2, b_d2, 28);
     }
 
+    totals
+}
+
+/// Compute the exact E4M3 projection with weights as MMA rows and input rows as MMA columns.
+///
+/// Each warp computes a 16-channel by 8-token tile. Three signed base-128 digits
+/// and nine signed-INT8 MMAs per K32 tile reconstruct each exact dot before the
+/// existing scale order and BF16 RNE. The result is stored in token-major order.
+///
+/// # Safety
+/// Launch `grid = [ceil(n / 16), ceil(m / 8), 1]`, `block = [32, 1, 1]`, with
+/// `m in 1..=2048`, `n in 1..=262144`, and `k in 1..=32768`. `a` and `w` must
+/// cover row-major matrices of `m * k` and `n * k` readable E4M3FN bytes. Codes
+/// must be finite (not `0x7f` or `0xff`). `sa` must cover `m` readable finite
+/// positive FP32 scales; `sw` must cover `n` readable finite positive BF16
+/// scales. `out` and `unrounded` must cover `m * n` writable BF16 and FP32
+/// values. All products and index arithmetic must fit the device address space.
+/// Pointers must have element alignment, be pairwise disjoint, and remain live
+/// until kernel completion. Every warp lane must execute the same K loop and all
+/// nine MMA instructions for each K tile. The exact dot fits signed 64-bit.
+#[unsafe(no_mangle)]
+pub unsafe extern "ptx-kernel" fn fp8_verify_exact(
+    a: *const u8,
+    w: *const u8,
+    sa: *const f32,
+    sw: *const u16,
+    out: *mut u16,
+    unrounded: *mut f32,
+    m: u32,
+    n: u32,
+    k: u32,
+) {
+    let (lane, tile_channel, tile_row) = lane_and_tiles();
+    let lane_group = (lane >> 2) as usize;
+    let thread_in_group = (lane & 3) as usize;
+    let channel_start = tile_channel as usize * TILE_CHANNELS;
+    let row_start = tile_row as usize * TILE_ROWS;
+    let m_usize = m as usize;
+    let n_usize = n as usize;
+    let k_usize = k as usize;
+    // SAFETY: This entry's validated launch and extents cover every K32 tile.
+    let totals = unsafe {
+        partial_totals(
+            a,
+            w,
+            [m_usize, n_usize, k_usize],
+            [lane as usize, channel_start, row_start],
+            0,
+            k_usize.div_ceil(TILE_K),
+        )
+    };
+
     let token_row0 = row_start + thread_in_group * 2;
     let channel0 = channel_start + lane_group;
     let channel1 = channel0 + 8;
@@ -275,6 +303,123 @@ pub unsafe extern "ptx-kernel" fn fp8_verify_exact(
             m_usize,
             n_usize,
             totals.3,
+        );
+    }
+}
+
+#[inline(always)]
+fn split_index() -> usize {
+    let index: u32;
+    // SAFETY: Reads only the current CTA's third coordinate.
+    unsafe {
+        asm!("mov.u32 {index}, %ctaid.z;", index=out(reg32) index, options(nomem, nostack));
+    }
+    index as usize
+}
+
+/// Compute disjoint K32 ranges as exact integer partial dots.
+///
+/// # Safety
+/// Same finite-code and shape bounds as `fp8_verify_exact`. Launch
+/// `[ceil(n/16),ceil(m/8),splits]` with 32 threads and `splits in 1..=32`.
+/// `partials` is disjoint, aligned writable i64 `[splits,m,n]`; A/W retain
+/// their full row-major extents. Every slot is written, including empty ranges.
+#[unsafe(no_mangle)]
+pub unsafe extern "ptx-kernel" fn fp8_verify_splitk(
+    a: *const u8,
+    w: *const u8,
+    partials: *mut i64,
+    m: u32,
+    n: u32,
+    k: u32,
+    splits: u32,
+) {
+    let (lane, tile_channel, tile_row) = lane_and_tiles();
+    let split = split_index();
+    let m = m as usize;
+    let n = n as usize;
+    let k = k as usize;
+    let channel_start = tile_channel as usize * TILE_CHANNELS;
+    let row_start = tile_row as usize * TILE_ROWS;
+    let tiles = k.div_ceil(TILE_K);
+    let count = tiles.div_ceil(splits as usize);
+    let first = split * count;
+    let end = ((split + 1) * count).min(tiles);
+    // SAFETY: Disjoint, bounded K32 ranges use the same finite-code fragments as the control.
+    let totals = unsafe {
+        partial_totals(
+            a,
+            w,
+            [m, n, k],
+            [lane as usize, channel_start, row_start],
+            first,
+            end,
+        )
+    };
+    let row0 = row_start + (lane as usize & 3) * 2;
+    let channel0 = channel_start + (lane as usize >> 2);
+    for (row, channel, value) in [
+        (row0, channel0, totals.0),
+        (row0 + 1, channel0, totals.1),
+        (row0, channel0 + 8, totals.2),
+        (row0 + 1, channel0 + 8, totals.3),
+    ] {
+        if row < m && channel < n {
+            // SAFETY: Each lane/output coordinate uniquely owns this split-major slot.
+            unsafe {
+                partials.add((split * m + row) * n + channel).write(value);
+            }
+        }
+    }
+}
+
+/// Reduce exact integer partial dots, then apply the unchanged FP32/BF16 epilogue.
+///
+/// # Safety
+/// Launch ceil(m*n/256) CTAs with 256 threads. Shapes and split count match the
+/// completed split kernel; partials are readable i64 `[splits,m,n]`. Scale and
+/// disjoint output pointer contracts match `fp8_verify_exact`. No partial sum
+/// or intermediate integer total can exceed the absolute full-dot i64 bound.
+#[unsafe(no_mangle)]
+pub unsafe extern "ptx-kernel" fn fp8_verify_reduce(
+    partials: *const i64,
+    sa: *const f32,
+    sw: *const u16,
+    out: *mut u16,
+    unrounded: *mut f32,
+    m: u32,
+    n: u32,
+    splits: u32,
+) {
+    let block: u32;
+    let thread: u32;
+    // SAFETY: Reads only the CTA and thread coordinates.
+    unsafe {
+        asm!("mov.u32 {block}, %ctaid.x;", "mov.u32 {thread}, %tid.x;",
+        block=out(reg32) block, thread=out(reg32) thread, options(nomem, nostack));
+    }
+    let index = block as usize * 256 + thread as usize;
+    let count = m as usize * n as usize;
+    if index >= count {
+        return;
+    }
+    let mut total = 0_i64;
+    for split in 0..splits as usize {
+        // SAFETY: The completed split kernel initialized every matching partial slot.
+        total = add_s64(total, unsafe { *partials.add(split * count + index) });
+    }
+    // SAFETY: This thread owns one in-range output; all integer addition precedes rounding.
+    unsafe {
+        store_scaled_output(
+            sa,
+            sw,
+            out,
+            unrounded,
+            index / n as usize,
+            index % n as usize,
+            m as usize,
+            n as usize,
+            total,
         );
     }
 }

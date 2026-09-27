@@ -77,3 +77,7 @@ pub(super) fn feature_graph(args: &[String]) -> DynResult<()> {
 pub(super) fn feature_gdn_replay(args: &[String]) -> DynResult<()> {
     run_probe(args, mesh_specialize::kernels::feature_gdn_replay_trial)
 }
+
+pub(super) fn fp8_exact(args: &[String]) -> DynResult<()> {
+    run_probe(args, mesh_specialize::kernels::fp8_exact_trial)
+}
