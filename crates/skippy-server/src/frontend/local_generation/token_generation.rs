@@ -369,6 +369,7 @@ impl StageOpenAiBackend {
         mut request: LocalGeneration<'_>,
         mut on_token: impl FnMut(i32) -> OpenAiResult<TokenControl>,
     ) -> OpenAiResult<GenerationCacheStats> {
+        let payment_gate = crate::frontend::generation_gate::find(request.ids.frontend_request_id)?;
         let session_id = request.ids.session_label.clone();
         let receipt_request_id = request.ids.request_id;
         let receipt_session_id = request.ids.session_id;
@@ -405,7 +406,20 @@ impl StageOpenAiBackend {
             receipt_request_id,
             receipt_session_id,
         );
+        let paid_input_tokens = request.prompt_token_ids.len();
+        let paid_max_output_tokens = request.max_tokens;
+        let mut authorization_started = false;
         let mut emit_token = |token_id| {
+            if let Some(gate) = payment_gate.as_ref() {
+                // The first canonical token proves the native step that
+                // consumed the final prompt token succeeded, so the whole
+                // prompt is processed before authorization starts.
+                if !authorization_started {
+                    gate.after_prefill(paid_input_tokens, paid_max_output_tokens)?;
+                    authorization_started = true;
+                }
+                gate.before_token()?;
+            }
             if let Some(observation) = receipt_observation.as_ref()
                 && let Some(observation) = observation.borrow_mut().as_mut()
             {
@@ -432,7 +446,7 @@ impl StageOpenAiBackend {
             {
                 return Err(OpenAiError::backend("request cancelled"));
             }
-            if self.uses_scheduler_builtin_driver(&request) {
+            if payment_gate.is_none() && self.uses_scheduler_builtin_driver(&request) {
                 let model_generation_elapsed = self.run_scheduled_generation(
                     &request,
                     &session_id,
@@ -888,6 +902,7 @@ impl StageOpenAiBackend {
                     request.ids,
                     request.prompt_token_ids[..boundary].to_vec(),
                     "shared_prefill_checkpoint",
+                    true,
                 ) {
                     record.resident_enqueued_checkpoints =
                         record.resident_enqueued_checkpoints.saturating_add(1);
@@ -923,11 +938,16 @@ impl StageOpenAiBackend {
                 // the native session at the full-prompt boundary. Exporting
                 // that state is useful for growing prompts, but is strictly
                 // best-effort after the preferred shared checkpoint above.
+                // Keep off-checkpoint states resident so every stage reopens
+                // from the same durable boundary after a restart.
                 if self.enqueue_exact_state_record_at_tokens(
                     session_id,
                     request.ids,
                     request.prompt_token_ids.to_vec(),
                     "final_prefill_state",
+                    self.kv.as_ref().is_some_and(|kv| {
+                        kv.full_exact_state_writes_through_l3(request.prompt_token_ids.len())
+                    }),
                 ) {
                     record.resident_enqueued_checkpoints =
                         record.resident_enqueued_checkpoints.saturating_add(1);
@@ -1237,6 +1257,7 @@ impl StageOpenAiBackend {
                     ids,
                     checkpoint_tokens,
                     "chat_prefix_checkpoint",
+                    true,
                 );
                 prefill_cache_chunks(
                     runtime,
@@ -1267,11 +1288,16 @@ impl StageOpenAiBackend {
                         cache_operation,
                     )?;
                     ensure_cache_operation_active(runtime, session_id, cache_operation)?;
-                    kv.record_exact_state(
+                    let cold_prefill_cost = self
+                        .generation_service_estimator
+                        .estimated_prefill_ms(boundary);
+                    let l3_cost = kv.l3_benefit_cost(cold_prefill_cost);
+                    kv.record_exact_state_with_cost(
                         runtime,
                         session_id,
                         &identity,
                         crate::kv_integration::CaptureAdmission::BestEffort,
+                        l3_cost,
                     )
                     .map_err(openai_backend_error)?;
                     prefill_cache_chunks(

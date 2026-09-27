@@ -16,6 +16,7 @@ LLAMA_LINK_MODE="${LLAMA_STAGE_LINK_MODE:-${SKIPPY_LLAMA_LINK_MODE:-static}}"
 LLAMA_STAGE_BUILD_TESTS="${LLAMA_STAGE_BUILD_TESTS:-OFF}"
 LLAMA_STAGE_FULL_REPLAY="${LLAMA_STAGE_FULL_REPLAY:-OFF}"
 LLAMA_STAGE_UPSTREAM_TESTS="${LLAMA_STAGE_UPSTREAM_TESTS:-OFF}"
+LLAMA_STAGE_WORKLOAD_ORACLE="${LLAMA_STAGE_WORKLOAD_ORACLE:-OFF}"
 LLAMA_BUILD_TESTS=OFF
 LLAMA_BUILD_SERVER=OFF
 if [[ "$LLAMA_STAGE_FULL_REPLAY" == "ON" || "$LLAMA_STAGE_UPSTREAM_TESTS" == "ON" ]]; then
@@ -25,6 +26,9 @@ fi
 if [[ "$LLAMA_STAGE_UPSTREAM_TESTS" == "ON" ]]; then
   # Upstream test-chat compiles server headers and requires their complete
   # multimodal include/link closure.
+  LLAMA_BUILD_SERVER=ON
+fi
+if [[ "$LLAMA_STAGE_WORKLOAD_ORACLE" == "ON" ]]; then
   LLAMA_BUILD_SERVER=ON
 fi
 PRINT_BUILD_DIR=0
@@ -83,7 +87,20 @@ default_build_dir_for_backend() {
       suffix="rocm-$(sanitize_build_component "$amdgpu_targets")"
       ;;
   esac
-  printf '%s/build-stage-abi-%s-%s\n' "$LLAMA_BUILD_ROOT" "$LLAMA_LINK_MODE" "$suffix"
+  # Key the build directory by the patched llama sha. The directory is otherwise
+  # keyed only by link mode and backend, so two different pins built on one machine
+  # share it -- and package-native-runtime.sh globs every *.dylib under it, shipping
+  # both library generations in one bundle. The stale generation then fails to
+  # resolve against the other's ggml.
+  local pin=""
+  if [[ -f "$LLAMA_WORKDIR/.mesh-llm-patched-sha" ]]; then
+    pin="$(tr -d '[:space:]' < "$LLAMA_WORKDIR/.mesh-llm-patched-sha")"
+  fi
+  if [[ -n "$pin" ]]; then
+    printf '%s/build-stage-abi-%s-%s-%s\n' "$LLAMA_BUILD_ROOT" "$LLAMA_LINK_MODE" "$suffix" "${pin:0:12}"
+  else
+    printf '%s/build-stage-abi-%s-%s\n' "$LLAMA_BUILD_ROOT" "$LLAMA_LINK_MODE" "$suffix"
+  fi
 }
 
 detect_jobs() {
@@ -154,9 +171,15 @@ required_dynamic_libraries_exist() {
 
 required_outputs_exist() {
   if [[ "$LLAMA_LINK_MODE" == "dynamic" ]]; then
-    required_dynamic_libraries_exist
+    required_dynamic_libraries_exist || return 1
   else
-    required_static_archives_exist
+    required_static_archives_exist || return 1
+  fi
+  if [[ "$LLAMA_STAGE_WORKLOAD_ORACLE" == "ON" ]]; then
+    [[ -x "$LLAMA_BUILD_DIR/bin/llama-server" &&
+       -x "$LLAMA_BUILD_DIR/bin/llama-cli" &&
+       -x "$LLAMA_BUILD_DIR/bin/llama-completion" &&
+       -x "$LLAMA_BUILD_DIR/bin/llama-tts" ]] || return 1
   fi
 }
 
@@ -223,6 +246,14 @@ CMAKE_ARGS=(
   # platforms.
   -DMTMD_VIDEO=OFF
 )
+if [[ "$LLAMA_STAGE_WORKLOAD_ORACLE" == "ON" ]]; then
+  CMAKE_ARGS+=(-DLLAMA_BUILD_COMMON=ON -DLLAMA_BUILD_TOOLS=ON)
+fi
+if [[ "$LLAMA_BACKEND" == "cpu" ]]; then
+  # macOS defaults Metal to ON even when the selected backend is CPU. Match
+  # the backend contract for both the embedded runtime and its test oracle.
+  CMAKE_ARGS+=(-DGGML_METAL=OFF)
+fi
 
 # Set the native target explicitly: an existing CMake cache does not adopt
 # a changed environment default. Arguments enter the build stamp below.
@@ -265,7 +296,10 @@ case "$LLAMA_BACKEND" in
       echo "CUDA toolkit compiler was not found; set CUDACXX, CMAKE_CUDA_COMPILER, NVCC, or put nvcc on PATH" >&2
       exit 1
     fi
-    CMAKE_ARGS+=(-DGGML_CUDA=ON)
+    # The pinned CUDA graph-capture path can abort on a warmed multi-request
+    # workload while updating the captured graph. Keep staged runtimes on the
+    # ordinary CUDA execution path until that upstream path is safe again.
+    CMAKE_ARGS+=(-DGGML_CUDA=ON -DGGML_CUDA_GRAPHS=OFF)
     if [[ -n "${CUDACXX:-}" ]]; then
       CMAKE_ARGS+=(-DCMAKE_CUDA_COMPILER="$CUDACXX")
     fi
@@ -416,6 +450,10 @@ fi
 cmake "${CMAKE_ARGS[@]}"
 
 BUILD_TARGETS=(llama llama-common mtmd)
+if [[ "$LLAMA_STAGE_WORKLOAD_ORACLE" == "ON" ]]; then
+  # Test-only full-model references. They are never packaged beside the host.
+  BUILD_TARGETS+=(llama-server llama-cli llama-completion llama-tts)
+fi
 if [[ "$LLAMA_STAGE_BUILD_TESTS" == "ON" ]]; then
   BUILD_TARGETS+=(
     skippy-graph-build-inputs
@@ -429,14 +467,20 @@ if [[ "$LLAMA_STAGE_BUILD_TESTS" == "ON" ]]; then
   )
 fi
 if [[ "$LLAMA_STAGE_FULL_REPLAY" == "ON" ]]; then
+  # Typed activation-frontier coverage lives in the graph-build-inputs and
+  # stage-slice-plan probes above; the old activation-layout target is retired.
   BUILD_TARGETS+=(
-    test-skippy-activation-layout
     test-skippy-kv-cells-contiguous
     test-skippy-kv-page-export
     test-skippy-model-loader-accounting
     test-skippy-recurrent-state-roundtrip
+    test-skippy-rerank-template
+    test-skippy-sampling-suppress
     test-skippy-verify-checkpoint-retirement
   )
+  if [[ "$LLAMA_BACKEND" == "metal" ]]; then
+    BUILD_TARGETS+=(test-skippy-cachegen-metal)
+  fi
 fi
 
 if [[ "$LLAMA_STAGE_UPSTREAM_TESTS" == "ON" ]]; then

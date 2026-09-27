@@ -187,6 +187,8 @@ class CiWorkflowArtifactTests(unittest.TestCase):
 
     def test_core_smoke_covers_dense_and_recurrent_models(self):
         workflow = (WORKFLOWS / "smoke.yml").read_text()
+        standalone_smoke = (ROOT / "scripts/ci-smoke-test.sh").read_text()
+        compat_smoke = (ROOT / "scripts/ci-compat-smoke.sh").read_text()
 
         self.assertEqual(workflow.count("model_artifact_id: smollm2-q8-inference"), 2)
         self.assertEqual(workflow.count("model_artifact_id: family-granite-hybrid"), 2)
@@ -199,6 +201,18 @@ class CiWorkflowArtifactTests(unittest.TestCase):
             "Recurrent constrained-stack smoke",
         ):
             self.assertEqual(workflow.count(phase), 2)
+        self.assertEqual(workflow.count('MESH_CI_CTX_SIZE: "128"'), 4)
+        self.assertEqual(workflow.count('MESH_COMPAT_CTX_SIZE: "128"'), 2)
+        self.assertEqual(workflow.count('MESH_CI_BATCH_SIZE: "128"'), 4)
+        self.assertEqual(workflow.count('MESH_CI_UBATCH_SIZE: "128"'), 4)
+        self.assertEqual(workflow.count('MESH_COMPAT_BATCH_SIZE: "128"'), 2)
+        self.assertEqual(workflow.count('MESH_COMPAT_UBATCH_SIZE: "128"'), 2)
+        for variable in ("MESH_CI_BATCH_SIZE", "MESH_CI_UBATCH_SIZE"):
+            self.assertIn(variable, standalone_smoke)
+        for variable in ("MESH_COMPAT_BATCH_SIZE", "MESH_COMPAT_UBATCH_SIZE"):
+            self.assertIn(variable, compat_smoke)
+        self.assertIn("[defaults.model_fit]", standalone_smoke)
+        self.assertIn("[defaults.model_fit]", compat_smoke)
         self.assertIn("MESH_LLM_NATIVE_RUNTIME_MANIFEST_URL", workflow)
         self.assertIn("expected_backend:", workflow)
         self.assertIn("verify-native-runtime-package.sh", workflow)
@@ -228,12 +242,15 @@ class CiWorkflowArtifactTests(unittest.TestCase):
         self.assertIn("kv_recurrent_model_artifact_id: family-granite-hybrid", caller)
         self.assertIn("kv_recurrent_expected_exact_payload_kind: kv-recurrent", caller)
         self.assertNotIn("Qwen3.5-0.8B-Q4_K_M.gguf", caller)
+        self.assertIn("MESH_TWO_NODE_SPLIT_DURABLE_L3=1", caller)
         self.assertIn("run_client_routing_probe", smoke_script)
         self.assertIn("Passive client routing and streaming validated", smoke_script)
         self.assertIn(
             'checkpointed_restore = exact_payload_kind == "kv-recurrent"',
             smoke_script,
         )
+        self.assertIn("run_durable_restart_probe", smoke_script)
+        self.assertIn("kv-cache status", smoke_script)
         self.assertIn(
             "if not checkpointed_restore and (", smoke_script
         )
@@ -339,7 +356,7 @@ class CiWorkflowArtifactTests(unittest.TestCase):
         # install-action were deleted outright (both are baked in the
         # image) rather than gated -- unlike ui_quality/ui_e2e above, this
         # job has no native-cache consumer left to assert on.
-        self.assertIn("working-directory: website", web)
+        self.assertIn("working-directory: ${{ steps.layout.outputs.website_dir }}", web)
         self.assertIn("run: npm ci", web)
 
 

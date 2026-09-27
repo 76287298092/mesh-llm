@@ -14,6 +14,7 @@ Use this hub to find project guides that are not owned by a single Rust crate.
 | SDK usage, examples, errors, lifecycle, platform support | [SDK.md](SDK.md) |
 | Language-specific SDK examples | [Rust](sdk/rust.md), [Node.js](sdk/node.md), [Swift](sdk/swift.md), [Kotlin/Android](sdk/kotlin.md) |
 | Run big models with Skippy layer splits | [SKIPPY_SPLITS.md](SKIPPY_SPLITS.md) |
+| Embedding, rerank, encoder-decoder, OCR, and audio models | [NON_CHAT_MODELS.md](NON_CHAT_MODELS.md) |
 | Contribute or publish layer package repositories | [LAYER_PACKAGE_REPOS.md](LAYER_PACKAGE_REPOS.md) |
 | Goose, Claude Code, OpenCode, Pi, curl, blackboard | [AGENTS.md](AGENTS.md) |
 | Command-by-command CLI reference | [CLI.md](CLI.md) |
@@ -30,6 +31,7 @@ Use this hub to find project guides that are not owned by a single Rust crate.
 | [skippy/TOPOLOGY_PLANNER.md](skippy/TOPOLOGY_PLANNER.md) | Stage topology planning behavior |
 | [skippy/CONFIGURATION.md](skippy/CONFIGURATION.md) | Authoritative operator matrix for Skippy config keys and rejection boundaries |
 | [skippy/PROMPT_CACHE.md](skippy/PROMPT_CACHE.md) | OpenAI prompt-prefix cache behavior, defaults, telemetry, and benchmark flow |
+| [skippy/KV_CACHE_DISK.md](skippy/KV_CACHE_DISK.md) | Operator guide for the node-local disk prompt cache (L3): config, modes, status, prune/clear, corruption handling |
 | [skippy/PIPELINED_VERIFY_WINDOW.md](skippy/PIPELINED_VERIFY_WINDOW.md) | Native MTP, anchored N-gram extension, VerifyWindow protocol, pipeline behavior, and telemetry |
 | [skippy/SUFFIX_NGRAM_PROPOSER.md](skippy/SUFFIX_NGRAM_PROPOSER.md) | Long exact-suffix proposer design, invariants, telemetry, and benchmark contract |
 | [skippy/DATA_FLOW.md](skippy/DATA_FLOW.md) | Stage data flow and transport details |
@@ -53,6 +55,7 @@ Use [SKIPPY_SPLITS.md](SKIPPY_SPLITS.md) for Skippy split-serving workflows.
 | [plugins/](plugins/) | Plugin architecture, web UI projection contract, exemplars, and implementation planning |
 | [plans/](plans/) | Narrow implementation plans that are not yet general design docs |
 | [specs/](specs/) | Focused behavior specs for individual features |
+| [specs/lightning-payments.md](specs/lightning-payments.md) | Planned Lightning payments PoC, wallet boundary, approvals, and settlement policy |
 | [design/OPENAI_GUARDRAILS.md](design/OPENAI_GUARDRAILS.md) | OpenAI guardrail rollout defaults, v1 limits, telemetry privacy, and evidence scaffolding |
 
 Per-crate docs stay with their crates. The main binary crate overview lives at

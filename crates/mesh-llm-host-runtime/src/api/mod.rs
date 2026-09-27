@@ -24,6 +24,7 @@
 //!   POST /api/runtime/control/get-config — run local owner-control get-config against an explicit endpoint
 //!   POST /api/runtime/control/refresh-inventory — run local owner-control refresh-inventory against an explicit endpoint
 //!   POST /api/runtime/control/apply-config — run local owner-control apply-config against an explicit endpoint
+//!   POST /api/runtime/control/kv-cache — run authenticated L3 KV cache operations against owned nodes
 //!   POST /api/runtime/models — load a local model
 //!   DELETE /api/runtime/models/{model} — unload a local model
 //!   DELETE /api/runtime/instances/{instance_id} — unload one local runtime instance
@@ -46,7 +47,7 @@
 //! and `/api/models` per-model `routing_metrics.targets` are measured on the
 //! current node only; not mesh-wide aggregates.
 
-mod access;
+pub(crate) mod access;
 mod assets;
 mod http;
 mod management_lifecycle;

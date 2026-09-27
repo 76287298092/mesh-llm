@@ -24,7 +24,9 @@ mod session;
 mod stage_planning;
 mod types;
 
-pub use activation::{DecodeFrameBatchRequest, IterationBatchPhase, IterationBatchRequest};
+pub use activation::{
+    DecodeFrameBatchRequest, IterationBatchPhase, IterationBatchRequest, PartialBatchExecution,
+};
 pub use capability_probe::{CapabilityReport, probe_capabilities};
 pub use checkpoint::{CheckpointQuantization, is_safetensors_checkpoint};
 pub use config::{
@@ -38,14 +40,18 @@ pub use gguf_writer::{
     ModelInfo, write_gguf_from_parts, write_gguf_from_parts_consuming,
     write_gguf_metadata_from_parts,
 };
+pub use kv_pages::{decode_cachegen_kv_page, encode_cachegen_kv_page};
 pub use logging::{
-    LLAMA_LOG_LEVEL_DEBUG, NativeLogEvent, NativeLogParserMode, NativeLogParserPolicy,
-    configure_native_log_parser, disable_verbose_native_logs, enable_verbose_native_logs,
-    redirect_native_logs_to_file, register_filtered_native_logs, restore_native_logs,
-    set_filtered_native_logs_enabled, suppress_native_logs, unregister_filtered_native_logs,
-    write_native_log_note,
+    LLAMA_LOG_LEVEL_DEBUG, MeasuredNativeBuffers, NativeLogEvent, NativeLogParserMode,
+    NativeLogParserPolicy, configure_native_log_parser, disable_verbose_native_logs,
+    enable_verbose_native_logs, measured_native_buffers, redirect_native_logs_to_file,
+    register_filtered_native_logs, restore_native_logs, set_filtered_native_logs_enabled,
+    suppress_native_logs, unregister_filtered_native_logs, write_native_log_note,
 };
-pub use native::{StageModel, StageModelReader};
+pub use media::{SpeechAudio, SpeechOutputFormat, SpeechSynthesisConfig};
+pub use native::{
+    ModelWorkload, PoolingType, StageModel, StageModelReader, SystemOneReadSlot, WorkloadInfo,
+};
 pub use native_mtp::NativeMtpDraft;
 pub use native_test_evidence::write_evidence_marker;
 pub use ngram::{Cache as NgramCache, NGRAM_CACHE_MAX_NGRAM};
@@ -71,14 +77,17 @@ pub use stage_planning::{
     plan_gguf_stage_resident_tensor_names_for_range, plan_gguf_stage_runtime_plan_for_range,
     plan_gguf_stage_runtime_plans,
 };
+// KV page descriptor flags. Re-exported so callers can read a page's layout
+// without taking a direct dependency on the raw ABI crate.
+pub use skippy_ffi::{KV_PAGE_FLAG_HAS_K_IDX, KV_PAGE_FLAG_V_TRANSPOSED};
 pub use types::{
     ACTIVATION_BOUNDARY_DESC_VERSION, ActivationBoundaryDesc, ActivationDesc, ActivationFrame,
     ActivationPartDesc, ChatReasoningFormat, ChatTemplateJsonOptions, ChatTemplateJsonResult,
     ChatTemplateMessage, ChatTemplateOptions, DecodeFrameBatchOutput, DrySamplingConfig,
     GenerationSignalWindow, IterationBatchOutput, IterationSample, LoadedModelCapability,
     LogitBias, MAX_LOGIT_BIAS, MediaInput, MediaPrefill, MediaPrefillChunkFrame, MediaPrefillFrame,
-    ModelStateKind, RuntimeKvPage, RuntimeKvPageDesc, SamplingConfig, TensorInfo, TokenSignal,
-    XtcSamplingConfig,
+    ModelStateKind, ReasoningBudget, RuntimeKvPage, RuntimeKvPageDesc, SamplingConfig, TensorInfo,
+    TokenSignal, XtcSamplingConfig,
 };
 
 #[cfg(feature = "dynamic-native-runtime")]

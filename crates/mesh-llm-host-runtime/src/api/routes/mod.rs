@@ -3,6 +3,7 @@ mod control_apply_diagnostics;
 mod diagnostics;
 mod discover;
 mod health;
+pub(crate) mod kv_cache;
 pub(crate) mod logs;
 mod mcp;
 mod mesh_hook;
@@ -17,6 +18,8 @@ pub(crate) mod runtime_control_state;
 mod runtime_control_state_sources;
 pub(crate) mod runtime_events;
 mod search;
+#[cfg(feature = "payments")]
+mod wallet;
 
 use super::MeshApi;
 use std::future::Future;
@@ -39,6 +42,11 @@ pub(super) const DISPATCH_REQUEST: DispatchRequestFn =
     |stream, state, method, path, path_only, body, req, raw_request| {
         Box::pin(async move {
             match (method, path_only) {
+                #[cfg(feature = "payments")]
+                ("POST", "/api/wallet") => {
+                    wallet::handle(stream, state, body).await?;
+                    Ok(true)
+                }
                 (method, route_path) if logs::is_route(route_path) => {
                     logs::handle(stream, method, path, body, raw_request).await?;
                     Ok(true)
@@ -89,6 +97,7 @@ pub(super) const DISPATCH_REQUEST: DispatchRequestFn =
                 | ("GET", "/api/runtime/stages")
                 | ("GET", "/api/runtime/config-schema")
                 | ("GET", "/api/runtime/config-control-state")
+                | ("GET", "/api/runtime/kv-cache")
                 | ("GET", "/api/runtime/control-bootstrap")
                 | ("GET", "/api/runtime/intents")
                 | ("GET", "/api/runtime/activity")
@@ -96,6 +105,7 @@ pub(super) const DISPATCH_REQUEST: DispatchRequestFn =
                 | ("POST", "/api/runtime/control/scan-refresh")
                 | ("POST", "/api/runtime/control/refresh-inventory")
                 | ("POST", "/api/runtime/control/apply-config")
+                | ("POST", "/api/runtime/control/kv-cache")
                 | ("POST", "/api/runtime/control/load-model")
                 | ("POST", "/api/runtime/control/unload-model")
                 | ("POST", "/api/runtime/control/ensure-model")
@@ -103,6 +113,8 @@ pub(super) const DISPATCH_REQUEST: DispatchRequestFn =
                 | ("POST", "/api/runtime/config/validate")
                 | ("POST", "/api/runtime/mesh-guardrails")
                 | ("POST", "/api/runtime/models")
+                | ("POST", "/api/runtime/kv-cache/prune")
+                | ("DELETE", "/api/runtime/kv-cache")
                 | ("PUT", "/api/runtime/activity/override")
                 | ("DELETE", "/api/runtime/activity/override")
                 | ("GET", "/api/events") => {

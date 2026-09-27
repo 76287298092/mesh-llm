@@ -553,6 +553,8 @@ pub(crate) mod tests {
             stage_status_list_supported: false,
             local_gguf_content_id_supported: false,
             advertised_model_throughput: vec![],
+            #[cfg(feature = "payments")]
+            lightning_offers: Default::default(),
             cache_affinity: None,
             display_rtt: None,
             selected_path: None,
@@ -702,6 +704,8 @@ pub(crate) mod tests {
                 stage_timing_samples: None,
                 stage_timing_age_ms: None,
             }],
+            #[cfg(feature = "payments")]
+            lightning_offers: Default::default(),
             cache_affinity: None,
             display_rtt: None,
             selected_path: None,

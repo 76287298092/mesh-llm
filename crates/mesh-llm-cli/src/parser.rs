@@ -5,14 +5,14 @@ mod runtime_surface_help;
 mod validation;
 
 pub use commands::{
-    AuthCommand, BinaryFlavor, Cli, Command, ConfigCommand, DiscoveryScope, DoctorCommand,
-    GpuCommand, MeshDiscoveryMode, MeshGuardrailCliMode, PluginCommand, SkillAgentArg,
-    SkillCommand, TrustCommand, TrustPolicy,
+    AnalyticsCommand, AuthCommand, BinaryFlavor, Cli, Command, ConfigCommand, DiscoveryScope,
+    DoctorCommand, GpuCommand, KvCacheCommand, MeshDiscoveryMode, MeshGuardrailCliMode,
+    PluginCommand, SkillAgentArg, SkillCommand, TrustCommand, TrustPolicy,
 };
 pub use logging_help::logging_help;
 pub use normalization::{
     NormalizedRuntimeArgs, RuntimeSurface, legacy_runtime_surface_warning,
-    normalize_runtime_surface_args,
+    normalize_runtime_surface_args, raw_args_invoke_analytics,
 };
 pub use runtime_surface_help::runtime_surface_help;
 pub use validation::validate_discovery_mode_args;
@@ -86,6 +86,20 @@ pub fn assert_mesh_requirements_docs_examples_parse() {
         vec!["signed-bootstrap-token".to_string()]
     );
 
+    let join_file_args = normalize_runtime_surface_args([
+        "mesh-llm",
+        "serve",
+        "--join-file",
+        "/home/example/.mesh-llm/invite.token",
+    ]);
+    let join_file = Cli::parse_from(join_file_args.normalized.clone());
+    assert_eq!(
+        join_file.join_file,
+        vec![std::path::PathBuf::from(
+            "/home/example/.mesh-llm/invite.token"
+        )]
+    );
+
     let runtime_bootstrap = Cli::parse_from(["mesh-llm", "runtime", "bootstrap", "--port", "3131"]);
     match runtime_bootstrap.command.expect("runtime command expected") {
         Command::Runtime {
@@ -100,7 +114,7 @@ pub fn assert_mesh_requirements_docs_examples_parse() {
 
 #[cfg(test)]
 mod tests {
-    use super::{Cli, Command};
+    use super::{Cli, Command, KvCacheCommand};
     use crate::models::ModelsCommand;
     use clap::Parser;
 
@@ -140,6 +154,74 @@ mod tests {
             cli.split_topology_lock,
             Some(std::path::PathBuf::from("topology.json"))
         );
+    }
+
+    #[test]
+    fn disk_cache_runtime_flags_parse_without_rewriting_config() {
+        let normalized = super::normalize_runtime_surface_args(
+            [
+                "mesh-llm",
+                "serve",
+                "--kv-cache-disk",
+                "32GiB",
+                "--kv-cache-disk-dir",
+                "/fast/mesh-kv",
+                "--kv-cache-min-free",
+                "16GiB",
+            ]
+            .into_iter()
+            .map(std::ffi::OsString::from)
+            .collect::<Vec<_>>(),
+        );
+        let cli = Cli::try_parse_from(normalized.normalized)
+            .expect("disk cache runtime flags should parse");
+
+        assert_eq!(cli.kv_cache_disk.as_deref(), Some("32GiB"));
+        assert_eq!(
+            cli.kv_cache_disk_dir,
+            Some(std::path::PathBuf::from("/fast/mesh-kv"))
+        );
+        assert_eq!(cli.kv_cache_min_free.as_deref(), Some("16GiB"));
+    }
+
+    #[test]
+    fn kv_cache_lifecycle_commands_parse_exact_model_identity_and_confirmation() {
+        let cli = Cli::try_parse_from([
+            "mesh-llm",
+            "kv-cache",
+            "prune",
+            "--target",
+            "16GiB",
+            "--model-identity",
+            "blake3:model",
+            "--yes",
+            "--endpoint",
+            "node-a",
+            "--endpoint",
+            "node-b",
+            "--json",
+        ])
+        .expect("kv-cache prune should parse");
+        match cli.command {
+            Some(Command::KvCache {
+                command:
+                    KvCacheCommand::Prune {
+                        target,
+                        model_identity,
+                        yes,
+                        endpoints,
+                        json,
+                        ..
+                    },
+            }) => {
+                assert_eq!(target.as_deref(), Some("16GiB"));
+                assert_eq!(model_identity.as_deref(), Some("blake3:model"));
+                assert!(yes);
+                assert_eq!(endpoints, vec!["node-a", "node-b"]);
+                assert!(json);
+            }
+            other => panic!("unexpected command: {other:?}"),
+        }
     }
 
     #[test]
@@ -191,6 +273,30 @@ mod tests {
                         ..
                     },
             } => assert_eq!(source_repo, "unsloth/inkling-GGUF:UD-Q2_K_XL"),
+            other => panic!("unexpected command: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn models_package_parses_generation_defaults_file() {
+        let cli = Cli::parse_from([
+            "mesh-llm",
+            "models",
+            "package",
+            "unsloth/Qwen3.5-9B-GGUF:Q4_K_M",
+            "--generation-defaults",
+            "qwen35-generation.json",
+            "--dry-run",
+        ]);
+
+        match cli.command.expect("models command expected") {
+            Command::Models {
+                command:
+                    ModelsCommand::Package {
+                        generation_defaults: Some(path),
+                        ..
+                    },
+            } => assert_eq!(path, std::path::PathBuf::from("qwen35-generation.json")),
             other => panic!("unexpected command: {other:?}"),
         }
     }

@@ -2,7 +2,7 @@ use super::split_planning::{
     RuntimeSliceStagePlan, split_participant_exclusion_labels, split_participant_labels,
 };
 #[cfg(test)]
-use super::split_planning::{split_stage_plan_labels, validate_split_capacity};
+use super::split_planning::{SplitCapacityModel, split_stage_plan_labels, validate_split_capacity};
 use crate::inference::{election, skippy};
 use crate::mesh::{self, NodeRole};
 use crate::models;
@@ -98,42 +98,26 @@ pub(super) fn split_runtime_kv_bytes_per_token(
 
 /// Resolve the K/V cache types that split stages will actually load with.
 ///
-/// Stage loading applies the family default (for example Inkling's Q4_0 K/V)
-/// ahead of the size-tiered `KvCachePolicy`. Planning must resolve K/V the same
-/// way, or it budgets for a cheaper cache than the stages allocate and
-/// over-packs the topology into an out-of-memory load.
+/// Planning uses the same package-backed default as stage loading so it
+/// budgets the allocation that will actually be created.
 pub(super) fn split_effective_kv_cache_quant(
     package: &skippy::SkippyPackageIdentity,
     compact_meta: &models::gguf::GgufCompactMeta,
     cache_type_k_override: Option<&str>,
     cache_type_v_override: Option<&str>,
 ) -> models::gguf::GgufKvCacheQuant {
-    // Guard the size-tiered default against the model's quantised-KV
-    // compatibility (Flash Attention / block alignment) so planning budgets for
-    // the same cache the stage load can actually allocate. The family default
-    // gets the same metadata guard: a family that defaults to quantised K/V
-    // (Inkling -> q4_0) must fall back to f16 when the actual GGUF metadata
-    // cannot load it, or planning and load both select an unloadable cache.
-    // Explicit overrides below are never guarded — an override that cannot
-    // load must fail loudly.
-    let size_policy = skippy::KvCachePolicy::for_model_size(package.source_model_bytes)
-        .guarded_for_model(Some(compact_meta));
-    let family_default = skippy::family_policy_for_compact_meta(compact_meta)
-        .default_kv_cache_type
-        .and_then(|default| models::gguf::GgufKvCacheQuant::from_llama_args(default, default))
-        .map(|quant| compact_meta.compatible_default_kv_cache_quant(quant))
-        .map(|quant| quant.k.as_llama_arg());
-
-    // Explicit user overrides win, then the family default, then model size.
-    let effective_k = cache_type_k_override
-        .or(family_default)
-        .unwrap_or(size_policy.cache_type_k());
-    let effective_v = cache_type_v_override
-        .or(family_default)
-        .unwrap_or(size_policy.cache_type_v());
+    let package_policy =
+        skippy::KvCachePolicy::from_publisher_defaults(package.publisher_defaults.as_ref())
+            .guarded_for_model(Some(compact_meta));
+    let effective_k = cache_type_k_override.unwrap_or(package_policy.cache_type_k());
+    let effective_v = cache_type_v_override.unwrap_or(package_policy.cache_type_v());
 
     models::gguf::GgufKvCacheQuant::from_llama_args(effective_k, effective_v).unwrap_or_else(|| {
-        split_kv_cache_quant(&size_policy, cache_type_k_override, cache_type_v_override)
+        split_kv_cache_quant(
+            &package_policy,
+            cache_type_k_override,
+            cache_type_v_override,
+        )
     })
 }
 pub(super) async fn resolve_split_runtime_package(
@@ -185,7 +169,7 @@ pub(super) fn split_kv_cache_quant(
         split_kv_policy.cache_type_k(),
         split_kv_policy.cache_type_v(),
     )
-    .unwrap_or(models::gguf::GgufKvCacheQuant::Q8_0);
+    .unwrap_or(models::gguf::GgufKvCacheQuant::F16);
 
     match (cache_type_k_override, cache_type_v_override) {
         (None, None) => policy_quant,
@@ -326,6 +310,9 @@ pub(super) struct SplitParticipant {
     /// Observed steady-decode runtime work normalized per loaded layer.
     /// This is a measured floor for the analytical weight-streaming model.
     pub(super) observed_decode_us_per_layer: Option<u64>,
+    /// Weight bytes per second this node streams during decode, from its GPU
+    /// memory-bandwidth benchmark. Used by `--auto-balance` placement.
+    pub(super) decode_bytes_per_second: Option<u64>,
 }
 
 impl SplitParticipant {
@@ -351,7 +338,13 @@ impl SplitParticipant {
             sustained_mem_bandwidth_mib_per_s: None,
             sustained_compute_gflop_per_s: None,
             observed_decode_us_per_layer: None,
+            decode_bytes_per_second: None,
         }
+    }
+
+    pub(super) fn with_decode_speed(mut self, decode_bytes_per_second: Option<u64>) -> Self {
+        self.decode_bytes_per_second = decode_bytes_per_second;
+        self
     }
 
     pub(super) fn local_package(
@@ -704,6 +697,30 @@ pub(super) async fn collect_split_participant_membership(
     }
 }
 
+/// Total GPU memory bandwidth across a node's GPUs, as bytes per second.
+///
+/// A stage runs on one device, but on Apple Silicon there is one GPU and on
+/// multi-GPU hosts a stage spans the devices its layers are spread over, so
+/// the sum is the right first-order rate. Absolute accuracy does not matter —
+/// only the ratio between nodes moves the cut — and runtime measurement
+/// replaces it once stages are serving.
+pub(super) fn decode_bytes_per_second_from_gbps(gbps: Option<&[f64]>) -> Option<u64> {
+    let total: f64 = gbps?
+        .iter()
+        .filter(|value| value.is_finite() && **value > 0.0)
+        .sum();
+    (total > 0.0).then_some((total * 1_000_000_000.0) as u64)
+}
+
+/// Parse the comma-joined per-GPU bandwidth a peer gossips.
+pub(super) fn decode_bytes_per_second_from_gossip(gbps: Option<&str>) -> Option<u64> {
+    let values = gbps?
+        .split(',')
+        .filter_map(|value| value.trim().parse::<f64>().ok())
+        .collect::<Vec<_>>();
+    decode_bytes_per_second_from_gbps(Some(&values))
+}
+
 pub(super) async fn collect_split_participants(
     node: &mesh::Node,
     model_name: &str,
@@ -717,6 +734,7 @@ pub(super) async fn collect_split_participants(
     let local_stage_timing = skippy_server::stage_decode_timing_hints()
         .into_iter()
         .find(|hint| hint.model_id == model_ref || hint.model_id == model_name);
+    let local_bandwidth = node.gpu_mem_bandwidth_gbps.lock().await.clone();
     let mut participants = vec![
         SplitParticipant::local_package(
             node.id(),
@@ -732,7 +750,10 @@ pub(super) async fn collect_split_participants(
                     && hint.sample_age_ms <= MAX_TRUSTED_STAGE_TIMING_AGE_MS)
                     .then_some(hint.observed_us_per_layer)
             }),
-        }),
+        })
+        .with_decode_speed(decode_bytes_per_second_from_gbps(
+            local_bandwidth.as_deref(),
+        )),
     ];
     let mut excluded = Vec::new();
     for peer in node.peers().await {
@@ -779,6 +800,9 @@ pub(super) async fn collect_split_participants(
                             artifact_transfer_allowed,
                             perf,
                         )
+                        .with_decode_speed(decode_bytes_per_second_from_gossip(
+                            peer.gpu_mem_bandwidth_gbps.as_deref(),
+                        ))
                         .with_edge_bandwidth(peer.large_frame_mib_per_s())
                         .with_rtt_observation(peer.rtt_observation_ages()),
                 );
@@ -1247,7 +1271,16 @@ pub(super) fn plan_runtime_slice_topology_with_exclusions(
         })
         .collect::<Vec<_>>();
     stages.sort_by_key(|stage| stage.stage_index);
-    validate_split_capacity(model_ref, package, participants, &stages, excluded)?;
+    // The package-identity planner has no context model of its own, so this
+    // test-only path validates stages against the weight-only backstop.
+    validate_split_capacity(
+        model_ref,
+        package,
+        participants,
+        &stages,
+        excluded,
+        &SplitCapacityModel::weights_only(),
+    )?;
     tracing::info!(
         topology_id,
         model_ref,

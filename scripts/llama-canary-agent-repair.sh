@@ -23,6 +23,17 @@ TRUSTED_ROOT="$ROOT"
 # shellcheck disable=SC1091
 source "$ROOT/scripts/lib/macos-deployment-target.sh"
 HARNESS_MODE="${CANARY_HARNESS_MODE:-repair}"
+if [[ -n "${CANARY_MESH_SOURCE:-}" ]]; then
+  if [[ "$HARNESS_MODE" != pinned-build ]]; then
+    echo "selected MeshLLM source requires certify-only pinned-build mode" >&2
+    exit 1
+  fi
+  ROOT="${CANARY_SOURCE_ROOT:?selected source checkout required}"
+  if [[ "$(git -C "$ROOT" rev-parse HEAD)" != "$CANARY_MESH_SOURCE" ]]; then
+    echo "selected MeshLLM checkout does not match frozen revision" >&2
+    exit 1
+  fi
+fi
 UPSTREAM_SHA="${1:-${UPSTREAM_SHA_INPUT:-latest}}"
 if [[ "$UPSTREAM_SHA" == "latest" || -z "$UPSTREAM_SHA" ]]; then
   UPSTREAM_SHA="$(git ls-remote https://github.com/ggml-org/llama.cpp.git master | awk '{print $1}')"
@@ -57,6 +68,7 @@ PR_BODY="$STATE_DIR/pr-body.md"
 UPSTREAM_SUMMARY="$STATE_DIR/upstream-summary.md"
 BUNDLE="$STATE_DIR/candidate.bundle"
 EVIDENCE_DIR="$STATE_DIR/verification-evidence"
+SYSTEMONE_SMOKE_DIR="$ROOT/target/skippy-system-one-smoke"
 FAMILY_BATTERY_RUN_ID="${FAMILY_BATTERY_RUN_ID:-${RUN_KEY}}"
 PLAN_PATH="$ROOT/target/family-battery/$FAMILY_BATTERY_RUN_ID/policy-plan.json"
 BASE_HEAD="$(git rev-parse HEAD)"
@@ -91,7 +103,7 @@ if [[ -n "$(git status --porcelain)" ]]; then
   echo "changed-pin canary requires a clean trusted-main checkout" >&2
   exit 1
 fi
-if [[ -z "$(git config user.name)" || -z "$(git config user.email)" ]]; then
+if [[ "$HARNESS_MODE" != pinned-build ]] && [[ -z "$(git config user.name)" || -z "$(git config user.email)" ]]; then
   echo "git user.name and user.email must be configured before canary repair" >&2
   exit 1
 fi
@@ -128,8 +140,12 @@ rm -rf /tmp/llama-old-pin /tmp/llama-repair /tmp/llama-repair-* 2>/dev/null || t
 run_for() {
   local label="$1" seconds="$2"
   shift 2
+  local cleanup=()
+  if [[ "$label" == "agent developer task" ]]; then
+    cleanup+=(--cleanup-on-exit)
+  fi
   python3 scripts/run-command-with-timeout.py \
-    --seconds "$seconds" --label "$label" -- "$@"
+    --seconds "$seconds" --label "$label" "${cleanup[@]}" -- "$@"
 }
 
 remaining_verification_seconds() {
@@ -157,6 +173,10 @@ run_verification_logged() {
 }
 
 write_repair_pin() {
+  if [[ "$HARNESS_MODE" == pinned-build ]]; then
+    verify_repair_pin
+    return
+  fi
   scripts/update-llama-pin.sh "$UPSTREAM_SHA"
 }
 
@@ -275,6 +295,13 @@ snapshot_candidate_tree() {
   assert_agent_control_unchanged || return 1
   verify_repair_pin || return 1
   validate_agent_manifest_changes || return 1
+  # Verify the dirty-tree producer before snapshotting changes its source identity.
+  local closure="${LLAMA_STAGE_BUILD_DIR:?}-workloads"
+  python3 "$ROOT/scripts/check-skippy-workload-candidate.py" \
+    --candidate-binary "$closure/cargo/debug/skippy-server" \
+    --native-build-dir "$closure/native" --producer-manifest "$closure/producer.json"
+  CANARY_VERIFIED_WORKLOAD_PRODUCER="$(shasum -a 256 "$closure/producer.json" | awk '{print $1}')"
+  export CANARY_VERIFIED_WORKLOAD_PRODUCER
   git add -A
   if git diff --cached --quiet; then
     echo "agent produced no candidate changes to verify" >&2
@@ -304,20 +331,26 @@ write_candidate_bundle() {
 }
 
 load_candidate_bundle() {
-  local input_bundle expected_head bundle_head
+  local input_bundle expected_head candidate_branch bundle_head
   input_bundle="${CANARY_INPUT_BUNDLE:?CANARY_INPUT_BUNDLE is required in verify mode}"
   expected_head="${CANARY_CANDIDATE_SHA:?CANARY_CANDIDATE_SHA is required in verify mode}"
+  candidate_branch="${CANARY_CANDIDATE_BRANCH:?CANARY_CANDIDATE_BRANCH is required in verify mode}"
   if [[ ! "$expected_head" =~ ^[0-9a-f]{40}$ || ! -s "$input_bundle" ]]; then
     echo "verification requires a non-empty candidate bundle and 40-hex head" >&2
     return 1
   fi
+  if [[ "$candidate_branch" != llama-canary/repair-* ]] ||
+      ! git check-ref-format "refs/heads/${candidate_branch}"; then
+    echo "verification requires a valid identity-bound candidate branch" >&2
+    return 1
+  fi
   git bundle verify "$input_bundle" >/dev/null
-  bundle_head="$(git bundle list-heads "$input_bundle" "refs/heads/${BRANCH}" | awk '{print $1}')"
+  bundle_head="$(git bundle list-heads "$input_bundle" "refs/heads/${candidate_branch}" | awk '{print $1}')"
   if [[ "$bundle_head" != "$expected_head" ]]; then
     echo "candidate bundle head does not match the repair job output" >&2
     return 1
   fi
-  git fetch "$input_bundle" "refs/heads/${BRANCH}"
+  git fetch "$input_bundle" "refs/heads/${candidate_branch}"
   CERTIFIED_SHA="$expected_head"
   CANDIDATE_BASE_HEAD="$(git rev-parse "${CERTIFIED_SHA}^")"
   VERIFICATION_TREE="$(git rev-parse "${CERTIFIED_SHA}^{tree}")"
@@ -329,7 +362,8 @@ cleanup_verification_worktree() {
     mkdir -p "$EVIDENCE_DIR"
     for source in \
         "$VERIFY_ROOT/target/family-battery/$FAMILY_BATTERY_RUN_ID" \
-        "$VERIFY_ROOT/target/skippy-stage-rewriter-check"; do
+        "$VERIFY_ROOT/target/skippy-stage-rewriter-check" \
+        "$VERIFY_ROOT/target/skippy-system-one-smoke"; do
       if [[ -e "$source" ]]; then
         cp -R "$source" "$EVIDENCE_DIR/" || true
       fi
@@ -354,7 +388,13 @@ materialize_verification_tree() {
   rm -rf "$LLAMA_STAGE_BUILD_DIR" \
     "$ROOT/.deps/llama.cpp" \
     "$ROOT/target/family-battery/$FAMILY_BATTERY_RUN_ID" \
-    "$ROOT/target/skippy-stage-rewriter-check"
+    "$ROOT/target/skippy-stage-rewriter-check" \
+    "$ROOT/target/skippy-system-one-smoke"
+  # Re-derive the System One smoke work dir under the verification ROOT: the
+  # top-level assignment still points at the trusted checkout, and verifier
+  # evidence must stay inside the candidate worktree that
+  # cleanup_verification_worktree copies into EVIDENCE_DIR.
+  SYSTEMONE_SMOKE_DIR="$ROOT/target/skippy-system-one-smoke"
   mkdir -p "$(dirname "$PLAN_PATH")"
   cd "$ROOT"
   verify_repair_pin
@@ -396,6 +436,10 @@ run_full_build() {
     || return 1
   run_verification_logged "Skippy smoke tests" "$BUILD_LOG" \
     scripts/skippy-ci-smoke.sh || return 1
+  # Run-scoped CPU workload oracle closure for the non-chat certification
+  # lanes; packed into the executable handoff for family workers.
+  run_verification_logged "pinned CPU workload oracles and candidate" "$BUILD_LOG" \
+    just skippy-workload-oracles-build "${LLAMA_STAGE_BUILD_DIR:?}-workloads" || return 1
   if [[ "$HARNESS_MODE" == *-build ]]; then
     # The nested shell expands its positional argument, not this shell.
     # shellcheck disable=SC2016
@@ -403,10 +447,27 @@ run_full_build() {
       bash -c 'cargo test -p skippy-server --lib --no-run --message-format=json > "$1"' \
       build-mm "$STATE_DIR/mm-build.jsonl" || return 1
   fi
+  # The System One smoke exit code is 0 for a NOT CERTIFIED full-model read and
+  # non-zero for a red contract part or a red declared-qualified read, so this
+  # gate blocks publication exactly when the lane is qualified to decide.
+  run_verification_logged "System One smoke" "$BUILD_LOG" env \
+    WORK_DIR="$SYSTEMONE_SMOKE_DIR" \
+    SYSTEMONE_SMOKE_CADENCE=llama-bump \
+    scripts/skippy-system-one-smoke.sh || return 1
 }
 
 # Local CLI compatibility path. CI uses *-build modes and separate family jobs.
 run_certification() {
+  local setting workload_settings
+  local workload_env=()
+  workload_settings="$(bash scripts/skippy-workload-oracles-build.sh --print-env "${LLAMA_STAGE_BUILD_DIR:?}-workloads")" || return 1
+  if [[ -z "$workload_settings" ]]; then
+    echo "workload producer returned no certification environment" >&2
+    return 1
+  fi
+  while IFS= read -r setting; do
+    workload_env+=("$setting")
+  done <<< "$workload_settings"
   : > "$CERTIFY_LOG"
   echo "trusted candidate gate: certify" | tee -a "$CERTIFY_LOG"
   run_verification_logged "parity manifest validation" "$CERTIFY_LOG" \
@@ -422,6 +483,7 @@ run_certification() {
     || return 1
   run_verification_logged "full supported-family certification" "$CERTIFY_LOG" env \
     FAMILY_BATTERY_RUN_ID="$FAMILY_BATTERY_RUN_ID" \
+    "${workload_env[@]}" \
     scripts/skippy-family-battery.sh --skip-build --plan "$PLAN_PATH"
 }
 
@@ -520,7 +582,7 @@ write_pr_body() {
     echo "- Workflow run: \`${RUN_KEY}\`"
     echo "- Certified commit: \`${CERTIFIED_SHA}\`"
     echo
-    echo "One agent completed the pin and patch-queue task. The trusted harness then independently passed prepare, the complete patched llama.cpp and Rust build, Skippy smoke tests, and the full supported-family certification on this exact commit."
+    echo "One agent completed the pin and patch-queue task. The trusted harness then independently passed prepare, the complete patched llama.cpp and Rust build, Skippy smoke tests, the System One (OpenJEV) smoke, and the full supported-family certification on this exact commit."
     echo
     cat "$UPSTREAM_SUMMARY"
   } > "$PR_BODY"
@@ -558,7 +620,8 @@ export_family_inputs() {
   python3 "$TRUSTED_ROOT/scripts/llama-canary-family-evidence.py" pack \
     --root "$ROOT" --output "$destination" --candidate "$CERTIFIED_SHA" \
     --base "$CANDIDATE_BASE_HEAD" --branch "$BRANCH" --pass-id "$PASS_ID" \
-    --test-build "$STATE_DIR/mm-build.jsonl" --bundle "$BUNDLE" --summary "$UPSTREAM_SUMMARY"
+    --test-build "$STATE_DIR/mm-build.jsonl" --bundle "$BUNDLE" --summary "$UPSTREAM_SUMMARY" \
+    --workload-oracles "${LLAMA_STAGE_BUILD_DIR:?}-workloads"
 }
 
 if [[ "$HARNESS_MODE" == repair* ]]; then

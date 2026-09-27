@@ -309,6 +309,31 @@ pub(super) async fn rank_targets_by_context(
     rank_candidates_by_context_and_throughput(&candidates, required_tokens)
 }
 
+pub(super) async fn rank_aliased_targets_by_context(
+    node: &mesh::Node,
+    required_tokens: Option<u32>,
+    targets: &[(election::InferenceTarget, String)],
+) -> RankedCandidates<(election::InferenceTarget, String)> {
+    let mut candidates = Vec::with_capacity(targets.len());
+    for (target, model) in targets {
+        let context_length = match target {
+            election::InferenceTarget::Local(_) => node.local_model_context_length(model).await,
+            election::InferenceTarget::Remote(peer_id) => {
+                node.peer_model_context_length(*peer_id, model).await
+            }
+            election::InferenceTarget::None => None,
+        };
+        let throughput = match target {
+            election::InferenceTarget::Remote(peer_id) => {
+                remote_target_throughput_rank(node, model, *peer_id).await
+            }
+            _ => local_target_throughput_rank(node, model, target),
+        };
+        candidates.push(((target.clone(), model.clone()), context_length, throughput));
+    }
+    rank_candidates_by_context_and_throughput(&candidates, required_tokens)
+}
+
 #[cfg(test)]
 pub(super) async fn order_targets_by_context(
     node: &mesh::Node,
@@ -367,13 +392,6 @@ pub(crate) fn capabilities_for_model(
         .unwrap_or_else(|| crate::models::installed_model_capabilities(model))
 }
 
-pub(crate) fn descriptor_metadata_for_model<'a>(
-    model: &str,
-    descriptors: &'a [mesh::ServedModelDescriptor],
-) -> Option<&'a mesh::ServedModelMetadata> {
-    descriptor_for_model(descriptors, model).and_then(|descriptor| descriptor.metadata.as_ref())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -400,6 +418,7 @@ mod tests {
             ..local_gguf_descriptor(model_name)
         }
     }
+
     #[test]
     fn test_cached_auto_model_rejects_text_model_for_image_request() {
         let body = serde_json::json!({

@@ -132,6 +132,89 @@ pub struct PeerAnnouncement {
     /// Positive, short-lived cache evidence. Digests are salted and contain no tokens.
     #[prost(message, optional, tag = "50")]
     pub cache_affinity: ::core::option::Option<CacheAffinityAdvertisement>,
+    /// An optional, self-reported claim this node MAY advertise about the head
+    /// of its own append-only history. Advisory only. Absence has four
+    /// possible causes, and a receiver cannot tell which one applies from this
+    /// field alone: (1) the peer does not advertise one; (2) the peer has not
+    /// produced one yet; (3) the head originated more than one hop away — this
+    /// implementation does not relay `claimed_log_head` transitively (see
+    /// `apply_transitive_ann`), so a receiver only ever sees heads from
+    /// directly-connected peers; (4) a field exceeded its bound and the whole
+    /// head was dropped on decode (see `proto_claimed_log_head_to_local`).
+    /// Never verified by mesh-llm itself — carried opaquely so a receiver MAY
+    /// verify independently.
+    #[prost(message, optional, tag = "51")]
+    pub claimed_log_head: ::core::option::Option<ClaimedLogHead>,
+    #[prost(message, repeated, tag = "52")]
+    pub lightning_offers: ::prost::alloc::vec::Vec<LightningOffer>,
+}
+/// A minimal, self-contained claim about the current head of a peer's
+/// append-only log. `claimed_signature` is claimed by the announcing peer to
+/// be a signature, using the scheme named in `signature_algorithm`, by the
+/// peer's own node key (the same key backing its `endpoint_id`) over the
+/// following byte string ("sig_input"), so a third party can implement a
+/// verifier without consulting any external document. `sig_input` is
+/// constructed the same way as `SignedMeshGenesisPolicy`'s canonical bytes,
+/// using this crate's `write_string`/`write_bytes` conventions (see
+/// `mesh-llm-host-runtime/src/mesh/requirements.rs`):
+///
+///   sig_input = b"mesh-llm-claimed-log-head-v1:"
+///             || u64le(len(log_id))               || log_id
+///             || u64le(size)
+///             || u64le(len(root))                  || root
+///             || u64le(timestamp_unix_ms)
+///             || u64le(len(signature_algorithm))   || signature_algorithm
+///
+/// All integers are little-endian, fixed 8 bytes (u64le) — matching this
+/// crate's existing canonical-bytes convention, the same one used for
+/// `SignedMeshGenesisPolicy`, `SignedBootstrapToken`, and
+/// `DirectNodeAdmissionProof`. `len(log_id)` and `len(signature_algorithm)`
+/// are each the length in bytes of the UTF-8 encoding of the string, not a
+/// character count. Every variable-length field is length-prefixed, so
+/// concatenation cannot be ambiguous between adjacent fields. The leading
+/// domain-separation tag stops a signature produced for another protocol
+/// from being replayed here.
+/// `signature_algorithm` is itself bound into `sig_input` — otherwise an
+/// attacker could strip or swap it on the wire, and algorithm agility would
+/// become an attack surface instead of a feature. The value bound in is
+/// `signature_algorithm.trim()`, the same trimmed value a verifier must
+/// compare against, so two peers that differ only in surrounding whitespace
+/// sign and verify identical bytes.
+/// `signature_algorithm` names the scheme with a lowercase string, e.g.
+/// `"ed25519"` (matching `ED25519_SIGNATURE_ALGORITHM` in
+/// `mesh-llm-host-runtime/src/mesh/requirements.rs`). Comparison is
+/// `.trim()` then exact `==` — whitespace-tolerant, case-sensitive — the
+/// same convention already used to check this field on
+/// `SignedMeshGenesisPolicy`/`SignedBootstrapToken`/
+/// `DirectNodeAdmissionProof`. An absent or empty `signature_algorithm`
+/// means the peer named no scheme: a verifier cannot check the claim and
+/// MUST NOT assume one (in particular, MUST NOT default to Ed25519) — empty
+/// is never defaulted, the same house rule those three messages already
+/// enforce.
+/// mesh-llm carries this opaquely and never verifies it itself — the name
+/// reflects that nothing here has checked the claim. A consumer that does
+/// verify it may define its own `VerifiedLogHead` type; none exists in this
+/// crate.
+/// `log_id`, `root`, `claimed_signature`, and `signature_algorithm` are
+/// bounded at the conversion boundary (see
+/// `mesh-llm-host-runtime/src/protocol/convert.rs`) as a memory-safety limit
+/// on untrusted remote bytes, not a format assertion — the bounds are wide
+/// enough for hash/signature schemes other than the SHA-256/Ed25519 this
+/// node itself uses.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ClaimedLogHead {
+    #[prost(string, tag = "1")]
+    pub log_id: ::prost::alloc::string::String,
+    #[prost(uint64, tag = "2")]
+    pub size: u64,
+    #[prost(bytes = "vec", tag = "3")]
+    pub root: ::prost::alloc::vec::Vec<u8>,
+    #[prost(uint64, tag = "4")]
+    pub timestamp_unix_ms: u64,
+    #[prost(bytes = "vec", tag = "5")]
+    pub claimed_signature: ::prost::alloc::vec::Vec<u8>,
+    #[prost(string, tag = "6")]
+    pub signature_algorithm: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct AdvertisedModelThroughput {
@@ -327,6 +410,8 @@ pub struct ServedModelMetadata {
     pub expert_count: ::core::option::Option<u32>,
     #[prost(uint32, optional, tag = "12")]
     pub active_expert_count: ::core::option::Option<u32>,
+    #[prost(enumeration = "ModelWorkloadClass", optional, tag = "13")]
+    pub workload_class: ::core::option::Option<i32>,
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ServedModelIdentity {
@@ -654,6 +739,8 @@ pub struct OwnerControlRequest {
     pub ensure_model: ::core::option::Option<OwnerControlEnsureModelRequest>,
     #[prost(message, optional, tag = "9")]
     pub drain_model: ::core::option::Option<OwnerControlDrainModelRequest>,
+    #[prost(message, optional, tag = "10")]
+    pub kv_cache: ::core::option::Option<OwnerControlKvCacheRequest>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct OwnerControlResponse {
@@ -675,6 +762,8 @@ pub struct OwnerControlResponse {
     pub ensure_model: ::core::option::Option<OwnerControlEnsureModelResponse>,
     #[prost(message, optional, tag = "9")]
     pub drain_model: ::core::option::Option<OwnerControlDrainModelResponse>,
+    #[prost(message, optional, tag = "10")]
+    pub kv_cache: ::core::option::Option<OwnerControlKvCacheResponse>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct OwnerControlError {
@@ -840,6 +929,23 @@ pub struct OwnerControlDrainModelRequest {
     pub drain_timeout_secs: ::core::option::Option<u64>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct OwnerControlKvCacheRequest {
+    /// exactly 32 bytes
+    #[prost(bytes = "vec", tag = "1")]
+    pub requester_node_id: ::prost::alloc::vec::Vec<u8>,
+    /// exactly 32 bytes
+    #[prost(bytes = "vec", tag = "2")]
+    pub target_node_id: ::prost::alloc::vec::Vec<u8>,
+    #[prost(enumeration = "OwnerControlKvCacheOperation", tag = "3")]
+    pub operation: i32,
+    /// prune only; default is 85% of budget
+    #[prost(uint64, optional, tag = "4")]
+    pub target_bytes: ::core::option::Option<u64>,
+    /// exact internal numerical identity
+    #[prost(string, optional, tag = "5")]
+    pub model_identity: ::core::option::Option<::prost::alloc::string::String>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct OwnerControlLoadModelResponse {
     #[prost(string, tag = "1")]
     pub intent_id: ::prost::alloc::string::String,
@@ -874,6 +980,15 @@ pub struct OwnerControlDrainModelResponse {
     pub accepted_state: ::prost::alloc::string::String,
     #[prost(message, optional, tag = "3")]
     pub target: ::core::option::Option<OwnerControlModelRef>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct OwnerControlKvCacheResponse {
+    /// versioned KvCacheStatusPayload JSON
+    #[prost(bytes = "vec", tag = "1")]
+    pub status_json: ::prost::alloc::vec::Vec<u8>,
+    /// present for prune and clear
+    #[prost(uint64, optional, tag = "2")]
+    pub freed_bytes: ::core::option::Option<u64>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct OwnerControlRefreshInventory {
@@ -987,6 +1102,44 @@ impl ModelSourceKind {
             "MODEL_SOURCE_KIND_LOCAL_GGUF" => Some(Self::LocalGguf),
             "MODEL_SOURCE_KIND_DIRECT_URL" => Some(Self::DirectUrl),
             "MODEL_SOURCE_KIND_UNKNOWN" => Some(Self::Unknown),
+            _ => None,
+        }
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum ModelWorkloadClass {
+    Unspecified = 0,
+    CausalGeneration = 1,
+    Embedding = 2,
+    Rerank = 3,
+    EncoderDecoder = 4,
+    SpeechSynthesis = 5,
+}
+impl ModelWorkloadClass {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "MODEL_WORKLOAD_CLASS_UNSPECIFIED",
+            Self::CausalGeneration => "MODEL_WORKLOAD_CLASS_CAUSAL_GENERATION",
+            Self::Embedding => "MODEL_WORKLOAD_CLASS_EMBEDDING",
+            Self::Rerank => "MODEL_WORKLOAD_CLASS_RERANK",
+            Self::EncoderDecoder => "MODEL_WORKLOAD_CLASS_ENCODER_DECODER",
+            Self::SpeechSynthesis => "MODEL_WORKLOAD_CLASS_SPEECH_SYNTHESIS",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "MODEL_WORKLOAD_CLASS_UNSPECIFIED" => Some(Self::Unspecified),
+            "MODEL_WORKLOAD_CLASS_CAUSAL_GENERATION" => Some(Self::CausalGeneration),
+            "MODEL_WORKLOAD_CLASS_EMBEDDING" => Some(Self::Embedding),
+            "MODEL_WORKLOAD_CLASS_RERANK" => Some(Self::Rerank),
+            "MODEL_WORKLOAD_CLASS_ENCODER_DECODER" => Some(Self::EncoderDecoder),
+            "MODEL_WORKLOAD_CLASS_SPEECH_SYNTHESIS" => Some(Self::SpeechSynthesis),
             _ => None,
         }
     }
@@ -1420,6 +1573,35 @@ impl OwnerControlErrorCode {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
+pub enum OwnerControlKvCacheOperation {
+    Unspecified = 0,
+    Status = 1,
+    Prune = 2,
+    Clear = 3,
+}
+impl OwnerControlKvCacheOperation {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "OWNER_CONTROL_KV_CACHE_OPERATION_UNSPECIFIED",
+            Self::Status => "OWNER_CONTROL_KV_CACHE_OPERATION_STATUS",
+            Self::Prune => "OWNER_CONTROL_KV_CACHE_OPERATION_PRUNE",
+            Self::Clear => "OWNER_CONTROL_KV_CACHE_OPERATION_CLEAR",
+        }
+    }
+
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "OWNER_CONTROL_KV_CACHE_OPERATION_UNSPECIFIED" => Some(Self::Unspecified),
+            "OWNER_CONTROL_KV_CACHE_OPERATION_STATUS" => Some(Self::Status),
+            "OWNER_CONTROL_KV_CACHE_OPERATION_PRUNE" => Some(Self::Prune),
+            "OWNER_CONTROL_KV_CACHE_OPERATION_CLEAR" => Some(Self::Clear),
+            _ => None,
+        }
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
 pub enum OwnerControlRefreshInventoryDisposition {
     Unspecified = 0,
     Executed = 1,
@@ -1508,4 +1690,16 @@ impl InferenceAdmissionState {
             _ => None,
         }
     }
+}
+
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct LightningOffer {
+    #[prost(string, tag = "1")]
+    pub model: ::prost::alloc::string::String,
+    #[prost(uint64, tag = "2")]
+    pub input_msat_per_million: u64,
+    #[prost(uint64, tag = "3")]
+    pub output_msat_per_million: u64,
+    #[prost(uint64, tag = "4")]
+    pub minimum_invoice_msat: u64,
 }

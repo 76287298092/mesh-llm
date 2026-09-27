@@ -2,19 +2,36 @@ use mesh_llm_cli::Command;
 
 use super::{
     DEFAULT_AGENT_PORT, DEFAULT_LOCAL_PORT, ModelPrepareSummary, SummaryAssembly, administration,
-    auth, benchmark, models, runtime,
+    auth, benchmark, kv_cache, models, runtime,
 };
 
 pub(super) fn format_command(command: &Command, assembly: &mut SummaryAssembly) {
     match command {
+        Command::Wallet { .. } => assembly.command.push_str(" wallet"),
+        Command::Hermes(args) | Command::Openclaw(args) => {
+            assembly
+                .command
+                .push_str(if matches!(command, Command::Hermes(_)) {
+                    " hermes"
+                } else {
+                    " openclaw"
+                });
+            assembly.flag("write", args.write);
+            assembly.redact("--host", true);
+            assembly.redact("--model", true);
+            assembly.redact("--config-path", args.config_path.is_some());
+            assembly.redact("--context-length", args.context_length.is_some());
+        }
         Command::Serve => assembly.command.push_str(" serve"),
         Command::Client => assembly.command.push_str(" client"),
         Command::Models { command } => models::format_models(command, assembly),
         Command::Runtime { command } => runtime::format_runtime(command.as_ref(), assembly),
+        Command::KvCache { command } => kv_cache::format_kv_cache(command, assembly),
         Command::Plugin { command } => administration::format_plugin(command, assembly),
         Command::Auth { command } => auth::format_auth(command, assembly),
         Command::Benchmark { command } => benchmark::format_benchmark(command, assembly),
         Command::Config { command } => administration::format_config(command, assembly),
+        Command::Analytics { command } => administration::format_analytics(command, assembly),
         Command::Doctor { command, json } => {
             administration::format_doctor(command.as_ref(), *json, assembly);
         }

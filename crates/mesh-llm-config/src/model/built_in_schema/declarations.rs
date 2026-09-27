@@ -3,6 +3,7 @@ fn build_built_in_config_schema() -> ConfigSchema {
         top_level_setting("version", ConfigValueSchema::Integer),
         top_level_setting("gpu.assignment", string_enum(["auto", "pinned"])),
         top_level_setting("gpu.parallel", ConfigValueSchema::Integer),
+        top_level_setting("gpu.host_ram_offload", ConfigValueSchema::Boolean),
         top_level_setting(
             "mesh_requirements.min_node_version",
             string_enum_from_slice(known_mesh_llm_versions()),
@@ -42,6 +43,7 @@ fn build_built_in_config_schema() -> ConfigSchema {
         telemetry_setting("telemetry.queue_size", ConfigValueSchema::Integer),
         telemetry_setting("telemetry.prompt_shape_metrics", ConfigValueSchema::Boolean),
         telemetry_setting("telemetry.metrics.endpoint", ConfigValueSchema::Url),
+        analytics_setting("analytics.enabled", ConfigValueSchema::Boolean),
         logging_audit_setting("logging.audit.enabled", ConfigValueSchema::Boolean),
         logging_audit_setting("logging.audit.log_path", ConfigValueSchema::Path),
         logging_audit_setting("logging.audit.log_format", string_enum(["json_lines"])),
@@ -112,6 +114,31 @@ fn build_built_in_config_schema() -> ConfigSchema {
         native_runtime_setting(
             "runtime.native_runtime.selection",
             one_of([string_enum(["recommended"]), ConfigValueSchema::String]),
+        ),
+        kv_disk_setting(
+            "runtime.kv_cache.disk.mode",
+            string_enum(["off", "auto", "fixed"]),
+            false,
+        ),
+        kv_disk_setting(
+            "runtime.kv_cache.disk.directory",
+            ConfigValueSchema::Path,
+            false,
+        ),
+        kv_disk_setting(
+            "runtime.kv_cache.disk.budget_mib",
+            ConfigValueSchema::Integer,
+            true,
+        ),
+        kv_disk_setting(
+            "runtime.kv_cache.disk.minimum_free_mib",
+            ConfigValueSchema::Integer,
+            true,
+        ),
+        kv_disk_setting(
+            "runtime.kv_cache.disk.codec",
+            string_enum(["native", "cachegen"]),
+            false,
         ),
         runtime_setting(
             "runtime.model_target_demand_upgrade_min_requests",
@@ -316,13 +343,9 @@ fn model_fit_settings(
         basic_setting(&format!("{prefix}.ubatch"), ConfigValueSchema::Integer),
         basic_setting(&format!("{prefix}.cache_type_k"), kv_cache_type_schema()),
         basic_setting(&format!("{prefix}.cache_type_v"), kv_cache_type_schema()),
-        basic_setting(
-            &format!("{prefix}.kv_cache_policy"),
-            string_enum(["auto", "quality", "balanced", "saver"]),
-        ),
         basic_setting(&format!("{prefix}.kv_offload"), bool_or_auto_schema()),
         basic_setting(&format!("{prefix}.kv_unified"), bool_or_auto_schema()),
-        unwired_setting(
+        basic_setting(
             &format!("{prefix}.cache_ram_mib"),
             ConfigValueSchema::Integer,
         ),
@@ -758,6 +781,7 @@ fn speculative_settings(prefix: &str) -> Vec<ConfigSettingSchema> {
             &format!("{prefix}.verify_window_runahead_tokens"),
             ConfigValueSchema::Integer,
         ),
+        basic_setting(&format!("{prefix}.ngram_fallback"), ConfigValueSchema::String),
         basic_setting(&format!("{prefix}.spec_default"), bool_or_auto_schema()),
     ]
 }
@@ -843,7 +867,7 @@ fn request_defaults_settings(prefix: &str) -> Vec<ConfigSettingSchema> {
         ),
         basic_setting(
             &format!("{prefix}.reasoning_budget"),
-            integer_or_string_enum(["auto", "low", "medium", "high"]),
+            integer_or_string_enum(["auto", "low", "medium", "high", "unrestricted"]),
         ),
         basic_setting(
             &format!("{prefix}.chat_template"),

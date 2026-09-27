@@ -30,11 +30,12 @@ use std::{
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use openai_frontend::{
+    AudioResponse, AudioSpeechRequest, AudioTranscriptionRequest, AudioTranscriptionResponse,
     ChatCompletionRequest, ChatCompletionResponse, ChatCompletionStream, CompactingOpenAiBackend,
-    CompactionConfig, CompletionRequest, CompletionResponse, CompletionStream,
-    GuardedOpenAiBackend, GuardrailMode, GuardrailPolicy, GuardrailPolicyHandle,
+    CompactionConfig, CompletionRequest, CompletionResponse, CompletionStream, EmbeddingResponse,
+    EmbeddingsRequest, GuardedOpenAiBackend, GuardrailMode, GuardrailPolicy, GuardrailPolicyHandle,
     GuardrailTelemetrySink, ModelObject, OpenAiBackend, OpenAiHookPolicy, OpenAiRequestContext,
-    OpenAiResult,
+    OpenAiResult, RerankRequest, RerankResponse,
 };
 use skippy_protocol::{FlashAttentionType, LoadMode, StageConfig, StageDevice, StageKvCacheConfig};
 use skippy_runtime::{ModelInfo, MtpSource};
@@ -51,9 +52,7 @@ use skippy_server::{
 pub use certification::{
     CertificationGateStatus, SkippyCertificationRequest, certify_layer_package,
 };
-pub(crate) use family_policy::{
-    family_policy_for_compact_meta, family_policy_for_model_path, family_policy_for_stage_config,
-};
+pub(crate) use family_policy::{family_policy_for_model_path, family_policy_for_stage_config};
 pub(crate) use hooks::MeshAutoHookPolicy;
 pub(crate) use kv_cache::KvCachePolicy;
 #[cfg(test)]
@@ -85,6 +84,7 @@ pub(crate) use package::{
 pub(crate) use resolver::{
     ResolvedEmbeddedOpenAiArgs, ResolvedSkippyConfig, SkippyConfigResolveRequest,
     effective_safety_margin_bytes, resolve_skippy_config_for_selector,
+    resolve_skippy_config_for_selector_with_publisher_defaults,
 };
 pub(crate) use skippy_server::OpenAiGuardrailsStatus as SkippyOpenAiGuardrailsStatus;
 pub(crate) use split_certification::{SplitCertificationAdmission, require_split_certification};
@@ -603,6 +603,7 @@ fn embedded_openai_args_from(
         linear_proposal_ingress: serving_hooks.linear_proposal_ingress(),
         kv_lifecycle_observer: serving_hooks.kv_lifecycle_observer(),
         openai_guardrails: None,
+        l3_manager: crate::runtime::kv_disk_config::node_kv_disk_manager(),
     })
 }
 
@@ -667,6 +668,27 @@ impl SkippyModelHandle {
         &self,
     ) -> Option<skippy_runtime::ActivationBoundaryDesc> {
         self.runtime.output_activation_boundary()
+    }
+
+    /// Classify the loaded native runtime, including speech-capable projectors.
+    pub(crate) fn workload_class(&self) -> Result<crate::mesh::ModelWorkloadClass> {
+        if self.runtime.supports_speech_synthesis() {
+            return Ok(crate::mesh::ModelWorkloadClass::SpeechSynthesis);
+        }
+        let workload = self
+            .runtime
+            .workload_info()
+            .context("read loaded model workload contract")?;
+        Ok(match workload.kind {
+            skippy_runtime::ModelWorkload::CausalGeneration => {
+                crate::mesh::ModelWorkloadClass::CausalGeneration
+            }
+            skippy_runtime::ModelWorkload::Embedding => crate::mesh::ModelWorkloadClass::Embedding,
+            skippy_runtime::ModelWorkload::Rerank => crate::mesh::ModelWorkloadClass::Rerank,
+            skippy_runtime::ModelWorkload::EncoderDecoder => {
+                crate::mesh::ModelWorkloadClass::EncoderDecoder
+            }
+        })
     }
 
     fn resolved_mtp_source(
@@ -994,6 +1016,9 @@ impl SkippyModelHandle {
             Some(usize::try_from(runtime_config.ctx_size).unwrap_or(usize::MAX)),
             guardrails.telemetry.guardrail_sink(),
         );
+        // Registered last so a failed load cannot leave a stale meter behind
+        // for a run id that never serves.
+        register_stage0_compute_meter(&runtime_config.run_id, &runtime);
         lifecycle_audit.mark_ready();
         Ok(Self {
             runtime,
@@ -1080,6 +1105,9 @@ impl SkippyModelHandle {
             Some(usize::try_from(runtime_config.ctx_size).unwrap_or(usize::MAX)),
             guardrails.telemetry.guardrail_sink(),
         );
+        // Registered last so a failed load cannot leave a stale meter behind
+        // for a run id that never serves.
+        register_stage0_compute_meter(&runtime_config.run_id, &runtime);
         lifecycle_audit.mark_ready();
         Ok(Self {
             runtime,
@@ -1237,6 +1265,51 @@ impl OpenAiBackend for SkippyModelHandle {
         context: OpenAiRequestContext,
     ) -> OpenAiResult<CompletionStream> {
         self.backend.completion_stream(request, context).await
+    }
+
+    /// Forward embeddings and request context without chat processing.
+    async fn embeddings(
+        &self,
+        request: EmbeddingsRequest,
+        context: OpenAiRequestContext,
+    ) -> OpenAiResult<EmbeddingResponse> {
+        self.backend.embeddings(request, context).await
+    }
+
+    /// Forward reranking and request context without chat processing.
+    async fn rerank(
+        &self,
+        request: RerankRequest,
+        context: OpenAiRequestContext,
+    ) -> OpenAiResult<RerankResponse> {
+        self.backend.rerank(request, context).await
+    }
+
+    /// Forward speech generation and request context unchanged.
+    async fn audio_speech(
+        &self,
+        request: AudioSpeechRequest,
+        context: OpenAiRequestContext,
+    ) -> OpenAiResult<AudioResponse> {
+        self.backend.audio_speech(request, context).await
+    }
+
+    /// Forward multipart transcription and request context unchanged.
+    async fn audio_transcription(
+        &self,
+        request: AudioTranscriptionRequest,
+        context: OpenAiRequestContext,
+    ) -> OpenAiResult<AudioTranscriptionResponse> {
+        self.backend.audio_transcription(request, context).await
+    }
+
+    /// Forward multipart translation and request context unchanged.
+    async fn audio_translation(
+        &self,
+        request: AudioTranscriptionRequest,
+        context: OpenAiRequestContext,
+    ) -> OpenAiResult<AudioTranscriptionResponse> {
+        self.backend.audio_translation(request, context).await
     }
 }
 
@@ -1476,6 +1549,39 @@ fn now_unix_nanos() -> i64 {
         .unwrap_or(0)
 }
 
+/// Stage-0 compute meters of running split generations, keyed by run id, so
+/// the split coordinator can read the local stage's busy time alongside the
+/// peer stages' reported status.
+static STAGE0_COMPUTE_METERS: std::sync::LazyLock<
+    std::sync::Mutex<
+        std::collections::HashMap<
+            String,
+            std::sync::Arc<skippy_server::compute_meter::StageComputeMeter>,
+        >,
+    >,
+> = std::sync::LazyLock::new(Default::default);
+
+fn register_stage0_compute_meter(run_id: &str, runtime: &SkippyRuntimeHandle) {
+    let Ok(state) = runtime.runtime().lock().map(|state| state.compute_meter()) else {
+        return;
+    };
+    if let Ok(mut meters) = STAGE0_COMPUTE_METERS.lock() {
+        meters.insert(run_id.to_string(), state);
+    }
+}
+
+pub(crate) fn stage0_compute_meter(
+    run_id: &str,
+) -> Option<std::sync::Arc<skippy_server::compute_meter::StageComputeMeter>> {
+    STAGE0_COMPUTE_METERS.lock().ok()?.get(run_id).cloned()
+}
+
+pub(crate) fn forget_stage0_compute_meter(run_id: &str) {
+    if let Ok(mut meters) = STAGE0_COMPUTE_METERS.lock() {
+        meters.remove(run_id);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1562,6 +1668,7 @@ mod tests {
             activation_width: 4096,
             tensor_count: 100,
             generation: None,
+            publisher_defaults: None,
         }
     }
 
@@ -1598,6 +1705,8 @@ mod tests {
                 tracked_token_counts: 0,
                 max_session_tokens: 2048,
                 total_session_tokens: 0,
+                graphs_reused: 0,
+                tokens_evaluated: 0,
                 lanes: vec![],
             },
             sessions_captured_at_unix_nanos: 111,

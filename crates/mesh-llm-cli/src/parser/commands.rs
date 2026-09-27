@@ -458,6 +458,13 @@ pub struct Cli {
     #[arg(long, short)]
     pub join: Vec<String>,
 
+    /// Read an invite token from a file (can repeat).
+    ///
+    /// The file is re-read on every rejoin attempt, so a rotated token is
+    /// picked up without restarting a service.
+    #[arg(long, value_name = "PATH")]
+    pub join_file: Vec<PathBuf>,
+
     /// Discover a mesh and join it.
     #[arg(long, default_missing_value = "", num_args = 0..=1)]
     pub discover: Option<String>,
@@ -679,9 +686,19 @@ pub struct Cli {
     #[arg(long, value_name = "PATH", requires = "split", hide = true)]
     pub split_topology_lock: Option<PathBuf>,
 
+    /// Place split layers by node speed and rebalance them while serving, so a
+    /// slower node does not hold back faster ones. Split-only: requires --split.
+    #[arg(long, requires = "split")]
+    pub auto_balance: bool,
+
     /// Override context size (tokens). Default: auto-scaled to available VRAM.
     #[arg(long, hide = true)]
     pub ctx_size: Option<u32>,
+
+    /// Parallel lanes (concurrent sequences) for served models. Overrides `[gpu].parallel`
+    /// from the config file. Default: planned, currently 4.
+    #[arg(long, hide = true)]
+    pub parallel: Option<std::num::NonZeroUsize>,
 
     /// Cap VRAM used for planning, local-fit decisions, and mesh advertisement (GB).
     #[arg(long)]
@@ -754,6 +771,18 @@ pub struct Cli {
     #[arg(long)]
     pub config: Option<PathBuf>,
 
+    /// Node-local disk prompt cache: off, auto, or an explicit IEC size such as 32GiB.
+    #[arg(long, value_name = "off|auto|SIZE")]
+    pub kv_cache_disk: Option<String>,
+
+    /// Absolute node-local disk prompt-cache directory.
+    #[arg(long, value_name = "ABSOLUTE_PATH")]
+    pub kv_cache_disk_dir: Option<PathBuf>,
+
+    /// Minimum free storage to preserve, with an IEC suffix such as 16GiB.
+    #[arg(long, value_name = "SIZE")]
+    pub kv_cache_min_free: Option<String>,
+
     /// Path to the owner keystore used to attest this node.
     #[arg(long)]
     pub owner_key: Option<PathBuf>,
@@ -789,6 +818,13 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Command {
+    /// Manage the local mainnet Lightning wallet.
+    Wallet {
+        #[arg(long, default_value_t = 3131)]
+        port: u16,
+        #[command(subcommand)]
+        command: crate::wallet::WalletCommand,
+    },
     /// Serve local models and join or publish a mesh.
     Serve,
     /// Run as a client-only mesh node with no local model required.
@@ -836,6 +872,17 @@ pub enum Command {
     Config {
         #[command(subcommand)]
         command: ConfigCommand,
+    },
+    /// Inspect and manage the node-local durable prompt cache.
+    #[command(name = "kv-cache")]
+    KvCache {
+        #[command(subcommand)]
+        command: KvCacheCommand,
+    },
+    /// Inspect or change anonymous usage reporting.
+    Analytics {
+        #[command(subcommand)]
+        command: AnalyticsCommand,
     },
     /// Diagnose local mesh, runtime, and split-readiness problems.
     Doctor {
@@ -998,6 +1045,10 @@ pub enum Command {
         #[arg(long)]
         write: bool,
     },
+    /// Add a Mesh provider to Hermes config without launching it.
+    Hermes(crate::agent_config::AgentConfigArgs),
+    /// Add a Mesh provider to OpenClaw config without launching it.
+    Openclaw(crate::agent_config::AgentConfigArgs),
     /// Stop running mesh-llm processes.
     Stop,
     /// Plugin management.
@@ -1095,6 +1146,72 @@ pub enum Command {
     /// Run a CLI command contributed by a configured plugin.
     #[command(external_subcommand)]
     ExternalPlugin(Vec<OsString>),
+}
+
+/// Anonymous usage reporting controls.
+///
+/// Separate from `[telemetry]`, which exports OTLP metrics to an endpoint the
+/// operator chooses. These subcommands govern the reporting that reaches the
+/// mesh-llm maintainers.
+#[derive(Subcommand, Debug)]
+pub enum AnalyticsCommand {
+    /// Show whether usage reporting is on, why, and what is sent.
+    Status {
+        /// Print machine-readable JSON output.
+        #[arg(long)]
+        json: bool,
+    },
+    /// Turn usage reporting on by writing `[analytics] enabled = true`.
+    Enable,
+    /// Turn usage reporting off by writing `[analytics] enabled = false`.
+    Disable,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum KvCacheCommand {
+    /// Show the configured and effective cache state.
+    Status {
+        /// Authenticated owner-control endpoint; repeat for multiple owned nodes.
+        #[arg(long = "endpoint")]
+        endpoints: Vec<String>,
+        #[arg(long, default_value = "3131")]
+        port: u16,
+        #[arg(long)]
+        json: bool,
+    },
+    /// Evict least-recently-used inactive entries.
+    Prune {
+        /// Optional target size with an IEC suffix (for example 16GiB).
+        #[arg(long)]
+        target: Option<String>,
+        /// Exact numerical model identity; display names are not accepted.
+        #[arg(long)]
+        model_identity: Option<String>,
+        #[arg(long)]
+        yes: bool,
+        /// Authenticated owner-control endpoint; repeat for multiple owned nodes.
+        #[arg(long = "endpoint")]
+        endpoints: Vec<String>,
+        #[arg(long, default_value = "3131")]
+        port: u16,
+        #[arg(long)]
+        json: bool,
+    },
+    /// Clear inactive entries while inference falls back to cold prefill.
+    Clear {
+        /// Exact numerical model identity; omit to clear the full root.
+        #[arg(long)]
+        model_identity: Option<String>,
+        #[arg(long)]
+        yes: bool,
+        /// Authenticated owner-control endpoint; repeat for multiple owned nodes.
+        #[arg(long = "endpoint")]
+        endpoints: Vec<String>,
+        #[arg(long, default_value = "3131")]
+        port: u16,
+        #[arg(long)]
+        json: bool,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -1224,6 +1341,21 @@ mod tests {
     use crate::models::{ModelSearchSort, ModelsCommand};
     use clap::{CommandFactory, Parser, error::ErrorKind};
     use mesh_llm_events::LogFormat;
+
+    /// `--parallel` mirrors `--ctx-size`: a runtime-surface flag that must survive the
+    /// serve normalisation and refuse a value the planner could not use.
+    #[test]
+    fn parallel_lanes_parse_and_reject_zero() {
+        let cli = Cli::parse_from(["mesh-llm", "--parallel", "32", "--model", "x.gguf"]);
+        assert_eq!(cli.parallel.map(std::num::NonZeroUsize::get), Some(32));
+
+        let none = Cli::parse_from(["mesh-llm", "--model", "x.gguf"]);
+        assert_eq!(none.parallel, None);
+
+        let err = Cli::try_parse_from(["mesh-llm", "--parallel", "0"])
+            .expect_err("zero lanes is not a configuration");
+        assert!(err.to_string().contains("--parallel"), "{err}");
+    }
 
     #[test]
     fn native_serving_plugin_deadline_rejects_zero() {

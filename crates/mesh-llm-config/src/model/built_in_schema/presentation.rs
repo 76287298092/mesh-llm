@@ -41,16 +41,28 @@ const TELEMETRY_CATEGORY: CategoryPresentation = CategoryPresentation {
     summary: "Opt-in metrics export and local telemetry queue settings",
     order: 40,
 };
+const ANALYTICS_CATEGORY: CategoryPresentation = CategoryPresentation {
+    id: "analytics",
+    label: "Analytics",
+    summary: "Anonymous usage reporting to the mesh-llm maintainers",
+    order: 50,
+};
 const RUNTIME_POLICY_CATEGORY: CategoryPresentation = CategoryPresentation {
     id: "runtime-policy",
     label: "Runtime Policy",
     summary: "Runtime reconciliation behavior applied by the local process",
     order: 10,
 };
+const PROMPT_CACHE_CATEGORY: CategoryPresentation = CategoryPresentation {
+    id: "prompt-cache",
+    label: "Prompt Cache",
+    summary: "Node-local durable prefix cache storage and capacity",
+    order: 15,
+};
 const MEMORY_CATEGORY: CategoryPresentation = CategoryPresentation {
     id: "memory",
     label: "Memory",
-    summary: "VRAM accounting and KV cache policy",
+    summary: "VRAM accounting and KV cache precision",
     order: 20,
 };
 const SPECULATIVE_CATEGORY: CategoryPresentation = CategoryPresentation {
@@ -106,6 +118,8 @@ struct SettingPresentation {
 
 fn setting_presentation_for_path(rendered: &str) -> Option<SettingPresentation> {
     logging_presentation(rendered)
+        .or_else(|| kv_disk_presentation(rendered))
+        .or_else(|| gpu_setting_presentation(rendered))
         .or_else(|| process_setting_presentation(rendered))
         .or_else(|| native_runtime_presentation(rendered))
         .or_else(|| runtime_defaults_presentation(rendered))
@@ -114,7 +128,69 @@ fn setting_presentation_for_path(rendered: &str) -> Option<SettingPresentation> 
         .or_else(|| model_and_plugin_presentation(rendered))
 }
 
-fn process_setting_presentation(rendered: &str) -> Option<SettingPresentation> {
+fn kv_disk_presentation(rendered: &str) -> Option<SettingPresentation> {
+    match rendered {
+        "runtime.kv_cache.disk.mode" => Some(
+            sp(
+                "Disk prompt cache",
+                "Keep compatible prompt state on local disk across model reloads and process restarts.",
+                PROMPT_CACHE_CATEGORY,
+                10,
+            )
+            .hint("segmented")
+            .choices(&[
+                ("off", "Off", "Do not read or write the disk cache."),
+                ("auto", "Automatic", "Derive a bounded budget from available local storage."),
+                ("fixed", "Fixed", "Use the configured hard budget."),
+            ]),
+        ),
+        "runtime.kv_cache.disk.directory" => Some(
+            sp(
+                "Cache directory",
+                "Absolute node-local directory used for durable prompt-cache data.",
+                PROMPT_CACHE_CATEGORY,
+                20,
+            )
+            .placeholder("/fast-disk/mesh-kv-cache")
+            .hint("text"),
+        ),
+        "runtime.kv_cache.disk.budget_mib" => Some(
+            sp(
+                "Fixed cache budget",
+                "Hard whole-node disk-cache budget used only in fixed mode.",
+                PROMPT_CACHE_CATEGORY,
+                30,
+            )
+            .unit("MiB")
+            .hint("number"),
+        ),
+        "runtime.kv_cache.disk.minimum_free_mib" => Some(
+            sp(
+                "Minimum free space",
+                "Free local storage Mesh preserves before accepting cache writes.",
+                PROMPT_CACHE_CATEGORY,
+                40,
+            )
+            .unit("MiB")
+            .hint("number"),
+        ),
+        "runtime.kv_cache.disk.codec" => Some(
+            sp(
+                "Disk cache codec",
+                "Persist native KV pages or qualified CacheGen archives. CacheGen currently activates only for validated Metal cache types.",
+                PROMPT_CACHE_CATEGORY,
+                50,
+            )
+            .choices(&[
+                ("native", "Native", "Persist exact native KV pages."),
+                ("cachegen", "CacheGen", "Use CacheGen for qualified Metal KV layouts."),
+            ]),
+        ),
+        _ => None,
+    }
+}
+
+fn gpu_setting_presentation(rendered: &str) -> Option<SettingPresentation> {
     match rendered {
         "gpu.assignment" => Some(sp(
             "GPU assignment",
@@ -131,6 +207,26 @@ fn process_setting_presentation(rendered: &str) -> Option<SettingPresentation> {
         )
         .unit("models")
         .hint("number")),
+        "gpu.host_ram_offload" => Some(sp(
+            "Host RAM offload",
+            "Let this node load models that only fit by spilling from GPU memory into system RAM. Off by default: such models run an order of magnitude slower. The capacity advertised to the mesh never includes RAM.",
+            RUNTIME_CATEGORY,
+            30,
+        )
+        .hint("toggle")),
+        _ => None,
+    }
+}
+
+fn process_setting_presentation(rendered: &str) -> Option<SettingPresentation> {
+    match rendered {
+        "analytics.enabled" => Some(sp(
+            "Anonymous usage reporting",
+            "Report anonymous usage (version, platform, command names, node and model counts) to the mesh-llm maintainers. Never includes prompts, completions, file paths, or peer addresses. Turning this setting off is equivalent to `mesh-llm analytics disable`.",
+            ANALYTICS_CATEGORY,
+            10,
+        )
+        .hint("toggle")),
         "telemetry.enabled" => Some(sp(
             "Telemetry export",
             "Enable opt-in metrics export. Ambient OTel environment variables do not enable export by themselves.",
@@ -411,19 +507,11 @@ fn runtime_defaults_presentation(rendered: &str) -> Option<SettingPresentation> 
         )
         .placeholder("cuda:0 or CUDA0")
         .hint("text")),
-        "defaults.model_fit.kv_cache_policy" => Some(sp(
-            "KV cache policy",
-            "Select how aggressively KV cache precision is reduced to fit larger contexts.",
-            MEMORY_CATEGORY,
-            10,
-        )
-        .hint("segmented")
-        .renderer("kv-cache-policy")),
         "defaults.hardware.safety_margin_gb" => Some(sp(
             "Memory / safety margin",
             "Keep this much GPU memory free before placement fit checks pass.",
             MEMORY_CATEGORY,
-            20,
+            10,
         )
         .unit("GB")
         .hint("range")),
@@ -445,7 +533,7 @@ fn runtime_defaults_presentation(rendered: &str) -> Option<SettingPresentation> 
         .hint("range")),
         "defaults.model_fit.ubatch" => Some(sp(
             "Micro-batch size",
-            "Set the default decode micro-batch size.",
+            "Set the default micro-batch (physical prefill chunk) size. Values at or below 128 keep the CUDA SSM sequential-scan fallback; larger values enable the SSD chunked kernel for recurrent models.",
             MEMORY_CATEGORY,
             50,
         )

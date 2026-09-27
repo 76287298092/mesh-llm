@@ -134,6 +134,7 @@ impl Scenario {
                 sustained_mem_bandwidth_mib_per_s: node.sustained_mem_bandwidth_mib_per_s,
                 sustained_compute_gflop_per_s: node.sustained_compute_gflop_per_s,
                 observed_decode_us_per_layer: node.observed_decode_us_per_layer,
+                decode_bytes_per_second: None,
             })
             .collect::<Vec<_>>();
         let edges = self
@@ -171,6 +172,7 @@ impl Scenario {
                 .clamp(1, 1000),
             edges,
             activation_frame_bytes: self.model.activation_frame_bytes,
+            auto_balance: false,
         }
     }
 

@@ -25,6 +25,7 @@ import type {
 } from './config-adapter-types'
 import { combineSettingsHarnessData } from './config-adapter-schema-values'
 import { rendererIdForEntry } from './config-adapter-schema-placement'
+import { configSectionForPath, lastPathSegment } from './config-adapter-paths'
 
 export {
   DEFAULT_MODEL_PLACEMENT_PATHS,
@@ -169,7 +170,7 @@ const DEFAULTS_CATEGORY_FALLBACKS: Record<string, ConfigurationDefaultsCategory>
   memory: {
     id: 'memory',
     label: 'Memory',
-    summary: 'VRAM accounting and KV cache policy',
+    summary: 'VRAM accounting and KV cache precision',
     help: 'Memory defaults inherited by model placements',
     tomlSection: 'defaults.model_fit',
     order: 20
@@ -224,29 +225,8 @@ const DEFAULTS_CATEGORY_FALLBACKS: Record<string, ConfigurationDefaultsCategory>
   }
 }
 
-type ChoicePresentation = Extract<ConfigurationDefaultsControl, { kind: 'choice' }>['presentation']
-
 function settingIdFromPath(canonicalPath: string) {
   return canonicalPath
-}
-
-function lastPathSegment(canonicalPath: string) {
-  return canonicalPath.split('.').filter(Boolean).at(-1) ?? canonicalPath
-}
-
-function defaultsSectionForPath(canonicalPath: string) {
-  const segments = canonicalPath.split('.')
-  if (segments[0] !== 'defaults') return undefined
-  if (segments[1] === 'advanced' && segments[2] === 'server') return 'defaults.advanced.server'
-  return segments.length >= 2 ? `defaults.${segments[1]}` : undefined
-}
-
-function configSectionForPath(canonicalPath: string) {
-  if (canonicalPath.startsWith('plugin.')) return undefined
-  const segments = canonicalPath.split('.').filter(Boolean)
-  if (segments.length <= 1) return undefined
-  if (segments[0] === 'defaults') return defaultsSectionForPath(canonicalPath)
-  return segments.slice(0, -1).join('.')
 }
 
 function categoryForDefaultsPath(canonicalPath: string) {
@@ -293,21 +273,6 @@ function controlNameForPath(canonicalPath: string) {
   return lastPathSegment(canonicalPath)
 }
 
-function segmentedControl(
-  name: string,
-  value: string,
-  options: readonly string[],
-  presentation: ChoicePresentation = 'segmented'
-): ConfigurationDefaultsControl {
-  return {
-    kind: 'choice',
-    name,
-    value,
-    presentation,
-    options: options.map((option) => ({ value: option, label: option }))
-  }
-}
-
 function bespokeControlForRenderer(entry: RuntimeConfigSchemaEntry): ConfigurationDefaultsControl | undefined {
   const rendererId = rendererIdForEntry(entry)
   const name = controlNameForPath(entry.canonical_path)
@@ -326,10 +291,6 @@ function bespokeControlForRenderer(entry: RuntimeConfigSchemaEntry): Configurati
       step: 512,
       unit: entry.presentation?.unit ?? 'tokens'
     }
-  }
-
-  if (rendererId === 'kv-cache-policy') {
-    return segmentedControl(name, 'auto', ['auto', 'quality', 'balanced', 'saver'])
   }
 
   return undefined

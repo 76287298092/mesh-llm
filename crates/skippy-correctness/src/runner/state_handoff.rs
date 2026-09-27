@@ -8,14 +8,14 @@ use skippy_protocol::binary::{
     recv_reply, state_flags, write_stage_message,
 };
 use skippy_runtime::{
-    ActivationFrame, GGML_TYPE_F16, GgufStageRuntimePlan, MtpSource, RuntimeConfig,
-    RuntimeKvPageDesc, StageModel, StageSession,
+    ActivationFrame, GgufStageRuntimePlan, MtpSource, RuntimeConfig, RuntimeKvPageDesc, StageModel,
+    StageSession,
 };
 
 use crate::{
     cli::{StateHandoffArgs, StatePayloadKind},
     report::{
-        StageModelReport, StateHandoffReport, StatePayloadBlockDigestReport,
+        CacheGenGateReport, StageModelReport, StateHandoffReport, StatePayloadBlockDigestReport,
         StatePayloadDigestReport,
     },
     support::{
@@ -70,11 +70,29 @@ struct BinaryStateHandoffResult {
     pub(in crate::runner) restored_output_matches: Option<bool>,
     pub(in crate::runner) suffix_prefill_matches: Option<bool>,
     pub(in crate::runner) cache_hit_matches: bool,
+    pub(in crate::runner) cachegen_gate: Option<CacheGenGateReport>,
     pub(in crate::runner) stage_models: Vec<StageModelReport>,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum StateTokenizerSource {
+    LocalStage,
+    SeparateModel,
+}
+
+fn state_tokenizer_source(
+    use_binary_control: bool,
+    include_embeddings: bool,
+) -> StateTokenizerSource {
+    if !use_binary_control && include_embeddings {
+        StateTokenizerSource::LocalStage
+    } else {
+        StateTokenizerSource::SeparateModel
+    }
+}
+
 #[derive(Clone)]
-enum LocalStatePayload {
+pub(in crate::runner) enum LocalStatePayload {
     ResidentKv {
         cache_seq_id: i32,
         token_count: u64,
@@ -210,6 +228,13 @@ pub fn state_handoff(args: StateHandoffArgs) -> Result<()> {
         skip_suffix_prefill_check: args.skip_suffix_prefill_check,
         synthetic_input_activation: args.synthetic_input_activation,
         binary_control: args.binary_control,
+        cachegen_gate: args.cachegen_gate,
+        cache_type_k: args.cache_type_k.ggml_type(),
+        cache_type_v: args.cache_type_v.ggml_type(),
+        cachegen_continuation_steps: args.cachegen_continuation_steps,
+        cachegen_min_token_agreement: args.cachegen_min_token_agreement,
+        cachegen_max_p99_decode_regression: args.cachegen_max_p99_decode_regression,
+        cachegen_max_peak_working_bytes: args.cachegen_max_peak_working_bytes,
         child_logs: args.server.child_logs,
         startup_timeout_secs: args.server.startup_timeout_secs,
         max_inflight: args.server.max_inflight,
@@ -270,6 +295,7 @@ pub fn state_handoff(args: StateHandoffArgs) -> Result<()> {
         ),
         cache_hit_import_ms: handoff.cache_hit_import_ms,
         cache_hit_decode_ms: handoff.cache_hit_decode_ms,
+        cachegen_gate: handoff.cachegen_gate,
         stage_models: handoff.stage_models,
     };
     emit_report(&report, report_out.as_deref())?;
@@ -288,6 +314,27 @@ fn run_binary_state_handoff(args: BinaryStateHandoffConfig) -> Result<BinaryStat
     }
     if args.cache_hit_repeats == 0 {
         bail!("cache_hit_repeats must be greater than zero");
+    }
+    if args.cachegen_gate {
+        if args.binary_control
+            || args.state_payload_kind != StatePayloadKind::KvRecurrent
+            || args.state_layer_start != 0
+            || args.state_layer_end != args.layer_end
+            || args.synthetic_input_activation
+        {
+            bail!(
+                "--cachegen-gate requires a local full-model --state-payload-kind kv-recurrent handoff"
+            );
+        }
+        if args.cachegen_continuation_steps == 0 {
+            bail!("--cachegen-continuation-steps must be greater than zero");
+        }
+        if !(0.0..=1.0).contains(&args.cachegen_min_token_agreement) {
+            bail!("--cachegen-min-token-agreement must be between 0 and 1");
+        }
+        if args.cachegen_max_p99_decode_regression < 0.0 {
+            bail!("--cachegen-max-p99-decode-regression must be non-negative");
+        }
     }
     let include_embeddings = args.state_layer_start == 0;
     let include_output = args.state_layer_end == args.layer_end;
@@ -317,14 +364,40 @@ fn run_binary_state_handoff(args: BinaryStateHandoffConfig) -> Result<BinaryStat
         args.ctx_size,
         lane_count,
     )?;
-    let (tokenizer_path, tokenizer_config) = tokenizer_model_for_state_handoff(&args)?;
-    let tokenizer = StageModel::open(&tokenizer_path, &tokenizer_config).with_context(|| {
-        format!(
-            "failed to open tokenizer model {}",
-            tokenizer_path.display()
+    let use_binary_control = args.binary_control
+        && include_output
+        && args.state_payload_kind == StatePayloadKind::FullState;
+    let tokenizer_source = state_tokenizer_source(use_binary_control, include_embeddings);
+    // A local source stage already owns the vocabulary. Reopening the same
+    // large model only for tokenization can leave its Metal mapping resident
+    // long enough to overlap the source-stage load and exhaust host memory.
+    let local_model = if tokenizer_source == StateTokenizerSource::LocalStage {
+        Some(open_local_state_model(
+            &args,
+            &stage_resolution,
+            runtime_plan.clone(),
+        )?)
+    } else {
+        None
+    };
+    let separate_tokenizer = if tokenizer_source == StateTokenizerSource::SeparateModel {
+        let (tokenizer_path, tokenizer_config) = tokenizer_model_for_state_handoff(&args)?;
+        Some(
+            StageModel::open(&tokenizer_path, &tokenizer_config).with_context(|| {
+                format!(
+                    "failed to open tokenizer model {}",
+                    tokenizer_path.display()
+                )
+            })?,
         )
-    })?;
-    let tokens = state_handoff_tokens(&tokenizer, &args.prompt, args.prefix_token_count)
+    } else {
+        None
+    };
+    let tokenizer = local_model
+        .as_ref()
+        .or(separate_tokenizer.as_ref())
+        .expect("state handoff always selects a tokenizer source");
+    let tokens = state_handoff_tokens(tokenizer, &args.prompt, args.prefix_token_count)
         .context("failed to tokenize state handoff prompt")?;
     let split = args.prefix_token_count.unwrap_or(tokens.len() - 1);
     let prefix = tokens[..split].to_vec();
@@ -332,7 +405,7 @@ fn run_binary_state_handoff(args: BinaryStateHandoffConfig) -> Result<BinaryStat
     let benchmark_prompt_text = tokenizer
         .detokenize(&tokens[..=split])
         .context("failed to detokenize state handoff benchmark prompt")?;
-    drop(tokenizer);
+    drop(separate_tokenizer);
     let tokenize_ms = elapsed_ms(tokenize_started);
     let input_started = Instant::now();
     let input_resolution = if args.state_layer_start == 0 || args.synthetic_input_activation {
@@ -358,14 +431,12 @@ fn run_binary_state_handoff(args: BinaryStateHandoffConfig) -> Result<BinaryStat
         build_state_handoff_inputs(&args, input_resolution.as_ref(), &prefix, continuation)
             .context("build state handoff input activations")?;
     let input_build_ms = elapsed_ms(input_started);
-    let use_binary_control = args.binary_control
-        && include_output
-        && args.state_payload_kind == StatePayloadKind::FullState;
     if !use_binary_control {
         return run_local_state_handoff(
             &args,
             stage_resolution,
             input_resolution,
+            local_model,
             prefix,
             continuation,
             benchmark_prompt_text,
@@ -401,6 +472,8 @@ fn run_binary_state_handoff(args: BinaryStateHandoffConfig) -> Result<BinaryStat
         "n_batch": args.n_batch,
         "n_ubatch": args.n_ubatch,
         "n_gpu_layers": args.n_gpu_layers,
+        "cache_type_k": cache_type_name(args.cache_type_k)?,
+        "cache_type_v": cache_type_name(args.cache_type_v)?,
         "flash_attn_type": protocol_flash_attn(args.flash_attn),
         "resident_tensor_names": runtime_plan.resident_tensor_names.clone(),
         "execution_contract": runtime_plan.execution_contract.clone(),
@@ -435,6 +508,8 @@ fn run_binary_state_handoff(args: BinaryStateHandoffConfig) -> Result<BinaryStat
         "n_batch": args.n_batch,
         "n_ubatch": args.n_ubatch,
         "n_gpu_layers": args.n_gpu_layers,
+        "cache_type_k": cache_type_name(args.cache_type_k)?,
+        "cache_type_v": cache_type_name(args.cache_type_v)?,
         "flash_attn_type": protocol_flash_attn(args.flash_attn),
         "resident_tensor_names": runtime_plan.resident_tensor_names,
         "execution_contract": runtime_plan.execution_contract,
@@ -619,11 +694,12 @@ fn run_binary_state_handoff(args: BinaryStateHandoffConfig) -> Result<BinaryStat
         roundtrip_state_matches,
         restored_output_matches: None,
         suffix_prefill_matches: None,
+        cachegen_gate: None,
         cache_hit_matches,
         stage_models,
     })
 }
-fn state_handoff_tokens(
+pub(in crate::runner) fn state_handoff_tokens(
     tokenizer: &StageModel,
     prompt: &str,
     prefix_token_count: Option<usize>,
@@ -661,6 +737,7 @@ fn run_local_state_handoff(
     args: &BinaryStateHandoffConfig,
     stage_resolution: StageModelResolution,
     input_resolution: Option<StageModelResolution>,
+    local_model: Option<StageModel>,
     prefix: Vec<i32>,
     continuation: i32,
     benchmark_prompt_text: String,
@@ -672,55 +749,10 @@ fn run_local_state_handoff(
     include_output: bool,
     runtime_plan: GgufStageRuntimePlan,
 ) -> Result<BinaryStateHandoffResult> {
-    let lane_count = effective_state_handoff_lane_count(args);
-    let runtime_config = RuntimeConfig {
-        stage_index: args.state_stage_index,
-        layer_start: args.state_layer_start,
-        layer_end: args.state_layer_end,
-        ctx_size: args.ctx_size,
-        lane_count,
-        n_batch: args.n_batch,
-        n_ubatch: args.n_ubatch,
-        n_threads: None,
-        n_threads_batch: None,
-        n_gpu_layers: args.n_gpu_layers,
-        mmap: None,
-        mlock: false,
-        repack: false,
-        op_offload: None,
-        no_host_buffer: false,
-        check_tensors: false,
-        direct_io: false,
-        main_gpu: None,
-        split_mode: skippy_runtime::SplitMode::Auto,
-        selected_backend_device: None,
-        load_mode: runtime_load_mode(args.stage_load_mode),
-        projector_path: None,
-        projector_use_gpu: None,
-        media_marker: None,
-        image_min_tokens: None,
-        image_max_tokens: None,
-        batch_max_tokens: None,
-        glm_dsa_policy: skippy_runtime::GlmDsaPolicy::Auto,
-        mtp_source: MtpSource::Disabled,
-        resident_tensor_names: runtime_plan.resident_tensor_names,
-        execution_contract: runtime_plan.execution_contract,
-        activation_import_identities: runtime_plan.activation_import_identities,
-        activation_import_bindings: runtime_plan.activation_import_bindings,
-        activation_export_identities: runtime_plan.activation_export_identities,
-        activation_export_bindings: runtime_plan.activation_export_bindings,
-        checkpoint_quantization: skippy_runtime::CheckpointQuantization::Preserve,
-        checkpoint_imatrix: None,
-        checkpoint_imatrix_sha256: None,
-        cache_type_k: GGML_TYPE_F16,
-        cache_type_v: GGML_TYPE_F16,
-        flash_attn_type: runtime_flash_attn(args.flash_attn),
-        kv_offload: None,
-        kv_unified: None,
-        swa_full: None,
+    let model = match local_model {
+        Some(model) => model,
+        None => open_local_state_model(args, &stage_resolution, runtime_plan)?,
     };
-    let model = StageModel::open(&stage_resolution.path, &runtime_config)
-        .context("failed to open local state handoff stage")?;
 
     if args.borrow_resident_hits && args.state_payload_kind == StatePayloadKind::ResidentKv {
         return run_local_resident_slot_handoff(
@@ -769,6 +801,21 @@ fn run_local_state_handoff(
     let resident_state_bytes = measure_resident_state_bytes(&mut source, args, prefix.len() as u64)
         .context("local state handoff resident KV size measurement failed")?;
     let source_guard = (args.state_payload_kind == StatePayloadKind::ResidentKv).then_some(source);
+
+    let cachegen_gate = if args.cachegen_gate {
+        Some(
+            super::cachegen_gate::run_cachegen_gate(
+                &model,
+                args,
+                &state_payload,
+                &prefix,
+                continuation,
+            )
+            .context("CacheGen acceptance gate failed to execute")?,
+        )
+    } else {
+        None
+    };
 
     let (
         roundtrip_state_payload,
@@ -910,14 +957,72 @@ fn run_local_state_handoff(
         matches: predicted_token_matches
             && restored_output_matches
             && suffix_prefill_matches.unwrap_or(true)
-            && cache_hit_matches,
+            && cache_hit_matches
+            && cachegen_gate.as_ref().is_none_or(|gate| gate.passed),
         predicted_token_matches,
         roundtrip_state_matches,
         restored_output_matches: Some(restored_output_matches),
         suffix_prefill_matches,
         cache_hit_matches,
+        cachegen_gate,
         stage_models,
     })
+}
+
+fn open_local_state_model(
+    args: &BinaryStateHandoffConfig,
+    stage_resolution: &StageModelResolution,
+    runtime_plan: GgufStageRuntimePlan,
+) -> Result<StageModel> {
+    let lane_count = effective_state_handoff_lane_count(args);
+    let runtime_config = RuntimeConfig {
+        stage_index: args.state_stage_index,
+        layer_start: args.state_layer_start,
+        layer_end: args.state_layer_end,
+        ctx_size: args.ctx_size,
+        lane_count,
+        n_batch: args.n_batch,
+        n_ubatch: args.n_ubatch,
+        n_threads: None,
+        n_threads_batch: None,
+        n_gpu_layers: args.n_gpu_layers,
+        mmap: None,
+        mlock: false,
+        repack: false,
+        op_offload: None,
+        no_host_buffer: false,
+        check_tensors: false,
+        direct_io: false,
+        main_gpu: None,
+        split_mode: skippy_runtime::SplitMode::Auto,
+        selected_backend_device: None,
+        load_mode: runtime_load_mode(args.stage_load_mode),
+        projector_path: None,
+        projector_use_gpu: None,
+        media_marker: None,
+        image_min_tokens: None,
+        image_max_tokens: None,
+        batch_max_tokens: None,
+        glm_dsa_policy: skippy_runtime::GlmDsaPolicy::Auto,
+        mtp_source: MtpSource::Disabled,
+        resident_tensor_names: runtime_plan.resident_tensor_names,
+        execution_contract: runtime_plan.execution_contract,
+        activation_import_identities: runtime_plan.activation_import_identities,
+        activation_import_bindings: runtime_plan.activation_import_bindings,
+        activation_export_identities: runtime_plan.activation_export_identities,
+        activation_export_bindings: runtime_plan.activation_export_bindings,
+        checkpoint_quantization: skippy_runtime::CheckpointQuantization::Preserve,
+        checkpoint_imatrix: None,
+        checkpoint_imatrix_sha256: None,
+        cache_type_k: args.cache_type_k,
+        cache_type_v: args.cache_type_v,
+        flash_attn_type: runtime_flash_attn(args.flash_attn),
+        kv_offload: None,
+        kv_unified: None,
+        swa_full: None,
+    };
+    StageModel::open(&stage_resolution.path, &runtime_config)
+        .context("failed to open local state handoff stage")
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1106,6 +1211,7 @@ fn run_local_resident_slot_handoff(
         restored_output_matches: Some(restored_output_matches),
         suffix_prefill_matches: Some(suffix_prefill_matches),
         cache_hit_matches,
+        cachegen_gate: None,
         stage_models,
     })
 }
@@ -1484,8 +1590,8 @@ fn build_state_handoff_inputs(
         checkpoint_quantization: skippy_runtime::CheckpointQuantization::Preserve,
         checkpoint_imatrix: None,
         checkpoint_imatrix_sha256: None,
-        cache_type_k: GGML_TYPE_F16,
-        cache_type_v: GGML_TYPE_F16,
+        cache_type_k: args.cache_type_k,
+        cache_type_v: args.cache_type_v,
         flash_attn_type: runtime_flash_attn(args.flash_attn),
         kv_offload: None,
         kv_unified: None,
@@ -1510,6 +1616,16 @@ fn build_state_handoff_inputs(
         );
     }
     Ok((Some(prefill_input), Some(decode_input), prefill_width))
+}
+
+fn cache_type_name(value: u32) -> Result<&'static str> {
+    match value {
+        skippy_runtime::GGML_TYPE_F16 => Ok("f16"),
+        skippy_runtime::GGML_TYPE_F32 => Ok("f32"),
+        skippy_runtime::GGML_TYPE_Q8_0 => Ok("q8_0"),
+        skippy_runtime::GGML_TYPE_Q4_0 => Ok("q4_0"),
+        _ => bail!("unsupported state-handoff K/V cache type {value}"),
+    }
 }
 
 fn synthetic_activation_frame(
@@ -1719,4 +1835,29 @@ fn encode_handoff_activation(
     let _ = (token_count, activation_width);
     crate::support::encode_runtime_activation(codec, input)
         .context("failed to encode state handoff input activation")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{StateTokenizerSource, state_tokenizer_source};
+
+    #[test]
+    fn local_embedding_stage_reuses_loaded_model_for_tokenization() {
+        assert_eq!(
+            state_tokenizer_source(false, true),
+            StateTokenizerSource::LocalStage
+        );
+    }
+
+    #[test]
+    fn binary_and_interior_stages_keep_a_separate_tokenizer_model() {
+        assert_eq!(
+            state_tokenizer_source(true, true),
+            StateTokenizerSource::SeparateModel
+        );
+        assert_eq!(
+            state_tokenizer_source(false, false),
+            StateTokenizerSource::SeparateModel
+        );
+    }
 }

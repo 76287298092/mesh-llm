@@ -2,6 +2,7 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 
 mod locked;
+mod performance;
 
 /// Calibrated per-stage software overhead for one decode step (dispatch,
 /// kernel-launch slop), in microseconds. Inherited from the execution sim's
@@ -20,6 +21,7 @@ pub const CALIBRATED_PER_STAGE_OVERHEAD_US: u128 = 1_300;
 pub const CALIBRATED_PER_HOP_OVERHEAD_US: u128 = 13_000;
 
 pub use locked::{LockedTopologyStage, plan_locked_topology};
+pub use performance::{StageDecodeEstimate, ThroughputEstimate};
 
 const MINIMUM_AUTO_CONTEXT_LENGTH: u32 = 65_536;
 const CONTEXT_STEPS: &[u32] = &[512, 1024, 2048, 4096, 8192, 16_384, 32_768, 65_536, 131_072];
@@ -80,6 +82,11 @@ pub struct TopologyPlanningInput {
     /// edge transfer-time terms when edge bandwidth is known; `0` disables
     /// bandwidth terms (latency-only edges).
     pub activation_frame_bytes: u64,
+    /// Re-cut layer boundaries so stage decode times are balanced by node
+    /// speed instead of packing the largest node first. Needs
+    /// `decode_bytes_per_second` on every placed node; otherwise the
+    /// memory-only placement stands.
+    pub auto_balance: bool,
 }
 
 /// Directed link measurement between two candidate stage nodes.
@@ -113,6 +120,9 @@ pub struct TopologyNode {
     /// When present, the planner uses it as a measured floor on the
     /// analytical weight-streaming service-time estimate.
     pub observed_decode_us_per_layer: Option<u64>,
+    /// Rate this node streams weights during decode, in bytes per second.
+    /// Estimated before load or measured from a running stage.
+    pub decode_bytes_per_second: Option<u64>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -133,6 +143,8 @@ pub struct TopologyPlan {
     /// `planner_model_matches_execution_sim` calibration test locks the
     /// two together on the BENCHMARKS.md anchor scenario.
     pub modeled_decode_tpot_us: Option<u128>,
+    /// Per-stage decode estimate; present when every placed node has a speed.
+    pub throughput: Option<ThroughputEstimate>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -196,7 +208,7 @@ pub enum TopologyPlanError {
 }
 
 pub fn plan_topology(input: &TopologyPlanningInput) -> Result<TopologyPlan, TopologyPlanError> {
-    plan_topology_with_required_stage0(input, None)
+    plan_topology_with_required_stage0(input, None).map(|plan| finish_plan(input, plan))
 }
 
 pub fn plan_topology_with_stage0(
@@ -204,6 +216,67 @@ pub fn plan_topology_with_stage0(
     stage0_node_id: &str,
 ) -> Result<TopologyPlan, TopologyPlanError> {
     plan_topology_with_required_stage0(input, Some(stage0_node_id))
+        .map(|plan| finish_plan(input, plan))
+}
+
+/// Re-cut `current`'s layer boundaries for throughput using the node speeds in
+/// `input` (typically measured from the running stages), keeping its nodes,
+/// stage order, context and lanes.
+///
+/// Returns `None` when a node lacks a speed, no feasible cut exists, or the
+/// balanced cut is the current one.
+pub fn rebalance_topology(
+    input: &TopologyPlanningInput,
+    current: &TopologyPlan,
+) -> Option<TopologyPlan> {
+    let nodes = usable_nodes(&input.nodes);
+    let layer_weights = layer_weight_bytes(input);
+    let layer_required = layer_required_bytes(
+        &layer_weights,
+        &recurrent_bytes_by_layer(input),
+        input
+            .kv_bytes_per_token
+            .div_ceil(u64::from(input.layer_count)),
+        current.context_length,
+        current.parallel_lanes,
+    )?;
+    let stages =
+        performance::balance_stages(&current.stages, &nodes, &layer_weights, &layer_required)?;
+    if stages
+        .iter()
+        .zip(&current.stages)
+        .all(|(balanced, existing)| balanced.layer_end == existing.layer_end)
+    {
+        return None;
+    }
+    let throughput = performance::estimate_throughput(&stages, &nodes, &layer_weights);
+    Some(TopologyPlan {
+        stages,
+        throughput,
+        ..current.clone()
+    })
+}
+
+/// Estimate per-stage decode time for `plan` from the node speeds in `input`.
+pub fn estimate_plan_throughput(
+    input: &TopologyPlanningInput,
+    plan: &TopologyPlan,
+) -> Option<ThroughputEstimate> {
+    performance::estimate_throughput(
+        &plan.stages,
+        &usable_nodes(&input.nodes),
+        &layer_weight_bytes(input),
+    )
+}
+
+fn finish_plan(input: &TopologyPlanningInput, plan: TopologyPlan) -> TopologyPlan {
+    let plan = if input.auto_balance {
+        rebalance_topology(input, &plan).unwrap_or(plan)
+    } else {
+        plan
+    };
+    let throughput = estimate_plan_throughput(input, &plan);
+    TopologyPlan { throughput, ..plan }
 }
 
 fn plan_topology_with_required_stage0(
@@ -370,6 +443,7 @@ struct UsableNode {
     sustained_mem_bandwidth_mib_per_s: Option<u32>,
     sustained_compute_gflop_per_s: Option<u32>,
     observed_decode_us_per_layer: Option<u64>,
+    decode_bytes_per_second: Option<u64>,
 }
 
 fn usable_nodes(nodes: &[TopologyNode]) -> Vec<UsableNode> {
@@ -387,6 +461,7 @@ fn usable_nodes(nodes: &[TopologyNode]) -> Vec<UsableNode> {
                 sustained_mem_bandwidth_mib_per_s: node.sustained_mem_bandwidth_mib_per_s,
                 sustained_compute_gflop_per_s: node.sustained_compute_gflop_per_s,
                 observed_decode_us_per_layer: node.observed_decode_us_per_layer,
+                decode_bytes_per_second: node.decode_bytes_per_second,
             }
         })
         .collect::<Vec<_>>();
@@ -560,6 +635,7 @@ fn fit_candidate(
                 estimated_decode_network_ms_per_token,
                 decode_tpot_target_met,
                 modeled_decode_tpot_us,
+                throughput: None,
             },
             minimum_remaining_vram,
             total_remaining_vram,
@@ -623,6 +699,7 @@ fn fit_candidate(
                 input.target_decode_tpot_ms,
             ),
             modeled_decode_tpot_us: None,
+            throughput: None,
         },
         minimum_remaining_vram,
         total_remaining_vram,
@@ -1227,6 +1304,7 @@ mod tests {
             sustained_mem_bandwidth_mib_per_s: None,
             sustained_compute_gflop_per_s: None,
             observed_decode_us_per_layer: None,
+            decode_bytes_per_second: None,
         }
     }
 
@@ -1261,6 +1339,7 @@ mod tests {
             active_weight_fraction_permil: 1000,
             edges: Vec::new(),
             activation_frame_bytes: 0,
+            auto_balance: false,
         }
     }
 
@@ -1281,6 +1360,7 @@ mod tests {
             active_weight_fraction_permil: 1000,
             edges: Vec::new(),
             activation_frame_bytes: 0,
+            auto_balance: false,
         }
     }
 
@@ -1596,6 +1676,7 @@ mod tests {
                 estimated_decode_network_ms_per_token: Some(network_ms),
                 decode_tpot_target_met: target_met,
                 modeled_decode_tpot_us: modeled_us,
+                throughput: None,
             },
             minimum_remaining_vram: 0,
             total_remaining_vram: 0,
@@ -1620,6 +1701,7 @@ mod tests {
                 estimated_decode_network_ms_per_token: network_ms,
                 decode_tpot_target_met: None,
                 modeled_decode_tpot_us: None,
+                throughput: None,
             },
             minimum_remaining_vram: 0,
             total_remaining_vram: 0,
@@ -1735,6 +1817,7 @@ mod tests {
             active_weight_fraction_permil: 1000,
             edges: Vec::new(),
             activation_frame_bytes: 0,
+            auto_balance: false,
         };
         let layer_weights = layer_weight_bytes(&request);
         let kv_per_layer = request.kv_bytes_per_token.div_ceil(u64::from(LAYERS));
@@ -1812,6 +1895,7 @@ mod tests {
             sustained_mem_bandwidth_mib_per_s: None,
             sustained_compute_gflop_per_s: None,
             observed_decode_us_per_layer: None,
+            decode_bytes_per_second: None,
         }
     }
 
@@ -1839,6 +1923,101 @@ mod tests {
         assert_eq!(plan.context_length, 65_536);
         assert_eq!(plan.stages.len(), 1);
         assert_eq!(plan.parallel_lanes, 16);
+    }
+
+    fn speed_node(id: &str, gib: u64, gb_per_second: u64) -> TopologyNode {
+        TopologyNode {
+            decode_bytes_per_second: Some(gb_per_second * 1_000_000_000),
+            ..node(id, gib)
+        }
+    }
+
+    fn mini_pair_input(auto_balance: bool) -> TopologyPlanningInput {
+        // Two 16 GiB-class minis, M1 (~68 GB/s) and M4 (~120 GB/s), serving a
+        // 36-layer model that fits either one. The M1 advertises more memory,
+        // so memory-only placement makes it stage 0 and hands it the most layers.
+        let mut request = input(vec![speed_node("m1", 12, 68), speed_node("m4", 11, 120)]);
+        request.layer_count = 36;
+        request.model_weight_bytes = 5 * GIB;
+        request.kv_bytes_per_token = 1024;
+        request.native_context_length = 12_288;
+        request.context_length_override = Some(12_288);
+        request.parallel_lanes_override = Some(4);
+        request.minimum_nodes = 2;
+        request.auto_balance = auto_balance;
+        request
+    }
+
+    fn layers_on(plan: &TopologyPlan, node_id: &str) -> u32 {
+        let stage = plan
+            .stages
+            .iter()
+            .find(|stage| stage.node_id == node_id)
+            .unwrap();
+        stage.layer_end - stage.layer_start
+    }
+
+    #[test]
+    fn auto_balance_moves_layers_to_the_faster_node() {
+        let memory_only = plan_topology(&mini_pair_input(false)).unwrap();
+        let balanced = plan_topology(&mini_pair_input(true)).unwrap();
+
+        assert!(layers_on(&memory_only, "m1") > layers_on(&memory_only, "m4"));
+        assert_eq!(layers_on(&balanced, "m1"), 13);
+        assert_eq!(layers_on(&balanced, "m4"), 23);
+        let memory_bottleneck = memory_only.throughput.unwrap().bottleneck_decode_nanos;
+        let balanced_bottleneck = balanced.throughput.unwrap().bottleneck_decode_nanos;
+        assert!(
+            balanced_bottleneck * 10 < memory_bottleneck * 7,
+            "{balanced_bottleneck} vs {memory_bottleneck}"
+        );
+    }
+
+    #[test]
+    fn auto_balance_keeps_the_required_stage0() {
+        let plan = plan_topology_with_stage0(&mini_pair_input(true), "m1").unwrap();
+
+        assert_eq!(plan.stages[0].node_id, "m1");
+        assert_eq!(layers_on(&plan, "m1"), 13);
+    }
+
+    #[test]
+    fn rebalance_is_none_once_balanced() {
+        let request = mini_pair_input(true);
+        let balanced = plan_topology(&request).unwrap();
+
+        assert!(rebalance_topology(&request, &balanced).is_none());
+    }
+
+    #[test]
+    fn rebalance_follows_measured_speeds() {
+        let request = mini_pair_input(true);
+        let planned = plan_topology(&request).unwrap();
+        // Measured: the M1 turns out as fast as the M4, so the cut evens out.
+        let mut measured = request.clone();
+        for node in &mut measured.nodes {
+            node.decode_bytes_per_second = Some(100_000_000_000);
+        }
+
+        let rebalanced = rebalance_topology(&measured, &planned).unwrap();
+
+        assert_eq!(layers_on(&rebalanced, "m1"), 18);
+        assert_eq!(rebalanced.context_length, planned.context_length);
+        assert_eq!(rebalanced.parallel_lanes, planned.parallel_lanes);
+    }
+
+    #[test]
+    fn plans_without_speeds_are_unchanged_by_auto_balanceness() {
+        let mut aware = input(vec![node("small", 16), node("large", 48)]);
+        aware.minimum_nodes = 2;
+        aware.auto_balance = true;
+        let mut plain = aware.clone();
+        plain.auto_balance = false;
+
+        let aware_plan = plan_topology(&aware).unwrap();
+
+        assert_eq!(aware_plan, plan_topology(&plain).unwrap());
+        assert!(aware_plan.throughput.is_none());
     }
 
     #[test]

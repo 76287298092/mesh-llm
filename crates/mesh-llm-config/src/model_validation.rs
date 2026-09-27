@@ -312,11 +312,6 @@ fn validate_model_fit(config: &ModelFitConfig, base_path: &str) -> DiagnosticRes
         config.cache_type_v.as_deref(),
         &format!("{base_path}.cache_type_v"),
     )?;
-    validate_optional_enum(
-        config.kv_cache_policy.as_deref(),
-        &["auto", "quality", "balanced", "saver"],
-        &format!("{base_path}.kv_cache_policy"),
-    )?;
     validate_bool_or_auto(
         config.kv_offload.as_ref(),
         &format!("{base_path}.kv_offload"),
@@ -695,7 +690,15 @@ fn validate_verify_window_controls(
         // can switch run-ahead back off when the global defaults enable it.
         0,
         u32::try_from(MAX_VERIFY_WINDOW_RUNAHEAD_TOKENS).expect("runahead limit fits u32"),
-    )
+    )?;
+    if let Some(fallback) = config.ngram_fallback.as_deref() {
+        validate_allowed(
+            fallback,
+            &["draft", "none"],
+            &format!("{base_path}.ngram_fallback"),
+        )?;
+    }
+    Ok(())
 }
 
 fn validate_request_defaults(config: &RequestDefaultsConfig, base_path: &str) -> DiagnosticResult {
@@ -918,7 +921,7 @@ fn validate_request_chat_defaults(
             ReasoningBudget::Integer(_) => {}
             ReasoningBudget::String(value) => validate_allowed(
                 value,
-                &["auto", "low", "medium", "high"],
+                &["auto", "low", "medium", "high", "unrestricted"],
                 &format!("{base_path}.reasoning_budget"),
             )?,
         }

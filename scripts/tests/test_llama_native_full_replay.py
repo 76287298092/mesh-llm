@@ -18,17 +18,21 @@ PRIVATE_TARGETS = {
     "skippy-hardware-application-probe",
     "skippy-model-fixture-generator",
     "skippy-model-loader-accounting",
+    "skippy-runtime-events-test",
     "skippy-noalloc-graph-planning",
     "skippy-renamed-multishard-planning",
     "skippy-stage-slice-plan",
 }
 LEGACY_TARGETS = {
-    "test-skippy-activation-layout",
     "test-skippy-kv-cells-contiguous",
     "test-skippy-kv-page-export",
     "test-skippy-model-loader-accounting",
     "test-skippy-recurrent-state-roundtrip",
     "test-skippy-verify-checkpoint-retirement",
+}
+NON_CHAT_TARGETS = {
+    "test-skippy-rerank-template",
+    "test-skippy-sampling-suppress",
 }
 
 
@@ -39,6 +43,7 @@ class LlamaNativeFullReplayTests(unittest.TestCase):
         full_replay: bool,
         upstream_tests: bool = False,
         repeat_cached: bool = False,
+        backend: str = "cpu",
     ) -> list[dict[str, object]]:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -123,7 +128,7 @@ class LlamaNativeFullReplayTests(unittest.TestCase):
                 {
                     "LLAMA_WORKDIR": str(llama),
                     "LLAMA_STAGE_BUILD_DIR": str(build),
-                    "LLAMA_STAGE_BACKEND": "cpu",
+                    "LLAMA_STAGE_BACKEND": backend,
                     "LLAMA_STAGE_LINK_MODE": "static",
                     "LLAMA_STAGE_FORCE_BUILD": "1",
                     "LLAMA_STAGE_USE_SCCACHE": "0",
@@ -150,17 +155,21 @@ class LlamaNativeFullReplayTests(unittest.TestCase):
             return [json.loads(line) for line in trace.read_text().splitlines()]
 
     def test_default_build_keeps_standard_and_private_tests_disabled(self) -> None:
+        """Normal product builds must not silently enable the expensive native certification suite."""
         trace = self.run_build(full_replay=False)
         configure = next(call for call in trace if call["args"][0] != "--build")
         build = next(call for call in trace if call["args"][0] == "--build")
 
         self.assertIn("-DLLAMA_BUILD_TESTS=OFF", configure["args"])
         self.assertIn("-DLLAMA_STAGE_BUILD_TESTS=OFF", configure["args"])
+        self.assertIn("-DGGML_METAL=OFF", configure["args"])
         self.assertTrue(PRIVATE_TARGETS.isdisjoint(build["args"]))
         self.assertTrue(LEGACY_TARGETS.isdisjoint(build["args"]))
+        self.assertTrue(NON_CHAT_TARGETS.isdisjoint(build["args"]))
         self.assertFalse(any(call["tool"] == "ctest" for call in trace))
 
     def test_full_replay_builds_and_runs_only_skippy_gates(self) -> None:
+        """Explicit full replay must build and execute every retained Skippy gate without upstream tests."""
         trace = self.run_build(full_replay=True)
         configure = next(call for call in trace if call["args"][0] != "--build")
         build = next(call for call in trace if call["args"][0] == "--build")
@@ -172,6 +181,8 @@ class LlamaNativeFullReplayTests(unittest.TestCase):
         self.assertIn("-DLLAMA_BUILD_SERVER=OFF", configure["args"])
         self.assertTrue(PRIVATE_TARGETS.issubset(build["args"]))
         self.assertTrue(LEGACY_TARGETS.issubset(build["args"]))
+        self.assertTrue(NON_CHAT_TARGETS.issubset(build["args"]))
+        self.assertNotIn("test-skippy-activation-layout", build["args"])
         self.assertNotIn("test-llama-archs", build["args"])
         self.assertEqual(
             [fixture[:4] for fixture in fixtures],
@@ -195,6 +206,12 @@ class LlamaNativeFullReplayTests(unittest.TestCase):
 
         self.assertEqual(len(build_calls), 2)
         self.assertEqual(len(ctest_calls), 2)
+
+    def test_metal_full_replay_builds_cachegen_fixture(self) -> None:
+        trace = self.run_build(full_replay=True, backend="metal")
+        build = next(call for call in trace if call["args"][0] == "--build")
+
+        self.assertIn("test-skippy-cachegen-metal", build["args"])
 
     def test_cached_standard_build_keeps_cache_shortcut(self) -> None:
         trace = self.run_build(full_replay=False, repeat_cached=True)

@@ -32,6 +32,7 @@ pub(super) fn package(layer_count: u32) -> skippy::SkippyPackageIdentity {
         activation_width: 2048,
         tensor_count: 100,
         generation: None,
+        publisher_defaults: None,
     }
 }
 
@@ -180,6 +181,8 @@ pub(super) fn split_test_peer(
         stage_status_list_supported: false,
         local_gguf_content_id_supported: stage_protocol_generation_supported,
         advertised_model_throughput: vec![],
+        #[cfg(feature = "payments")]
+        lightning_offers: Default::default(),
         cache_affinity: None,
 
         display_rtt: None,
@@ -365,6 +368,8 @@ pub(super) fn runtime_status_for_stage(
         flash_attn_type: FlashAttentionType::Auto,
         error: None,
         shutdown_generation: generation.generation,
+        compute_busy_nanos: 0,
+        compute_operations: 0,
     }
 }
 
@@ -569,19 +574,10 @@ stop = ["END"]
 }
 
 /// Split stage loading must resolve with the compact metadata scanned during
-/// planning: the architecture-driven K/V default gets the same compatibility
-/// guard as the planner, so a default the actual GGUF cannot load (here:
-/// Inkling → q4_0 with per-head widths not divisible by the q4_0 block size)
-/// degrades to f16 at stage load instead of failing the context build.
-///
-/// The package is deliberately small (10 GB) so the size-tiered policy alone
-/// would pick q8_0: the observed q4_0-vs-f16 swing can only come from actual
-/// Inkling metadata, pinning the plumbing rather than a model-name heuristic.
-/// Split load specifications require this metadata, so both the
-/// initial-load and coordinator-replan constructors must carry it; dropping
-/// the final resolver handoff would regress this test to q4_0.
+/// planning. A publisher-declared quantised K/V type that the GGUF cannot load
+/// must degrade to f16 at stage load instead of failing the context build.
 #[tokio::test]
-async fn split_stage_load_guards_metadata_kv_default_with_planned_metadata() {
+async fn split_stage_load_guards_publisher_kv_default_with_planned_metadata() {
     let node = mesh::Node::new_for_tests(NodeRole::Host { http_port: 9338 })
         .await
         .unwrap();
@@ -592,6 +588,14 @@ async fn split_stage_load_guards_metadata_kv_default_with_planned_metadata() {
     let mut identity = package(66);
     identity.package_ref = "hf://Mesh-LLM/test-inkling-package".to_string();
     identity.source_model_bytes = 10 * 1024 * 1024 * 1024;
+    identity.publisher_defaults = Some(skippy_package_format::PublisherModelDefaults {
+        compute_dtype: None,
+        kv_cache_dtype: Some(skippy_package_format::PublisherDtypeDeclaration {
+            dtype: skippy_package_format::PublisherDtype::Q4_0,
+            artifact_id: "publisher-config".to_string(),
+            json_path: "/kv_cache_dtype".to_string(),
+        }),
+    });
     let local_id = node.id();
     let generation = SplitTopologyGeneration::new(
         "guard-topology".into(),
@@ -605,7 +609,7 @@ async fn split_stage_load_guards_metadata_kv_default_with_planned_metadata() {
     );
 
     // Per-head widths of 100 are not a multiple of the q4_0 block size (32),
-    // so the Inkling architecture's quantised default cannot load.
+    // so the publisher declaration cannot load.
     let incompatible_meta = crate::models::gguf::GgufCompactMeta {
         architecture: "inkling".to_string(),
         context_length: 65_536,
@@ -618,8 +622,8 @@ async fn split_stage_load_guards_metadata_kv_default_with_planned_metadata() {
         ..Default::default()
     };
 
-    // With the planned metadata, the unloadable architecture default degrades to
-    // f16 — the same cache the split planner budgets for.
+    // With the planned metadata, the unloadable publisher default degrades to
+    // f16, matching the split planner's budget.
     let guarded_spec = SplitGenerationLoadSpec {
         node: &node,
         mesh_config: &mesh_config,
@@ -655,12 +659,11 @@ async fn split_stage_load_guards_metadata_kv_default_with_planned_metadata() {
         .expect("guarded split settings should resolve");
     assert_eq!(
         guarded.runtime_options.config.cache_type_k, "f16",
-        "incompatible architecture default must degrade to f16 at stage load"
+        "incompatible publisher default must degrade to f16 at stage load"
     );
     assert_eq!(guarded.runtime_options.config.cache_type_v, "f16");
 
-    // Without metadata the model name carries no architecture authority, so
-    // the generic q8_0 size tier remains in effect.
+    // Without publisher metadata, model name and weight size do not quantize KV.
     let unguarded = skippy::resolve_skippy_config_for_selector(
         skippy::SkippyConfigResolveRequest {
             mesh_config: &mesh_config,
@@ -676,10 +679,10 @@ async fn split_stage_load_guards_metadata_kv_default_with_planned_metadata() {
     )
     .expect("unguarded resolver settings should resolve");
     assert_eq!(
-        unguarded.model_fit.cache_type_k, "q8_0",
-        "no-metadata stage load keeps the generic size-tier default"
+        unguarded.model_fit.cache_type_k, "f16",
+        "no-metadata stage load uses the safe f16 default"
     );
-    assert_eq!(unguarded.model_fit.cache_type_v, "q8_0");
+    assert_eq!(unguarded.model_fit.cache_type_v, "f16");
 }
 
 #[tokio::test]
@@ -761,7 +764,7 @@ max_tokens = 222
     assert_eq!(resolved.model_id, "runtime/served-name");
     assert_eq!(resolved.throughput.threads, Some(9));
     assert_eq!(resolved.throughput.threads_batch, Some(5));
-    assert_eq!(resolved.request_defaults.max_tokens, 222);
+    assert_eq!(resolved.request_defaults.max_tokens, Some(222));
     assert_eq!(resolved.model_fit.ctx_size, 4096);
     assert_eq!(resolved.throughput.parallel, 3);
     assert_eq!(resolved.hardware.device.as_deref(), Some("CPU"));
@@ -809,10 +812,7 @@ max_tokens = 222
     assert_eq!(cli_resolved.hardware.resolved_model_path, cli_model_path);
     assert_eq!(cli_resolved.throughput.threads, None);
     assert_eq!(cli_resolved.throughput.threads_batch, None);
-    assert_eq!(
-        cli_resolved.request_defaults.max_tokens,
-        skippy_server::CONTEXT_BUDGET_MAX_TOKENS
-    );
+    assert_eq!(cli_resolved.request_defaults.max_tokens, None);
 }
 
 #[test]
@@ -824,6 +824,7 @@ fn runtime_verified_served_model_descriptor_preserves_identity_and_updates_capab
             source_kind: mesh::ModelSourceKind::HuggingFace,
             repository: Some("Qwen/Qwen3-VL-2B-Instruct-GGUF".into()),
             artifact: Some("Qwen3VL-2B-Instruct-Q4_K_M.gguf".into()),
+            weights_digest: Some("sha256:verified-weights".into()),
             ..Default::default()
         },
         capabilities_known: false,
@@ -842,6 +843,7 @@ fn runtime_verified_served_model_descriptor_preserves_identity_and_updates_capab
         "Qwen3VL-2B-Instruct-Q4_K_M",
         "Qwen3VL-2B-Instruct-Q4_K_M",
         capabilities,
+        mesh::ModelWorkloadClass::CausalGeneration,
     );
 
     assert_eq!(
@@ -855,6 +857,14 @@ fn runtime_verified_served_model_descriptor_preserves_identity_and_updates_capab
     assert!(descriptor.identity.is_primary);
     assert!(descriptor.capabilities_known);
     assert_eq!(descriptor.capabilities, capabilities);
+    assert_eq!(
+        descriptor.identity.weights_digest.as_deref(),
+        Some("sha256:verified-weights")
+    );
+    assert_eq!(
+        descriptor.metadata.unwrap().workload_class,
+        Some(mesh::ModelWorkloadClass::CausalGeneration)
+    );
 }
 
 #[test]
@@ -864,6 +874,7 @@ fn runtime_verified_served_model_descriptor_builds_fallback_identity() {
         "Primary",
         "Runtime",
         models::ModelCapabilities::default(),
+        mesh::ModelWorkloadClass::Embedding,
     );
 
     assert_eq!(descriptor.identity.model_name, "Runtime");
@@ -940,6 +951,8 @@ pub(super) fn test_stage_status_from_load(
         coordinator_term: load.coordinator_term,
         coordinator_id: load.coordinator_id,
         lease_until_unix_ms: load.lease_until_unix_ms,
+        compute_busy_nanos: 0,
+        compute_operations: 0,
     }
 }
 
@@ -992,6 +1005,8 @@ pub(super) fn test_stage_status_from_stop(
         coordinator_term: stop.coordinator_term,
         coordinator_id: None,
         lease_until_unix_ms: 0,
+        compute_busy_nanos: 0,
+        compute_operations: 0,
     }
 }
 
