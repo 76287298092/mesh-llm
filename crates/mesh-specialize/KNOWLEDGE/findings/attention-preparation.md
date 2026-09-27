@@ -42,3 +42,9 @@ Workers own the independent reference, one device kernel and the checkpoint
 loader. Parent owns the design, harness, wiring, validation, PTX inventory and
 Carrack deployment. New kernel/launch paths require host tests/Clippy, PTX build,
 normal real-weight trial and memcheck/racecheck/synccheck before qualification.
+
+Local 149 tests, Clippy, formatting, no-console and PTX compilation pass. The
+first Linux compile caught a parent integration mistake: the new wrappers used
+a nonexistent `Context::allocate` method instead of the existing `Buffer::new`.
+Both allocation helpers now use the established RAII API. Preserve the initial
+failed Linux test/build log. No GPU trial ran at the failed revision.

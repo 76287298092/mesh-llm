@@ -264,7 +264,7 @@ fn run_case(
 }
 
 fn upload<'a>(context: &'a Context, bytes: &[u8]) -> Result<Buffer<'a>> {
-    let buffer = context.allocate(bytes.len())?;
+    let buffer = Buffer::new(context, bytes.len())?;
     buffer.upload(bytes)?;
     Ok(buffer)
 }
