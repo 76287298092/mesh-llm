@@ -122,6 +122,7 @@ pub(in crate::kernels) fn run(
         "kind": "resident-model-fixed-token-benchmark",
         "completed": true,
         "device": info,
+        "arithmetic_profile": crate::kernels::fp8_profile::current()?.name(),
         "configured_capacity": config.capacity,
         "prompt_token_ids": request.tokens,
         "prompt_tokens": request.tokens.len(),

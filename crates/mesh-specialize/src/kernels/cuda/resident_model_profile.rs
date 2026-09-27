@@ -85,6 +85,8 @@ pub(in crate::kernels) fn run(
     let partitioned = run_unprofiled(&context, &module, &model, config, tokens, true)?;
     let partition = json!({
         "prefill_logits_bit_exact": control.prefill_logits == partitioned.prefill_logits,
+        "prefill_logit_drift": logit_drift(&control.prefill_logits, &partitioned.prefill_logits),
+        "decode_logit_drift": logit_drift(&control.output.logits, &partitioned.output.logits),
         "decode_logits_bit_exact": control.output.logits == partitioned.output.logits,
         "state_bit_exact": control.state_sha256 == partitioned.state_sha256,
         "whole_state_sha256": control.state_sha256,
@@ -158,6 +160,7 @@ pub(in crate::kernels) fn run(
         "completed": true,
         "all_passed": all_passed,
         "device": info,
+        "arithmetic_profile": crate::kernels::fp8_profile::current()?.name(),
         "prefix_token_ids": tokens,
         "decode_input_token": decode_input_token,
         "resulting_past": resulting_past,
@@ -487,4 +490,24 @@ mod tests {
         );
         assert!(validate_kernel_profile(&json!({"launch_count": 1, "total_gpu_ms": 0.1})).is_err());
     }
+}
+
+fn logit_drift(actual: &[u16], expected: &[u16]) -> Value {
+    let mut error = 0.0_f64;
+    let mut left_norm = 0.0_f64;
+    let mut right_norm = 0.0_f64;
+    let mut dot = 0.0_f64;
+    let mut max_error = 0.0_f64;
+    let mut finite = actual.len() == expected.len();
+    for (&a, &b) in actual.iter().zip(expected) {
+        let a = f64::from(f32::from_bits(u32::from(a) << 16));
+        let b = f64::from(f32::from_bits(u32::from(b) << 16));
+        finite &= a.is_finite() && b.is_finite();
+        error += (a - b).powi(2);
+        left_norm += a * a;
+        right_norm += b * b;
+        dot += a * b;
+        max_error = max_error.max((a - b).abs());
+    }
+    json!({"finite":finite,"normalized_l2":(error/right_norm.max(1e-30)).sqrt(),"cosine":dot/(left_norm*right_norm).sqrt().max(1e-30),"max_abs_error":max_error,"diagnostic_only":true})
 }

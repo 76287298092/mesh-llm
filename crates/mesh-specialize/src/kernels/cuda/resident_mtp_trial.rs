@@ -27,6 +27,10 @@ pub(in crate::kernels) fn run(
     reference: &Reference,
     request: &SpeculationRequest<'_>,
 ) -> Result<Value> {
+    ensure!(
+        crate::kernels::fp8_profile::current()? == crate::kernels::fp8_profile::Profile::Exact,
+        "MTP qualification requires the exact FP8 profile until experimental prefill state recovery is qualified"
+    );
     ensure!(ptx.contains(".target sm_120a"), "MTP requires SM120a PTX");
     let ctx = Context::new(device)?;
     let info = ctx.info();

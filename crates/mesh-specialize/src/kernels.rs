@@ -1,5 +1,7 @@
 //! Device-specific instruction qualification, separate from model execution.
 
+pub mod fp8_profile;
+
 pub enum DecoderBlockKind {
     Gdn,
     Attention,

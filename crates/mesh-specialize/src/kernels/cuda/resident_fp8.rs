@@ -20,6 +20,7 @@ pub(super) struct Projection<'w, 'ctx> {
     scale_name: String,
     width: usize,
     channels: usize,
+    profile: crate::kernels::fp8_profile::Profile,
 }
 
 impl<'w, 'ctx> Projection<'w, 'ctx> {
@@ -50,10 +51,11 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
             scale_name,
             width,
             channels,
+            profile: crate::kernels::fp8_profile::current()?,
         })
     }
 
-    /// Quantize resident BF16 input rows, run the exact FP8 projection, and return device outputs.
+    /// Quantize resident BF16 input rows, run the selected FP8 projection, and return device outputs.
     pub(super) fn run<'a>(
         &self,
         context: &'a Context,
@@ -73,15 +75,18 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
         let weight_pointer = self.owner.pointer(&self.weight_name)?;
         let scale_pointer = self.owner.pointer(&self.scale_name)?;
         let quantize = module.function("fp8_quantize_bf16")?;
-        let (tile_rows, tile_columns, threads, kernel) = if rows >= 16 {
-            (16, 8, 32, "fp8_prefill_exact")
-        } else if rows >= 4 && self.channels >= 16_384 {
-            (8, 16, 32, "fp8_verify_exact")
-        } else if rows >= 4 {
-            (4, 4, 128, "fp8_linear_exact4")
-        } else {
-            (1, 4, 128, "fp8_linear_exact")
-        };
+        let (tile_rows, tile_columns, threads, kernel) =
+            if rows >= 16 && self.profile == crate::kernels::fp8_profile::Profile::NativePrefill {
+                (32, 64, 128, "fp8_prefill_native")
+            } else if rows >= 16 {
+                (16, 8, 32, "fp8_prefill_exact")
+            } else if rows >= 4 && self.channels >= 16_384 {
+                (8, 16, 32, "fp8_verify_exact")
+            } else if rows >= 4 {
+                (4, 4, 128, "fp8_linear_exact4")
+            } else {
+                (1, 4, 128, "fp8_linear_exact")
+            };
         let linear = module.function(kernel)?;
         let codes = Buffer::new(context, extents.code_bytes)?;
         let row_scales = Buffer::new(context, extents.row_scale_bytes)?;
@@ -130,7 +135,7 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
         if let Err(error) = unsafe { linear.launch(grid, [threads, 1, 1], 0, &mut arguments) } {
             return Err(synchronize_after_failed_launch(
                 context,
-                "exact FP8 projection",
+                "FP8 projection",
                 error,
             ));
         }
