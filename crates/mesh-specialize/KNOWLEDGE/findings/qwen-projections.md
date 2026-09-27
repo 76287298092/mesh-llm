@@ -67,3 +67,9 @@ warnings denied, Rust PTX compilation and repository no-console checks pass.
 The CLI now shares report persistence between entry and projection checks; a
 missing direct anyhow dependency was avoided by making the runner generic over
 its error display type. No dependency was added.
+
+Carrack's first check passed 97 library tests and 17 validator tests. Linux-only
+Clippy then found a fixed-size `vec!` in the quantizer fixture; it was replaced by
+a stack array without changing values or execution. The initial lint log is
+retained. Offline CUDA assembly accepts the new FP8 instructions for SM120a;
+actual JIT/launch and numerical qualification still follow.

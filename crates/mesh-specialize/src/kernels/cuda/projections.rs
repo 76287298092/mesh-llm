@@ -357,7 +357,7 @@ fn quantization_fixtures(context: &Context, module: &Module<'_>) -> Result<Value
     let bytes: Vec<_> = input.iter().flat_map(|v| v.to_le_bytes()).collect();
     let input = upload(context, &bytes)?;
     let codes = upload(context, &vec![127; expected.codes.len()])?;
-    let scales = upload(context, &vec![0xff; 12])?;
+    let scales = upload(context, &[0xff; 12])?;
     quantize(
         &module.function("fp8_quantize_bf16")?,
         &input,
