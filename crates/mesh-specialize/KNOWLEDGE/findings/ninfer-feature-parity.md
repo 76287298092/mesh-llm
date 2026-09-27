@@ -120,14 +120,14 @@ exist, keep the percentage column unmeasured.
 
 | Feature | Dedicated subagent | First bounded implementation status |
 | --- | --- | --- |
-| F01 | `feature_decode_gemv` | A16 FP8 kernel and independent oracle delivered; parent validation underway |
-| F02 | `feature_native_prefill` | Native FP8 shared-memory tile delivered; CPU tests and PTX compilation pass |
+| F01 | `feature_decode_gemv` | A16 FP8 synthetic GPU checks and all three sanitizers pass; model integration pending |
+| F02 | `feature_native_prefill` | Native FP8 tile synthetic GPU checks and all three sanitizers pass; model integration pending |
 | F03 | `feature_fusion` | Exact FP8 gate/up and SwiGLU fusion delivered; CPU tests and PTX compilation pass |
-| F04 | `feature_chunked_gdn` | Chunked recurrence operator and oracle in progress |
-| F05 | `feature_tiled_attention` | FP32 online-softmax candidate in progress |
-| F06 | `feature_fp8_kv` | Queued; BF16 attention remains control |
-| F07 | `feature_workspace` | Reusable layout/lease primitive delivered; parent validation underway |
-| F08 | `feature_graphs` | Queued; depends on stable workspace ownership |
+| F04 | `feature_chunked_gdn` | Chunked operator delivered; CPU tests and PTX compilation pass |
+| F05 | `feature_tiled_attention` | Online-softmax candidate delivered; CPU tests and PTX compilation pass |
+| F06 | `feature_fp8_kv` | Dedicated owner implementing FP8 codec; BF16 remains control |
+| F07 | `feature_workspace` | Reusable layout and lease checks pass on GPU; operator integration pending |
+| F08 | `feature_graphs` | Dedicated owner implementing driver graph ownership |
 | F09 | `feature_mtp_recovery` | Queued; compact replay primitive has separate ownership |
 | F10 | `feature_prefix_cache` | Queued; identity-bound checkpoint policy first |
 

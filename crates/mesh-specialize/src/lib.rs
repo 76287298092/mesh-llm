@@ -82,3 +82,6 @@ pub mod fp8_swiglu_exact_reference;
 
 #[path = "../reference/gdn_chunked.rs"]
 pub mod gdn_chunked_reference;
+
+#[path = "../reference/attention_online.rs"]
+pub mod attention_online_reference;

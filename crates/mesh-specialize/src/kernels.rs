@@ -466,3 +466,14 @@ pub fn feature_projection_trial(ptx: &str, device: i32) -> anyhow::Result<serde_
         anyhow::bail!("Feature projection qualification requires Linux")
     }
 }
+
+/// Qualify experimental online attention on independent synthetic fixtures.
+pub fn feature_attention_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::feature_attention_trial::run(ptx, device);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device);
+        anyhow::bail!("Attention qualification requires Linux")
+    }
+}

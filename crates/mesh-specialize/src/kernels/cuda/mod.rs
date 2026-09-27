@@ -243,3 +243,5 @@ pub(super) mod resident_mtp_trial;
 mod resident_speculation;
 
 pub(super) mod feature_projection_trial;
+
+pub(super) mod feature_attention_trial;

@@ -133,3 +133,8 @@ F04 experimental `gdn_chunked.rs` implements coefficient/RHS preparation,
 triangular solve and output/final-state reconstruction using explicit FP32
 arithmetic. Its independent sequential FP64 oracle and supported contracts are
 in `optimizations/feature-f04-gdn.md`; GPU/model qualification remains pending.
+
+F05 experimental `attention_online.rs` stages BF16 KV tiles in shared memory,
+uses FP32 reductions and online softmax, and preserves causal/GQA addressing.
+The independent FP64 oracle, fixed budgets and ABI are documented in
+`optimizations/feature-f05-attention.md`. GPU/model qualification is pending.

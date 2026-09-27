@@ -11,6 +11,7 @@ mod bf16_linear;
 mod bf16_linear_decode;
 mod bf16_linear_rounding;
 mod causal_attention;
+mod attention_online;
 mod causal_conv4;
 mod embedding_norm;
 mod fp8_linear;
