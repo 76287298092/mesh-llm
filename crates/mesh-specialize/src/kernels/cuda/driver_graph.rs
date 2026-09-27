@@ -129,7 +129,7 @@ fn ensure_no_capture(operation: &str) -> Result<()> {
 ///
 /// The parent driver may use this before synchronous copies, allocation, context
 /// synchronization, event instrumentation, or other host-side work.
-pub(in crate::kernels::cuda) fn ensure_driver_operation_allowed(operation: &str) -> Result<()> {
+pub(in super::super) fn ensure_driver_operation_allowed(operation: &str) -> Result<()> {
     ensure_no_capture(operation)
 }
 
@@ -137,14 +137,14 @@ pub(in crate::kernels::cuda) fn ensure_driver_operation_allowed(operation: &str)
 ///
 /// The parent driver module should call this at the start of `Function::launch`; the
 /// stream launch method below never touches the launch profiler or default stream.
-pub(in crate::kernels::cuda) fn ensure_default_stream_launch_allowed(
+pub(in super::super) fn ensure_default_stream_launch_allowed(
     _context: &Context,
 ) -> Result<()> {
     ensure_driver_operation_allowed("launch on the default stream")
 }
 
 /// An owned nonblocking CUDA stream tied to its context and creating thread.
-pub(in crate::kernels::cuda) struct Stream<'ctx> {
+pub(in super::super) struct Stream<'ctx> {
     context: &'ctx Context,
     api: GraphApi,
     raw: CuStream,
@@ -154,7 +154,7 @@ pub(in crate::kernels::cuda) struct Stream<'ctx> {
 
 impl<'ctx> Stream<'ctx> {
     /// Create a nonblocking stream in `context`.
-    pub(in crate::kernels::cuda) fn new(context: &'ctx Context) -> Result<Self> {
+    pub(in super::super) fn new(context: &'ctx Context) -> Result<Self> {
         ensure_no_capture("create a CUDA stream")?;
         let api = GraphApi::load(context)?;
         let _current_context = context.activate()?;
@@ -184,12 +184,12 @@ impl<'ctx> Stream<'ctx> {
     }
 
     /// Return whether this stream currently owns an active capture guard.
-    pub(in crate::kernels::cuda) fn is_capturing(&self) -> bool {
+    pub(in super::super) fn is_capturing(&self) -> bool {
         self.capturing.get()
     }
 
     /// Begin thread-local graph capture on this stream.
-    pub(in crate::kernels::cuda) fn begin_capture(&self) -> Result<StreamCapture<'_, 'ctx>> {
+    pub(in super::super) fn begin_capture(&self) -> Result<StreamCapture<'_, 'ctx>> {
         ensure!(!self.capturing.get(), "CUDA stream is already capturing");
         ensure_no_capture("begin another CUDA graph capture")?;
         register_capture(self.context)?;
@@ -218,7 +218,7 @@ impl<'ctx> Stream<'ctx> {
     }
 
     /// End and discard a capture whose guard could not clean it up during drop.
-    pub(in crate::kernels::cuda) fn abort_capture(&mut self) -> Result<()> {
+    pub(in super::super) fn abort_capture(&mut self) -> Result<()> {
         if !self.capturing.get() {
             return Ok(());
         }
@@ -226,7 +226,7 @@ impl<'ctx> Stream<'ctx> {
     }
 
     /// Wait for all operations in this stream to complete.
-    pub(in crate::kernels::cuda) fn synchronize(&self) -> Result<()> {
+    pub(in super::super) fn synchronize(&self) -> Result<()> {
         ensure!(
             !self.capturing.get(),
             "cannot synchronize a CUDA stream during graph capture"
@@ -268,7 +268,7 @@ impl Drop for Stream<'_> {
 }
 
 /// A live stream capture. Dropping the guard ends capture and destroys its graph.
-pub(in crate::kernels::cuda) struct StreamCapture<'stream, 'ctx> {
+pub(in super::super) struct StreamCapture<'stream, 'ctx> {
     stream: &'stream Stream<'ctx>,
     active: bool,
     _thread_bound: PhantomData<Rc<()>>,
@@ -284,7 +284,7 @@ impl<'ctx> StreamCapture<'_, 'ctx> {
     /// work has completed. The caller must also keep host argument storage live through each
     /// `cuLaunchKernel` call and avoid allocations, host synchronization, default-stream launches,
     /// and profiler events during capture.
-    pub(in crate::kernels::cuda) unsafe fn finish(mut self) -> Result<Graph<'ctx>> {
+    pub(in super::super) unsafe fn finish(mut self) -> Result<Graph<'ctx>> {
         let _current_context = self.stream.context.activate()?;
         let mut raw = ptr::null_mut();
         // SAFETY: This guard began capture on the same stream and remains on the creating thread.
@@ -310,7 +310,7 @@ impl<'ctx> StreamCapture<'_, 'ctx> {
     }
 
     /// Abort capture and destroy any partial graph returned by CUDA.
-    pub(in crate::kernels::cuda) fn abort(mut self) -> Result<()> {
+    pub(in super::super) fn abort(mut self) -> Result<()> {
         self.abort_inner()
     }
 
@@ -368,7 +368,7 @@ fn abort_capture_inner(
 }
 
 /// An owned captured CUDA graph tied to the context and creating thread.
-pub(in crate::kernels::cuda) struct Graph<'ctx> {
+pub(in super::super) struct Graph<'ctx> {
     context: &'ctx Context,
     api: GraphApi,
     raw: CuGraph,
@@ -383,7 +383,7 @@ impl<'ctx> Graph<'ctx> {
     /// same address until this graph and every executable instantiated from it are destroyed and
     /// all in-flight graph work has completed. CUDA does not retain the Rust [`Function`] or
     /// buffer owners whose raw values were copied into kernel nodes.
-    pub(in crate::kernels::cuda) unsafe fn instantiate(&self) -> Result<GraphExec<'ctx>> {
+    pub(in super::super) unsafe fn instantiate(&self) -> Result<GraphExec<'ctx>> {
         ensure_no_capture("instantiate a CUDA graph")?;
         let _current_context = self.context.activate()?;
         let mut raw = ptr::null_mut();
@@ -427,7 +427,7 @@ impl Drop for Graph<'_> {
 }
 
 /// An executable CUDA graph tied to the context and creating thread.
-pub(in crate::kernels::cuda) struct GraphExec<'ctx> {
+pub(in super::super) struct GraphExec<'ctx> {
     context: &'ctx Context,
     api: GraphApi,
     raw: CuGraphExec,
@@ -442,7 +442,7 @@ impl GraphExec<'_> {
     /// address through this launch and until the stream has completed all work. The caller must
     /// synchronize before releasing those resources; CUDA serializes launches of one executable
     /// handle.
-    pub(in crate::kernels::cuda) unsafe fn launch(&self, stream: &Stream<'_>) -> Result<()> {
+    pub(in super::super) unsafe fn launch(&self, stream: &Stream<'_>) -> Result<()> {
         ensure!(
             ptr::eq(self.context, stream.context),
             "CUDA graph launch requires a stream from the same context"
@@ -487,7 +487,7 @@ impl Function<'_, '_> {
     /// until the stream work completes. If `stream` is capturing, every referenced module and
     /// allocation must remain live at its stable address through all graph and executable lifetimes
     /// and every replay. The supplied dimensions must be valid for the function and device.
-    pub(in crate::kernels::cuda) unsafe fn launch_on_stream(
+    pub(in super::super) unsafe fn launch_on_stream(
         &self,
         stream: &Stream<'_>,
         grid: [u32; 3],

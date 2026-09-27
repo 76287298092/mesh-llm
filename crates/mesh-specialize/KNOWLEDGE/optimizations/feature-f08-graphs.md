@@ -80,3 +80,5 @@ flag is `1`; thread-local capture mode is `1`.
   attribution.
 
 Parent integration wired the child module and capture guards in driver.rs, plus a fixed-address graph-check command. Review changed manual abort to require exclusive stream access, preventing an old guard from ending a later capture. Linux compilation and GPU execution are next; no performance claim.
+
+Linux all-features compilation caught that the validation executable includes driver.rs at a different module path. Export visibility now uses the relative grandparent module, preserving the same boundary in both consumers.
