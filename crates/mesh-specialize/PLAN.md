@@ -370,3 +370,25 @@ matched Ninfer provenance/quality/rates and concurrent serving remain open.
 Allocation/driver tracing has not yet been measured; nsys/ncu are not installed
 on Carrack's current interactive PATH. Do not infer driver time by subtracting
 synchronized kernel-event totals from uninstrumented wall time.
+
+## Next measured bottleneck: resident tiled attention
+
+The512-token workspace profile records22.05ms of causal-attention events in
+52.39ms of summed subsequent decode events, and244.85ms during prefill. The
+GPU-selection ablation is only0.26–0.52% faster in fixed-order short trials;
+this is not a stable throughput win. Prioritize F05 integration after its
+current predecessor's model sanitizer job terminates.
+
+Parent inspected `resident_attention_core`: existing and candidate attention
+kernels share the five-pointer/six-u32/FP32-scale ABI,256-thread CTA and token-major
+BF16 KV layout. Preserve the default FP64 kernel; add an explicit separate
+attention arithmetic profile for the FP32 online candidate. First audit identical
+real-model prepared Q/K/V and cache values, covering nonzero past and causal tails,
+against the exact GPU control and independent logical FP64 oracle using F05's
+existing component budgets. Diagnostic outputs must not feed the control model.
+Keep same-profile partition checks strict. Then compare teacher-forced logits,
+state, natural-language continuations and task quality, followed by matched
+prefill/decode timings at increasing contexts. Reject experimental attention in
+MTP until recovery/profile identity is qualified. No `.ninfer` parser or imported
+compute implementation is involved; existing F05 source remains its worker's
+feature and parent owns integration/qualification.
