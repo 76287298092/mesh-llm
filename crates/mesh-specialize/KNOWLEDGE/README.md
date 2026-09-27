@@ -15,6 +15,7 @@ Start with [the implementation plan](../PLAN.md) and the
 | [CUDA-library reference](findings/cuda-library-reference.md) | 14 independent cuBLAS cases pass; runtime library has no cuBLAS references |
 | [Model identity selection](findings/model-identity-selection.md) | Exact policy and legacy fallback; resident discovery/startup pending |
 | [Selected CUDA device admission](findings/selected-device-admission.md) | Occupied/free 5090 and wrong-GPU 3080 trials pass; startup integration pending |
+| [Mspec format](findings/mspec-format.md) | Reader/writer and content identity pass local tests; Linux validation pending |
 | [Prebuilt core target mismatch](dead-ends/prebuilt-core-target-mismatch.md) | Resolved by rebuilding core; emitted PTX executed |
 | [Racecheck timing repetitions](dead-ends/racecheck-timing-repetitions.md) | Failed with host OOM; bounded check-only recovery passed |
 

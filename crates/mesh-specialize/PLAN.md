@@ -9,6 +9,11 @@ The [live device-policy trial](KNOWLEDGE/findings/selected-device-admission.md)
 passes. Resident artifact discovery, ABI loading and full model execution are
 still required before this can serve a request.
 
+The internal `.mspec` container now has a content-derived identity, bounded
+resident reader and CPU object assembler. Container tests do not establish a
+converted Qwen checkpoint; pinned Safetensors conversion and compiled model
+inventory validation remain separate gates.
+
 ## Objective and boundaries
 
 Build the first stages of issue 1393 in `codex/issue-1393-feasibility`, with bounded
@@ -141,9 +146,11 @@ that control's rates directly to MTP4 as an isolated speedup across different in
 | B01/B02 bounded baseline tool | Complete | 18 focused tests and successful live run |
 | Fresh NInfer baseline | Complete for deployed serial profile | `KNOWLEDGE/findings/ninfer-baseline-20260926.md` |
 | Rust instruction gate | NVFP4 and 29 remaining probe cases pass; sanitizer checks clean | `KNOWLEDGE/findings/instruction-qualification.md` and prior NVFP4 evidence |
-| Representative GEMM/RMSNorm | 14 cases / 1,489,305 outputs pass; preliminary timings; library reference and profiler pending | `KNOWLEDGE/findings/representative-kernels.md` |
-| Upstream push and carrack branch synchronization | Complete through kernel trials | `38d656cd1`; original carrack branch retained |
+| Representative GEMM/RMSNorm | 14 cases / 1,489,305 outputs pass; independent cuBLAS reference passes; profiling pending | `KNOWLEDGE/findings/representative-kernels.md` and `cuda-library-reference.md` |
+| Upstream push and carrack branch synchronization | Complete through selected-device admission | `f279bdc7c`; original carrack branch retained |
 | First carrack Rust GPU trial | Complete | 32 cases, 4,096 exact output matches; Ninfer restored |
+| A01/A02 container, identity, reader and object assembly | Implemented; cross-platform checks in progress | `KNOWLEDGE/findings/mspec-format.md` |
+| Pinned upstream conversion, H03 discovery and H04 ABI | Pending | No loadable specialized model yet |
 | Full model performance/context trial | Pending | None |
 
 Validation belongs to the parent: serial focused Rust tests/check/Clippy, formatting,
