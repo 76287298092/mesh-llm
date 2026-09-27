@@ -620,7 +620,7 @@ mod tests {
         let result = run(&input, &[1, 0], &[0, 1]).unwrap();
         let expected = [
             ("entry_norm", 16),
-            ("q_projection", 64),
+            ("q_projection", 32),
             ("k_projection", 8),
             ("v_projection", 8),
             ("q_prepared", 16),
