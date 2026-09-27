@@ -86,8 +86,8 @@ impl<'w, 'ctx> GdnCore<'w, 'ctx> {
         rows: usize,
     ) -> Result<super::resident_recovery::CoreOutput<'a>> {
         ensure!(
-            !input.record || rows <= 5,
-            "GDN recording supports at most five rows"
+            !input.record || (rows <= 5 && self.key_heads <= 64 && self.width.is_power_of_two()),
+            "GDN recording requires at most five rows, at most 64 key heads and power-of-two width"
         );
         let extents = run_extents(
             rows,
