@@ -123,3 +123,20 @@ the selected-output interface and reports the policy flag. MTP rejects enabling
 this policy until its separate selection path is integrated. No serving default
 or arithmetic profile changed. Linux compilation, standalone GPU checks, all
 three sanitizers, model equivalence, and paired throughput remain pending.
+
+
+Standalone device qualification `greedy-check-1` at source `11b84609f` passed
+all77cases and three-repeat scratch reuse in normal execution, memcheck,
+racecheck and synccheck; all tools reported zero errors/hazards. RTX5090,
+driver615.71.09, PTX SHA256
+`961d1652408eeb9ec8d72aa9c14d32ced2c2f0efb3e8e2a32dd0d5cdcc0c4a05`.
+Tile/finish kernels use24/20registers,64sharedbytes each and zero local bytes.
+Ninfer stayed inactive and ComfyUI remained resident. Linux Clippy and release
+tools build passed. The ordinary-model paired ablation is running separately;
+standalone selection evidence is not model throughput or serving qualification.
+
+The model-profile event capture continues to describe its full-logit diagnostic
+forward, even when the GPU-selection option is enabled. Its separate
+`gpu_selection_check` executes the device-only path on identical inputs and
+compares selected tokens and complete state. Do not attribute the benchmark's
+GPU-selection effect from those diagnostic event totals.

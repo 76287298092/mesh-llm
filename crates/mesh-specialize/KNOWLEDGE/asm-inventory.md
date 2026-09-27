@@ -197,3 +197,9 @@ ties; GPU `greedy-check` additionally compares existing CPU sampling and exact
 nonfinite positions. This path changes only token selection, not model arithmetic.
 Compilation and GPU qualification are pending; default model execution stays CPU
 selection, with full-logit diagnostics retained even when experimenting.
+
+
+Greedy follow-up: `evidence/iterate-20260927/greedy-check-1` passes77 independent
+cases under normal execution and all three sanitizer tools (zero errors/hazards).
+Source `11b84609f`; tile/finish24/20registers,64sharedbytes each,0localbytes.
+Whole-model selected-token execution and throughput remain under qualification.
