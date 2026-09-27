@@ -75,3 +75,10 @@ entrypoint is removed; the candidate commit and raw evidence preserve the trial.
 paired-word warp reduction across four activation rows per weight load. Its only
 new assembly site reads CTA/thread coordinates. Both variants run independent
 finite-code/tail/cancellation fixtures; retained results are in the optimization log.
+
+The reduction's final form keeps shared loads/stores, exact FP64 tree additions,
+paired-word shuffles and both barriers in one opaque inline PTX block. This avoids
+LLVM branch threading without a device function call. Existing logical attention
+fixtures and the full-model comparison remain the independent oracle. The interim
+out-of-line variant passed sanitizers but retained about 1 GiB of CUDA stack
+storage, failing the profiler's memory-release gate; evidence is preserved.

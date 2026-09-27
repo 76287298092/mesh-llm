@@ -116,3 +116,12 @@ PID3231397, HTTP200; ComfyUI unchanged. Failed evidence is retained in
 branch through the inlined reduction barrier, splitting the first warp across
 barrier paths. The next candidate keeps the reduction out of line to prevent
 that transformation. This diagnosis is provisional until GPU checks pass.
+
+The out-of-line reduction at eff80d485 passes normal, memcheck, racecheck and
+synccheck with exact two-token hidden/logits/state. Its three-sample medians are
+19.982 short decode, 18.037 128-prefix decode and 132.771 prefill tokens/s.
+However, the short profile fails only its memory-release gate: 1,117,061,120 bytes
+remain allocated after freeing model/state, consistent with the device-call stack
+allocation. SASS reports a 152-byte frame. Do not retain this memory cost. The
+next variant encloses the entire reduction in one inline PTX block, preserving
+its addition order and uniform barriers without a callable device function.
