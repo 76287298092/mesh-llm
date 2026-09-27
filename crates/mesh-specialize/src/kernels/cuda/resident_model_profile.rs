@@ -1,7 +1,7 @@
 //! Per-kernel CUDA-event profile for one resident decode after a short prefix.
 
 use super::{
-    driver::{Context, Module},
+    driver::{Buffer, Context, Module},
     resident_model::{Model, Output, Session},
     resident_weights::ResidentWeights,
 };
@@ -85,6 +85,10 @@ pub(in crate::kernels) fn run(
     let partitioned = run_unprofiled(&context, &module, &model, config, tokens, true)?;
     let partition = json!({
         "prefill_logits_bit_exact": control.prefill_logits == partitioned.prefill_logits,
+        "whole_prefill_token": control.prefill_token,
+        "token_prefill_token": partitioned.prefill_token,
+        "decode_inputs_equal":control.prefill_token==partitioned.prefill_token,
+        "layer_tail_drift":control.layer_tails.iter().zip(&partitioned.layer_tails).enumerate().map(|(layer,(a,b))|json!({"layer":layer,"drift":logit_drift(a,b)})).collect::<Vec<_>>(),
         "prefill_logit_drift": logit_drift(&control.prefill_logits, &partitioned.prefill_logits),
         "decode_logit_drift": logit_drift(&control.output.logits, &partitioned.output.logits),
         "decode_logits_bit_exact": control.output.logits == partitioned.output.logits,
@@ -114,6 +118,7 @@ pub(in crate::kernels) fn run(
         cursor_past: control_cursor_past,
         kernel_profile: _,
         prefill_kernel_profile: _,
+        layer_tails: _,
     } = control;
     let DecodeRun {
         prefill_logits: profiled_prefill_logits,
@@ -125,6 +130,7 @@ pub(in crate::kernels) fn run(
         cursor_past: profiled_cursor_past,
         kernel_profile,
         prefill_kernel_profile,
+        layer_tails: _,
     } = profiled;
     let prefill_exact = control_prefill_logits == profiled_prefill_logits
         && control_prefill_token == profiled_prefill_token
@@ -190,6 +196,7 @@ pub(in crate::kernels) fn run(
 }
 
 struct DecodeRun {
+    layer_tails: Vec<Vec<u16>>,
     prefill_logits: Vec<u16>,
     prefill_token: u32,
     prefill_past: usize,
@@ -285,16 +292,41 @@ fn run_unprofiled(
     token_prefill: bool,
 ) -> Result<DecodeRun> {
     let mut session = Session::new(context, config)?;
+    let mut layer_tails = Vec::new();
+    let mut observer = |_layer: usize, buffer: &Buffer<'_>| -> Result<()> {
+        let bytes = config
+            .hidden
+            .checked_mul(2)
+            .context("layer tail size overflow")?;
+        ensure!(buffer.len() >= bytes, "layer tail buffer too short");
+        let mut tail = vec![0; bytes];
+        buffer.download_at(buffer.len() - bytes, &mut tail)?;
+        layer_tails.push(
+            tail.as_chunks::<2>()
+                .0
+                .iter()
+                .map(|v| u16::from_le_bytes(*v))
+                .collect(),
+        );
+        Ok(())
+    };
     let (prefill_logits, prefill_token, prefill_past) = if token_prefill {
         let mut last = None;
-        for &token in tokens {
-            last = Some(model.forward(context, module, &[token], &mut session, None)?);
+        for (index, &token) in tokens.iter().enumerate() {
+            let watch = if index + 1 == tokens.len() {
+                Some(&mut observer as &mut super::resident_model::Observer<'_>)
+            } else {
+                None
+            };
+            last = Some(model.forward(context, module, &[token], &mut session, watch)?);
         }
         let output = last.context("empty profile prefix")?;
         check_committed(&session, &output, tokens.len())?;
         (output.logits, output.token, output.past)
     } else {
-        run_prefill(context, module, model, tokens, &mut session)?
+        let output = model.forward(context, module, tokens, &mut session, Some(&mut observer))?;
+        check_committed(&session, &output, tokens.len())?;
+        (output.logits, output.token, output.past)
     };
     let (output, wall_seconds) =
         timed_forward(context, module, model, prefill_token, &mut session)?;
@@ -304,6 +336,7 @@ fn run_unprofiled(
     drop(session);
     context.synchronize()?;
     Ok(DecodeRun {
+        layer_tails,
         prefill_logits,
         prefill_token,
         prefill_past,
@@ -336,6 +369,7 @@ fn run_profiled(
     drop(session);
     context.synchronize()?;
     Ok(DecodeRun {
+        layer_tails: Vec::new(),
         prefill_logits,
         prefill_token,
         prefill_past,
@@ -457,7 +491,6 @@ fn state_hash(session: &Session<'_>) -> Result<String> {
     }
     Ok(hex::encode(hash.finalize()))
 }
-
 
 fn logit_drift(actual: &[u16], expected: &[u16]) -> Value {
     let mut error = 0.0_f64;
