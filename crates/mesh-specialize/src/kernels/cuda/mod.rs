@@ -1,6 +1,7 @@
 //! Linux CUDA Driver API instruction qualification.
 
 pub(super) mod attention;
+mod attention_core;
 mod attention_prepare;
 
 mod causal_conv4;

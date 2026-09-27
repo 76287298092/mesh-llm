@@ -43,3 +43,6 @@ pub mod qwen_gdn_layer_reference;
 
 #[path = "../reference/attention_prepare.rs"]
 pub mod attention_prepare_reference;
+
+#[path = "../reference/causal_attention.rs"]
+pub mod causal_attention_reference;

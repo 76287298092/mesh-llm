@@ -72,6 +72,7 @@ pub fn trial(path: &Path, ptx: &str, device: i32) -> Result<Value> {
         "synthetic_hidden_input": true,
         "layers_0_to_2_executed": false,
         "layer_3_projection_and_attention_preparation": true,
+        "causal_attention_core_executed": true,
         "full_attention_executed": false,
         "full_model_executed": false,
     });

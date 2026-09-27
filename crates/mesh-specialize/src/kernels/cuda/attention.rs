@@ -1,6 +1,6 @@
 //! Full-attention input-stage trial, separate from full model execution.
 use super::{
-    attention_prepare,
+    attention_core, attention_prepare,
     driver::{Buffer, Context, Module},
     embedding_norm, projections,
 };
@@ -9,7 +9,7 @@ use crate::{
     kernels::{AttentionInput, EmbeddingNormInput},
     projection_reference,
 };
-use anyhow::{Result, ensure};
+use anyhow::{Context as _, Result, ensure};
 use serde_json::{Value, json};
 
 pub(in crate::kernels) fn run(ptx: &str, device: i32, input: &AttentionInput) -> Result<Value> {
@@ -27,6 +27,7 @@ pub(in crate::kernels) fn run(ptx: &str, device: i32, input: &AttentionInput) ->
     let before = context.memory()?;
     let module = Module::load(&context, ptx)?;
     let fixtures = attention_prepare::fixtures(&context, &module)?;
+    let core_fixtures = attention_core::fixtures(&context, &module)?;
     let table = upload(&context, &input.entry.table)?;
     let norm = upload(&context, &input.entry.weight)?;
     let mut cases = Vec::new();
@@ -39,10 +40,10 @@ pub(in crate::kernels) fn run(ptx: &str, device: i32, input: &AttentionInput) ->
     drop(norm);
     let after = context.memory()?;
     Ok(
-        json!({"schema_version":1,"kind":"qwen-full-attention-preparation-trial","all_passed":fixtures.iter().chain(&cases).all(|v|v["all_passed"]==true),
-        "device":info,"cases":cases,"fixtures":fixtures,"prepare_resources":module.function("attention_qk_prepare")?.resources()?,
+        json!({"schema_version":2,"kind":"qwen-causal-attention-trial","all_passed":fixtures.iter().chain(&core_fixtures).chain(&cases).all(|v|v["all_passed"]==true),
+        "device":info,"cases":cases,"fixtures":fixtures,"causal_attention_fixtures":core_fixtures,"causal_attention_resources":module.function("causal_attention_bf16")?.resources()?,"kv_append_resources":module.function("attention_kv_append")?.resources()?,"prepare_resources":module.function("attention_qk_prepare")?.resources()?,
         "memory_before":{"free_bytes":before.0,"total_bytes":before.1},"memory_after":{"free_bytes":after.0,"total_bytes":after.1},
-        "full_attention_executed":false,"full_model_executed":false,"timing_collected":false,
+        "causal_attention_core_executed":true,"full_attention_executed":false,"full_model_executed":false,"timing_collected":false,
         "input_scope":"embedding rows used as synthetic hidden input to layer 3; layers 0..2 are not executed",
         "rope_scope":"text positions with equal T/H/W; explicit CPU-generated BF16 coefficient profile, not full multimodal RoPE or tested usable context"}),
     )
@@ -206,6 +207,9 @@ fn run_case(
     let entry = entry(context, module, &input.entry, tokens, table, norm)?;
     let (cos, sin) = reference::text_rope_tables(positions, input.rotary_dim, input.rope_theta)?;
     let mut reports = Vec::new();
+    let mut q = None;
+    let mut k = None;
+    let mut v = None;
     for (index, p) in input.projections.iter().enumerate() {
         let weights = upload(context, &p.weights)?;
         let scales = upload(context, &p.scales)?;
@@ -235,7 +239,7 @@ fn run_case(
                 rotary_dim: input.rotary_dim,
                 with_gate: index == 0,
             };
-            Some(attention_prepare::check(
+            let checked = attention_prepare::check(
                 context,
                 module,
                 attention_prepare::Input {
@@ -250,16 +254,43 @@ fn run_case(
                     sin: &sin,
                     shape: &shape,
                 },
-            )?)
+            )?;
+            let value = (checked.device, checked.words);
+            if index == 0 {
+                q = Some(value);
+            } else {
+                k = Some(value);
+            }
+            Some(checked.report)
         } else {
+            v = Some((result.bf16, words));
             None
         };
         let passed = projection["passed"] == true
             && preparation.as_ref().is_none_or(|v| v["all_passed"] == true);
         reports.push(json!({"projection_name":p.name,"all_passed":passed,"projection":projection,"preparation":preparation,"shape_mnk":[tokens.len(),p.channels,input.entry.width]}));
     }
+    let (q, q_words) = q.context("missing prepared Q")?;
+    let (k, k_words) = k.context("missing prepared K")?;
+    let (v, v_words) = v.context("missing projected V")?;
+    let core = attention_core::check(
+        context,
+        module,
+        attention_core::Input {
+            q: &q,
+            k: &k,
+            v: &v,
+            q_words: &q_words,
+            k_words: &k_words,
+            v_words: &v_words,
+            rows: tokens.len(),
+            query_heads: input.query_heads,
+            kv_heads: input.kv_heads,
+            width: input.head_width,
+        },
+    )?;
     Ok(
-        json!({"all_passed":entry.report["passed"]==true && reports.iter().all(|r|r["all_passed"]==true),"tokens":tokens,"positions":positions,"entry":entry.report,"input_activation_quantization_exact":true,"projections":reports}),
+        json!({"all_passed":entry.report["passed"]==true && reports.iter().all(|r|r["all_passed"]==true) && core["all_passed"]==true,"tokens":tokens,"positions":positions,"entry":entry.report,"input_activation_quantization_exact":true,"projections":reports,"causal_attention":core}),
     )
 }
 

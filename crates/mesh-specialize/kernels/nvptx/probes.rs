@@ -5,6 +5,7 @@ use core::arch::asm;
 
 mod attention_prepare;
 mod bf16_linear;
+mod causal_attention;
 mod causal_conv4;
 mod embedding_norm;
 mod fp8_linear;

@@ -17,7 +17,17 @@ pub(super) struct Input<'a, 'ctx> {
     pub(super) shape: &'a reference::Shape,
 }
 
-pub(super) fn check(context: &Context, module: &Module<'_>, input: Input<'_, '_>) -> Result<Value> {
+pub(super) struct Checked<'a> {
+    pub(super) device: Buffer<'a>,
+    pub(super) words: Vec<u16>,
+    pub(super) report: Value,
+}
+
+pub(super) fn check<'a>(
+    context: &'a Context,
+    module: &Module<'_>,
+    input: Input<'_, '_>,
+) -> Result<Checked<'a>> {
     let shape = input.shape;
     let epsilon = 1e-6_f32;
     let expected = reference::run(
@@ -114,13 +124,16 @@ pub(super) fn check(context: &Context, module: &Module<'_>, input: Input<'_, '_>
         && rotation_exact
         && gate_exact
         && full_reference["all_passed"] == true;
-    Ok(
-        json!({"all_passed":passed,"shape":{"rows":shape.rows,"heads":shape.heads,"width":shape.width,"rotary_dim":shape.rotary_dim,"with_gate":shape.with_gate},
+    let report = json!({"all_passed":passed,"shape":{"rows":shape.rows,"heads":shape.heads,"width":shape.width,"rotary_dim":shape.rotary_dim,"with_gate":shape.with_gate},
         "elements":count,"norm_max_abs_error":max_norm_error,"norm_mismatches":norm_mismatches,"rounding_mismatches":rounding_mismatches,
         "norm_tolerance":"1e-6 + 3e-6*abs(reference)","rotation_from_actual_norm_exact":rotation_exact,"gate_copy_or_untouched_exact":gate_exact,
         "norm_bf16_scalar_differences":scalar_norm_differences,"output_bf16_scalar_differences":scalar_output_differences,"independent_operation_reference":full_reference,
-        "device_projection_input_resident":true,"scope":"Q/K normalization, partial RoPE and Q gate split only; no attention scores or KV cache"}),
-    )
+        "device_projection_input_resident":true,"scope":"Q/K normalization, partial RoPE and Q gate split only; no attention scores or KV cache"});
+    Ok(Checked {
+        device: output,
+        words: actual,
+        report,
+    })
 }
 
 pub(super) fn fixtures(context: &Context, module: &Module<'_>) -> Result<Vec<Value>> {
@@ -163,7 +176,7 @@ pub(super) fn fixtures(context: &Context, module: &Module<'_>) -> Result<Vec<Val
             .collect();
         let (cos, sin) = reference::text_rope_tables(&positions, rotary_dim, 1e7)?;
         let device = upload_words(context, &input)?;
-        let mut report = check(
+        let checked = check(
             context,
             module,
             Input {
@@ -175,6 +188,7 @@ pub(super) fn fixtures(context: &Context, module: &Module<'_>) -> Result<Vec<Val
                 shape: &shape,
             },
         )?;
+        let mut report = checked.report;
         report["positions"] = json!(positions);
         report["zero_input"] = json!(zero);
         reports.push(report);
