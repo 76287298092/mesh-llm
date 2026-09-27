@@ -159,3 +159,10 @@ reads and BF16 conversion have independent `reference/gdn_replay.rs` coverage,
 anchored against the original ordered recurrence for each accepted prefix.
 See `optimizations/feature-f09-mtp-recovery.md` for all pointer/shape contracts.
 GPU/model integration and qualification remain pending.
+
+
+F09 parent GPU qualification now passes exact record and accepted-prefix replay
+for widths 1/2/128; all three sanitizer tools are clean. See
+`evidence/iterate-20260927/features-f09-1/` for the pinned source/PTX and resources.
+This supersedes the primitive's pending-device status above; whole-model recovery
+is still pending.

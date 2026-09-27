@@ -64,3 +64,40 @@ No Cargo command, NVPTX compilation, GPU launch, sanitizer, model trial, timing,
 or live Ninfer comparison was run for this bounded task. Until parent-owned
 integration and qualification pass, there is no model-equivalence or
 performance result and no resident dispatch change.
+
+
+## Parent qualification, 2026-09-27
+
+Source `f5870dab84177bf0c93d864fc82a26ed6702be89`, PTX SHA256
+`089e027984eb7937fef47f5de3c01e92f08108d832eda1937ffae68eddbfd782`.
+259 macOS crate tests, host Clippy, PTX compilation, no-console-print, and Linux
+Clippy/tools build pass. Fixture expansion initially exposed an immutable iterator
+compile error and two cognitive-complexity failures in test assertions; those
+were corrected without relaxing checks or suppressing lints.
+
+The parent `feature-gdn-replay-check` device probe passes at widths 1, 2, and 128,
+with two key heads and four value heads. Full recorded output, raw FP32 output,
+deltas, and state agree bitwise with the independent record oracle. Each prefix
+from zero through five rows agrees bitwise with a fresh original recurrence
+from the initial state. Signed decimal-rounded inputs and beta/decay endpoints
+are included. Memcheck and synccheck report zero errors; racecheck reports zero
+hazards, errors, and warnings. Recording uses 35 registers, replay 24, with no
+local or shared bytes. Evidence: `../evidence/iterate-20260927/features-f09-1/`.
+Ninfer was inactive before and after; ComfyUI remained resident.
+
+This qualifies the synthetic primitive only. Whole-model forced rejection at
+every draft position, all-accepted commits, KV/convolution/hidden/token boundary
+equality, and measured MTP performance remain open.
+
+### Next integration design
+
+Record the exact normalized keys, decays, deltas, and pre-convolution projected
+QKV during verification. Retain an untouched base session until the accepted
+prefix is known. For rejection, copy only accepted KV rows from verification,
+replay GDN deltas into base recurrent state, and reconstruct convolution history
+from the base history and accepted projected QKV rows. Advance the cursor through
+an abort-poisoning transaction only after all layer recovery succeeds. Preserve
+verified hidden rows and the existing draft teacher-forcing boundary. Keep the
+full-forward replay path as an explicit control during qualification. This first
+integration can retain verification forking; removing that copy needs separate
+ownership and failure-recovery proof.

@@ -49,3 +49,8 @@ Do not derive a weights identity from a filename. The caller must provide a
 content-bound weights ID and exact arithmetic, KV, and geometry identifiers.
 Do not insert a session after a partial failure, and do not treat a cache hit as
 proof that the caller's suffix continuation is correct.
+
+
+Parent registered the cache module. Its ownership/identity/bounds tests pass as
+part of the 259-test macOS suite; host and Linux Clippy pass. No resident model
+prefix checkpoint is cached yet, and GPU suffix equivalence remains untested.
