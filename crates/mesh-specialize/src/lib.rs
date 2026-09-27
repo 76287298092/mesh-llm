@@ -85,3 +85,6 @@ pub mod gdn_chunked_reference;
 
 #[path = "../reference/attention_online.rs"]
 pub mod attention_online_reference;
+
+#[path = "../reference/kv_fp8.rs"]
+pub mod kv_fp8_reference;

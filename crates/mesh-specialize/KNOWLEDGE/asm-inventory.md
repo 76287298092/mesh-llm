@@ -138,3 +138,8 @@ F05 experimental `attention_online.rs` stages BF16 KV tiles in shared memory,
 uses FP32 reductions and online softmax, and preserves causal/GQA addressing.
 The independent FP64 oracle, fixed budgets and ABI are documented in
 `optimizations/feature-f05-attention.md`. GPU/model qualification is pending.
+
+F06 experimental `kv_fp8.rs` uses CTA shared reductions and explicit FP16,
+BF16 and FP32 conversion/arithmetic instructions. The independent logical codec
+reference and invalid-row status contract are in `optimizations/feature-f06-kv.md`.
+GPU and cache-attention qualification remain pending.

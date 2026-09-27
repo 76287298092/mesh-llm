@@ -1,5 +1,8 @@
 //! CUDA Driver API ownership for the specialized runtime.
 
+#[path = "driver_graph.rs"]
+pub(super) mod graph;
+
 use anyhow::{Result, anyhow, bail};
 use libloading::Library;
 use serde::Serialize;
@@ -340,6 +343,7 @@ pub(super) struct Context {
 impl Context {
     /// Load the Linux CUDA driver, select `device_ordinal`, and create its current context.
     pub(super) fn new(device_ordinal: c_int) -> Result<Self> {
+        graph::ensure_driver_operation_allowed("create context")?;
         #[cfg(not(target_os = "linux"))]
         {
             let _ = device_ordinal;
@@ -400,6 +404,7 @@ impl Context {
     }
     /// Return currently free and total bytes visible to the current CUDA context.
     pub(super) fn memory(&self) -> Result<(usize, usize)> {
+        graph::ensure_driver_operation_allowed("query memory")?;
         let _current_context = self.activate()?;
         let mut free_bytes = 0;
         let mut total_bytes = 0;
@@ -412,6 +417,7 @@ impl Context {
     }
     /// Wait for work previously submitted to this context to finish.
     pub(super) fn synchronize(&self) -> Result<()> {
+        graph::ensure_driver_operation_allowed("synchronize")?;
         let _current_context = self.activate()?;
         // SAFETY: The API call has no pointer arguments and this context remains alive.
         check_cuda(
@@ -440,6 +446,7 @@ pub(super) struct Buffer<'ctx> {
 impl<'ctx> Buffer<'ctx> {
     /// Allocate `bytes` on the context's selected device.
     pub(super) fn new(context: &'ctx Context, bytes: usize) -> Result<Self> {
+        graph::ensure_driver_operation_allowed("allocate device memory")?;
         if bytes == 0 {
             bail!("CUDA buffer allocation size must be greater than zero");
         }
@@ -479,6 +486,7 @@ impl<'ctx> Buffer<'ctx> {
         source_offset: usize,
         bytes: usize,
     ) -> Result<()> {
+        graph::ensure_driver_operation_allowed("copy device memory")?;
         if !source.belongs_to(self.context) || self.pointer == source.pointer {
             bail!("CUDA device copy requires distinct allocations in the same CUDA context");
         }
@@ -503,6 +511,7 @@ impl<'ctx> Buffer<'ctx> {
     }
     /// Copy host bytes into this allocation beginning at byte `offset`.
     pub(super) fn upload_at(&self, offset: usize, source: &[u8]) -> Result<()> {
+        graph::ensure_driver_operation_allowed("upload")?;
         check_transfer_range(self.bytes, offset, source.len(), "upload")?;
         if source.is_empty() {
             return Ok(());
@@ -528,6 +537,7 @@ impl<'ctx> Buffer<'ctx> {
     }
     /// Copy bytes from this allocation beginning at byte `offset` into `destination`.
     pub(super) fn download_at(&self, offset: usize, destination: &mut [u8]) -> Result<()> {
+        graph::ensure_driver_operation_allowed("download")?;
         check_transfer_range(self.bytes, offset, destination.len(), "download")?;
         if destination.is_empty() {
             return Ok(());
@@ -615,6 +625,7 @@ impl<'ctx> Module<'ctx> {
         ptx: &str,
         register_limit: Option<u32>,
     ) -> Result<Self> {
+        graph::ensure_driver_operation_allowed("load module")?;
         if register_limit.is_some_and(|limit| !(24..=256).contains(&limit) || limit % 8 != 0) {
             bail!("register limit must be a multiple of eight from 24 through 256");
         }
@@ -675,6 +686,7 @@ impl<'ctx> Module<'ctx> {
     }
     /// Resolve a named kernel function from this module.
     pub(super) fn function<'module>(&'module self, name: &str) -> Result<Function<'module, 'ctx>> {
+        graph::ensure_driver_operation_allowed("resolve function")?;
         let name = CString::new(name)
             .map_err(|error| anyhow!("CUDA function name contains an interior NUL: {error}"))?;
         let _current_context = self.context.activate()?;
@@ -755,6 +767,7 @@ impl Function<'_, '_> {
         shared_bytes: u32,
         args: &mut [*mut c_void],
     ) -> Result<()> {
+        graph::ensure_default_stream_launch_allowed(self.module.context)?;
         if grid.contains(&0) {
             bail!("CUDA launch grid dimensions must all be nonzero");
         }
@@ -821,6 +834,7 @@ pub(super) struct Event<'ctx> {
 impl<'ctx> Event<'ctx> {
     /// Create an event suitable for recording on the default stream.
     pub(super) fn new(context: &'ctx Context) -> Result<Self> {
+        graph::ensure_driver_operation_allowed("create event")?;
         let _current_context = context.activate()?;
         let mut raw = ptr::null_mut();
         // SAFETY: `raw` is writable; flags zero requests a standard CUDA event.
@@ -839,6 +853,7 @@ impl<'ctx> Event<'ctx> {
     }
     /// Record this event on CUDA's default stream.
     pub(super) fn record(&self) -> Result<()> {
+        graph::ensure_driver_operation_allowed("record event")?;
         let _current_context = self.context.activate()?;
         // SAFETY: The event and its context are live; a null stream selects the default stream.
         check_cuda(
@@ -848,6 +863,7 @@ impl<'ctx> Event<'ctx> {
     }
     /// Wait until work recorded before this event has completed.
     pub(super) fn synchronize(&self) -> Result<()> {
+        graph::ensure_driver_operation_allowed("synchronize")?;
         let _current_context = self.context.activate()?;
         // SAFETY: The event is live and belongs to the borrowed context.
         check_cuda(
@@ -857,6 +873,7 @@ impl<'ctx> Event<'ctx> {
     }
     /// Return elapsed milliseconds from `start` to this event.
     pub(super) fn elapsed_since(&self, start: &Event<'ctx>) -> Result<f32> {
+        graph::ensure_driver_operation_allowed("read event timing")?;
         if !ptr::eq(self.context, start.context) {
             bail!("CUDA event elapsed time requires events from the same context");
         }

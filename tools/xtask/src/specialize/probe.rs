@@ -69,3 +69,7 @@ pub(super) fn feature_projection(args: &[String]) -> DynResult<()> {
 pub(super) fn feature_attention(args: &[String]) -> DynResult<()> {
     run_probe(args, mesh_specialize::kernels::feature_attention_trial)
 }
+
+pub(super) fn feature_graph(args: &[String]) -> DynResult<()> {
+    run_probe(args, mesh_specialize::kernels::feature_graph_trial)
+}

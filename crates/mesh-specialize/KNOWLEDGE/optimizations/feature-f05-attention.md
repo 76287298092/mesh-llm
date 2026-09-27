@@ -113,3 +113,5 @@ new arithmetic profile for resident dispatch. Keep the FP64 baseline and BF16
 cache available until real-weight and full-model gates pass.
 
 Parent registered both modules. On 2026-09-27, 239 macOS tests passed; after a test-only Clippy iterator repair, host Clippy and NVPTX compilation passed. GPU and model qualification remain pending.
+
+Parent GPU check on Carrack RTX5090 passed four synthetic grouped-head cases with zero/nonzero past, poisoned unused cache tails and extreme scores. BF16 outputs matched; maximum raw error was 2.3842e-7 under the predeclared budgets. Memcheck, racecheck and synccheck all reported zero errors/hazards. JIT used 40 registers, no local memory and 24640 shared bytes. PTX SHA256 `7492498c60ecc890881c93f5429880da07d03e42b1df2d17d98157c13ff67d25`. Evidence: `../evidence/iterate-20260927/features-attention/`. Model integration, long-context qualification and performance remain pending.

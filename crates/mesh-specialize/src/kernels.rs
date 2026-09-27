@@ -477,3 +477,14 @@ pub fn feature_attention_trial(ptx: &str, device: i32) -> anyhow::Result<serde_j
         anyhow::bail!("Attention qualification requires Linux")
     }
 }
+
+/// Check fixed-address CUDA graph capture and replay.
+pub fn feature_graph_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::feature_graph_trial::run(ptx, device);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device);
+        anyhow::bail!("Graph qualification requires Linux")
+    }
+}

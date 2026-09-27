@@ -124,13 +124,15 @@ exist, keep the percentage column unmeasured.
 | F02 | `feature_native_prefill` | Native FP8 tile synthetic GPU checks and all three sanitizers pass; model integration pending |
 | F03 | `feature_fusion` | Exact FP8 gate/up and SwiGLU fusion delivered; CPU tests and PTX compilation pass |
 | F04 | `feature_chunked_gdn` | Chunked operator delivered; CPU tests and PTX compilation pass |
-| F05 | `feature_tiled_attention` | Online-softmax candidate delivered; CPU tests and PTX compilation pass |
-| F06 | `feature_fp8_kv` | Dedicated owner implementing FP8 codec; BF16 remains control |
+| F05 | `feature_tiled_attention` | Online-softmax synthetic GPU checks and all three sanitizers pass; model integration pending |
+| F06 | `feature_fp8_kv` | Codec delivered; CPU tests and PTX compilation pass; GPU/cache integration pending |
 | F07 | `feature_workspace` | Reusable layout and lease checks pass on GPU; operator integration pending |
-| F08 | `feature_graphs` | Dedicated owner implementing driver graph ownership |
-| F09 | `feature_mtp_recovery` | Queued; compact replay primitive has separate ownership |
-| F10 | `feature_prefix_cache` | Queued; identity-bound checkpoint policy first |
+| F08 | `feature_graphs` | Driver graph API delivered; parent Linux compile and fixed-shape probe pending |
+| F09 | `feature_mtp_recovery` | Queued; native spawn rejected by agent thread limit after prior workers completed |
+| F10 | `feature_prefix_cache` | Queued; native spawn rejected by agent thread limit after prior workers completed |
 
 A delivered primitive is not an integrated or performance-qualified feature.
 Only the parent promotes candidates after independent tests, GPU qualification
 and appropriately labeled measurements. Existing defaults remain the control.
+
+Allocation limit: eight distinct feature owners have run. The native agent tool repeatedly rejected F09 and F10 with `agent thread limit reached`, including after all three current workers completed. No worker was reassigned to another feature. F09/F10 remain unimplemented queued assignments, not claimed dispatched work.
