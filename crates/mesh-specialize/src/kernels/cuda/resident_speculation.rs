@@ -21,11 +21,12 @@ pub(super) struct Request<'a> {
     pub(super) tokens: &'a [u32],
     pub(super) output_tokens: usize,
     pub(super) depth: usize,
-    pub(super) forced_first_draft: Option<u32>,
+    pub(super) forced_first_round: Option<&'a [u32]>,
 }
 
 pub(super) struct Run<'ctx> {
     pub(super) compact_recovery: bool,
+    pub(super) first_round_accepted: Option<usize>,
     pub(super) tokens: Vec<u32>,
     pub(super) target_session: Session<'ctx>,
     pub(super) rounds: usize,
@@ -93,8 +94,11 @@ pub(super) fn run<'ctx>(
         request.tokens.iter().all(|&token| token < vocab),
         "speculation prompt token is outside vocabulary"
     );
-    if let Some(token) = request.forced_first_draft {
-        ensure!(token < vocab, "forced draft token is outside vocabulary");
+    if let Some(tokens) = request.forced_first_round {
+        ensure!(
+            tokens.iter().all(|&token| token < vocab),
+            "forced draft token is outside vocabulary"
+        );
     }
 
     let engines = Engines {
@@ -107,7 +111,8 @@ pub(super) fn run<'ctx>(
     };
     let (mut state, prefill_seconds) = engines.prefill(request.tokens)?;
     let mut output_tokens = vec![state.pending];
-    let mut forced_first_draft = request.forced_first_draft;
+    let mut forced_first_round = request.forced_first_round;
+    let mut first_round_accepted = None;
     let mut rounds = 0_usize;
     let mut all_accepted_rounds = 0_usize;
     let mut drafted = 0_usize;
@@ -124,9 +129,10 @@ pub(super) fn run<'ctx>(
         let forced = if proposal_count == 0 {
             None
         } else {
-            forced_first_draft.take()
+            forced_first_round.take()
         };
         let round = engines.round(&mut state, proposal_count, forced)?;
+        first_round_accepted.get_or_insert(round.accepted);
         ensure!(
             !round.emitted.is_empty() && round.emitted.len() <= remaining,
             "speculative round made invalid output progress"
@@ -171,6 +177,7 @@ pub(super) fn run<'ctx>(
 
     Ok(Run {
         compact_recovery,
+        first_round_accepted,
         tokens: output_tokens,
         target_session: state.target,
         rounds,
@@ -263,7 +270,7 @@ impl<'m, 'ctx, 'tw, 'dw> Engines<'m, 'ctx, 'tw, 'dw> {
         &self,
         state: &BaseState<'ctx>,
         count: usize,
-        forced_first: Option<u32>,
+        forced_first: Option<&[u32]>,
     ) -> Result<Vec<u32>> {
         ensure!(
             state.target.cursor.past() == state.cache.past
@@ -273,8 +280,15 @@ impl<'m, 'ctx, 'tw, 'dw> Engines<'m, 'ctx, 'tw, 'dw> {
         if count == 0 {
             return Ok(Vec::new());
         }
+        if let Some(tokens) = forced_first {
+            ensure!(
+                tokens.len() == count,
+                "forced draft prefix length differs from first round"
+            );
+            return Ok(tokens.to_vec());
+        }
         let mut proposals = Vec::with_capacity(count);
-        proposals.push(forced_first.unwrap_or(state.cache.token));
+        proposals.push(state.cache.token);
         if count == 1 {
             return Ok(proposals);
         }
@@ -311,7 +325,7 @@ impl<'m, 'ctx, 'tw, 'dw> Engines<'m, 'ctx, 'tw, 'dw> {
         &self,
         state: &mut BaseState<'ctx>,
         proposal_count: usize,
-        forced_first: Option<u32>,
+        forced_first: Option<&[u32]>,
     ) -> Result<RoundResult> {
         let base_past = state.target.cursor.past();
         ensure!(

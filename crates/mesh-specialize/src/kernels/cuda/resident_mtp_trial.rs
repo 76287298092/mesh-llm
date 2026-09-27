@@ -60,42 +60,8 @@ pub(in crate::kernels) fn run(
     };
     let control = runner.control()?;
     let verification_profile = runner.verification_profile(&control)?;
-    let forced_acceptance = resident_speculation::run(
-        &ctx,
-        &module,
-        &target,
-        &draft,
-        config,
-        &resident_speculation::Request {
-            tokens: request.tokens,
-            output_tokens: request.output_tokens,
-            depth: 1,
-            forced_first_draft: Some(control.tokens[1]),
-        },
-    )?;
-    ensure!(
-        forced_acceptance.all_accepted_rounds > 0,
-        "forced correct draft did not exercise a positive all-accepted round"
-    );
-    let acceptance_report = compare_run(&forced_acceptance, &control)?;
-    ensure!(
-        acceptance_report["all_passed"] == true,
-        "forced all-accepted run differs from target-only output/state: {acceptance_report}"
-    );
-    drop(forced_acceptance);
-    let forced = runner.speculate(Some(
-        (control.tokens[1] + 1) % u32::try_from(config.vocabulary)?,
-    ))?;
-    ensure!(
-        forced.replay_rows > 0,
-        "forced wrong draft did not exercise target replay"
-    );
-    let forced_report = compare_run(&forced, &control)?;
-    ensure!(
-        forced_report["all_passed"] == true,
-        "forced rejection did not preserve target output/state: {forced_report}"
-    );
-    drop(forced);
+    let acceptance_report = runner.forced_acceptance(&control)?;
+    let forced_reports = runner.forced_rejections(&control)?;
     let mut trials = Vec::new();
     for _ in 0..request.repetitions {
         let run = runner.speculate(None)?;
@@ -114,7 +80,7 @@ pub(in crate::kernels) fn run(
     Ok(
         json!({"schema_version":1,"kind":"resident-greedy-mtp-qualification","all_passed":true,
         "device":info,"fp8_probe":fp8_probe,"head":head,"prompt_token_ids":request.tokens,"output_tokens":request.output_tokens,
-        "depth":request.depth,"control":control.report(),"verification_profile":verification_profile,"forced_acceptance":acceptance_report,"forced_rejection":forced_report,"trials":trials,
+        "depth":request.depth,"control":control.report(),"verification_profile":verification_profile,"forced_acceptance":acceptance_report,"forced_rejections":forced_reports,"trials":trials,
         "memory":{"before_free_bytes":before.0,"after_release_free_bytes":after.0,"arena_memory_release_observed":after.0>=before.0},
         "scope":"bounded greedy single sequence; no stochastic or serving qualification"}),
     )
@@ -291,7 +257,45 @@ impl<'ctx> Runner<'_, '_, 'ctx> {
             "scope":"separate instrumented verification of a known target prefix; excluded from unprofiled timings"}),
         )
     }
-    fn speculate(&self, forced: Option<u32>) -> Result<resident_speculation::Run<'ctx>> {
+    fn forced_acceptance(&self, control: &Control) -> Result<Value> {
+        let count = self.request.depth.min(self.request.output_tokens - 2);
+        let run = self.speculate(Some(&control.tokens[1..=count]))?;
+        ensure!(
+            run.first_round_accepted == Some(count),
+            "forced all-accepted first round failed"
+        );
+        let report = compare_run(&run, control)?;
+        ensure!(
+            report["all_passed"] == true,
+            "forced acceptance differs from target: {report}"
+        );
+        Ok(report)
+    }
+
+    fn forced_rejections(&self, control: &Control) -> Result<Vec<Value>> {
+        let count = self.request.depth.min(self.request.output_tokens - 2);
+        let mut reports = Vec::new();
+        for position in 0..count {
+            let mut proposals = control.tokens[1..=count].to_vec();
+            proposals[position] =
+                (proposals[position] + 1) % u32::try_from(self.config.vocabulary)?;
+            let run = self.speculate(Some(&proposals))?;
+            ensure!(
+                run.first_round_accepted == Some(position) && run.replay_rows > 0,
+                "forced rejection did not reach intended draft position {position}"
+            );
+            let mut report = compare_run(&run, control)?;
+            report["forced_rejection_position"] = json!(position);
+            ensure!(
+                report["all_passed"] == true,
+                "forced rejection differs from target: {report}"
+            );
+            reports.push(report);
+        }
+        Ok(reports)
+    }
+
+    fn speculate(&self, forced: Option<&[u32]>) -> Result<resident_speculation::Run<'ctx>> {
         resident_speculation::run(
             self.ctx,
             self.module,
@@ -302,7 +306,7 @@ impl<'ctx> Runner<'_, '_, 'ctx> {
                 tokens: self.request.tokens,
                 output_tokens: self.request.output_tokens,
                 depth: self.request.depth,
-                forced_first_draft: forced,
+                forced_first_round: forced,
             },
         )
     }
@@ -314,7 +318,7 @@ fn compare_run(run: &resident_speculation::Run<'_>, control: &Control) -> Result
         && hash == control.state
         && run.target_session.cursor.past() == control.past;
     Ok(
-        json!({"recovery_profile":if run.compact_recovery {"compact"} else {"full-forward"},"all_passed":exact,"tokens":run.tokens,"target_state_sha256":hash,"target_past":run.target_session.cursor.past(),
+        json!({"first_round_accepted":run.first_round_accepted,"recovery_profile":if run.compact_recovery {"compact"} else {"full-forward"},"all_passed":exact,"tokens":run.tokens,"target_state_sha256":hash,"target_past":run.target_session.cursor.past(),
         "rounds":run.rounds,"all_accepted_rounds":run.all_accepted_rounds,"drafted":run.drafted,"accepted":run.accepted,"verify_rows":run.verify_rows,"replay_rows":run.replay_rows,
         "prefill_seconds":run.prefill_seconds,"decode_seconds":run.decode_seconds,"phase_seconds":run.phase_seconds,
         "decode_tokens_per_second":(run.tokens.len()-1) as f64/run.decode_seconds,
