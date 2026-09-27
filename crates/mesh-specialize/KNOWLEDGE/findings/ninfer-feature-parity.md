@@ -121,7 +121,7 @@ exist, keep the percentage column unmeasured.
 | Feature | Dedicated subagent | First bounded implementation status |
 | --- | --- | --- |
 | F01 | `feature_decode_gemv` | A16 FP8 synthetic GPU checks and all three sanitizers pass; model integration pending |
-| F02 | `feature_native_prefill` | Native FP8 tile synthetic GPU checks and all three sanitizers pass; model integration pending |
+| F02 | `feature_native_prefill` | Full-model experimental integration measures about +51% prefill throughput but fails numerical equivalence; not promoted |
 | F03 | `feature_fusion` | Exact FP8 gate/up and SwiGLU fusion delivered; CPU tests and PTX compilation pass |
 | F04 | `feature_chunked_gdn` | Chunked operator delivered; CPU tests and PTX compilation pass |
 | F05 | `feature_tiled_attention` | Online-softmax synthetic GPU checks and all three sanitizers pass; model integration pending |

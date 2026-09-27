@@ -98,3 +98,22 @@ Initial Linux Clippy caught diagnostic helper placement after the test module; m
 The first 128-token model ablation reduced profiled prefill GPU time from 393.98 to 225.68 ms, but failed strict partition equivalence. Prefill logit normalized L2 drift was 0.09462. Decode drift compared different greedy continuation inputs and must not be read as a same-input operator error. Added last-row hidden drift for every layer and explicit continuation-token IDs to localize divergence. The candidate remains experimental.
 
 Diagnostic review found the initial synthetic projection fixtures emphasized power-of-two FP8 magnitudes. The parent broadened the input generator to cover every finite sign/exponent/mantissa code under the same fixed error budgets. This strengthens operator evidence before further model-level interpretation; the new cases have not yet been run.
+
+### Measured full-model result, 2026-09-27
+
+Source `8f60149ad43a83d0b4eb326b3f22aab7f774f676`, fixed PTX `7492498c60ecc890881c93f5429880da07d03e42b1df2d17d98157c13ff67d25`. Three repetitions per profile, same raw prompt IDs and eight output tokens.
+
+| Inputs | Exact prefill tokens/s | Native prefill tokens/s | Candidate throughput change |
+| --- | ---: | ---: | ---: |
+| 128 | 259.75 | 393.09 | +51.33% |
+| 512 | 295.12 | 444.86 | +50.74% |
+
+These are shared-GPU experimental timings, not retained improvements or Ninfer parity. ComfyUI remained resident at 498 MiB; no competing MeshLLM process on GPU0 appeared in one-second samples during the paired run. Ninfer was already inactive before the first trial attempted any service mutation, so the subsequent trial preserved that inactive state.
+
+The candidate fails numerical qualification: 128-token prefill logit normalized L2 is 0.09462, cosine 0.99554, and the first greedy token changes from 98094 to 286. The 31.81% subsequent decode drift compares different continuation tokens and must not be attributed to a same-input decode error. The exact profile retains bit-exact whole/token logits and state.
+
+A second diagnostic source `7fdb341c4598703d8a44b26fadfb282f5a341701` captures the final input row after each layer. Hidden-state normalized L2 grows from 0.002588 at layer 0 to 0.01035 at layer 1 and 0.04161 at layer 2; layer 63 is 0.19550. This localizes divergence to early prefill arithmetic rather than the final LM head. It does not yet identify whether native MMA accumulation error, rounding sensitivity, or an implementation defect dominates.
+
+Evidence: `../evidence/iterate-20260927/native-prefill-ablation-2/` and `native-prefill-drift-1/`. Next check expands the operator fixture from mostly power-of-two FP8 values to every finite mantissa/exponent/sign combination under unchanged numerical budgets. No default promotion.
+
+Expanded finite-code GPU checks pass all eleven cases under unchanged budgets. The native kernel's largest scaled raw FP32 error is 2.3184e-6 at K=5120; one BF16 output differs in the 32x64x128 case, normalized L2 6.5217e-5. This narrows suspicion toward accumulation/rounding differences amplified through layers, but does not prove that mechanism for real weights. Next improvement must examine matched real-weight projection inputs and accumulation accuracy before accepting the 51% throughput candidate. Evidence and build logs: `../evidence/iterate-20260927/native-prefill-integration/`.
