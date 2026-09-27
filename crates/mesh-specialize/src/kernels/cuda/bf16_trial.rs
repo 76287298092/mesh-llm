@@ -19,11 +19,19 @@ pub(super) fn run(ctx: &Context, module: &Module<'_>) -> Result<Value> {
         let expected = projection_reference::linear_bf16(&input, &weights, rows, width)?;
         let input = upload(ctx, &input)?;
         let weights = upload(ctx, &weights)?;
-        let output = projections::run_linear(
+        let output = projections::run_linear_geometry(
             ctx,
-            &module.function("bf16_linear")?,
+            &module.function("bf16_linear_decode")?,
             &[&input, &weights],
             [rows, channels, width],
+            [
+                [
+                    u32::try_from(channels.div_ceil(4))?,
+                    u32::try_from(rows)?,
+                    1,
+                ],
+                [128, 1, 1],
+            ],
         )?;
         let (actual, unrounded) = output.read(rows * channels)?;
         ensure!(
@@ -48,7 +56,7 @@ pub(super) fn run(ctx: &Context, module: &Module<'_>) -> Result<Value> {
         cases.push(json!({"shape":[rows,channels,width],"cancellation":cancellation,"bf16_differences":differences,"rounding_mismatches":rounding,"max_fp32_abs_error":max_error,"all_passed":differences==0&&rounding==0}));
     }
     Ok(
-        json!({"all_passed":cases.iter().all(|c|c["all_passed"]==true),"cases":cases,"resources":module.function("bf16_linear")?.resources()?}),
+        json!({"all_passed":cases.iter().all(|c|c["all_passed"]==true),"cases":cases,"resources":module.function("bf16_linear_decode")?.resources()?}),
     )
 }
 

@@ -550,6 +550,30 @@ pub(super) fn run_linear<'a>(
     buffers: &[&Buffer<'_>],
     shape: [usize; 3],
 ) -> Result<LinearOutput<'a>> {
+    let [m, n, _] = shape;
+    run_linear_geometry(
+        context,
+        function,
+        buffers,
+        shape,
+        [
+            [
+                u32::try_from(n.div_ceil(8))?,
+                u32::try_from(m.div_ceil(16))?,
+                1,
+            ],
+            [32, 1, 1],
+        ],
+    )
+}
+
+pub(super) fn run_linear_geometry<'a>(
+    context: &'a Context,
+    function: &Function<'_, '_>,
+    buffers: &[&Buffer<'_>],
+    shape: [usize; 3],
+    geometry: [[u32; 3]; 2],
+) -> Result<LinearOutput<'a>> {
     let [m, n, k] = shape;
     let count = m * n;
     let output = upload(context, &vec![0xa5; count * 2])?;
@@ -566,16 +590,7 @@ pub(super) fn run_linear<'a>(
     // bf16_linear, followed here by BF16/FP32 outputs and three u32 dimensions.
     // Validated extents, masked tails and allocation lifetimes cover every access.
     unsafe {
-        function.launch(
-            [
-                u32::try_from(n.div_ceil(8))?,
-                u32::try_from(m.div_ceil(16))?,
-                1,
-            ],
-            [32, 1, 1],
-            0,
-            &mut args,
-        )?;
+        function.launch(geometry[0], geometry[1], 0, &mut args)?;
     }
     context.synchronize()?;
     Ok(LinearOutput {

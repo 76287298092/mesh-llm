@@ -55,7 +55,7 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
         let extents = run_extents(rows, self.width, self.channels)?;
         validate_input_length(input.len(), extents.input_bytes)?;
 
-        let linear = module.function("bf16_linear")?;
+        let linear = module.function("bf16_linear_decode")?;
         let output = Buffer::new(context, extents.output_bytes)?;
         let unrounded = Buffer::new(context, extents.unrounded_bytes)?;
         let mut pointers = [
@@ -79,13 +79,13 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
                 .map(|dimension| (dimension as *mut u32).cast()),
         );
         let grid = [
-            u32::try_from(self.channels.div_ceil(8))?,
-            u32::try_from(rows.div_ceil(16))?,
+            u32::try_from(self.channels.div_ceil(4))?,
+            u32::try_from(rows)?,
             1,
         ];
         // SAFETY: Extent checks cover row-major BF16 input/weight and disjoint output buffers;
-        // the ordered pointers and dimensions match bf16_linear's four-pointer/seven-argument ABI.
-        if let Err(error) = unsafe { linear.launch(grid, [32, 1, 1], 0, &mut arguments) } {
+        // the ordered pointers and dimensions match bf16_linear_decode's four-pointer/seven-argument ABI.
+        if let Err(error) = unsafe { linear.launch(grid, [128, 1, 1], 0, &mut arguments) } {
             return Err(synchronize_after_failed_launch(context, error));
         }
         context.synchronize()?;

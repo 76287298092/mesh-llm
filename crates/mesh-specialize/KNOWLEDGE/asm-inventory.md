@@ -47,3 +47,5 @@ failed attempts in a findings/dead-ends entry before promoting these rows.
 | Source | Instructions | Reference | Status |
 | --- | --- | --- | --- |
 | `kernels/nvptx/fp8_linear_exact.rs` | Thread/CTA coordinates, wide signed integer product and sum, paired-word warp shuffle, rounded i64-to-FP32 conversion and scale products | Independent decoded FP64 dots; all finite code pairs, tails, width32768 and cancellation | Qualification pending; see [decode projections](optimizations/decode-projections.md) |
+
+| `kernels/nvptx/bf16_linear_decode.rs` | Thread/CTA coordinates, rounded FP64 product/sum, paired-word warp shuffle, rounded FP64-to-FP32 conversion | Independent sequential BF16 FP64 dot, cancellation/tails and full-model gates | Qualification pending; parallel reduction is not universally bit equal to sequential FP64 |
