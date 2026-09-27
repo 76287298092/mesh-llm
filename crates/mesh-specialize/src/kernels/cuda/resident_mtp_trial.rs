@@ -28,6 +28,11 @@ pub(in crate::kernels) fn run(
     request: &SpeculationRequest<'_>,
 ) -> Result<Value> {
     ensure!(
+        crate::kernels::attention_profile::current()?
+            == crate::kernels::attention_profile::Profile::Exact,
+        "MTP requires the exact attention profile until experimental recovery is qualified"
+    );
+    ensure!(
         !super::model_greedy::enabled()?,
         "GPU greedy selection is not integrated with MTP"
     );

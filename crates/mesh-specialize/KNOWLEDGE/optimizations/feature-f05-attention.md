@@ -115,3 +115,24 @@ cache available until real-weight and full-model gates pass.
 Parent registered both modules. On 2026-09-27, 239 macOS tests passed; after a test-only Clippy iterator repair, host Clippy and NVPTX compilation passed. GPU and model qualification remain pending.
 
 Parent GPU check on Carrack RTX5090 passed four synthetic grouped-head cases with zero/nonzero past, poisoned unused cache tails and extreme scores. BF16 outputs matched; maximum raw error was 2.3842e-7 under the predeclared budgets. Memcheck, racecheck and synccheck all reported zero errors/hazards. JIT used 40 registers, no local memory and 24640 shared bytes. PTX SHA256 `7492498c60ecc890881c93f5429880da07d03e42b1df2d17d98157c13ff67d25`. Evidence: `../evidence/iterate-20260927/features-attention/`. Model integration, long-context qualification and performance remain pending.
+
+
+## Parent resident audit preparation
+
+The512-token profile identifies244.85ms of attention prefill events and22.05ms
+of subsequent decode attention events. These are synchronized diagnostic totals,
+not wall-time attribution. Parent prepared explicit attention selection via
+`MESH_SPECIALIZE_ATTENTION_PROFILE=exact|online|online-audit`; default exact
+retains the FP64 kernel. The audit runs online FP32 against identical prepared
+Q/K/V and persistent KV in `layers.03` for the first >=16-row prefill and following
+one-row decode with past>=16. Only exact outputs feed the model in audit mode.
+
+Audit compares all FP32 outputs to exact GPU using causally visible per-channel
+V bounds and the unchanged5e-6 +3e-5*bound allowance. It also checks selected
+first/middle/final and worst-error query rows across every head against the independent logical FP64
+oracle, stored BF16 rounding, finiteness and full-output drift. Audit capacity is
+bounded to2048. Model-profile requires both prefill/decode reports to pass;
+throughput rejects audit mode. Reports/logit manifests identify attention
+arithmetic separately from projection arithmetic. MTP rejects non-exact attention
+until recovery is qualified. Same-profile exact checks remain unchanged.
+This is preparation; real-weight audit, model quality and performance are pending.

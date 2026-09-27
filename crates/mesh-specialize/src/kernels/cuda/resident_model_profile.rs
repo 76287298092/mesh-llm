@@ -57,6 +57,7 @@ pub(in crate::kernels) fn run(
         "teacher token outside vocabulary"
     );
     super::fp8_projection_audit::take_reports();
+    super::attention_audit::take_reports();
     validate_request(
         tokens,
         config.vocabulary,
@@ -204,10 +205,19 @@ pub(in crate::kernels) fn run(
     let past_exact = resulting_past == tokens.len() + 1
         && control_cursor_past == resulting_past
         && profiled_cursor_past == resulting_past;
-    let all_passed =
-        prefill_exact && exact_output_and_state && past_exact && memory_released && partition_exact;
+    let attention_audit = super::attention_audit::take_reports();
+    let audit_passed = !crate::kernels::attention_profile::current()?.is_audit()
+        || (attention_audit.len() == 2 && attention_audit.iter().all(|v| v["all_passed"] == true));
+    let all_passed = prefill_exact
+        && exact_output_and_state
+        && past_exact
+        && memory_released
+        && partition_exact
+        && audit_passed;
 
     Ok(json!({
+        "attention_profile":crate::kernels::attention_profile::current()?.name(),
+        "attention_audit":attention_audit,
         "gpu_selection_check": gpu_selection_check,
         "projection_audit": super::fp8_projection_audit::take_reports(),
         "schema_version": 1,

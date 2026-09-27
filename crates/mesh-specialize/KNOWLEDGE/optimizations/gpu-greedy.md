@@ -159,3 +159,12 @@ checks are running in `greedy-model-check-1`. Default selection remains CPU.
 Ninfer stayed inactive and ComfyUI remained resident. Next priority is the
 measured longer-context serial attention bottleneck, while ordinary graph work
 remains open.
+
+
+Whole-model `greedy-model-check-1` at source `11b84609f` passed memcheck,
+racecheck and synccheck with zero errors/hazards. Each run passed the separate
+device-selected prefill/decode token and full-state comparison against the CPU
+control, plus unchanged full-logit profile/partition checks. Workspace remained
+on, attention/FP8 exact, and split-K off. Ninfer remained inactive and ComfyUI
+remained resident. This qualifies the bounded ordinary selection path, not
+whole-round graph replay, long-context/concurrent serving, or a stable speedup.

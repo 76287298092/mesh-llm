@@ -273,3 +273,5 @@ pub(super) mod greedy_trial;
 mod resident_greedy;
 
 mod model_greedy;
+
+mod attention_audit;

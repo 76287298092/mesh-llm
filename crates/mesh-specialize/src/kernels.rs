@@ -1,5 +1,6 @@
 //! Device-specific instruction qualification, separate from model execution.
 
+pub mod attention_profile;
 pub mod fp8_profile;
 
 pub enum DecoderBlockKind {

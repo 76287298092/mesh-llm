@@ -67,7 +67,8 @@ pub(super) fn run<'a>(
     let key_state = state.pointer(&key_state_name, extents.cache_bytes)?;
     let value_state = state.pointer(&value_state_name, extents.cache_bytes)?;
     let append = module.function("attention_kv_append")?;
-    let attention = module.function("causal_attention_bf16")?;
+    let profile = crate::kernels::attention_profile::current()?;
+    let attention = module.function(profile.kernel())?;
     let output = Buffer::new(context, extents.output_bytes)?;
     let unrounded = Buffer::new(context, extents.unrounded_bytes)?;
 
@@ -103,6 +104,20 @@ pub(super) fn run<'a>(
         ));
     }
     context.synchronize()?;
+    if profile.is_audit() {
+        super::attention_audit::compare(
+            context,
+            module,
+            super::attention_audit::Case {
+                q: input.q,
+                state,
+                prefix: state_prefix,
+                output: &output,
+                raw: &unrounded,
+                shape,
+            },
+        )?;
+    }
     Ok(output)
 }
 
