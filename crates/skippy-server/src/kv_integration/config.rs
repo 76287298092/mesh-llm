@@ -641,11 +641,70 @@ fn store_exact_radix_record_with_codec(
     } = durable;
     #[cfg(test)]
     let stored_namespace = pending.namespace.clone();
-    // Write through to the durable tier before the payload is deduplicated
-    // into blocks, while its bytes are still contiguous. Best-effort: a full
-    // or failing disk must not fail the in-memory record. The refusal reason
-    // lands in the tier's status; one warning per process keeps a full disk
-    // from flooding the log.
+    let logical_bytes = pending.payload.byte_len();
+    let (payload, _) = pending.payload.dedupe_into(
+        &mut blobs
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner),
+    );
+    // Cloning retains the Arc-backed blocks without changing blob-store
+    // accounting, leaving `payload` available to roll that accounting back if
+    // the radix rejects the insert.
+    let mut released = Vec::new();
+    let insert_result = {
+        let mut radix = radix
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let insert_result = radix.insert_recurrent(
+            pending.namespace.clone(),
+            &pending.token_ids,
+            logical_bytes,
+            RadixExactEntry {
+                page_id: pending.page_id.clone(),
+                payload: payload.clone(),
+                extra: pending.extra.clone(),
+            },
+        );
+        match insert_result {
+            Err(error) => Err(error),
+            Ok(replaced) => {
+                if let Some(replaced) = replaced {
+                    released.push(replaced.payload);
+                }
+                while radix.stats().recurrent_entries > max_entries {
+                    let Some(evicted) = radix.evict_lru_recurrent() else {
+                        break;
+                    };
+                    released.push(evicted.value.payload);
+                }
+                Ok(())
+            }
+        }
+    };
+    if let Err(error) = insert_result {
+        payload.release_from(
+            &mut blobs
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner),
+        )?;
+        return Err(error);
+    }
+    if !released.is_empty() {
+        let mut blobs = blobs
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        for payload in released {
+            payload.release_from(&mut blobs)?;
+        }
+    }
+
+    // Persist to the durable tier after the radix insert so a new record is
+    // visible to exact-prefix lookups within one request settle; waiting on
+    // the L3 encode/write latency here left identical re-sends cold on slow
+    // runners. The tiers take the deduplicated payload, whose bytes are the
+    // exported bytes. Best-effort: a full or failing disk must not fail the
+    // in-memory record. The refusal reason lands in the tier's status; one
+    // warning per process keeps a full disk from flooding the log.
     if pending.write_through_l3
         && let Some(l3) = l3
     {
@@ -658,11 +717,11 @@ fn store_exact_radix_record_with_codec(
             .extra
             .kv_desc
             .as_ref()
-            .and_then(|desc| kv_page_geometry(desc, pending.payload.byte_len()));
+            .and_then(|desc| kv_page_geometry(desc, payload.byte_len()));
         let cachegen_spill = if cachegen_enabled {
             match (
                 pending.extra.kv_desc.as_ref(),
-                pending.payload.kv_bytes().ok().flatten(),
+                payload.kv_bytes().ok().flatten(),
             ) {
                 (Some(desc), Some(kv))
                     if !kv.is_empty() && cachegen_descriptor_is_qualified(desc) =>
@@ -673,7 +732,7 @@ fn store_exact_radix_record_with_codec(
                             Some(l3.spill_cachegen_with_cost(
                                 &pending.namespace,
                                 &pending.token_ids,
-                                &pending.payload,
+                                &payload,
                                 kv_desc_json.clone().unwrap_or_default(),
                                 skippy_cache::CacheGenKvPayload {
                                     archive: archive.bytes,
@@ -710,7 +769,7 @@ fn store_exact_radix_record_with_codec(
             l3.spill_with_cost(
                 &pending.namespace,
                 &pending.token_ids,
-                &pending.payload,
+                &payload,
                 kv_desc_json,
                 geometry.as_ref(),
                 pending.l3_cost,
@@ -733,65 +792,9 @@ fn store_exact_radix_record_with_codec(
             &pending.namespace,
             &pending.token_ids,
             payload_digest,
-            &pending.payload,
+            &payload,
             &pending.extra,
         );
-    }
-    let logical_bytes = pending.payload.byte_len();
-    let (payload, _) = pending.payload.dedupe_into(
-        &mut blobs
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner),
-    );
-    // Cloning retains the Arc-backed blocks without changing blob-store
-    // accounting, leaving `payload` available to roll that accounting back if
-    // the radix rejects the insert.
-    let mut released = Vec::new();
-    let insert_result = {
-        let mut radix = radix
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        let insert_result = radix.insert_recurrent(
-            pending.namespace,
-            &pending.token_ids,
-            logical_bytes,
-            RadixExactEntry {
-                page_id: pending.page_id,
-                payload: payload.clone(),
-                extra: pending.extra,
-            },
-        );
-        match insert_result {
-            Err(error) => Err(error),
-            Ok(replaced) => {
-                if let Some(replaced) = replaced {
-                    released.push(replaced.payload);
-                }
-                while radix.stats().recurrent_entries > max_entries {
-                    let Some(evicted) = radix.evict_lru_recurrent() else {
-                        break;
-                    };
-                    released.push(evicted.value.payload);
-                }
-                Ok(())
-            }
-        }
-    };
-    if let Err(error) = insert_result {
-        payload.release_from(
-            &mut blobs
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner),
-        )?;
-        return Err(error);
-    }
-    if !released.is_empty() {
-        let mut blobs = blobs
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        for payload in released {
-            payload.release_from(&mut blobs)?;
-        }
     }
     // Exact snapshots are indivisible, and the soft cap is estimated from
     // attention KV metadata that cannot include architecture-specific
@@ -1236,6 +1239,75 @@ mod tests {
         assert!(!location.cachegen_kv);
         assert!(location.native_kv_passthrough);
         assert_eq!(location.kv_bytes, location.kv_decoded_bytes);
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    /// Regression test for the #1838 KV smoke failure: with the durable L3
+    /// write-through ordered before the radix insert, an identical re-send
+    /// arriving inside the request settle window probed an empty radix because
+    /// the store was still inside its L3 encode/write, so the near-full
+    /// restore the smoke asserts could never fire. The radix insert must be
+    /// visible to concurrent lookups before the store call completes.
+    #[test]
+    fn radix_visibility_precedes_durable_spill_for_settle_window_repeats() {
+        let radix = std::sync::Arc::new(Mutex::new(UnifiedRadixCache::new()));
+        let blobs = std::sync::Arc::new(Mutex::new(CacheBlobStore::new(64)));
+        let (root, tier) = test_l3("settle-window");
+        let tokens: Vec<i32> = (0..512).collect();
+        let budget = StorageBudget::new();
+        // 64 MiB keeps the L3 write on the order of milliseconds, far above
+        // the 100 microsecond poll interval below, so the visibility window
+        // cannot be missed by scheduling jitter.
+        let payload = vec![0xAB_u8; 64 * 1024 * 1024];
+        let pending = pending("settle-window", &tokens, &payload, &budget);
+
+        let store_running = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(true));
+        let radix_thread = std::sync::Arc::clone(&radix);
+        let blobs_thread = std::sync::Arc::clone(&blobs);
+        let store_running_thread = std::sync::Arc::clone(&store_running);
+        let tokens_thread = tokens.clone();
+        let handle = std::thread::spawn(move || {
+            let result = store_exact_radix_record(
+                &radix_thread,
+                &blobs_thread,
+                8,
+                limits(0, 0),
+                None,
+                Some(&tier),
+                pending,
+            );
+            let location = tier
+                .locate_longest("model", &tokens_thread, tokens_thread.len())
+                .unwrap()
+                .expect("durable tier must receive the spilled payload");
+            assert!(!location.cachegen_kv);
+            store_running_thread.store(false, std::sync::atomic::Ordering::SeqCst);
+            result.expect("store must succeed");
+        });
+
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        let mut observed = false;
+        while store_running.load(std::sync::atomic::Ordering::SeqCst) {
+            if radix
+                .lock()
+                .unwrap()
+                .lookup_recurrent("model", &tokens)
+                .is_some()
+            {
+                observed = true;
+                break;
+            }
+            assert!(
+                std::time::Instant::now() < deadline,
+                "radix record never became visible before the store returned"
+            );
+            std::thread::sleep(std::time::Duration::from_micros(100));
+        }
+        assert!(
+            observed,
+            "an identical re-send inside the settle window must find the record in the radix while the store is still writing through L3"
+        );
+        handle.join().unwrap();
         let _ = std::fs::remove_dir_all(root);
     }
 
