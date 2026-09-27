@@ -23,7 +23,31 @@ pub fn trial(path: &Path, ptx: &str, device: i32) -> Result<Value> {
     let mut artifact = VerifiedArtifact::open(path)?;
     let inventory = super::inventory::validate(artifact.directory())?;
     let identity = artifact.identity().clone();
+    let input = load_input(&mut artifact)?;
+    let mut report = crate::kernels::attention_check(ptx, device, &input)?;
+    report["identity"] = json!(identity);
+    report["compiled_inventory"] = json!(inventory);
+    report["model_executable"] = json!(false);
+    report["trial_scope"] = json!({
+        "synthetic_hidden_input": true,
+        "layers_0_to_2_executed": false,
+        "layer_3_projection_and_attention_preparation": true,
+        "causal_attention_core_executed": true,
+        "full_attention_layer_components_executed": true,
+        "full_attention_executed": true,
+        "full_model_executed": false,
+    });
+    for key in [
+        "model_prefill_tokens_per_second",
+        "model_decode_tokens_per_second",
+        "model_context_tokens",
+    ] {
+        report[key] = Value::Null;
+    }
+    Ok(report)
+}
 
+pub(super) fn load_input(artifact: &mut VerifiedArtifact) -> Result<AttentionInput> {
     let mut table = Vec::with_capacity(VOCABULARY * HIDDEN * 2);
     artifact.copy_object(
         "tensors/model.language_model.embed_tokens.weight",
@@ -50,14 +74,14 @@ pub fn trial(path: &Path, ptx: &str, device: i32) -> Result<Value> {
         ],
     };
     let projections = [
-        load_fp8_projection(&mut artifact, "q_proj", QUERY_CHANNELS, HIDDEN)?,
-        load_fp8_projection(&mut artifact, "k_proj", KV_CHANNELS, HIDDEN)?,
-        load_fp8_projection(&mut artifact, "v_proj", KV_CHANNELS, HIDDEN)?,
+        load_fp8_projection(artifact, "q_proj", QUERY_CHANNELS, HIDDEN)?,
+        load_fp8_projection(artifact, "k_proj", KV_CHANNELS, HIDDEN)?,
+        load_fp8_projection(artifact, "v_proj", KV_CHANNELS, HIDDEN)?,
     ];
-    let q_norm = load_bf16_weight(&mut artifact, "q_norm")?;
-    let k_norm = load_bf16_weight(&mut artifact, "k_norm")?;
+    let q_norm = load_bf16_weight(artifact, "q_norm")?;
+    let k_norm = load_bf16_weight(artifact, "k_norm")?;
     let output_projection =
-        load_fp8_projection(&mut artifact, "o_proj", HIDDEN, ATTENTION_OUTPUT_WIDTH)?;
+        load_fp8_projection(artifact, "o_proj", HIDDEN, ATTENTION_OUTPUT_WIDTH)?;
     let mut post_attention_weight = Vec::with_capacity(HIDDEN * 2);
     artifact.copy_object(
         "tensors/model.language_model.layers.3.post_attention_layernorm.weight",
@@ -68,9 +92,9 @@ pub fn trial(path: &Path, ptx: &str, device: i32) -> Result<Value> {
         "layer-three post-attention norm extent mismatch"
     );
     let mlp = Nvfp4Mlp {
-        gate: load_nvfp4_projection(&mut artifact, "gate_proj", MLP_CHANNELS, HIDDEN)?,
-        up: load_nvfp4_projection(&mut artifact, "up_proj", MLP_CHANNELS, HIDDEN)?,
-        down: load_nvfp4_projection(&mut artifact, "down_proj", HIDDEN, MLP_CHANNELS)?,
+        gate: load_nvfp4_projection(artifact, "gate_proj", MLP_CHANNELS, HIDDEN)?,
+        up: load_nvfp4_projection(artifact, "up_proj", MLP_CHANNELS, HIDDEN)?,
+        down: load_nvfp4_projection(artifact, "down_proj", HIDDEN, MLP_CHANNELS)?,
     };
 
     let input = AttentionInput {
@@ -91,27 +115,7 @@ pub fn trial(path: &Path, ptx: &str, device: i32) -> Result<Value> {
         },
         mlp,
     };
-    let mut report = crate::kernels::attention_check(ptx, device, &input)?;
-    report["identity"] = json!(identity);
-    report["compiled_inventory"] = json!(inventory);
-    report["model_executable"] = json!(false);
-    report["trial_scope"] = json!({
-        "synthetic_hidden_input": true,
-        "layers_0_to_2_executed": false,
-        "layer_3_projection_and_attention_preparation": true,
-        "causal_attention_core_executed": true,
-        "full_attention_layer_components_executed": true,
-        "full_attention_executed": true,
-        "full_model_executed": false,
-    });
-    for key in [
-        "model_prefill_tokens_per_second",
-        "model_decode_tokens_per_second",
-        "model_context_tokens",
-    ] {
-        report[key] = Value::Null;
-    }
-    Ok(report)
+    Ok(input)
 }
 
 fn load_fp8_projection(

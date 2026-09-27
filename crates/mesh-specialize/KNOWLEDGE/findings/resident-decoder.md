@@ -107,3 +107,25 @@ unchanged at 498 MiB. Carrack's original branch remains preserved at
 Remaining: reference-free full-attention composition with persistent K/V, ordered
 64-layer execution, final norm/logits, independent model-level correctness, then
 actual model prefill/decode, memory peaks and usable-context comparison to Ninfer.
+
+## Resident attention connection (qualification pending)
+
+The next extraction binds resident Q/K norm weights and uses compact BF16 text
+RoPE tables generated from a named CPU profile in `engine::rope`. It preserves
+FP32 position/frequency multiplication, FP64 trigonometry rounded to FP32, then
+BF16 RNE. Forward calls upload only position tables; projection and attention
+intermediates remain on the device. No reference code is used in forward execution.
+
+K/V append uses current-chunk pointers and the caller's `past` cursor, validates
+exact cache extents and capacity, and writes named regions in the common state
+arena. The caller must commit its cursor only after all decoder layers succeed;
+on execution failure the session must be discarded because updates are not atomic.
+The block connects Q/K preparation, causal attention, sigmoid gating, output
+projection, post-attention norm, MLP and final residual using existing kernels.
+
+`qwen-resident-attention-check` will compare one/17-token layer-three execution
+against the independent whole-block reference, using embedding rows as synthetic
+hidden input. It checks whole/chunk/token output/cache equivalence, exact initialized
+K/V and the zero unused tail at every append boundary, plus capacity rejection
+without cache mutation. Capacity is 20 in this bounded check, not a context claim.
+Local/Linux checks and all three Carrack sanitizers remain pending for this change.

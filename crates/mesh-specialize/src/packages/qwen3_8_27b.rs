@@ -6,5 +6,6 @@ pub use entry::trial;
 pub mod attention;
 pub mod fp8_mlp;
 pub mod residency;
+pub mod resident_attention;
 pub mod resident_gdn;
 pub mod schedule;

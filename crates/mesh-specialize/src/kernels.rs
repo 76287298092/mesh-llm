@@ -1,5 +1,44 @@
 //! Device-specific instruction qualification, separate from model execution.
 
+pub struct ResidentAttentionShape {
+    pub hidden: usize,
+    pub intermediate: usize,
+    pub query_heads: usize,
+    pub kv_heads: usize,
+    pub head_width: usize,
+    pub rotary_dim: usize,
+    pub rope_theta: f32,
+}
+pub struct ResidentAttentionConfig {
+    pub shape: ResidentAttentionShape,
+    pub prefix: String,
+    pub state_prefix: String,
+    pub table_name: String,
+    pub vocabulary: usize,
+    pub capacity: usize,
+    pub state_layout: crate::engine::layout::Layout,
+}
+pub struct ResidentAttentionCase {
+    pub tokens: Vec<u32>,
+    pub reference: crate::qwen_attention_layer_reference::Layer,
+}
+pub fn resident_attention_check(
+    ptx: &str,
+    device: i32,
+    artifact: &mut crate::artifact::reader::VerifiedArtifact,
+    objects: &[crate::artifact::schema::Object],
+    config: &ResidentAttentionConfig,
+    cases: &[ResidentAttentionCase],
+) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::resident_attention_trial::run(ptx, device, artifact, objects, config, cases);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device, artifact, objects, config, cases);
+        anyhow::bail!("Resident attention trial requires Linux")
+    }
+}
+
 pub struct GdnShape {
     pub hidden: usize,
     pub key_heads: usize,

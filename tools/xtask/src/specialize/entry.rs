@@ -19,6 +19,13 @@ pub(super) fn resident_gdn(args: &[String]) -> DynResult<()> {
     )
 }
 
+pub(super) fn resident_attention(args: &[String]) -> DynResult<()> {
+    run_trial(
+        args,
+        mesh_specialize::packages::qwen3_8_27b::resident_attention::trial,
+    )
+}
+
 pub(super) fn residency(args: &[String]) -> DynResult<()> {
     run_trial(
         args,
@@ -59,7 +66,7 @@ fn run_trial<E: std::fmt::Display>(
         output,
     ] = args
     else {
-        return Err("usage: xtask specialize <qwen-entry-check|qwen-projection-check|qwen-attention-check|qwen-residency-check|qwen-fp8-mlp-check|qwen-resident-gdn-check> --artifact PATH --ptx PATH --device ORDINAL --output NEW_FILE".into());
+        return Err("usage: xtask specialize <qwen-entry-check|qwen-projection-check|qwen-attention-check|qwen-residency-check|qwen-fp8-mlp-check|qwen-resident-gdn-check|qwen-resident-attention-check> --artifact PATH --ptx PATH --device ORDINAL --output NEW_FILE".into());
     };
     if artifact_flag != "--artifact"
         || ptx_flag != "--ptx"
