@@ -176,3 +176,20 @@ remained unchanged. Source/command/hash/service evidence is retained under
 do not qualify stochastic sampling, EOS handling, frontend/ABI integration or
 Ninfer parity. The next architectural work is tracked in
 [the feature comparison](../findings/ninfer-feature-parity.md).
+
+## Compact recovery with exact split-K verification
+
+At source `a06b71bfa`, PTX `features-splitk.ptx` SHA256
+`e18df0fb02524af65d00e3b313183da18ce549fce93a65a6a22011ccfc3c6136`,
+`splitk-compact-bench-1` compares compact recovery with split-K off versus four.
+Paired sequential shared-GPU trials use 32 output tokens, depth four and three
+repetitions. Python median improves 39.1273 -> 46.7013 tokens/s; prose improves
+18.6906 -> 22.5269. Generated tokens and entire target-state hashes agree with
+ordinary greedy and across profiles; forced all-accepted and all four rejection
+positions pass. Prose still does not beat ordinary greedy decode, so fixed-depth
+speculation remains experimental. No matched Ninfer or broad quality claim.
+Ninfer was inactive before/after and ComfyUI PID448118 remained resident.
+
+A follow-up error-path fix drains the context if split-K setup/launch returns an
+error after input quantization was queued. It does not alter successful arithmetic
+or dispatch. Combined whole-model sanitizer qualification is the next gate.

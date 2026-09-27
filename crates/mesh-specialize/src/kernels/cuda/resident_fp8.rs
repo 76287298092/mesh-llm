@@ -214,6 +214,7 @@ fn run_split<'a>(
         shape,
         splits,
     )
+    .map_err(|error| synchronize_after_failed_launch(ctx, "split-K projection", error))
 }
 
 fn synchronize_after_failed_launch(
