@@ -1,8 +1,38 @@
 # Rust NVFP4 instruction probe
 
-Status: source integrated, 14 independent arithmetic/packing tests passed on
-macOS; CUDA execution pending. Base `dc1e24fe9`, Rust host 1.98.1, device compiler
+Status: executed successfully on carrack RTX5090 at revision
+`149e1aaa6728eb3a786afd4c475eb0d740e54af6` on 2026-09-26. Rust host 1.98.1, device compiler
 nightly-2026-09-25 (rustc 1.100.0-nightly f7575a9da, LLVM 23.1.1).
+
+All 32 cases (4,096 output elements) matched exactly; maximum absolute error
+was zero. Context isolation also passed. Driver 615.71.09 reports CUDA API
+version 13040 and SM12.0. The driver JIT reported 20 registers, zero static
+shared-memory bytes, and zero local-memory bytes. Event observations ranged
+from 2.432 to 12.288 microseconds; this is correctness instrumentation, not a
+stable kernel-throughput measurement. SASS and instruction-throughput profiling
+remain pending.
+
+Before module load and after case allocations were freed, `cuMemGetInfo`
+reported 32,221,822,976 free bytes. Minimum during a case was 32,219,725,824:
+a 2 MiB allocation-granularity difference for 1,536 bytes of payload. This
+does not estimate full-model memory. Ninfer was stopped for the launch; only
+the pre-existing ComfyUI process remained (498 MiB), and total device usage
+before launch was 937 MiB. Idle SM clock was 195 MHz; clocks were not fixed.
+Ninfer was restarted afterward and logged engine ready at 22:59:54 EDT,
+PID 2519627. Its configuration was unchanged.
+
+Evidence: [complete expected/actual results](../evidence/rust-nvfp4-probe-20260926.json).
+PTX SHA256: `89aecb232e33dff2f66f3a81423a351541dcc260c61a4f55ebddcabc5543d0ee`.
+Linux xtask SHA256: `945c250dc0bd5468c5825f8ece772243c1238329006142dd5de082a199e80cc0`.
+Full device/process snapshots are retained at `target/specialize/probe-20260926/`
+locally and on carrack. The PTX was cross-compiled locally and copied byte-for-byte;
+the host harness was built on carrack from the pushed branch with `just`.
+
+Validation: 14 specialized host tests plus 63 xtask tests passed locally; all
+16 specialized tests passed on Linux. Both platforms passed focused Clippy with
+warnings denied. Workspace roster, publish-chain, test-coverage and no-console
+checks passed. Shellcheck passed for the roster script. No feature-branch CI
+run was created by the pushes; this is local/remote validation, not green PR CI.
 
 The nested device workspace emits PTX8.7 for SM120a using Rust inline assembly.
 The Linux host uses only dynamically loaded CUDA Driver API calls. It checks
