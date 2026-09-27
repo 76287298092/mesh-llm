@@ -342,3 +342,31 @@ long context, concurrency and serving evidence remain required for completion.
 The split-K/compact sanitizer process subsequently completed successfully; see
 `KNOWLEDGE/evidence/iterate-20260927/splitk-compact-check-1`. No benchmark remains
 active at this checkpoint. Refresh live process/source state before the next run.
+
+## Workspace and GPU selection checkpoint
+
+The model-owned MLP workspace is opt-in (`MESH_SPECIALIZE_MLP_WORKSPACE=on`).
+Paired short natural prompts measured 5.4–5.8% higher ordinary decode throughput
+with identical generated tokens, logits and complete model-state hashes.
+Model MTP all-accepted and every forced rejection position passed under both
+recovery modes; compact recovery passed all three CUDA sanitizers. See F07's
+knowledge entry and `model-workspace-1` / `model-workspace-check-1` evidence.
+The 128/512-token prefill ablation is running separately at source `3d72188a4`;
+do not change Carrack source/binary until its live job is terminal.
+
+A new dedicated `feature_gpu_greedy` worker (GPT-6-Luna, max) implemented only
+exact GPU selection kernels and an independent direct-FP32 oracle. Parent
+reviewed, registered, and prepared the persistent host selector and ordinary
+model integration behind `MESH_SPECIALIZE_GPU_GREEDY=on` (default off).
+Full-logit diagnostic forwards retain their contract; model-profile compares
+device-only selection with CPU tokens and full state. MTP rejects this flag
+until separately integrated. Host266tests, Clippy and Just PTX build pass;
+Linux compilation, standalone/device sanitizer qualification and paired model
+throughput are next, not complete. This worker owns only GPU greedy selection;
+no existing feature worker was assigned to a different feature.
+
+Whole-round graphs, improved arithmetic/shape kernels, long-context algorithms,
+matched Ninfer provenance/quality/rates and concurrent serving remain open.
+Allocation/driver tracing has not yet been measured; nsys/ncu are not installed
+on Carrack's current interactive PATH. Do not infer driver time by subtracting
+synchronized kernel-event totals from uninstrumented wall time.
