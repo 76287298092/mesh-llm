@@ -45,6 +45,26 @@ FP8 MLP execution path now uses persistent weights without host intermediate
 readbacks or scalar reference work in the execution path. Layers 56 and 63 pass
 independent one/17-token branch comparisons and all three sanitizers.
 
+## Ordered optimization continuation
+
+The user requested continuing one area at a time, including dedicated decode,
+larger prefill and MTP. Keep the current arithmetic profile stable while improving
+its schedule; speculative target verification must agree with ordinary decode.
+
+1. Dedicated NVFP4 decode, then remaining decode bottlenecks. Start by transposing
+   the existing MMA operands to fill sixteen output rows for one activation token.
+2. Larger prefill tiles and weight reuse, with independent reference and partition
+   agreement before measuring. Preserve failed candidates and select by model timing.
+3. Resident MTP head, draft state, target verification and rollback. Prove accepted
+   output agrees with target-only greedy decoding, exercise rejection and rollback,
+   then measure accepted tokens per forward and end-to-end throughput.
+4. Re-profile and address measured submission/workspace costs in bounded changes.
+
+Each area closes only after host checks, independent numerical checks, relevant
+GPU sanitizers, repeated before/after model timings, memory/state validation and
+restoration of Ninfer. MTP remains outstanding until a real draft/verify run passes;
+retaining its tensors or adding an interface is not completion.
+
 ## Objective and boundaries
 
 Build the first stages of issue 1393 in `codex/issue-1393-feasibility`, with bounded

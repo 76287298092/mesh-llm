@@ -49,6 +49,7 @@ pub(in crate::kernels) fn run(
         "residual_norm_bf16",
         "nvfp4_quantize_bf16",
         "nvfp4_linear",
+        "nvfp4_decode",
         "mlp_silu_product",
         "residual_add_bf16",
         "attention_qk_prepare",

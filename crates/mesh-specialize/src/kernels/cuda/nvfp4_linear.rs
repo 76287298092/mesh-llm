@@ -103,12 +103,22 @@ pub(super) fn check<'a>(
     // Independent logical reference validates shapes/domains and finite outputs.
     // A full warp executes every MMA, including tails; all buffers survive sync.
     unsafe {
-        module.function("nvfp4_linear")?.launch(
-            [dimensions[1].div_ceil(8), dimensions[0].div_ceil(16), 1],
-            [32, 1, 1],
-            0,
-            &mut args,
-        )?;
+        module
+            .function(if rows == 1 {
+                "nvfp4_decode"
+            } else {
+                "nvfp4_linear"
+            })?
+            .launch(
+                if rows == 1 {
+                    [dimensions[1].div_ceil(16), 1, 1]
+                } else {
+                    [dimensions[1].div_ceil(8), dimensions[0].div_ceil(16), 1]
+                },
+                [32, 1, 1],
+                0,
+                &mut args,
+            )?;
     }
     context.synchronize()?;
     let mut bytes = vec![0; count * 2];
@@ -132,6 +142,37 @@ pub(super) fn check<'a>(
         report["passed"] == true,
         "NVFP4 projection numerical mismatch: {report}"
     );
+    if rows == 1 {
+        // SAFETY: The same checked buffers/ABI also satisfy the original linear
+        // kernel; only its output-channel tile geometry differs. Wait before reads.
+        unsafe {
+            module.function("nvfp4_linear")?.launch(
+                [dimensions[1].div_ceil(8), 1, 1],
+                [32, 1, 1],
+                0,
+                &mut args,
+            )?;
+        }
+        context.synchronize()?;
+        let mut control_words = vec![0_u8; count * 2];
+        let mut control_floats = vec![0_u8; count * 4];
+        output.download(&mut control_words)?;
+        unrounded.download(&mut control_floats)?;
+        let bf16_exact = words
+            .iter()
+            .zip(control_words.as_chunks::<2>().0)
+            .all(|(&actual, bytes)| actual == u16::from_le_bytes(*bytes));
+        let fp32_exact = floats
+            .iter()
+            .zip(control_floats.as_chunks::<4>().0)
+            .all(|(&actual, bytes)| actual.to_bits() == u32::from_le_bytes(*bytes));
+        ensure!(
+            bf16_exact && fp32_exact,
+            "dedicated NVFP4 decode differs from original MMA"
+        );
+        report["original_mma_bf16_exact"] = json!(bf16_exact);
+        report["original_mma_fp32_exact"] = json!(fp32_exact);
+    }
     report["projection"] = json!(weights.name);
     report["shape_mnk"] = json!([rows, weights.channels, width]);
     report["input_quantization"] = quantized.report;
@@ -147,7 +188,13 @@ pub(super) fn check<'a>(
 
 pub(super) fn fixtures(context: &Context, module: &Module<'_>) -> Result<Vec<Value>> {
     let mut reports = Vec::new();
-    for [rows, channels, width] in [[1, 1, 16], [17, 13, 80]] {
+    for [rows, channels, width] in [
+        [1, 1, 16],
+        [1, 13, 80],
+        [1, 35, 5120],
+        [1, 17, 17408],
+        [17, 13, 80],
+    ] {
         let words: Vec<_> = (0..rows * width)
             .map(|i| round_bf16(((i * 7 % 37) as f32 - 18.0) / 8.0))
             .collect();

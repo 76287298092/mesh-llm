@@ -6,7 +6,7 @@ const TILE_K: usize = 64;
 const K_GROUP: usize = 16;
 
 #[inline(always)]
-fn warp_and_tile() -> (u32, u32, u32) {
+pub(super) fn warp_and_tile() -> (u32, u32, u32) {
     let lane: u32;
     let tile_n: u32;
     let tile_m: u32;
@@ -32,7 +32,7 @@ fn warp_and_tile() -> (u32, u32, u32) {
 /// its base address must be four-byte aligned, and row, column, and byte offset
 /// arithmetic must fit `usize`.
 #[inline(always)]
-unsafe fn load_e2m1x8(
+pub(super) unsafe fn load_e2m1x8(
     matrix: *const u8,
     row: usize,
     row_count: usize,
@@ -72,7 +72,7 @@ unsafe fn load_e2m1x8(
 /// bytes; its base address must be four-byte aligned, and row and group offset
 /// arithmetic must fit `usize`.
 #[inline(always)]
-unsafe fn load_ue4m3x4(
+pub(super) unsafe fn load_ue4m3x4(
     scales: *const u8,
     row: usize,
     row_count: usize,
@@ -105,7 +105,7 @@ unsafe fn load_ue4m3x4(
 }
 
 #[inline(always)]
-fn mma_nvfp4(
+pub(super) fn mma_nvfp4(
     a0: u32,
     a1: u32,
     a2: u32,
@@ -174,7 +174,7 @@ fn encode_bf16_rne(value: f32) -> u16 {
 /// `out` and `unrounded` must each cover `m * n` writable elements. Their pointers
 /// must be disjoint and output index arithmetic must fit `usize`.
 #[inline(always)]
-unsafe fn store_scaled_output(
+pub(super) unsafe fn store_scaled_output(
     out: *mut u16,
     unrounded: *mut f32,
     row: usize,

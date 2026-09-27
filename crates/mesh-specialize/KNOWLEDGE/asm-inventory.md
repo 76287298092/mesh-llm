@@ -83,3 +83,10 @@ fixtures and the full-model comparison remain the independent oracle. The interi
 out-of-line variant passed sanitizers but failed the profiler's global free-memory
 gate. Stack allocation was suspected, not established; the final inline variant
 passes both profiles and all sanitizers. See the preserved failed evidence.
+
+## Dedicated NVFP4 decode
+
+`nvfp4_decode.rs` reads lane/CTA coordinates and reuses the qualified NVFP4 MMA,
+packed loaders and output conversion with weight/activation operands transposed.
+Independent signed/tail and whole-model checks qualify the new layout. Status:
+pending in [dedicated decode](optimizations/dedicated-decode.md).

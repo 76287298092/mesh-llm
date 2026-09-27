@@ -89,7 +89,11 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
         let width_u32 = u32::try_from(self.width)?;
         let channels_u32 = u32::try_from(self.channels)?;
         let quantize = module.function("nvfp4_quantize_bf16")?;
-        let linear = module.function("nvfp4_linear")?;
+        let linear = module.function(if rows == 1 {
+            "nvfp4_decode"
+        } else {
+            "nvfp4_linear"
+        })?;
         let activation = ActivationBuffers::new(context, &extents)?;
         let output = Buffer::new(context, extents.output_bytes)?;
         let unrounded = Buffer::new(context, extents.unrounded_bytes)?;
@@ -117,7 +121,11 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
             unrounded: &unrounded,
             dimensions: [rows_u32, channels_u32, width_u32],
             global_factor: self.global_factor,
-            grid: extents.linear_grid,
+            grid: if rows == 1 {
+                [channels_u32.div_ceil(16), 1, 1]
+            } else {
+                extents.linear_grid
+            },
         };
         if let Err(error) = launch_linear(&linear, linear_launch) {
             return Err(synchronize_after_failed_launch(
