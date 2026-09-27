@@ -16,6 +16,33 @@ pub struct Fp8Projection {
     pub channels: usize,
 }
 
+pub struct AttentionInput {
+    pub entry: EmbeddingNormInput,
+    pub projections: [Fp8Projection; 3],
+    pub q_norm: Vec<u8>,
+    pub k_norm: Vec<u8>,
+    pub query_heads: usize,
+    pub kv_heads: usize,
+    pub head_width: usize,
+    pub rotary_dim: usize,
+    pub rope_theta: f32,
+    pub positions: Vec<Vec<u32>>,
+}
+
+pub fn attention_check(
+    ptx: &str,
+    device: i32,
+    input: &AttentionInput,
+) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::attention::run(ptx, device, input);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device, input);
+        anyhow::bail!("Qwen attention GPU trial requires Linux")
+    }
+}
+
 pub struct ProjectionInput {
     pub entry: EmbeddingNormInput,
     pub projections: Vec<Fp8Projection>,

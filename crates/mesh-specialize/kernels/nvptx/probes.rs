@@ -3,6 +3,7 @@
 
 use core::arch::asm;
 
+mod attention_prepare;
 mod bf16_linear;
 mod causal_conv4;
 mod embedding_norm;

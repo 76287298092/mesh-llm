@@ -141,7 +141,7 @@ pub(super) fn launch(
     unsafe { function.launch([u32::try_from(rows)?, 1, 1], [256, 1, 1], 0, &mut args) }
 }
 
-fn compare(
+pub(super) fn compare(
     tokens: &[u32],
     residual: &[u16],
     normalized: &[u16],

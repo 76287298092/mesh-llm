@@ -10,6 +10,7 @@ use crate::command::DynResult;
 
 pub(crate) fn run(args: &[String]) -> DynResult<()> {
     match args {
+        [command, rest @ ..] if command == "qwen-attention-check" => entry::attention(rest),
         [command, rest @ ..] if command == "qwen-projection-check" => entry::projections(rest),
         [command, rest @ ..] if command == "qwen-entry-check" => entry::run(rest),
         [command, rest @ ..] if command == "checkpoint-import" => checkpoint::run(rest),

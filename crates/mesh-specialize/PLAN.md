@@ -172,6 +172,7 @@ that control's rates directly to MTP4 as an isolated speedup across different in
 | Q01/Q02 post-attention input | Partial: 92,160 residual/norm values and both MLP input quantizations pass; sanitizers clean | `KNOWLEDGE/findings/post-attention.md`; MLP matrix products and full layer remain pending |
 | Q01/Q03 layer-zero MLP | Partial: 718,848 real NVFP4 matrix outputs, SiLU product and second residual pass component checks; sanitizers clean | `KNOWLEDGE/findings/qwen-mlp.md`; whole-layer comparison recorded separately |
 | Q03 independent whole-layer reference | Partial: one/17-token layer-zero hidden/history/state pass fixed 1% L2 and 0.9999 cosine budgets, including every partition | `KNOWLEDGE/findings/whole-gdn-layer.md`; full-model/logit parity pending |
+| Q02 full-attention preparation | Implemented: layer-3 Q/K/V, per-head Q/gate split, zero-centered Q/K norm and partial text RoPE; qualification pending | `KNOWLEDGE/findings/attention-preparation.md`; attention/KV cache and full layer still pending |
 | H03 discovery and H04 ABI | Pending | No executable specialized model yet |
 | Full model performance/context trial | Pending | None |
 

@@ -19,6 +19,13 @@ pub(super) fn projections(args: &[String]) -> DynResult<()> {
     )
 }
 
+pub(super) fn attention(args: &[String]) -> DynResult<()> {
+    run_trial(
+        args,
+        mesh_specialize::packages::qwen3_8_27b::attention::trial,
+    )
+}
+
 fn run_trial<E: std::fmt::Display>(
     args: &[String],
     trial: fn(&Path, &str, i32) -> Result<serde_json::Value, E>,
@@ -34,7 +41,7 @@ fn run_trial<E: std::fmt::Display>(
         output,
     ] = args
     else {
-        return Err("usage: xtask specialize <qwen-entry-check|qwen-projection-check> --artifact PATH --ptx PATH --device ORDINAL --output NEW_FILE".into());
+        return Err("usage: xtask specialize <qwen-entry-check|qwen-projection-check|qwen-attention-check> --artifact PATH --ptx PATH --device ORDINAL --output NEW_FILE".into());
     };
     if artifact_flag != "--artifact"
         || ptx_flag != "--ptx"

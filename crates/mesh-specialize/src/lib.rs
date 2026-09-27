@@ -40,3 +40,6 @@ pub mod residual_add_reference;
 pub mod layer_comparison_reference;
 #[path = "../reference/qwen_gdn_layer.rs"]
 pub mod qwen_gdn_layer_reference;
+
+#[path = "../reference/attention_prepare.rs"]
+pub mod attention_prepare_reference;
