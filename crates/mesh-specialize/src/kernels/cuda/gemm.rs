@@ -64,7 +64,7 @@ fn unpack(output: &Buffer<'_>, case: &Fixture) -> Result<Vec<f32>> {
         .map(|b| f32::from_ne_bytes(*b))
         .collect();
     let mut actual = vec![f32::NAN; rows * columns];
-    for (index, tile) in packed.chunks_exact(128).enumerate() {
+    for (index, tile) in packed.as_chunks::<128>().0.iter().enumerate() {
         let logical = nvfp4_layout::unpack_output(tile).map_err(anyhow::Error::msg)?;
         let tile_m = index / case.n_tiles as usize;
         let tile_n = index % case.n_tiles as usize;
