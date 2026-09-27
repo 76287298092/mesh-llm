@@ -115,3 +115,5 @@ are required before any performance or correctness claim.
 The qualification harness now forces the first round to accept all configured drafts, then separately forces rejection at every draft position with a correct preceding prefix. Each run checks exact final target tokens and full state hash against ordinary greedy decoding and reports the observed first-round acceptance count. Execution of this expanded model harness remains pending.
 
 A host admission guard now enforces the record kernel contract before launch: at most five rows, at most 64 key heads, and a power-of-two head width. This does not change arithmetic for the qualified Qwen geometry.
+
+The report retains `forced_rejection` for the first-position case and adds `forced_rejections` for complete position coverage, preserving existing result readers.
