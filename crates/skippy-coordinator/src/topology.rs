@@ -86,6 +86,12 @@ pub struct TopologyPlanningInput {
     /// speed instead of packing the largest node first. Needs
     /// `decode_bytes_per_second` on every placed node; otherwise the
     /// memory-only placement stands.
+    ///
+    /// Stands down when the plan already carries the perf-aware profile (see
+    /// [`perf_aware_signals_reached`]): that planner cut these spans from the
+    /// same measurement with the richer model. A rate measured from running
+    /// stages is new information and still re-cuts, through
+    /// [`rebalance_topology`] directly.
     pub auto_balance: bool,
 }
 
@@ -270,13 +276,41 @@ pub fn estimate_plan_throughput(
 }
 
 fn finish_plan(input: &TopologyPlanningInput, plan: TopologyPlan) -> TopologyPlan {
-    let plan = if input.auto_balance {
+    let plan = if rebalance_from_static_profile(input, &plan) {
         rebalance_topology(input, &plan).unwrap_or(plan)
     } else {
         plan
     };
     let throughput = estimate_plan_throughput(input, &plan);
     TopologyPlan { throughput, ..plan }
+}
+
+/// Whether `--auto-balance` should re-cut this plan from the static profile.
+///
+/// The performance-aware planner places spans from the same node profile, and
+/// from the richer model (directed edges, observed stage timing, calibrated
+/// against the execution sim). When its signals reached the planner it already
+/// made this decision, so a second cut from the static rate derived from that
+/// same profile would overwrite it with a second opinion rather than new
+/// information. A rate measured from running stages is new information and
+/// still re-cuts — [`rebalance_topology`], called directly by the host's
+/// measured rebalance.
+fn rebalance_from_static_profile(input: &TopologyPlanningInput, plan: &TopologyPlan) -> bool {
+    input.auto_balance && !perf_aware_signals_reached(input, plan)
+}
+
+/// Whether the profile the performance-aware planner balances from reached
+/// every node this plan could place.
+///
+/// The host strips those signals unless `MESH_TOPOLOGY_PERF_AWARE` enables the
+/// mode, so their presence means the perf-aware planner owned the span choice.
+fn perf_aware_signals_reached(input: &TopologyPlanningInput, plan: &TopologyPlan) -> bool {
+    let nodes = usable_nodes(&input.nodes);
+    !nodes.is_empty()
+        && !plan.stages.is_empty()
+        && nodes
+            .iter()
+            .all(|node| node.sustained_mem_bandwidth_mib_per_s.is_some())
 }
 
 fn plan_topology_with_required_stage0(
@@ -1932,6 +1966,27 @@ mod tests {
         }
     }
 
+    /// A node that also reports the sustained memory-bandwidth profile the
+    /// performance-aware planner balances from — the shape the host passes when
+    /// `MESH_TOPOLOGY_PERF_AWARE` is enabled (it strips these fields otherwise).
+    fn profiled_speed_node(id: &str, gib: u64, gb_per_second: u64) -> TopologyNode {
+        TopologyNode {
+            sustained_mem_bandwidth_mib_per_s: Some(
+                (gb_per_second * 1_000_000_000 / 1_048_576) as u32,
+            ),
+            ..speed_node(id, gib, gb_per_second)
+        }
+    }
+
+    fn profiled_mini_pair_input(auto_balance: bool) -> TopologyPlanningInput {
+        let mut request = mini_pair_input(auto_balance);
+        request.nodes = vec![
+            profiled_speed_node("m1", 12, 68),
+            profiled_speed_node("m4", 11, 120),
+        ];
+        request
+    }
+
     fn mini_pair_input(auto_balance: bool) -> TopologyPlanningInput {
         // Two 16 GiB-class minis, M1 (~68 GB/s) and M4 (~120 GB/s), serving a
         // 36-layer model that fits either one. The M1 advertises more memory,
@@ -2038,6 +2093,41 @@ mod tests {
             .find(|stage| stage.node_id == "large")
             .unwrap();
         assert!(small.layer_end - small.layer_start < large.layer_end - large.layer_start);
+    }
+
+    #[test]
+    fn auto_balance_stands_down_once_the_perf_aware_profile_reached_the_planner() {
+        let profiled = profiled_mini_pair_input(true);
+        let plan = plan_topology(&profiled).unwrap();
+
+        assert!(perf_aware_signals_reached(&profiled, &plan));
+        assert!(!rebalance_from_static_profile(&profiled, &plan));
+
+        // The env-off shape: the profile is stripped, so `--auto-balance` is
+        // the only planner that can use the static rate.
+        let mut stripped = profiled.clone();
+        for node in &mut stripped.nodes {
+            node.sustained_mem_bandwidth_mib_per_s = None;
+        }
+        assert!(!perf_aware_signals_reached(&stripped, &plan));
+        assert!(rebalance_from_static_profile(&stripped, &plan));
+    }
+
+    #[test]
+    fn a_profiled_plan_keeps_its_spans_under_auto_balance() {
+        let profiled = profiled_mini_pair_input(true);
+        let mut perf_aware_only = profiled.clone();
+        perf_aware_only.auto_balance = false;
+
+        let planned = plan_topology(&profiled).unwrap();
+
+        assert_eq!(
+            planned,
+            plan_topology(&perf_aware_only).unwrap(),
+            "the perf-aware planner placed these spans from the same profile, so \
+             the static re-cut must not overwrite them"
+        );
+        assert!(planned.throughput.is_some());
     }
 
     #[test]

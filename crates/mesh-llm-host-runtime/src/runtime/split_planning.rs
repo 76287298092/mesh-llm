@@ -97,6 +97,10 @@ pub(super) struct SplitTopologyPlanNode {
     pub(super) sustained_mem_bandwidth_mib_per_s: Option<u32>,
     pub(super) sustained_compute_gflop_per_s: Option<u32>,
     pub(super) observed_decode_us_per_layer: Option<u64>,
+    /// Weight-streaming rate measured from a running stage, in bytes per
+    /// second. `None` means the planning input derives the rate from
+    /// `sustained_mem_bandwidth_mib_per_s`, so `--auto-balance` and the
+    /// perf-aware planner rate a node from one measurement.
     pub(super) decode_bytes_per_second: Option<u64>,
 }
 
@@ -220,6 +224,18 @@ fn split_topology_plan(plan: skippy_coordinator::topology::TopologyPlan) -> Spli
     }
 }
 
+/// The weight-streaming rate a node's sustained memory-bandwidth profile
+/// implies, in bytes per second.
+///
+/// One derivation from one measurement: `sustained_mem_bandwidth_mib_per_s` is
+/// the gossiped gpu-bench result converted once, and both `--auto-balance` and
+/// the perf-aware planner rate nodes from it. Absolute accuracy does not move
+/// the cut — only the ratio between nodes — and a rate measured from a running
+/// stage (`SplitTopologyPlanNode::decode_bytes_per_second`) still wins.
+fn decode_bytes_per_second_from_mib_per_s(mib_per_s: u32) -> u64 {
+    u64::from(mib_per_s) * 1_048_576
+}
+
 fn topology_planning_input(input: SplitTopologyPlanInput) -> TopologyPlanningInput {
     TopologyPlanningInput {
         native_context_length: input.native_context_length,
@@ -242,7 +258,10 @@ fn topology_planning_input(input: SplitTopologyPlanInput) -> TopologyPlanningInp
                 sustained_mem_bandwidth_mib_per_s: node.sustained_mem_bandwidth_mib_per_s,
                 sustained_compute_gflop_per_s: node.sustained_compute_gflop_per_s,
                 observed_decode_us_per_layer: node.observed_decode_us_per_layer,
-                decode_bytes_per_second: node.decode_bytes_per_second,
+                decode_bytes_per_second: node.decode_bytes_per_second.or_else(|| {
+                    node.sustained_mem_bandwidth_mib_per_s
+                        .map(decode_bytes_per_second_from_mib_per_s)
+                }),
             })
             .collect(),
         context_length_override: input.context_length_override,
@@ -1588,6 +1607,39 @@ mod tests {
         participant.sustained_mem_bandwidth_mib_per_s = Some(bandwidth_mib_per_s);
         participant.sustained_compute_gflop_per_s = Some(15_000);
         participant
+    }
+
+    fn plan_input_for(participants: &[SplitParticipant]) -> TopologyPlanningInput {
+        topology_planning_input(runtime_slice_plan_input_unfiltered(
+            &package(40, 40_000_000_000),
+            participants,
+            SplitTopologyResourceInputs {
+                native_context_length: 262_144,
+                kv_bytes_per_token: 64 * 1024,
+                recurrent_bytes_per_sequence_by_layer: Vec::new(),
+                ctx_size_override: None,
+                parallel_override: None,
+                auto_balance: true,
+            },
+        ))
+    }
+
+    #[test]
+    fn the_auto_balance_rate_derives_from_the_perf_profile() {
+        // One measurement, one conversion: the profile the perf-aware planner
+        // balances from also seeds the `--auto-balance` re-cut, so the two
+        // placements cannot disagree about how fast a node is.
+        let profiled = plan_input_for(&[participant_with_perf(1, 26_000_000_000, 5, 400_000)]);
+        assert_eq!(
+            profiled.nodes[0].decode_bytes_per_second,
+            Some(400_000 * 1_048_576)
+        );
+
+        // A rate measured from a running stage still wins.
+        let mut measured = participant_with_perf(1, 26_000_000_000, 5, 400_000);
+        measured.decode_bytes_per_second = Some(123_456_789);
+        let measured = plan_input_for(&[measured]);
+        assert_eq!(measured.nodes[0].decode_bytes_per_second, Some(123_456_789));
     }
 
     #[test]

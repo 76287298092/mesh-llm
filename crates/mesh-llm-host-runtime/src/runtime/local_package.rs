@@ -310,8 +310,12 @@ pub(super) struct SplitParticipant {
     /// Observed steady-decode runtime work normalized per loaded layer.
     /// This is a measured floor for the analytical weight-streaming model.
     pub(super) observed_decode_us_per_layer: Option<u64>,
-    /// Weight bytes per second this node streams during decode, from its GPU
-    /// memory-bandwidth benchmark. Used by `--auto-balance` placement.
+    /// Weight bytes per second this node streams during decode.
+    ///
+    /// `None` until a running stage measures one; the planning input then falls
+    /// back to the rate implied by `sustained_mem_bandwidth_mib_per_s`, so
+    /// `--auto-balance` and the perf-aware planner rate a node from the same
+    /// measurement.
     pub(super) decode_bytes_per_second: Option<u64>,
 }
 
@@ -342,6 +346,7 @@ impl SplitParticipant {
         }
     }
 
+    /// Override the node's rate with one measured from a running stage.
     pub(super) fn with_decode_speed(mut self, decode_bytes_per_second: Option<u64>) -> Self {
         self.decode_bytes_per_second = decode_bytes_per_second;
         self
@@ -697,30 +702,6 @@ pub(super) async fn collect_split_participant_membership(
     }
 }
 
-/// Total GPU memory bandwidth across a node's GPUs, as bytes per second.
-///
-/// A stage runs on one device, but on Apple Silicon there is one GPU and on
-/// multi-GPU hosts a stage spans the devices its layers are spread over, so
-/// the sum is the right first-order rate. Absolute accuracy does not matter —
-/// only the ratio between nodes moves the cut — and runtime measurement
-/// replaces it once stages are serving.
-pub(super) fn decode_bytes_per_second_from_gbps(gbps: Option<&[f64]>) -> Option<u64> {
-    let total: f64 = gbps?
-        .iter()
-        .filter(|value| value.is_finite() && **value > 0.0)
-        .sum();
-    (total > 0.0).then_some((total * 1_000_000_000.0) as u64)
-}
-
-/// Parse the comma-joined per-GPU bandwidth a peer gossips.
-pub(super) fn decode_bytes_per_second_from_gossip(gbps: Option<&str>) -> Option<u64> {
-    let values = gbps?
-        .split(',')
-        .filter_map(|value| value.trim().parse::<f64>().ok())
-        .collect::<Vec<_>>();
-    decode_bytes_per_second_from_gbps(Some(&values))
-}
-
 pub(super) async fn collect_split_participants(
     node: &mesh::Node,
     model_name: &str,
@@ -734,7 +715,6 @@ pub(super) async fn collect_split_participants(
     let local_stage_timing = skippy_server::stage_decode_timing_hints()
         .into_iter()
         .find(|hint| hint.model_id == model_ref || hint.model_id == model_name);
-    let local_bandwidth = node.gpu_mem_bandwidth_gbps.lock().await.clone();
     let mut participants = vec![
         SplitParticipant::local_package(
             node.id(),
@@ -750,10 +730,7 @@ pub(super) async fn collect_split_participants(
                     && hint.sample_age_ms <= MAX_TRUSTED_STAGE_TIMING_AGE_MS)
                     .then_some(hint.observed_us_per_layer)
             }),
-        })
-        .with_decode_speed(decode_bytes_per_second_from_gbps(
-            local_bandwidth.as_deref(),
-        )),
+        }),
     ];
     let mut excluded = Vec::new();
     for peer in node.peers().await {
@@ -800,9 +777,6 @@ pub(super) async fn collect_split_participants(
                             artifact_transfer_allowed,
                             perf,
                         )
-                        .with_decode_speed(decode_bytes_per_second_from_gossip(
-                            peer.gpu_mem_bandwidth_gbps.as_deref(),
-                        ))
                         .with_edge_bandwidth(peer.large_frame_mib_per_s())
                         .with_rtt_observation(peer.rtt_observation_ages()),
                 );

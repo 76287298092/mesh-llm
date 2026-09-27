@@ -83,6 +83,41 @@ The table above reflects the tree as of PR #1454 head; the original
 `9feef0c1` survey that motivated the design is preserved in the PR's
 first commit.
 
+### Node speed: one measurement, one cut
+
+`--auto-balance` (#1935) landed two hours after this branch's last main merge,
+parallel to the perf-aware planner, so both arrived with their own node-speed
+signal and their own cut:
+
+- `decode_bytes_per_second` — the rate `--auto-balance` balances from, derived
+  per node from the gossiped per-GPU bandwidth list, and replaced by a rate
+  measured from running stages once the closed loop has a window.
+- `sustained_mem_bandwidth_mib_per_s` — the profile the perf-aware planner
+  balances from, parsed once from the same gossiped measurement.
+
+They are not independent measurements: both start from
+`gpu_mem_bandwidth_gbps`, converted in two places. With both opt-ins set, both
+planners also cut the same placement — the perf-aware planner chose spans,
+then `finish_plan` re-cut them from the static rate.
+
+Unified in three steps:
+
+1. `decode_bytes_per_second` is derived at the planning-input boundary from
+   `sustained_mem_bandwidth_mib_per_s` (`decode_bytes_per_second_from_mib_per_s`
+   in `split_planning.rs`), so the two planners cannot disagree about how fast a
+   node is. A rate measured from a running stage still takes precedence.
+2. `finish_plan` stands the static re-cut down when the perf-aware profile
+   reached the planner (`perf_aware_signals_reached`): that planner already cut
+   these spans from the same measurement, with the richer model.
+3. The measured closed loop is unchanged — `measured_rebalance` calls
+   `rebalance_topology` directly with measured rates, so a re-cut from real
+   running stages is not suppressed.
+
+Deliberate consequence: with both `--auto-balance` and
+`MESH_TOPOLOGY_PERF_AWARE` set, the perf-aware planner owns the initial cut and
+the auto-balance loop still adjusts it once a measured rate exists. Either
+opt-in on its own behaves exactly as before.
+
 ## Input contract
 
 ### 1. Node performance (per node)
