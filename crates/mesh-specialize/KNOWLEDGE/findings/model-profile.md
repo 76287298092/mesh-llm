@@ -31,3 +31,8 @@ instrumentation equivalence, not an independent model-quality reference.
 No kernel arithmetic, PTX instruction or exported ABI changes in this stage.
 The existing `Event` ownership wrapper provides all needed CUDA calls; no new
 CUDA library or driver entry point is introduced.
+
+The first Linux all-feature build exposed the validator's separate compilation
+of `driver.rs`: its module root also needs the private profiler module. The
+validator now includes that same source alongside its driver. The initial failure
+is retained in the raw Linux test log; Ninfer remained online during the build.

@@ -13,6 +13,10 @@ mod runner;
 #[path = "../src/kernels/cuda/driver.rs"]
 mod driver;
 #[cfg(target_os = "linux")]
+#[allow(dead_code)]
+#[path = "../src/kernels/cuda/launch_profile.rs"]
+mod launch_profile;
+#[cfg(target_os = "linux")]
 #[path = "../src/kernels/gemm_fixtures.rs"]
 mod gemm_fixtures;
 #[cfg(target_os = "linux")]
