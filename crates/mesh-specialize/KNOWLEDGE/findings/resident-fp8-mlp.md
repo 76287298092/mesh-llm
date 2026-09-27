@@ -2,6 +2,10 @@
 
 Status: implementation in progress; no new live qualification yet.
 
+Mac tests (181) and Clippy pass. The first Linux test run passes 209 library and
+20 validator tests, but Clippy found an unused import in the Linux-only wrapper.
+It is removed before deployment; the failed log is retained. Ninfer remained online.
+
 The last eight decoder layers use FP8 gate/up/down weights, unlike the first
 56 NVFP4 MLPs. The execution path now being added borrows validated tensor views
 from the full resident weight arena. It performs GPU input quantization, refined

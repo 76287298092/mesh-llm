@@ -1,5 +1,5 @@
 use crate::artifact::schema::{DType, Object, ObjectKind};
-use anyhow::{Context as _, Result, anyhow, ensure};
+use anyhow::{Result, anyhow, ensure};
 use std::ffi::c_void;
 
 use super::{
