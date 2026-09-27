@@ -1,0 +1,15 @@
+    Checking mesh-specialize v0.76.1 (/Users/ndizazzo/.codex/worktrees/issue-1393-feasibility/mesh-llm/crates/mesh-specialize)
+    Checking xtask v0.76.1 (/Users/ndizazzo/.codex/worktrees/issue-1393-feasibility/mesh-llm/tools/xtask)
+error: using `chunks_exact` with a constant chunk size
+   --> crates/mesh-specialize/src/../reference/causal_conv4.rs:209:14
+    |
+209 |             .chunks_exact(4)
+    |              ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<4>().0.iter()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#chunks_exact_to_as_chunks
+    = note: `-D clippy::chunks-exact-to-as-chunks` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::chunks_exact_to_as_chunks)]`
+
+error: could not compile `mesh-specialize` (lib test) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error: recipe `with-lld` failed with exit code 101

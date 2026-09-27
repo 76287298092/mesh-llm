@@ -13,7 +13,8 @@ The internal `.mspec` container now has a content-derived identity, bounded
 resident reader and CPU object assembler. Pinned Safetensors import and full
 readback now pass on Carrack for 1,635 retained tensors. The compiled tensor
 inventory matches, and real-weight embedding/input normalization plus FP8 QKV/Z
-and BF16 A/B projections pass on GPU with all three sanitizers.
+and BF16 A/B projections pass on GPU with all three sanitizers. QKV now feeds
+causal convolution/SiLU with exact whole-sequence/chunk/token state equivalence.
 Full model execution remains open.
 
 ## Objective and boundaries
@@ -149,13 +150,14 @@ that control's rates directly to MTP4 as an isolated speedup across different in
 | Fresh NInfer baseline | Complete for deployed serial profile | `KNOWLEDGE/findings/ninfer-baseline-20260926.md` |
 | Rust instruction gate | NVFP4 and 29 remaining probe cases pass; sanitizer checks clean | `KNOWLEDGE/findings/instruction-qualification.md` and prior NVFP4 evidence |
 | Representative GEMM/RMSNorm | 14 cases / 1,489,305 outputs pass; independent cuBLAS reference passes; profiling pending | `KNOWLEDGE/findings/representative-kernels.md` and `cuda-library-reference.md` |
-| Upstream push and carrack branch synchronization | Complete through Qwen FP8/BF16 projection GPU trial | `9d8d730c7`; original carrack branch retained |
+| Upstream push and carrack branch synchronization | Complete through Qwen causal convolution GPU trial | `7d81bea88`; original carrack branch retained |
 | First carrack Rust GPU trial | Complete | 32 cases, 4,096 exact output matches; Ninfer restored |
 | A01/A02 container, identity, reader and object assembly | 65 macOS / 68 Linux library tests pass; 17 Linux validator tests pass; low-descriptor checks pass | `KNOWLEDGE/findings/mspec-format.md` |
 | A03 pinned upstream import | Real-file import/readback passes; 82 macOS / 85 Linux library tests and 17 Linux validator tests pass | `KNOWLEDGE/findings/checkpoint-intake.md`; 22.52 GB artifact in 58.6 seconds |
 | Compiled model tensor inventory | Complete for pinned raw-v1 checkpoint | All 1,635 tensors match compiled metadata; real artifact checked on Carrack |
 | Q01 embedding/norm | Partial: first fused embedding/input norm passes real-weight GPU comparison and all sanitizers | `KNOWLEDGE/findings/qwen-entry.md`; full layer/schedule execution pending |
-| Q03 GDN inputs | Partial: FP8 QKV/Z and BF16 A/B pass 296,640 real outputs and all sanitizers | `KNOWLEDGE/findings/qwen-projections.md`; convolution/gates/state/norm/output pending |
+| Q03 GDN inputs | Partial: FP8 QKV/Z and BF16 A/B pass 296,640 real outputs and all sanitizers | `KNOWLEDGE/findings/qwen-projections.md` |
+| Q03 causal convolution | Partial: 184,320 real outputs pass; whole/chunk/token states exactly agree; sanitizers clean | `KNOWLEDGE/findings/causal-convolution.md`; gate transforms, recurrent matrix, gated norm/output pending |
 | H03 discovery and H04 ABI | Pending | No executable specialized model yet |
 | Full model performance/context trial | Pending | None |
 

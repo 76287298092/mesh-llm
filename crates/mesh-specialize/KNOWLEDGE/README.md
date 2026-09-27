@@ -19,7 +19,7 @@ Start with [the implementation plan](../PLAN.md) and the
 | [Pinned checkpoint intake](findings/checkpoint-intake.md) | Real Carrack import/readback passes: 1,635 tensors, 22.52 GB; model execution pending |
 | [Qwen entry operation](findings/qwen-entry.md) | All 1,635 tensor metadata entries match; 696,320 real-weight embedding/norm values pass on GPU; sanitizers clean |
 | [Qwen projections](findings/qwen-projections.md) | Resident FP8 QKV/Z and BF16 A/B pass 296,640 real outputs and all three sanitizers |
-| [Causal convolution](findings/causal-convolution.md) | Resident QKV to stateful convolution/SiLU implementation under validation |
+| [Causal convolution](findings/causal-convolution.md) | 184,320 real outputs pass; whole/chunk/token state exactly agrees; all three sanitizers clean |
 | [Prebuilt core target mismatch](dead-ends/prebuilt-core-target-mismatch.md) | Resolved by rebuilding core; emitted PTX executed |
 | [Racecheck timing repetitions](dead-ends/racecheck-timing-repetitions.md) | Failed with host OOM; bounded check-only recovery passed |
 

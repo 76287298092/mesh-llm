@@ -89,7 +89,7 @@ fn check_history(
         "partitions":reports,"chunk_outputs_exact":true,"chunk_final_history_exact":true,
         "history_words":3*channels,"history_order":"oldest-to-newest, time-major, raw pre-convolution input",
         "profile":"FP32 ordered multiply/add, BF16 convolution rounding, FP32 SiLU, BF16 output",
-        "reference_input":"downloaded independently-qualified projection BF16; GPU input is never replaced",
+        "reference_input":"host BF16 mirror for independent oracle; device input is never replaced between chunks",
         "state_transport":"out-of-place device history with ping-pong buffers; no host history replacement"}),
     )
 }
