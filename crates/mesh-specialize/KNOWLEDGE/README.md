@@ -5,7 +5,7 @@ Start with [the implementation plan](../PLAN.md) and the
 
 | Entry | Status |
 | --- | --- |
-| [Persistent residency](findings/persistent-residency.md) | Implementation in progress; all text weights and state allocation, full model pending |
+| [Persistent residency](findings/persistent-residency.md) | All 1,620 text weight hashes, 131K-capacity state allocation, entry operation and sanitizers pass; full model pending |
 | [Initial constraints](findings/initial-constraints.md) | Original assessment; execution evidence now in probe entry |
 | [Assembly inventory](asm-inventory.md) | NVFP4 probe executed and numerically checked |
 | [Baseline harness](findings/baseline-harness.md) | 18 focused tests and successful live baseline |

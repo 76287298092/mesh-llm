@@ -30,7 +30,11 @@ whole/chunk/token equivalence and sanitizers. Layer-3 sigmoid gating, output
 projection, residual/norm and MLP now pass independent whole-layer hidden/KV
 comparisons and all sanitizers for one and 17 tokens. FP8 rounding refinement was
 required to meet the unchanged per-token error budget; its performance cost is
-unmeasured. Full-model scheduling/logit parity and model execution remain open.
+unmeasured. All 1,620 text tensors now remain resident together in one verified
+device arena, with the 64-layer schedule's state allocated at capacity 131,072.
+Full readback hashes, zeroed state, resident entry operation and three sanitizers
+pass. This is allocation capacity, not tested inference context. Full-model
+scheduling/logit parity and model execution remain open.
 
 ## Objective and boundaries
 
@@ -165,7 +169,7 @@ that control's rates directly to MTP4 as an isolated speedup across different in
 | Fresh NInfer baseline | Complete for deployed serial profile | `KNOWLEDGE/findings/ninfer-baseline-20260926.md` |
 | Rust instruction gate | NVFP4 and 29 remaining probe cases pass; sanitizer checks clean | `KNOWLEDGE/findings/instruction-qualification.md` and prior NVFP4 evidence |
 | Representative GEMM/RMSNorm | 14 cases / 1,489,305 outputs pass; independent cuBLAS reference passes; profiling pending | `KNOWLEDGE/findings/representative-kernels.md` and `cuda-library-reference.md` |
-| Upstream push and carrack branch synchronization | Complete through full attention-layer trial | `8d5528f04`; original carrack branch retained |
+| Upstream push and carrack branch synchronization | Complete through persistent-residency trial | `4128e1cab`; original carrack branch retained |
 | First carrack Rust GPU trial | Complete | 32 cases, 4,096 exact output matches; Ninfer restored |
 | A01/A02 container, identity, reader and object assembly | 65 macOS / 68 Linux library tests pass; 17 Linux validator tests pass; low-descriptor checks pass | `KNOWLEDGE/findings/mspec-format.md` |
 | A03 pinned upstream import | Real-file import/readback passes; 82 macOS / 85 Linux library tests and 17 Linux validator tests pass | `KNOWLEDGE/findings/checkpoint-intake.md`; 22.52 GB artifact in 58.6 seconds |
@@ -183,7 +187,7 @@ that control's rates directly to MTP4 as an isolated speedup across different in
 | Q02 causal attention and KV | Partial: 110,592 real outputs pass; whole/chunk/token FP32/BF16 outputs and KV states exact; sanitizers clean | `KNOWLEDGE/findings/causal-attention.md`; full attention layer/model pending |
 | Q02 complete attention layer | Partial: one/17-token full layer and exact initialized K/V pass fixed aggregate/per-token budgets; sanitizers clean | `KNOWLEDGE/findings/full-attention-layer.md`; full-model scheduling/logits and performance remain pending |
 | H03 discovery and H04 ABI | Pending | No executable specialized model yet |
-| Persistent text weights and compiled state layout | In progress | `KNOWLEDGE/findings/persistent-residency.md`; live qualification pending |
+| Persistent text weights and compiled state layout | Allocation/transfer gate passes | `KNOWLEDGE/findings/persistent-residency.md`; all 1,620 hashes and 128 zeroed regions pass, first resident entry exact, sanitizers clean; decoder execution pending |
 | Full model performance/context trial | Pending | None |
 
 Validation belongs to the parent: serial focused Rust tests/check/Clippy, formatting,
