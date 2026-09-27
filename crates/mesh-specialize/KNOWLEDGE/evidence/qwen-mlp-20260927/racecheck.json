@@ -1,0 +1,2926 @@
+{
+  "activation_profile": "E4M3FN dynamic token scale in FP32; amax/448, zero scale replaced with 1; RNE finite saturation",
+  "all_passed": true,
+  "artifact_path": "/data/ai/models/mesh-specialize/qwen3.8-27b-f0b7c9e7-raw-v1.mspec",
+  "bf16_linear_resources": {
+    "local_bytes": 0,
+    "max_threads_per_block": 1024,
+    "registers": 34,
+    "static_shared_bytes": 0
+  },
+  "cases": [
+    {
+      "activation_codes_exact": true,
+      "activation_scales_exact": true,
+      "bf16_reference_differences": 3,
+      "convolution": {
+        "all_passed": true,
+        "chunk_final_history_exact": true,
+        "chunk_outputs_exact": true,
+        "elements": 10240,
+        "history_order": "oldest-to-newest, time-major, raw pre-convolution input",
+        "history_words": 30720,
+        "partitions": [
+          {
+            "checks": [
+              {
+                "bf16_reference_differences": 1,
+                "convolution_max_abs_error": 0.0,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 10240,
+                "full_scalar_activation_max_abs_error": 2.384185791015625e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 2.384185791015625e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              }
+            ],
+            "chunks": [
+              1
+            ],
+            "history_exact_at_every_boundary": true
+          }
+        ],
+        "profile": "FP32 ordered multiply/add, BF16 convolution rounding, FP32 SiLU, BF16 output",
+        "reference_input": "host BF16 mirror for independent oracle; device input is never replaced between chunks",
+        "shape_tc": [
+          1,
+          10240
+        ],
+        "state_transport": "out-of-place device history with ping-pong buffers; no host history replacement"
+      },
+      "elements": 10240,
+      "free_device_bytes_with_allocations": 29539565568,
+      "max_abs_error": 0.000011444091796875,
+      "numerical_mismatches": 0,
+      "passed": true,
+      "projection": "in_proj_qkv",
+      "rounding_mismatches": 0,
+      "shape_mnk": [
+        1,
+        10240,
+        5120
+      ],
+      "tokens": [
+        248044
+      ],
+      "tolerance": "1e-6 + 2e-6 * scaled sum(abs(products))",
+      "weight_format": "E4M3FN with BF16 per-channel scale"
+    },
+    {
+      "activation_codes_exact": true,
+      "activation_scales_exact": true,
+      "bf16_reference_differences": 1,
+      "elements": 6144,
+      "free_device_bytes_with_allocations": 29539565568,
+      "max_abs_error": 7.62939453125e-6,
+      "numerical_mismatches": 0,
+      "passed": true,
+      "projection": "in_proj_z",
+      "rounding_mismatches": 0,
+      "shape_mnk": [
+        1,
+        6144,
+        5120
+      ],
+      "tokens": [
+        248044
+      ],
+      "tolerance": "1e-6 + 2e-6 * scaled sum(abs(products))",
+      "weight_format": "E4M3FN with BF16 per-channel scale"
+    },
+    {
+      "activation_format": "resident normalized BF16, no quantization",
+      "bf16_reference_differences": 0,
+      "elements": 48,
+      "free_device_bytes_with_allocations": 29539565568,
+      "max_abs_error": 0.00003337860107421875,
+      "numerical_mismatches": 0,
+      "passed": true,
+      "projection": "in_proj_a",
+      "rounding_mismatches": 0,
+      "shape_mnk": [
+        1,
+        48,
+        5120
+      ],
+      "tokens": [
+        248044
+      ],
+      "tolerance": "1e-6 + 2e-6 * scaled sum(abs(products))",
+      "weight_format": "BF16"
+    },
+    {
+      "activation_format": "resident normalized BF16, no quantization",
+      "bf16_reference_differences": 0,
+      "elements": 48,
+      "free_device_bytes_with_allocations": 29539565568,
+      "max_abs_error": 0.000015974044799804688,
+      "numerical_mismatches": 0,
+      "passed": true,
+      "projection": "in_proj_b",
+      "rounding_mismatches": 0,
+      "shape_mnk": [
+        1,
+        48,
+        5120
+      ],
+      "tokens": [
+        248044
+      ],
+      "tolerance": "1e-6 + 2e-6 * scaled sum(abs(products))",
+      "weight_format": "BF16"
+    },
+    {
+      "mlp": {
+        "activation": {
+          "activated_bf16_reference_differences": 0,
+          "all_passed": true,
+          "elements": 17408,
+          "full_reference_max_abs_error": 0.0,
+          "intermediate_and_final_rounding_exact": true,
+          "output_bf16_reference_differences": 0,
+          "profile": "BF16 gate -> FP32 SiLU -> BF16 -> multiply BF16 up in FP32 -> BF16",
+          "silu_max_abs_error": 4.76837158203125e-7,
+          "tolerance": "3e-6 + 5e-6 * abs(reference SiLU)"
+        },
+        "all_passed": true,
+        "device_intermediates_resident": true,
+        "down": {
+          "bf16_reference_differences": 0,
+          "device_input_resident": true,
+          "elements": 5120,
+          "global_factor": 2.2569695374841103e-6,
+          "input_quantization": {
+            "all_passed": true,
+            "device_input_resident": true,
+            "effective_scales_exact": true,
+            "elements": 17408,
+            "groups": 1088,
+            "input_global_scale": 161.0,
+            "local_scales_exact": true,
+            "packed_codes_exact": true,
+            "profile": "FP32 (amax/6)*global -> E4M3FN RNE/saturate; zero scale -> 0.125; effective=local/global; signed E2M1 RNE/saturate; low nibble first",
+            "shape": [
+              1,
+              17408
+            ]
+          },
+          "max_abs_error": 0.000049591064453125,
+          "numerical_mismatches": 0,
+          "passed": true,
+          "projection": "down_proj",
+          "rounding_mismatches": 0,
+          "shape_mnk": [
+            1,
+            5120,
+            17408
+          ],
+          "tolerance": "1e-6 + 2e-6 * scaled sum(abs(products))",
+          "weight_global_scale": 2752.0
+        },
+        "full_layer_reference_compared": false,
+        "gate": {
+          "bf16_reference_differences": 0,
+          "device_input_resident": true,
+          "elements": 17408,
+          "global_factor": 1.8690191438963666e-7,
+          "input_quantization": {
+            "all_passed": true,
+            "device_input_resident": true,
+            "effective_scales_exact": true,
+            "elements": 5120,
+            "groups": 320,
+            "input_global_scale": 836.0,
+            "local_scales_exact": true,
+            "packed_codes_exact": true,
+            "profile": "FP32 (amax/6)*global -> E4M3FN RNE/saturate; zero scale -> 0.125; effective=local/global; signed E2M1 RNE/saturate; low nibble first",
+            "shape": [
+              1,
+              5120
+            ]
+          },
+          "max_abs_error": 0.0,
+          "numerical_mismatches": 0,
+          "passed": true,
+          "projection": "gate_proj",
+          "rounding_mismatches": 0,
+          "shape_mnk": [
+            1,
+            17408,
+            5120
+          ],
+          "tolerance": "1e-6 + 2e-6 * scaled sum(abs(products))",
+          "weight_global_scale": 6400.0
+        },
+        "residual": {
+          "all_passed": true,
+          "bf16_exact": true,
+          "device_inputs_resident": true,
+          "elements": 5120
+        },
+        "scope": "layer-zero GPU component chain complete; each component uses actual preceding device outputs for its scalar comparison; independent full-layer/logit comparison pending",
+        "up": {
+          "bf16_reference_differences": 0,
+          "device_input_resident": true,
+          "elements": 17408,
+          "global_factor": 1.8690191438963666e-7,
+          "input_quantization": {
+            "all_passed": true,
+            "device_input_resident": true,
+            "effective_scales_exact": true,
+            "elements": 5120,
+            "groups": 320,
+            "input_global_scale": 836.0,
+            "local_scales_exact": true,
+            "packed_codes_exact": true,
+            "profile": "FP32 (amax/6)*global -> E4M3FN RNE/saturate; zero scale -> 0.125; effective=local/global; signed E2M1 RNE/saturate; low nibble first",
+            "shape": [
+              1,
+              5120
+            ]
+          },
+          "max_abs_error": 0.0,
+          "numerical_mismatches": 0,
+          "passed": true,
+          "projection": "up_proj",
+          "rounding_mismatches": 0,
+          "shape_mnk": [
+            1,
+            17408,
+            5120
+          ],
+          "tolerance": "1e-6 + 2e-6 * scaled sum(abs(products))",
+          "weight_global_scale": 6400.0
+        }
+      },
+      "operation": "layer_zero_components",
+      "output": {
+        "all_passed": true,
+        "device_inputs_resident": true,
+        "gated_norm": {
+          "all_passed": true,
+          "elements": 6144,
+          "full_reference_output_max_abs_error": 2.9802322387695312e-8,
+          "intermediate_and_final_rounding_exact": true,
+          "normalized_bf16_reference_differences": 0,
+          "normalized_max_abs_error": 1.9073486328125e-6,
+          "normalized_tolerance": "2e-6 + 2e-6 * abs(reference)",
+          "output_bf16_reference_differences": 0,
+          "profile": "FP32 RMSNorm -> BF16 -> direct BF16 gamma multiplication -> BF16 -> FP32 SiLU gate -> BF16",
+          "silu_max_abs_error": 4.76837158203125e-7,
+          "silu_tolerance": "3e-6 + 5e-6 * abs(reference)",
+          "weighted_bf16_reference_differences": 0
+        },
+        "model_executable": false,
+        "output_projection": {
+          "activation_codes_exact": true,
+          "activation_scales_exact": true,
+          "bf16_reference_differences": 3,
+          "elements": 5120,
+          "max_abs_error": 3.0994415283203125e-6,
+          "numerical_mismatches": 0,
+          "passed": true,
+          "rounding_mismatches": 0,
+          "shape_mnk": [
+            1,
+            5120,
+            6144
+          ],
+          "tolerance": "1e-6 + 2e-6 * scaled sum(abs(products))"
+        },
+        "scope": "layer-zero attention components chained from resident embedding/norm; no independent full-layer or model logit parity yet"
+      },
+      "passed": true,
+      "post_attention": {
+        "all_passed": true,
+        "device_inputs_resident": true,
+        "elements": 5120,
+        "final_rounding_exact": true,
+        "normalized_bf16_reference_differences": 0,
+        "normalized_max_abs_error": 0.0,
+        "profile": "BF16 rounded residual addition -> FP32 zero-centered RMSNorm -> BF16",
+        "residual_bf16_exact": true,
+        "shape": [
+          1,
+          5120
+        ],
+        "tolerance": "2e-6 + 2e-6 * abs(reference)"
+      },
+      "preparation": {
+        "all_passed": true,
+        "beta": {
+          "allowed_bf16_ulp": 1,
+          "elements": 48,
+          "maximum_bf16_ulp": 0,
+          "reference_differences": 0
+        },
+        "decay": {
+          "absolute_tolerance": 3.000000106112566e-6,
+          "elements": 48,
+          "max_abs_error": 5.960464477539063e-8,
+          "mismatches": 0,
+          "passed": true,
+          "relative_tolerance": 4.999999873689376e-6
+        },
+        "device_inputs_resident": true,
+        "g": {
+          "absolute_tolerance": 3.000000106112566e-6,
+          "elements": 48,
+          "max_abs_error": 2.384185791015625e-7,
+          "mismatches": 0,
+          "passed": true,
+          "relative_tolerance": 4.999999873689376e-6
+        },
+        "k": {
+          "absolute_tolerance": 1.9999999949504854e-6,
+          "elements": 2048,
+          "max_abs_error": 5.960464477539063e-8,
+          "mismatches": 0,
+          "passed": true,
+          "relative_tolerance": 1.9999999949504854e-6
+        },
+        "model_executable": false,
+        "q": {
+          "absolute_tolerance": 1.9999999949504854e-6,
+          "elements": 2048,
+          "max_abs_error": 7.450580596923828e-9,
+          "mismatches": 0,
+          "passed": true,
+          "relative_tolerance": 1.9999999949504854e-6
+        },
+        "qk_head_mapping": "unrepeated key heads; value head maps to key head via integer division by value/key ratio",
+        "shape": {
+          "key_heads": 16,
+          "rows": 1,
+          "value_heads": 48,
+          "width": 128
+        }
+      },
+      "recurrence": {
+        "all_passed": true,
+        "chunk_final_state_exact": true,
+        "chunk_outputs_exact": true,
+        "device_inputs_resident": true,
+        "elements": 6144,
+        "model_executable": false,
+        "partitions": [
+          {
+            "chunks": [
+              1
+            ],
+            "output_bf16_exact": true,
+            "output_fp32_exact": true,
+            "state_elements_per_boundary": 786432,
+            "state_exact_at_every_boundary": true
+          }
+        ],
+        "qk_head_mapping": "value head divided by value/key head ratio",
+        "reference": "independent logical scalar, increasing-key ordered FP32 multiply/add; BF16 RNE output",
+        "shape": {
+          "key_heads": 16,
+          "rows": 1,
+          "value_heads": 48,
+          "width": 128
+        },
+        "state_elements": 786432,
+        "state_transport": "in-place resident FP32 state, one thread owns each value column; no host replacement between chunks",
+        "wide_reduction_diagnostic": {
+          "acceptance_gate": false,
+          "bf16_output_differences": 1,
+          "output_max_abs_error": 2.9802322387695312e-8,
+          "state_max_abs_error": 0.0
+        }
+      },
+      "tokens": [
+        248044
+      ]
+    },
+    {
+      "activation_codes_exact": true,
+      "activation_scales_exact": true,
+      "bf16_reference_differences": 22,
+      "convolution": {
+        "all_passed": true,
+        "chunk_final_history_exact": true,
+        "chunk_outputs_exact": true,
+        "elements": 174080,
+        "history_order": "oldest-to-newest, time-major, raw pre-convolution input",
+        "history_words": 30720,
+        "partitions": [
+          {
+            "checks": [
+              {
+                "bf16_reference_differences": 32,
+                "convolution_max_abs_error": 1.1920928955078125e-7,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 174080,
+                "full_scalar_activation_max_abs_error": 9.5367431640625e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 9.5367431640625e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              }
+            ],
+            "chunks": [
+              17
+            ],
+            "history_exact_at_every_boundary": true
+          },
+          {
+            "checks": [
+              {
+                "bf16_reference_differences": 5,
+                "convolution_max_abs_error": 0.0,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 10240,
+                "full_scalar_activation_max_abs_error": 4.76837158203125e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 4.76837158203125e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 27,
+                "convolution_max_abs_error": 1.1920928955078125e-7,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 163840,
+                "full_scalar_activation_max_abs_error": 9.5367431640625e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 9.5367431640625e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              }
+            ],
+            "chunks": [
+              1,
+              16
+            ],
+            "history_exact_at_every_boundary": true
+          },
+          {
+            "checks": [
+              {
+                "bf16_reference_differences": 9,
+                "convolution_max_abs_error": 0.0,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 20480,
+                "full_scalar_activation_max_abs_error": 9.5367431640625e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 9.5367431640625e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 0,
+                "convolution_max_abs_error": 2.9802322387695312e-8,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 10240,
+                "full_scalar_activation_max_abs_error": 9.5367431640625e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 9.5367431640625e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 23,
+                "convolution_max_abs_error": 1.1920928955078125e-7,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 143360,
+                "full_scalar_activation_max_abs_error": 9.5367431640625e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 9.5367431640625e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              }
+            ],
+            "chunks": [
+              2,
+              1,
+              14
+            ],
+            "history_exact_at_every_boundary": true
+          },
+          {
+            "checks": [
+              {
+                "bf16_reference_differences": 5,
+                "convolution_max_abs_error": 0.0,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 10240,
+                "full_scalar_activation_max_abs_error": 4.76837158203125e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 4.76837158203125e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 4,
+                "convolution_max_abs_error": 0.0,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 10240,
+                "full_scalar_activation_max_abs_error": 9.5367431640625e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 9.5367431640625e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 0,
+                "convolution_max_abs_error": 2.9802322387695312e-8,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 10240,
+                "full_scalar_activation_max_abs_error": 9.5367431640625e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 9.5367431640625e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 1,
+                "convolution_max_abs_error": 5.960464477539063e-8,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 10240,
+                "full_scalar_activation_max_abs_error": 9.5367431640625e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 9.5367431640625e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 6,
+                "convolution_max_abs_error": 5.960464477539063e-8,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 10240,
+                "full_scalar_activation_max_abs_error": 9.5367431640625e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 9.5367431640625e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 1,
+                "convolution_max_abs_error": 2.9802322387695312e-8,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 10240,
+                "full_scalar_activation_max_abs_error": 9.5367431640625e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 9.5367431640625e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 1,
+                "convolution_max_abs_error": 1.4901161193847656e-8,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 10240,
+                "full_scalar_activation_max_abs_error": 9.5367431640625e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 9.5367431640625e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 2,
+                "convolution_max_abs_error": 1.4901161193847656e-8,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 10240,
+                "full_scalar_activation_max_abs_error": 9.5367431640625e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 9.5367431640625e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 1,
+                "convolution_max_abs_error": 7.450580596923828e-9,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 10240,
+                "full_scalar_activation_max_abs_error": 9.5367431640625e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 9.5367431640625e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 2,
+                "convolution_max_abs_error": 1.4901161193847656e-8,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 10240,
+                "full_scalar_activation_max_abs_error": 9.5367431640625e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 9.5367431640625e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 1,
+                "convolution_max_abs_error": 2.9802322387695312e-8,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 10240,
+                "full_scalar_activation_max_abs_error": 9.5367431640625e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 9.5367431640625e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 0,
+                "convolution_max_abs_error": 2.9802322387695312e-8,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 10240,
+                "full_scalar_activation_max_abs_error": 9.5367431640625e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 9.5367431640625e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 1,
+                "convolution_max_abs_error": 2.9802322387695312e-8,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 10240,
+                "full_scalar_activation_max_abs_error": 9.5367431640625e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 9.5367431640625e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 1,
+                "convolution_max_abs_error": 2.9802322387695312e-8,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 10240,
+                "full_scalar_activation_max_abs_error": 9.5367431640625e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 9.5367431640625e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 1,
+                "convolution_max_abs_error": 2.9802322387695312e-8,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 10240,
+                "full_scalar_activation_max_abs_error": 9.5367431640625e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 9.5367431640625e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 3,
+                "convolution_max_abs_error": 2.9802322387695312e-8,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 10240,
+                "full_scalar_activation_max_abs_error": 9.5367431640625e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 9.5367431640625e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 2,
+                "convolution_max_abs_error": 1.1920928955078125e-7,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 10240,
+                "full_scalar_activation_max_abs_error": 9.5367431640625e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 9.5367431640625e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              }
+            ],
+            "chunks": [
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1
+            ],
+            "history_exact_at_every_boundary": true
+          }
+        ],
+        "profile": "FP32 ordered multiply/add, BF16 convolution rounding, FP32 SiLU, BF16 output",
+        "reference_input": "host BF16 mirror for independent oracle; device input is never replaced between chunks",
+        "shape_tc": [
+          17,
+          10240
+        ],
+        "state_transport": "out-of-place device history with ping-pong buffers; no host history replacement"
+      },
+      "elements": 174080,
+      "free_device_bytes_with_allocations": 29537468416,
+      "max_abs_error": 0.0000457763671875,
+      "numerical_mismatches": 0,
+      "passed": true,
+      "projection": "in_proj_qkv",
+      "rounding_mismatches": 0,
+      "shape_mnk": [
+        17,
+        10240,
+        5120
+      ],
+      "tokens": [
+        0,
+        7919,
+        15838,
+        23757,
+        31676,
+        39595,
+        47514,
+        55433,
+        63352,
+        71271,
+        79190,
+        87109,
+        95028,
+        102947,
+        110866,
+        118785,
+        126704
+      ],
+      "tolerance": "1e-6 + 2e-6 * scaled sum(abs(products))",
+      "weight_format": "E4M3FN with BF16 per-channel scale"
+    },
+    {
+      "activation_codes_exact": true,
+      "activation_scales_exact": true,
+      "bf16_reference_differences": 18,
+      "elements": 104448,
+      "free_device_bytes_with_allocations": 29537468416,
+      "max_abs_error": 0.0000324249267578125,
+      "numerical_mismatches": 0,
+      "passed": true,
+      "projection": "in_proj_z",
+      "rounding_mismatches": 0,
+      "shape_mnk": [
+        17,
+        6144,
+        5120
+      ],
+      "tokens": [
+        0,
+        7919,
+        15838,
+        23757,
+        31676,
+        39595,
+        47514,
+        55433,
+        63352,
+        71271,
+        79190,
+        87109,
+        95028,
+        102947,
+        110866,
+        118785,
+        126704
+      ],
+      "tolerance": "1e-6 + 2e-6 * scaled sum(abs(products))",
+      "weight_format": "E4M3FN with BF16 per-channel scale"
+    },
+    {
+      "activation_format": "resident normalized BF16, no quantization",
+      "bf16_reference_differences": 4,
+      "elements": 816,
+      "free_device_bytes_with_allocations": 29537468416,
+      "max_abs_error": 0.00006103515625,
+      "numerical_mismatches": 0,
+      "passed": true,
+      "projection": "in_proj_a",
+      "rounding_mismatches": 0,
+      "shape_mnk": [
+        17,
+        48,
+        5120
+      ],
+      "tokens": [
+        0,
+        7919,
+        15838,
+        23757,
+        31676,
+        39595,
+        47514,
+        55433,
+        63352,
+        71271,
+        79190,
+        87109,
+        95028,
+        102947,
+        110866,
+        118785,
+        126704
+      ],
+      "tolerance": "1e-6 + 2e-6 * scaled sum(abs(products))",
+      "weight_format": "BF16"
+    },
+    {
+      "activation_format": "resident normalized BF16, no quantization",
+      "bf16_reference_differences": 1,
+      "elements": 816,
+      "free_device_bytes_with_allocations": 29537468416,
+      "max_abs_error": 0.0000362396240234375,
+      "numerical_mismatches": 0,
+      "passed": true,
+      "projection": "in_proj_b",
+      "rounding_mismatches": 0,
+      "shape_mnk": [
+        17,
+        48,
+        5120
+      ],
+      "tokens": [
+        0,
+        7919,
+        15838,
+        23757,
+        31676,
+        39595,
+        47514,
+        55433,
+        63352,
+        71271,
+        79190,
+        87109,
+        95028,
+        102947,
+        110866,
+        118785,
+        126704
+      ],
+      "tolerance": "1e-6 + 2e-6 * scaled sum(abs(products))",
+      "weight_format": "BF16"
+    },
+    {
+      "mlp": {
+        "activation": {
+          "activated_bf16_reference_differences": 21,
+          "all_passed": true,
+          "elements": 295936,
+          "full_reference_max_abs_error": 2.0563602447509766e-6,
+          "intermediate_and_final_rounding_exact": true,
+          "output_bf16_reference_differences": 21,
+          "profile": "BF16 gate -> FP32 SiLU -> BF16 -> multiply BF16 up in FP32 -> BF16",
+          "silu_max_abs_error": 1.1920928955078125e-7,
+          "tolerance": "3e-6 + 5e-6 * abs(reference SiLU)"
+        },
+        "all_passed": true,
+        "device_intermediates_resident": true,
+        "down": {
+          "bf16_reference_differences": 0,
+          "device_input_resident": true,
+          "elements": 87040,
+          "global_factor": 2.2569695374841103e-6,
+          "input_quantization": {
+            "all_passed": true,
+            "device_input_resident": true,
+            "effective_scales_exact": true,
+            "elements": 295936,
+            "groups": 18496,
+            "input_global_scale": 161.0,
+            "local_scales_exact": true,
+            "packed_codes_exact": true,
+            "profile": "FP32 (amax/6)*global -> E4M3FN RNE/saturate; zero scale -> 0.125; effective=local/global; signed E2M1 RNE/saturate; low nibble first",
+            "shape": [
+              17,
+              17408
+            ]
+          },
+          "max_abs_error": 8.58306884765625e-6,
+          "numerical_mismatches": 0,
+          "passed": true,
+          "projection": "down_proj",
+          "rounding_mismatches": 0,
+          "shape_mnk": [
+            17,
+            5120,
+            17408
+          ],
+          "tolerance": "1e-6 + 2e-6 * scaled sum(abs(products))",
+          "weight_global_scale": 2752.0
+        },
+        "full_layer_reference_compared": false,
+        "gate": {
+          "bf16_reference_differences": 0,
+          "device_input_resident": true,
+          "elements": 295936,
+          "global_factor": 1.8690191438963666e-7,
+          "input_quantization": {
+            "all_passed": true,
+            "device_input_resident": true,
+            "effective_scales_exact": true,
+            "elements": 87040,
+            "groups": 5440,
+            "input_global_scale": 836.0,
+            "local_scales_exact": true,
+            "packed_codes_exact": true,
+            "profile": "FP32 (amax/6)*global -> E4M3FN RNE/saturate; zero scale -> 0.125; effective=local/global; signed E2M1 RNE/saturate; low nibble first",
+            "shape": [
+              17,
+              5120
+            ]
+          },
+          "max_abs_error": 0.0,
+          "numerical_mismatches": 0,
+          "passed": true,
+          "projection": "gate_proj",
+          "rounding_mismatches": 0,
+          "shape_mnk": [
+            17,
+            17408,
+            5120
+          ],
+          "tolerance": "1e-6 + 2e-6 * scaled sum(abs(products))",
+          "weight_global_scale": 6400.0
+        },
+        "residual": {
+          "all_passed": true,
+          "bf16_exact": true,
+          "device_inputs_resident": true,
+          "elements": 87040
+        },
+        "scope": "layer-zero GPU component chain complete; each component uses actual preceding device outputs for its scalar comparison; independent full-layer/logit comparison pending",
+        "up": {
+          "bf16_reference_differences": 0,
+          "device_input_resident": true,
+          "elements": 295936,
+          "global_factor": 1.8690191438963666e-7,
+          "input_quantization": {
+            "all_passed": true,
+            "device_input_resident": true,
+            "effective_scales_exact": true,
+            "elements": 87040,
+            "groups": 5440,
+            "input_global_scale": 836.0,
+            "local_scales_exact": true,
+            "packed_codes_exact": true,
+            "profile": "FP32 (amax/6)*global -> E4M3FN RNE/saturate; zero scale -> 0.125; effective=local/global; signed E2M1 RNE/saturate; low nibble first",
+            "shape": [
+              17,
+              5120
+            ]
+          },
+          "max_abs_error": 0.0,
+          "numerical_mismatches": 0,
+          "passed": true,
+          "projection": "up_proj",
+          "rounding_mismatches": 0,
+          "shape_mnk": [
+            17,
+            17408,
+            5120
+          ],
+          "tolerance": "1e-6 + 2e-6 * scaled sum(abs(products))",
+          "weight_global_scale": 6400.0
+        }
+      },
+      "operation": "layer_zero_components",
+      "output": {
+        "all_passed": true,
+        "device_inputs_resident": true,
+        "gated_norm": {
+          "all_passed": true,
+          "elements": 104448,
+          "full_reference_output_max_abs_error": 4.76837158203125e-7,
+          "intermediate_and_final_rounding_exact": true,
+          "normalized_bf16_reference_differences": 0,
+          "normalized_max_abs_error": 1.9073486328125e-6,
+          "normalized_tolerance": "2e-6 + 2e-6 * abs(reference)",
+          "output_bf16_reference_differences": 1,
+          "profile": "FP32 RMSNorm -> BF16 -> direct BF16 gamma multiplication -> BF16 -> FP32 SiLU gate -> BF16",
+          "silu_max_abs_error": 9.5367431640625e-7,
+          "silu_tolerance": "3e-6 + 5e-6 * abs(reference)",
+          "weighted_bf16_reference_differences": 0
+        },
+        "model_executable": false,
+        "output_projection": {
+          "activation_codes_exact": true,
+          "activation_scales_exact": true,
+          "bf16_reference_differences": 26,
+          "elements": 87040,
+          "max_abs_error": 0.0000553131103515625,
+          "numerical_mismatches": 0,
+          "passed": true,
+          "rounding_mismatches": 0,
+          "shape_mnk": [
+            17,
+            5120,
+            6144
+          ],
+          "tolerance": "1e-6 + 2e-6 * scaled sum(abs(products))"
+        },
+        "scope": "layer-zero attention components chained from resident embedding/norm; no independent full-layer or model logit parity yet"
+      },
+      "passed": true,
+      "post_attention": {
+        "all_passed": true,
+        "device_inputs_resident": true,
+        "elements": 87040,
+        "final_rounding_exact": true,
+        "normalized_bf16_reference_differences": 0,
+        "normalized_max_abs_error": 4.76837158203125e-7,
+        "profile": "BF16 rounded residual addition -> FP32 zero-centered RMSNorm -> BF16",
+        "residual_bf16_exact": true,
+        "shape": [
+          17,
+          5120
+        ],
+        "tolerance": "2e-6 + 2e-6 * abs(reference)"
+      },
+      "preparation": {
+        "all_passed": true,
+        "beta": {
+          "allowed_bf16_ulp": 1,
+          "elements": 816,
+          "maximum_bf16_ulp": 0,
+          "reference_differences": 0
+        },
+        "decay": {
+          "absolute_tolerance": 3.000000106112566e-6,
+          "elements": 816,
+          "max_abs_error": 8.940696716308594e-8,
+          "mismatches": 0,
+          "passed": true,
+          "relative_tolerance": 4.999999873689376e-6
+        },
+        "device_inputs_resident": true,
+        "g": {
+          "absolute_tolerance": 3.000000106112566e-6,
+          "elements": 816,
+          "max_abs_error": 2.384185791015625e-7,
+          "mismatches": 0,
+          "passed": true,
+          "relative_tolerance": 4.999999873689376e-6
+        },
+        "k": {
+          "absolute_tolerance": 1.9999999949504854e-6,
+          "elements": 34816,
+          "max_abs_error": 1.1920928955078125e-7,
+          "mismatches": 0,
+          "passed": true,
+          "relative_tolerance": 1.9999999949504854e-6
+        },
+        "model_executable": false,
+        "q": {
+          "absolute_tolerance": 1.9999999949504854e-6,
+          "elements": 34816,
+          "max_abs_error": 1.4901161193847656e-8,
+          "mismatches": 0,
+          "passed": true,
+          "relative_tolerance": 1.9999999949504854e-6
+        },
+        "qk_head_mapping": "unrepeated key heads; value head maps to key head via integer division by value/key ratio",
+        "shape": {
+          "key_heads": 16,
+          "rows": 17,
+          "value_heads": 48,
+          "width": 128
+        }
+      },
+      "recurrence": {
+        "all_passed": true,
+        "chunk_final_state_exact": true,
+        "chunk_outputs_exact": true,
+        "device_inputs_resident": true,
+        "elements": 104448,
+        "model_executable": false,
+        "partitions": [
+          {
+            "chunks": [
+              17
+            ],
+            "output_bf16_exact": true,
+            "output_fp32_exact": true,
+            "state_elements_per_boundary": 786432,
+            "state_exact_at_every_boundary": true
+          },
+          {
+            "chunks": [
+              1,
+              16
+            ],
+            "output_bf16_exact": true,
+            "output_fp32_exact": true,
+            "state_elements_per_boundary": 786432,
+            "state_exact_at_every_boundary": true
+          },
+          {
+            "chunks": [
+              2,
+              1,
+              14
+            ],
+            "output_bf16_exact": true,
+            "output_fp32_exact": true,
+            "state_elements_per_boundary": 786432,
+            "state_exact_at_every_boundary": true
+          },
+          {
+            "chunks": [
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1
+            ],
+            "output_bf16_exact": true,
+            "output_fp32_exact": true,
+            "state_elements_per_boundary": 786432,
+            "state_exact_at_every_boundary": true
+          }
+        ],
+        "qk_head_mapping": "value head divided by value/key head ratio",
+        "reference": "independent logical scalar, increasing-key ordered FP32 multiply/add; BF16 RNE output",
+        "shape": {
+          "key_heads": 16,
+          "rows": 17,
+          "value_heads": 48,
+          "width": 128
+        },
+        "state_elements": 786432,
+        "state_transport": "in-place resident FP32 state, one thread owns each value column; no host replacement between chunks",
+        "wide_reduction_diagnostic": {
+          "acceptance_gate": false,
+          "bf16_output_differences": 5,
+          "output_max_abs_error": 4.76837158203125e-7,
+          "state_max_abs_error": 3.337860107421875e-6
+        }
+      },
+      "tokens": [
+        0,
+        7919,
+        15838,
+        23757,
+        31676,
+        39595,
+        47514,
+        55433,
+        63352,
+        71271,
+        79190,
+        87109,
+        95028,
+        102947,
+        110866,
+        118785,
+        126704
+      ]
+    }
+  ],
+  "compiled_inventory": {
+    "fp8_mlp_layers": [
+      56,
+      57,
+      58,
+      59,
+      60,
+      61,
+      62,
+      63
+    ],
+    "full_attention_layers": [
+      3,
+      7,
+      11,
+      15,
+      19,
+      23,
+      27,
+      31,
+      35,
+      39,
+      43,
+      47,
+      51,
+      55,
+      59,
+      63
+    ],
+    "linear_attention_layers": [
+      0,
+      1,
+      2,
+      4,
+      5,
+      6,
+      8,
+      9,
+      10,
+      12,
+      13,
+      14,
+      16,
+      17,
+      18,
+      20,
+      21,
+      22,
+      24,
+      25,
+      26,
+      28,
+      29,
+      30,
+      32,
+      33,
+      34,
+      36,
+      37,
+      38,
+      40,
+      41,
+      42,
+      44,
+      45,
+      46,
+      48,
+      49,
+      50,
+      52,
+      53,
+      54,
+      56,
+      57,
+      58,
+      60,
+      61,
+      62
+    ],
+    "mtp_bytes": 849398784,
+    "mtp_tensors": 15,
+    "nvfp4_mlp_layers": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55
+    ],
+    "text_bytes": 21646480768,
+    "text_tensors": 1620
+  },
+  "convolution_fixtures": [
+    {
+      "all_passed": true,
+      "chunk_final_history_exact": true,
+      "chunk_outputs_exact": true,
+      "elements": 91,
+      "history_order": "oldest-to-newest, time-major, raw pre-convolution input",
+      "history_words": 39,
+      "partitions": [
+        {
+          "checks": [
+            {
+              "bf16_reference_differences": 0,
+              "convolution_max_abs_error": 0.0,
+              "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+              "elements": 91,
+              "full_scalar_activation_max_abs_error": 1.1920928955078125e-7,
+              "numerical_mismatches": 0,
+              "passed": true,
+              "rounding_mismatches": 0,
+              "silu_max_abs_error": 1.1920928955078125e-7,
+              "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+            }
+          ],
+          "chunks": [
+            7
+          ],
+          "history_exact_at_every_boundary": true
+        },
+        {
+          "checks": [
+            {
+              "bf16_reference_differences": 0,
+              "convolution_max_abs_error": 0.0,
+              "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+              "elements": 13,
+              "full_scalar_activation_max_abs_error": 1.1920928955078125e-7,
+              "numerical_mismatches": 0,
+              "passed": true,
+              "rounding_mismatches": 0,
+              "silu_max_abs_error": 1.1920928955078125e-7,
+              "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+            },
+            {
+              "bf16_reference_differences": 0,
+              "convolution_max_abs_error": 0.0,
+              "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+              "elements": 78,
+              "full_scalar_activation_max_abs_error": 1.1920928955078125e-7,
+              "numerical_mismatches": 0,
+              "passed": true,
+              "rounding_mismatches": 0,
+              "silu_max_abs_error": 1.1920928955078125e-7,
+              "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+            }
+          ],
+          "chunks": [
+            1,
+            6
+          ],
+          "history_exact_at_every_boundary": true
+        },
+        {
+          "checks": [
+            {
+              "bf16_reference_differences": 0,
+              "convolution_max_abs_error": 0.0,
+              "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+              "elements": 26,
+              "full_scalar_activation_max_abs_error": 1.1920928955078125e-7,
+              "numerical_mismatches": 0,
+              "passed": true,
+              "rounding_mismatches": 0,
+              "silu_max_abs_error": 1.1920928955078125e-7,
+              "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+            },
+            {
+              "bf16_reference_differences": 0,
+              "convolution_max_abs_error": 0.0,
+              "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+              "elements": 13,
+              "full_scalar_activation_max_abs_error": 5.960464477539063e-8,
+              "numerical_mismatches": 0,
+              "passed": true,
+              "rounding_mismatches": 0,
+              "silu_max_abs_error": 5.960464477539063e-8,
+              "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+            },
+            {
+              "bf16_reference_differences": 0,
+              "convolution_max_abs_error": 0.0,
+              "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+              "elements": 52,
+              "full_scalar_activation_max_abs_error": 1.1920928955078125e-7,
+              "numerical_mismatches": 0,
+              "passed": true,
+              "rounding_mismatches": 0,
+              "silu_max_abs_error": 1.1920928955078125e-7,
+              "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+            }
+          ],
+          "chunks": [
+            2,
+            1,
+            4
+          ],
+          "history_exact_at_every_boundary": true
+        },
+        {
+          "checks": [
+            {
+              "bf16_reference_differences": 0,
+              "convolution_max_abs_error": 0.0,
+              "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+              "elements": 13,
+              "full_scalar_activation_max_abs_error": 1.1920928955078125e-7,
+              "numerical_mismatches": 0,
+              "passed": true,
+              "rounding_mismatches": 0,
+              "silu_max_abs_error": 1.1920928955078125e-7,
+              "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+            },
+            {
+              "bf16_reference_differences": 0,
+              "convolution_max_abs_error": 0.0,
+              "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+              "elements": 13,
+              "full_scalar_activation_max_abs_error": 5.960464477539063e-8,
+              "numerical_mismatches": 0,
+              "passed": true,
+              "rounding_mismatches": 0,
+              "silu_max_abs_error": 5.960464477539063e-8,
+              "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+            },
+            {
+              "bf16_reference_differences": 0,
+              "convolution_max_abs_error": 0.0,
+              "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+              "elements": 13,
+              "full_scalar_activation_max_abs_error": 5.960464477539063e-8,
+              "numerical_mismatches": 0,
+              "passed": true,
+              "rounding_mismatches": 0,
+              "silu_max_abs_error": 5.960464477539063e-8,
+              "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+            },
+            {
+              "bf16_reference_differences": 0,
+              "convolution_max_abs_error": 0.0,
+              "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+              "elements": 13,
+              "full_scalar_activation_max_abs_error": 2.9802322387695312e-8,
+              "numerical_mismatches": 0,
+              "passed": true,
+              "rounding_mismatches": 0,
+              "silu_max_abs_error": 2.9802322387695312e-8,
+              "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+            },
+            {
+              "bf16_reference_differences": 0,
+              "convolution_max_abs_error": 0.0,
+              "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+              "elements": 13,
+              "full_scalar_activation_max_abs_error": 5.960464477539063e-8,
+              "numerical_mismatches": 0,
+              "passed": true,
+              "rounding_mismatches": 0,
+              "silu_max_abs_error": 5.960464477539063e-8,
+              "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+            },
+            {
+              "bf16_reference_differences": 0,
+              "convolution_max_abs_error": 0.0,
+              "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+              "elements": 13,
+              "full_scalar_activation_max_abs_error": 5.960464477539063e-8,
+              "numerical_mismatches": 0,
+              "passed": true,
+              "rounding_mismatches": 0,
+              "silu_max_abs_error": 5.960464477539063e-8,
+              "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+            },
+            {
+              "bf16_reference_differences": 0,
+              "convolution_max_abs_error": 0.0,
+              "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+              "elements": 13,
+              "full_scalar_activation_max_abs_error": 1.1920928955078125e-7,
+              "numerical_mismatches": 0,
+              "passed": true,
+              "rounding_mismatches": 0,
+              "silu_max_abs_error": 1.1920928955078125e-7,
+              "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+            }
+          ],
+          "chunks": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "history_exact_at_every_boundary": true
+        }
+      ],
+      "profile": "FP32 ordered multiply/add, BF16 convolution rounding, FP32 SiLU, BF16 output",
+      "reference_input": "host BF16 mirror for independent oracle; device input is never replaced between chunks",
+      "shape_tc": [
+        7,
+        13
+      ],
+      "state_transport": "out-of-place device history with ping-pong buffers; no host history replacement"
+    },
+    {
+      "all_passed": true,
+      "chunk_final_history_exact": true,
+      "chunk_outputs_exact": true,
+      "elements": 9,
+      "history_order": "oldest-to-newest, time-major, raw pre-convolution input",
+      "history_words": 27,
+      "partitions": [
+        {
+          "checks": [
+            {
+              "bf16_reference_differences": 1,
+              "convolution_max_abs_error": 0.0,
+              "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+              "elements": 9,
+              "full_scalar_activation_max_abs_error": 3.552713678800501e-15,
+              "numerical_mismatches": 0,
+              "passed": true,
+              "rounding_mismatches": 0,
+              "silu_max_abs_error": 3.552713678800501e-15,
+              "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+            }
+          ],
+          "chunks": [
+            1
+          ],
+          "history_exact_at_every_boundary": true
+        }
+      ],
+      "profile": "FP32 ordered multiply/add, BF16 convolution rounding, FP32 SiLU, BF16 output",
+      "reference_input": "host BF16 mirror for independent oracle; device input is never replaced between chunks",
+      "shape_tc": [
+        1,
+        9
+      ],
+      "state_transport": "out-of-place device history with ping-pong buffers; no host history replacement"
+    }
+  ],
+  "convolution_resources": {
+    "local_bytes": 0,
+    "max_threads_per_block": 1024,
+    "registers": 26,
+    "static_shared_bytes": 0
+  },
+  "device": {
+    "driver_version": 13040,
+    "major": 12,
+    "minor": 0,
+    "name": "NVIDIA GeForce RTX 5090",
+    "ordinal": 0,
+    "total_bytes": 33731248128,
+    "uuid": "GPU-80ded6bd-1a89-2628-3d94-902187dbab1d"
+  },
+  "elapsed_seconds": 41.306112695,
+  "fixture_cases": [
+    {
+      "activation_codes_exact": true,
+      "activation_scales_exact": true,
+      "bf16_reference_differences": 0,
+      "convolution": {
+        "all_passed": true,
+        "chunk_final_history_exact": true,
+        "chunk_outputs_exact": true,
+        "elements": 221,
+        "history_order": "oldest-to-newest, time-major, raw pre-convolution input",
+        "history_words": 39,
+        "partitions": [
+          {
+            "checks": [
+              {
+                "bf16_reference_differences": 0,
+                "convolution_max_abs_error": 0.0,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 221,
+                "full_scalar_activation_max_abs_error": 9.5367431640625e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 9.5367431640625e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              }
+            ],
+            "chunks": [
+              17
+            ],
+            "history_exact_at_every_boundary": true
+          },
+          {
+            "checks": [
+              {
+                "bf16_reference_differences": 0,
+                "convolution_max_abs_error": 0.0,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 13,
+                "full_scalar_activation_max_abs_error": 1.4901161193847656e-8,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 1.4901161193847656e-8,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 0,
+                "convolution_max_abs_error": 0.0,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 208,
+                "full_scalar_activation_max_abs_error": 9.5367431640625e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 9.5367431640625e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              }
+            ],
+            "chunks": [
+              1,
+              16
+            ],
+            "history_exact_at_every_boundary": true
+          },
+          {
+            "checks": [
+              {
+                "bf16_reference_differences": 0,
+                "convolution_max_abs_error": 0.0,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 26,
+                "full_scalar_activation_max_abs_error": 4.76837158203125e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 4.76837158203125e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 0,
+                "convolution_max_abs_error": 0.0,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 13,
+                "full_scalar_activation_max_abs_error": 9.5367431640625e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 9.5367431640625e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 0,
+                "convolution_max_abs_error": 0.0,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 182,
+                "full_scalar_activation_max_abs_error": 9.5367431640625e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 9.5367431640625e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              }
+            ],
+            "chunks": [
+              2,
+              1,
+              14
+            ],
+            "history_exact_at_every_boundary": true
+          },
+          {
+            "checks": [
+              {
+                "bf16_reference_differences": 0,
+                "convolution_max_abs_error": 0.0,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 13,
+                "full_scalar_activation_max_abs_error": 1.4901161193847656e-8,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 1.4901161193847656e-8,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 0,
+                "convolution_max_abs_error": 0.0,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 13,
+                "full_scalar_activation_max_abs_error": 4.76837158203125e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 4.76837158203125e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 0,
+                "convolution_max_abs_error": 0.0,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 13,
+                "full_scalar_activation_max_abs_error": 9.5367431640625e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 9.5367431640625e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 0,
+                "convolution_max_abs_error": 0.0,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 13,
+                "full_scalar_activation_max_abs_error": 9.5367431640625e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 9.5367431640625e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 0,
+                "convolution_max_abs_error": 0.0,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 13,
+                "full_scalar_activation_max_abs_error": 9.5367431640625e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 9.5367431640625e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 0,
+                "convolution_max_abs_error": 0.0,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 13,
+                "full_scalar_activation_max_abs_error": 4.76837158203125e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 4.76837158203125e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 0,
+                "convolution_max_abs_error": 0.0,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 13,
+                "full_scalar_activation_max_abs_error": 9.5367431640625e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 9.5367431640625e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 0,
+                "convolution_max_abs_error": 0.0,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 13,
+                "full_scalar_activation_max_abs_error": 4.76837158203125e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 4.76837158203125e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 0,
+                "convolution_max_abs_error": 0.0,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 13,
+                "full_scalar_activation_max_abs_error": 4.76837158203125e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 4.76837158203125e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 0,
+                "convolution_max_abs_error": 0.0,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 13,
+                "full_scalar_activation_max_abs_error": 4.76837158203125e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 4.76837158203125e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 0,
+                "convolution_max_abs_error": 0.0,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 13,
+                "full_scalar_activation_max_abs_error": 9.5367431640625e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 9.5367431640625e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 0,
+                "convolution_max_abs_error": 0.0,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 13,
+                "full_scalar_activation_max_abs_error": 9.5367431640625e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 9.5367431640625e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 0,
+                "convolution_max_abs_error": 0.0,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 13,
+                "full_scalar_activation_max_abs_error": 1.4901161193847656e-8,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 1.4901161193847656e-8,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 0,
+                "convolution_max_abs_error": 0.0,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 13,
+                "full_scalar_activation_max_abs_error": 4.76837158203125e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 4.76837158203125e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 0,
+                "convolution_max_abs_error": 0.0,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 13,
+                "full_scalar_activation_max_abs_error": 4.76837158203125e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 4.76837158203125e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 0,
+                "convolution_max_abs_error": 0.0,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 13,
+                "full_scalar_activation_max_abs_error": 9.5367431640625e-7,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 9.5367431640625e-7,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              },
+              {
+                "bf16_reference_differences": 0,
+                "convolution_max_abs_error": 0.0,
+                "convolution_tolerance": "1e-6 + 2e-6 * sum(abs(products))",
+                "elements": 13,
+                "full_scalar_activation_max_abs_error": 2.9802322387695312e-8,
+                "numerical_mismatches": 0,
+                "passed": true,
+                "rounding_mismatches": 0,
+                "silu_max_abs_error": 2.9802322387695312e-8,
+                "silu_tolerance": "2e-6 + 2e-6 * abs(f64 SiLU of rounded GPU convolution)"
+              }
+            ],
+            "chunks": [
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1
+            ],
+            "history_exact_at_every_boundary": true
+          }
+        ],
+        "profile": "FP32 ordered multiply/add, BF16 convolution rounding, FP32 SiLU, BF16 output",
+        "reference_input": "host BF16 mirror for independent oracle; device input is never replaced between chunks",
+        "shape_tc": [
+          17,
+          13
+        ],
+        "state_transport": "out-of-place device history with ping-pong buffers; no host history replacement"
+      },
+      "elements": 221,
+      "free_device_bytes_with_allocations": 32167297024,
+      "max_abs_error": 0.0,
+      "numerical_mismatches": 0,
+      "passed": true,
+      "projection": "signed-tail-fixture",
+      "rounding_mismatches": 0,
+      "shape_mnk": [
+        17,
+        13,
+        71
+      ],
+      "tokens": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+      ],
+      "tolerance": "1e-6 + 2e-6 * scaled sum(abs(products))",
+      "weight_format": "E4M3FN with BF16 per-channel scale"
+    },
+    {
+      "activation_format": "resident normalized BF16, no quantization",
+      "bf16_reference_differences": 0,
+      "elements": 221,
+      "free_device_bytes_with_allocations": 32167297024,
+      "max_abs_error": 0.0,
+      "numerical_mismatches": 0,
+      "passed": true,
+      "projection": "signed-bf16-tail-fixture",
+      "rounding_mismatches": 0,
+      "shape_mnk": [
+        17,
+        13,
+        71
+      ],
+      "tokens": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+      ],
+      "tolerance": "1e-6 + 2e-6 * scaled sum(abs(products))",
+      "weight_format": "BF16"
+    }
+  ],
+  "full_model_executed": false,
+  "gate_resources": {
+    "local_bytes": 0,
+    "max_threads_per_block": 1024,
+    "registers": 21,
+    "static_shared_bytes": 0
+  },
+  "gated_norm_fixtures": [
+    {
+      "all_passed": true,
+      "elements": 56,
+      "full_reference_output_max_abs_error": 1.1920928955078125e-7,
+      "groups": 7,
+      "intermediate_and_final_rounding_exact": true,
+      "normalized_bf16_reference_differences": 0,
+      "normalized_max_abs_error": 0.0,
+      "normalized_tolerance": "2e-6 + 2e-6 * abs(reference)",
+      "output_bf16_reference_differences": 0,
+      "profile": "FP32 RMSNorm -> BF16 -> direct BF16 gamma multiplication -> BF16 -> FP32 SiLU gate -> BF16",
+      "silu_max_abs_error": 4.76837158203125e-7,
+      "silu_tolerance": "3e-6 + 5e-6 * abs(reference)",
+      "weighted_bf16_reference_differences": 0,
+      "width": 8
+    },
+    {
+      "all_passed": true,
+      "elements": 3,
+      "full_reference_output_max_abs_error": 5.941505488737224e-43,
+      "groups": 3,
+      "intermediate_and_final_rounding_exact": true,
+      "normalized_bf16_reference_differences": 0,
+      "normalized_max_abs_error": 0.0,
+      "normalized_tolerance": "2e-6 + 2e-6 * abs(reference)",
+      "output_bf16_reference_differences": 0,
+      "profile": "FP32 RMSNorm -> BF16 -> direct BF16 gamma multiplication -> BF16 -> FP32 SiLU gate -> BF16",
+      "silu_max_abs_error": 4.708362840131385e-43,
+      "silu_tolerance": "3e-6 + 5e-6 * abs(reference)",
+      "weighted_bf16_reference_differences": 0,
+      "width": 1
+    },
+    {
+      "all_passed": true,
+      "elements": 768,
+      "full_reference_output_max_abs_error": 4.76837158203125e-7,
+      "groups": 3,
+      "intermediate_and_final_rounding_exact": true,
+      "normalized_bf16_reference_differences": 0,
+      "normalized_max_abs_error": 0.0,
+      "normalized_tolerance": "2e-6 + 2e-6 * abs(reference)",
+      "output_bf16_reference_differences": 0,
+      "profile": "FP32 RMSNorm -> BF16 -> direct BF16 gamma multiplication -> BF16 -> FP32 SiLU gate -> BF16",
+      "silu_max_abs_error": 4.76837158203125e-7,
+      "silu_tolerance": "3e-6 + 5e-6 * abs(reference)",
+      "weighted_bf16_reference_differences": 0,
+      "width": 256
+    }
+  ],
+  "gated_norm_resources": {
+    "local_bytes": 0,
+    "max_threads_per_block": 1024,
+    "registers": 23,
+    "static_shared_bytes": 1024
+  },
+  "gdn_fixtures": [
+    {
+      "all_passed": true,
+      "beta": {
+        "allowed_bf16_ulp": 1,
+        "elements": 42,
+        "maximum_bf16_ulp": 0,
+        "reference_differences": 0
+      },
+      "decay": {
+        "absolute_tolerance": 3.000000106112566e-6,
+        "elements": 42,
+        "max_abs_error": 1.1920928955078125e-7,
+        "mismatches": 0,
+        "passed": true,
+        "relative_tolerance": 4.999999873689376e-6
+      },
+      "device_inputs_resident": true,
+      "g": {
+        "absolute_tolerance": 3.000000106112566e-6,
+        "elements": 42,
+        "max_abs_error": 9.5367431640625e-7,
+        "mismatches": 0,
+        "passed": true,
+        "relative_tolerance": 4.999999873689376e-6
+      },
+      "k": {
+        "absolute_tolerance": 1.9999999949504854e-6,
+        "elements": 112,
+        "max_abs_error": 0.0,
+        "mismatches": 0,
+        "passed": true,
+        "relative_tolerance": 1.9999999949504854e-6
+      },
+      "model_executable": false,
+      "q": {
+        "absolute_tolerance": 1.9999999949504854e-6,
+        "elements": 112,
+        "max_abs_error": 0.0,
+        "mismatches": 0,
+        "passed": true,
+        "relative_tolerance": 1.9999999949504854e-6
+      },
+      "qk_head_mapping": "unrepeated key heads; value head maps to key head via integer division by value/key ratio",
+      "shape": {
+        "key_heads": 2,
+        "rows": 7,
+        "value_heads": 6,
+        "width": 8
+      }
+    },
+    {
+      "all_passed": true,
+      "beta": {
+        "allowed_bf16_ulp": 1,
+        "elements": 10,
+        "maximum_bf16_ulp": 0,
+        "reference_differences": 0
+      },
+      "decay": {
+        "absolute_tolerance": 3.000000106112566e-6,
+        "elements": 10,
+        "max_abs_error": 8.881784197001252e-16,
+        "mismatches": 0,
+        "passed": true,
+        "relative_tolerance": 4.999999873689376e-6
+      },
+      "device_inputs_resident": true,
+      "g": {
+        "absolute_tolerance": 3.000000106112566e-6,
+        "elements": 10,
+        "max_abs_error": 9.903520314283042e+27,
+        "mismatches": 0,
+        "passed": true,
+        "relative_tolerance": 4.999999873689376e-6
+      },
+      "k": {
+        "absolute_tolerance": 1.9999999949504854e-6,
+        "elements": 1,
+        "max_abs_error": 0.0,
+        "mismatches": 0,
+        "passed": true,
+        "relative_tolerance": 1.9999999949504854e-6
+      },
+      "model_executable": false,
+      "q": {
+        "absolute_tolerance": 1.9999999949504854e-6,
+        "elements": 1,
+        "max_abs_error": 0.0,
+        "mismatches": 0,
+        "passed": true,
+        "relative_tolerance": 1.9999999949504854e-6
+      },
+      "qk_head_mapping": "unrepeated key heads; value head maps to key head via integer division by value/key ratio",
+      "shape": {
+        "key_heads": 1,
+        "rows": 1,
+        "value_heads": 10,
+        "width": 1
+      }
+    }
+  ],
+  "gpu_chain": "embedding/norm -> FP8 quantization -> QKV -> convolution/SiLU -> Q/K normalization; normalized BF16 -> A/B -> beta/log-decay/decay gates -> recurrent matrix update -> gated RMSNorm using resident Z -> FP8 output projection -> BF16 residual add and zero-centered post-attention norm -> MLP NVFP4 gate/up -> BF16 SiLU product -> NVFP4 down -> second BF16 residual; device intermediates stay resident",
+  "identity": {
+    "model_id": "qwen3.8-27b:text:nvfp4-fp8:upstream-raw-v1",
+    "weights_id": "sha256:f49713878a072f8c9043060dc0e2f3b28421301e49471bee0c13c7570e59e81e"
+  },
+  "kind": "qwen-layer-zero-components-trial",
+  "linear_resources": {
+    "local_bytes": 0,
+    "max_threads_per_block": 1024,
+    "registers": 35,
+    "static_shared_bytes": 0
+  },
+  "memory_after": {
+    "free_bytes": 32169394176,
+    "total_bytes": 33731248128
+  },
+  "memory_before": {
+    "free_bytes": 32169394176,
+    "total_bytes": 33731248128
+  },
+  "mlp_activation_fixtures": [
+    {
+      "activated_bf16_reference_differences": 0,
+      "all_passed": true,
+      "elements": 1,
+      "full_reference_max_abs_error": 0.0,
+      "intermediate_and_final_rounding_exact": true,
+      "output_bf16_reference_differences": 0,
+      "profile": "BF16 gate -> FP32 SiLU -> BF16 -> multiply BF16 up in FP32 -> BF16",
+      "silu_max_abs_error": 0.0,
+      "tolerance": "3e-6 + 5e-6 * abs(reference SiLU)"
+    },
+    {
+      "activated_bf16_reference_differences": 0,
+      "all_passed": true,
+      "elements": 257,
+      "full_reference_max_abs_error": 0.0,
+      "intermediate_and_final_rounding_exact": true,
+      "output_bf16_reference_differences": 0,
+      "profile": "BF16 gate -> FP32 SiLU -> BF16 -> multiply BF16 up in FP32 -> BF16",
+      "silu_max_abs_error": 4.708362840131385e-43,
+      "tolerance": "3e-6 + 5e-6 * abs(reference SiLU)"
+    },
+    {
+      "activated_bf16_reference_differences": 0,
+      "all_passed": true,
+      "elements": 513,
+      "full_reference_max_abs_error": 0.0,
+      "intermediate_and_final_rounding_exact": true,
+      "output_bf16_reference_differences": 0,
+      "profile": "BF16 gate -> FP32 SiLU -> BF16 -> multiply BF16 up in FP32 -> BF16",
+      "silu_max_abs_error": 4.708362840131385e-43,
+      "tolerance": "3e-6 + 5e-6 * abs(reference SiLU)"
+    }
+  ],
+  "mlp_activation_resources": {
+    "local_bytes": 0,
+    "max_threads_per_block": 1024,
+    "registers": 20,
+    "static_shared_bytes": 0
+  },
+  "model_context_tokens": null,
+  "model_decode_tokens_per_second": null,
+  "model_executable": false,
+  "model_prefill_tokens_per_second": null,
+  "nvfp4_linear_fixtures": [
+    {
+      "bf16_reference_differences": 0,
+      "device_input_resident": true,
+      "elements": 1,
+      "global_factor": 0.1428571492433548,
+      "input_quantization": {
+        "all_passed": true,
+        "device_input_resident": true,
+        "effective_scales_exact": true,
+        "elements": 16,
+        "groups": 1,
+        "input_global_scale": 3.5,
+        "local_scales_exact": true,
+        "packed_codes_exact": true,
+        "profile": "FP32 (amax/6)*global -> E4M3FN RNE/saturate; zero scale -> 0.125; effective=local/global; signed E2M1 RNE/saturate; low nibble first",
+        "shape": [
+          1,
+          16
+        ]
+      },
+      "max_abs_error": 0.0,
+      "numerical_mismatches": 0,
+      "passed": true,
+      "projection": "signed-tail-fixture",
+      "rounding_mismatches": 0,
+      "shape_mnk": [
+        1,
+        1,
+        16
+      ],
+      "tolerance": "1e-6 + 2e-6 * scaled sum(abs(products))",
+      "weight_global_scale": 2.0
+    },
+    {
+      "bf16_reference_differences": 0,
+      "device_input_resident": true,
+      "elements": 221,
+      "global_factor": 0.1428571492433548,
+      "input_quantization": {
+        "all_passed": true,
+        "device_input_resident": true,
+        "effective_scales_exact": true,
+        "elements": 1360,
+        "groups": 85,
+        "input_global_scale": 3.5,
+        "local_scales_exact": true,
+        "packed_codes_exact": true,
+        "profile": "FP32 (amax/6)*global -> E4M3FN RNE/saturate; zero scale -> 0.125; effective=local/global; signed E2M1 RNE/saturate; low nibble first",
+        "shape": [
+          17,
+          80
+        ]
+      },
+      "max_abs_error": 0.0,
+      "numerical_mismatches": 0,
+      "passed": true,
+      "projection": "signed-tail-fixture",
+      "rounding_mismatches": 0,
+      "shape_mnk": [
+        17,
+        13,
+        80
+      ],
+      "tolerance": "1e-6 + 2e-6 * scaled sum(abs(products))",
+      "weight_global_scale": 2.0
+    }
+  ],
+  "nvfp4_linear_resources": {
+    "local_bytes": 0,
+    "max_threads_per_block": 1024,
+    "registers": 48,
+    "static_shared_bytes": 0
+  },
+  "nvfp4_quantization_fixtures": [
+    {
+      "all_passed": true,
+      "device_input_resident": true,
+      "effective_scales_exact": true,
+      "elements": 16,
+      "groups": 1,
+      "input_global_scale": 1.0,
+      "local_scales_exact": true,
+      "packed_codes_exact": true,
+      "profile": "FP32 (amax/6)*global -> E4M3FN RNE/saturate; zero scale -> 0.125; effective=local/global; signed E2M1 RNE/saturate; low nibble first",
+      "shape": [
+        1,
+        16
+      ]
+    },
+    {
+      "all_passed": true,
+      "device_input_resident": true,
+      "effective_scales_exact": true,
+      "elements": 16,
+      "groups": 1,
+      "input_global_scale": 1.0625,
+      "local_scales_exact": true,
+      "packed_codes_exact": true,
+      "profile": "FP32 (amax/6)*global -> E4M3FN RNE/saturate; zero scale -> 0.125; effective=local/global; signed E2M1 RNE/saturate; low nibble first",
+      "shape": [
+        1,
+        16
+      ]
+    },
+    {
+      "all_passed": true,
+      "device_input_resident": true,
+      "effective_scales_exact": true,
+      "elements": 16,
+      "groups": 1,
+      "input_global_scale": 1.1875,
+      "local_scales_exact": true,
+      "packed_codes_exact": true,
+      "profile": "FP32 (amax/6)*global -> E4M3FN RNE/saturate; zero scale -> 0.125; effective=local/global; signed E2M1 RNE/saturate; low nibble first",
+      "shape": [
+        1,
+        16
+      ]
+    },
+    {
+      "all_passed": true,
+      "device_input_resident": true,
+      "effective_scales_exact": true,
+      "elements": 16,
+      "groups": 1,
+      "input_global_scale": 1000.0,
+      "local_scales_exact": true,
+      "packed_codes_exact": true,
+      "profile": "FP32 (amax/6)*global -> E4M3FN RNE/saturate; zero scale -> 0.125; effective=local/global; signed E2M1 RNE/saturate; low nibble first",
+      "shape": [
+        1,
+        16
+      ]
+    },
+    {
+      "all_passed": true,
+      "device_input_resident": true,
+      "effective_scales_exact": true,
+      "elements": 96,
+      "groups": 6,
+      "input_global_scale": 3.5,
+      "local_scales_exact": true,
+      "packed_codes_exact": true,
+      "profile": "FP32 (amax/6)*global -> E4M3FN RNE/saturate; zero scale -> 0.125; effective=local/global; signed E2M1 RNE/saturate; low nibble first",
+      "shape": [
+        3,
+        32
+      ]
+    },
+    {
+      "all_passed": true,
+      "device_input_resident": true,
+      "effective_scales_exact": true,
+      "elements": 10240,
+      "groups": 640,
+      "input_global_scale": 127.0,
+      "local_scales_exact": true,
+      "packed_codes_exact": true,
+      "profile": "FP32 (amax/6)*global -> E4M3FN RNE/saturate; zero scale -> 0.125; effective=local/global; signed E2M1 RNE/saturate; low nibble first",
+      "shape": [
+        2,
+        5120
+      ]
+    }
+  ],
+  "nvfp4_quantize_resources": {
+    "local_bytes": 0,
+    "max_threads_per_block": 1024,
+    "registers": 21,
+    "static_shared_bytes": 0
+  },
+  "ptx_sha256": "e75136f4874be3765180d3ab3c2dd1c6fd70cb8415a87f7a2fa8e77b5febcb8f",
+  "qk_norm_resources": {
+    "local_bytes": 0,
+    "max_threads_per_block": 1024,
+    "registers": 23,
+    "static_shared_bytes": 2048
+  },
+  "quantization_fixtures": {
+    "codes_exact": true,
+    "coverage": "every finite signed E4M3 value and adjacent midpoint, signed zero, all-zero row, minimum BF16 subnormal",
+    "elements": 1518,
+    "rows": 3,
+    "scales_exact": true,
+    "width": 506
+  },
+  "quantize_resources": {
+    "local_bytes": 0,
+    "max_threads_per_block": 1024,
+    "registers": 22,
+    "static_shared_bytes": 1024
+  },
+  "recurrent_fixtures": [
+    {
+      "all_passed": true,
+      "chunk_final_state_exact": true,
+      "chunk_outputs_exact": true,
+      "device_inputs_resident": true,
+      "elements": 336,
+      "model_executable": false,
+      "partitions": [
+        {
+          "chunks": [
+            7
+          ],
+          "output_bf16_exact": true,
+          "output_fp32_exact": true,
+          "state_elements_per_boundary": 384,
+          "state_exact_at_every_boundary": true
+        },
+        {
+          "chunks": [
+            1,
+            6
+          ],
+          "output_bf16_exact": true,
+          "output_fp32_exact": true,
+          "state_elements_per_boundary": 384,
+          "state_exact_at_every_boundary": true
+        },
+        {
+          "chunks": [
+            2,
+            1,
+            4
+          ],
+          "output_bf16_exact": true,
+          "output_fp32_exact": true,
+          "state_elements_per_boundary": 384,
+          "state_exact_at_every_boundary": true
+        },
+        {
+          "chunks": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "output_bf16_exact": true,
+          "output_fp32_exact": true,
+          "state_elements_per_boundary": 384,
+          "state_exact_at_every_boundary": true
+        }
+      ],
+      "qk_head_mapping": "value head divided by value/key head ratio",
+      "reference": "independent logical scalar, increasing-key ordered FP32 multiply/add; BF16 RNE output",
+      "shape": {
+        "key_heads": 2,
+        "rows": 7,
+        "value_heads": 6,
+        "width": 8
+      },
+      "state_elements": 384,
+      "state_transport": "in-place resident FP32 state, one thread owns each value column; no host replacement between chunks",
+      "wide_reduction_diagnostic": {
+        "acceptance_gate": false,
+        "bf16_output_differences": 0,
+        "output_max_abs_error": 1.4901161193847656e-8,
+        "state_max_abs_error": 3.725290298461914e-9
+      }
+    },
+    {
+      "all_passed": true,
+      "chunk_final_state_exact": true,
+      "chunk_outputs_exact": true,
+      "device_inputs_resident": true,
+      "elements": 336,
+      "model_executable": false,
+      "partitions": [
+        {
+          "chunks": [
+            7
+          ],
+          "output_bf16_exact": true,
+          "output_fp32_exact": true,
+          "state_elements_per_boundary": 384,
+          "state_exact_at_every_boundary": true
+        },
+        {
+          "chunks": [
+            1,
+            6
+          ],
+          "output_bf16_exact": true,
+          "output_fp32_exact": true,
+          "state_elements_per_boundary": 384,
+          "state_exact_at_every_boundary": true
+        },
+        {
+          "chunks": [
+            2,
+            1,
+            4
+          ],
+          "output_bf16_exact": true,
+          "output_fp32_exact": true,
+          "state_elements_per_boundary": 384,
+          "state_exact_at_every_boundary": true
+        },
+        {
+          "chunks": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "output_bf16_exact": true,
+          "output_fp32_exact": true,
+          "state_elements_per_boundary": 384,
+          "state_exact_at_every_boundary": true
+        }
+      ],
+      "qk_head_mapping": "value head divided by value/key head ratio",
+      "reference": "independent logical scalar, increasing-key ordered FP32 multiply/add; BF16 RNE output",
+      "shape": {
+        "key_heads": 2,
+        "rows": 7,
+        "value_heads": 6,
+        "width": 8
+      },
+      "state_elements": 384,
+      "state_transport": "in-place resident FP32 state, one thread owns each value column; no host replacement between chunks",
+      "wide_reduction_diagnostic": {
+        "acceptance_gate": false,
+        "bf16_output_differences": 0,
+        "output_max_abs_error": 1.4901161193847656e-8,
+        "state_max_abs_error": 3.725290298461914e-9
+      }
+    },
+    {
+      "all_passed": true,
+      "chunk_final_state_exact": true,
+      "chunk_outputs_exact": true,
+      "device_inputs_resident": true,
+      "elements": 6,
+      "model_executable": false,
+      "partitions": [
+        {
+          "chunks": [
+            3
+          ],
+          "output_bf16_exact": true,
+          "output_fp32_exact": true,
+          "state_elements_per_boundary": 2,
+          "state_exact_at_every_boundary": true
+        },
+        {
+          "chunks": [
+            1,
+            2
+          ],
+          "output_bf16_exact": true,
+          "output_fp32_exact": true,
+          "state_elements_per_boundary": 2,
+          "state_exact_at_every_boundary": true
+        },
+        {
+          "chunks": [
+            1,
+            1,
+            1
+          ],
+          "output_bf16_exact": true,
+          "output_fp32_exact": true,
+          "state_elements_per_boundary": 2,
+          "state_exact_at_every_boundary": true
+        }
+      ],
+      "qk_head_mapping": "value head divided by value/key head ratio",
+      "reference": "independent logical scalar, increasing-key ordered FP32 multiply/add; BF16 RNE output",
+      "shape": {
+        "key_heads": 1,
+        "rows": 3,
+        "value_heads": 2,
+        "width": 1
+      },
+      "state_elements": 2,
+      "state_transport": "in-place resident FP32 state, one thread owns each value column; no host replacement between chunks",
+      "wide_reduction_diagnostic": {
+        "acceptance_gate": false,
+        "bf16_output_differences": 0,
+        "output_max_abs_error": 0.0,
+        "state_max_abs_error": 0.0
+      }
+    },
+    {
+      "all_passed": true,
+      "chunk_final_state_exact": true,
+      "chunk_outputs_exact": true,
+      "device_inputs_resident": true,
+      "elements": 6,
+      "model_executable": false,
+      "partitions": [
+        {
+          "chunks": [
+            3
+          ],
+          "output_bf16_exact": true,
+          "output_fp32_exact": true,
+          "state_elements_per_boundary": 2,
+          "state_exact_at_every_boundary": true
+        },
+        {
+          "chunks": [
+            1,
+            2
+          ],
+          "output_bf16_exact": true,
+          "output_fp32_exact": true,
+          "state_elements_per_boundary": 2,
+          "state_exact_at_every_boundary": true
+        },
+        {
+          "chunks": [
+            1,
+            1,
+            1
+          ],
+          "output_bf16_exact": true,
+          "output_fp32_exact": true,
+          "state_elements_per_boundary": 2,
+          "state_exact_at_every_boundary": true
+        }
+      ],
+      "qk_head_mapping": "value head divided by value/key head ratio",
+      "reference": "independent logical scalar, increasing-key ordered FP32 multiply/add; BF16 RNE output",
+      "shape": {
+        "key_heads": 1,
+        "rows": 3,
+        "value_heads": 2,
+        "width": 1
+      },
+      "state_elements": 2,
+      "state_transport": "in-place resident FP32 state, one thread owns each value column; no host replacement between chunks",
+      "wide_reduction_diagnostic": {
+        "acceptance_gate": false,
+        "bf16_output_differences": 0,
+        "output_max_abs_error": 0.0,
+        "state_max_abs_error": 0.0
+      }
+    },
+    {
+      "all_passed": true,
+      "chunk_final_state_exact": true,
+      "chunk_outputs_exact": true,
+      "device_inputs_resident": true,
+      "elements": 768,
+      "model_executable": false,
+      "partitions": [
+        {
+          "chunks": [
+            3
+          ],
+          "output_bf16_exact": true,
+          "output_fp32_exact": true,
+          "state_elements_per_boundary": 65536,
+          "state_exact_at_every_boundary": true
+        },
+        {
+          "chunks": [
+            1,
+            2
+          ],
+          "output_bf16_exact": true,
+          "output_fp32_exact": true,
+          "state_elements_per_boundary": 65536,
+          "state_exact_at_every_boundary": true
+        },
+        {
+          "chunks": [
+            1,
+            1,
+            1
+          ],
+          "output_bf16_exact": true,
+          "output_fp32_exact": true,
+          "state_elements_per_boundary": 65536,
+          "state_exact_at_every_boundary": true
+        }
+      ],
+      "qk_head_mapping": "value head divided by value/key head ratio",
+      "reference": "independent logical scalar, increasing-key ordered FP32 multiply/add; BF16 RNE output",
+      "shape": {
+        "key_heads": 1,
+        "rows": 3,
+        "value_heads": 1,
+        "width": 256
+      },
+      "state_elements": 65536,
+      "state_transport": "in-place resident FP32 state, one thread owns each value column; no host replacement between chunks",
+      "wide_reduction_diagnostic": {
+        "acceptance_gate": false,
+        "bf16_output_differences": 0,
+        "output_max_abs_error": 2.2351741790771484e-8,
+        "state_max_abs_error": 9.313225746154785e-10
+      }
+    },
+    {
+      "all_passed": true,
+      "chunk_final_state_exact": true,
+      "chunk_outputs_exact": true,
+      "device_inputs_resident": true,
+      "elements": 768,
+      "model_executable": false,
+      "partitions": [
+        {
+          "chunks": [
+            3
+          ],
+          "output_bf16_exact": true,
+          "output_fp32_exact": true,
+          "state_elements_per_boundary": 65536,
+          "state_exact_at_every_boundary": true
+        },
+        {
+          "chunks": [
+            1,
+            2
+          ],
+          "output_bf16_exact": true,
+          "output_fp32_exact": true,
+          "state_elements_per_boundary": 65536,
+          "state_exact_at_every_boundary": true
+        },
+        {
+          "chunks": [
+            1,
+            1,
+            1
+          ],
+          "output_bf16_exact": true,
+          "output_fp32_exact": true,
+          "state_elements_per_boundary": 65536,
+          "state_exact_at_every_boundary": true
+        }
+      ],
+      "qk_head_mapping": "value head divided by value/key head ratio",
+      "reference": "independent logical scalar, increasing-key ordered FP32 multiply/add; BF16 RNE output",
+      "shape": {
+        "key_heads": 1,
+        "rows": 3,
+        "value_heads": 1,
+        "width": 256
+      },
+      "state_elements": 65536,
+      "state_transport": "in-place resident FP32 state, one thread owns each value column; no host replacement between chunks",
+      "wide_reduction_diagnostic": {
+        "acceptance_gate": false,
+        "bf16_output_differences": 0,
+        "output_max_abs_error": 2.2351741790771484e-8,
+        "state_max_abs_error": 9.313225746154785e-10
+      }
+    }
+  ],
+  "recurrent_resources": {
+    "local_bytes": 0,
+    "max_threads_per_block": 1024,
+    "registers": 35,
+    "static_shared_bytes": 0
+  },
+  "residual_add_fixtures": [
+    {
+      "all_passed": true,
+      "bf16_exact": true,
+      "device_inputs_resident": true,
+      "elements": 1
+    },
+    {
+      "all_passed": true,
+      "bf16_exact": true,
+      "device_inputs_resident": true,
+      "elements": 257
+    }
+  ],
+  "residual_add_resources": {
+    "local_bytes": 0,
+    "max_threads_per_block": 1024,
+    "registers": 14,
+    "static_shared_bytes": 0
+  },
+  "residual_norm_fixtures": [
+    {
+      "all_passed": true,
+      "device_inputs_resident": true,
+      "elements": 3,
+      "final_rounding_exact": true,
+      "normalized_bf16_reference_differences": 0,
+      "normalized_max_abs_error": 0.0,
+      "profile": "BF16 rounded residual addition -> FP32 zero-centered RMSNorm -> BF16",
+      "residual_bf16_exact": true,
+      "shape": [
+        3,
+        1
+      ],
+      "tolerance": "2e-6 + 2e-6 * abs(reference)"
+    },
+    {
+      "all_passed": true,
+      "device_inputs_resident": true,
+      "elements": 213,
+      "final_rounding_exact": true,
+      "normalized_bf16_reference_differences": 0,
+      "normalized_max_abs_error": 0.0,
+      "profile": "BF16 rounded residual addition -> FP32 zero-centered RMSNorm -> BF16",
+      "residual_bf16_exact": true,
+      "shape": [
+        3,
+        71
+      ],
+      "tolerance": "2e-6 + 2e-6 * abs(reference)"
+    },
+    {
+      "all_passed": true,
+      "device_inputs_resident": true,
+      "elements": 10240,
+      "final_rounding_exact": true,
+      "normalized_bf16_reference_differences": 0,
+      "normalized_max_abs_error": 0.0,
+      "profile": "BF16 rounded residual addition -> FP32 zero-centered RMSNorm -> BF16",
+      "residual_bf16_exact": true,
+      "shape": [
+        2,
+        5120
+      ],
+      "tolerance": "2e-6 + 2e-6 * abs(reference)"
+    }
+  ],
+  "residual_norm_resources": {
+    "local_bytes": 0,
+    "max_threads_per_block": 1024,
+    "registers": 22,
+    "static_shared_bytes": 1024
+  },
+  "schema_version": 8,
+  "timing_collected": false
+}
