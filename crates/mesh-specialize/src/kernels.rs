@@ -1,5 +1,49 @@
 //! Device-specific instruction qualification, separate from model execution.
 
+pub enum DecoderBlockKind {
+    Gdn,
+    Attention,
+}
+pub enum DecoderMlpKind {
+    Nvfp4,
+    Fp8,
+}
+pub struct DecoderLayer {
+    pub prefix: String,
+    pub state_prefix: String,
+    pub block: DecoderBlockKind,
+    pub mlp: DecoderMlpKind,
+}
+pub struct DecoderConfig {
+    pub layers: Vec<DecoderLayer>,
+    pub gdn_shape: GdnShape,
+    pub attention_shape: ResidentAttentionShape,
+    pub embedding_table: String,
+    pub first_norm: String,
+    pub final_norm: String,
+    pub head_prefix: String,
+    pub hidden: usize,
+    pub vocabulary: usize,
+    pub capacity: usize,
+    pub state_layout: crate::engine::layout::Layout,
+}
+pub fn model_check(
+    ptx: &str,
+    device: i32,
+    artifact: &mut crate::artifact::reader::VerifiedArtifact,
+    objects: &[crate::artifact::schema::Object],
+    config: &DecoderConfig,
+    reference: &crate::packages::qwen3_8_27b::model_reference::ModelReference,
+) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::resident_model_trial::run(ptx, device, artifact, objects, config, reference);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device, artifact, objects, config, reference);
+        anyhow::bail!("Model trial requires Linux")
+    }
+}
+
 pub struct ResidentAttentionShape {
     pub hidden: usize,
     pub intermediate: usize,

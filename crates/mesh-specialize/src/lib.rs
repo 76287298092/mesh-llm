@@ -6,6 +6,15 @@ pub mod engine;
 pub mod kernels;
 pub mod packages;
 
+#[path = "../reference/decoder_attention.rs"]
+pub mod decoder_attention_reference;
+#[path = "../reference/decoder_gdn.rs"]
+pub mod decoder_gdn_reference;
+#[path = "../reference/decoder_mlp.rs"]
+pub mod decoder_mlp_reference;
+#[path = "../reference/decoder_ops.rs"]
+pub mod decoder_ops_reference;
+
 #[path = "../reference/embedding_norm.rs"]
 pub mod entry_reference;
 
