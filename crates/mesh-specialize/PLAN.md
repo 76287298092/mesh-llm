@@ -1,13 +1,14 @@
 # Specialized Qwen runtime implementation plan
 
-Status: connected 64-layer GPU decoder and first performance iteration qualified.
+Status: connected 64-layer GPU decoder and dedicated decode optimization qualified.
 The retained two-token hidden/logit/state reference matches exactly and all three
-CUDA sanitizers pass. Matched three-sample medians improved short-prefix decode
-from 1.55 to 20.07 tokens/s, 128-prefix decode from 1.55 to 18.15, and 128-input
-prefill from 19.18 to 136.83. Both short/128-prefix profiles pass equality and
-memory-release checks. See [performance results and remaining gaps](KNOWLEDGE/optimizations/decode-projections.md).
-Text quality, longer-context qualification and matched Ninfer performance remain
-open. This pass does not establish performance parity or serving readiness.
+CUDA sanitizers pass. Current medians are 25.26 short-prefix decode and 22.37
+after 128 inputs, up from the original 1.55 tokens/s. Whole/token partition checks
+also pass at 512 input tokens. Prefill now reaches 259.38 tokens/s at 128 inputs and 296.58
+at 512 with exact tensor-core tiles and all sanitizer checks passing. See [dedicated decode](KNOWLEDGE/optimizations/dedicated-decode.md)
+and [larger prefill](KNOWLEDGE/optimizations/larger-prefill.md).
+Text quality, broader context qualification and matched Ninfer performance remain
+open. These raw-token trials do not establish performance parity or serving readiness.
 
 Host policy now checks exact model/weights and explicit selected-device admission.
 The [live device-policy trial](KNOWLEDGE/findings/selected-device-admission.md)
@@ -54,8 +55,9 @@ its schedule; speculative target verification must agree with ordinary decode.
 1. Dedicated NVFP4 decode: first improvement complete. Exact grouped dots reach
    25.26 short / 22.37 after 128 inputs; independent checks and sanitizers pass.
    See [dedicated decode evidence](KNOWLEDGE/optimizations/dedicated-decode.md).
-2. Larger prefill tiles and weight reuse, with independent reference and partition
-   agreement before measuring. Preserve failed candidates and select by model timing.
+2. Larger prefill: first improvement complete. Exact 16x8 FP8 tensor-core tiles
+   reach 259.38 / 296.58 input tokens/s at 128 / 512, with independent arithmetic,
+   whole/token partition and sanitizer evidence. Further tiling remains a measured follow-up.
 3. Resident MTP head, draft state, target verification and rollback. Prove accepted
    output agrees with target-only greedy decoding, exercise rejection and rollback,
    then measure accepted tokens per forward and end-to-end throughput.

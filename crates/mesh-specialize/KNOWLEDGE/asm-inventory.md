@@ -88,17 +88,19 @@ passes both profiles and all sanitizers. See the preserved failed evidence.
 
 `nvfp4_decode.rs` reads lane/CTA coordinates and reuses the qualified NVFP4 MMA,
 packed loaders and output conversion with weight/activation operands transposed.
-Independent signed/tail and whole-model checks qualify the new layout. Status:
-pending in [dedicated decode](optimizations/dedicated-decode.md).
+Independent signed/tail and whole-model checks pass, but model gain was below 1%.
+The resident path selects the grouped-dot candidate instead; see
+[dedicated decode](optimizations/dedicated-decode.md).
 
 `nvfp4_decode_exact.rs` adds packed signed-byte DP4A and coordinates, reusing the
 qualified i64 warp reduction and conversion helpers. Reference: independent
 logical NVFP4 oracle and [NVIDIA DP4A semantics](https://docs.nvidia.com/cuda/parallel-thread-execution/index.html#integer-arithmetic-instructions-dp4a).
-Qualification pending in the dedicated-decode record.
+Independent exact output fixtures, full-model state/logits and all three sanitizers
+pass. The dedicated-decode record contains hashes and retained timings.
 
-- `kernels/nvptx/fp8_prefill_exact.rs`: planned exact base-128 decomposition
+- `kernels/nvptx/fp8_prefill_exact.rs`: exact base-128 decomposition
   uses the already-qualified `mma.sync.aligned.m16n8k32.row.col.s32.s8.s8.s32`
   instruction from `ordinary_mma.rs`. Four signed64 output sums reconstruct nine
   digit-pair products per K32. Finite-code/tail/max-width independent probes cover
-  the new tile. Qualification and performance pending; see
+  the new tile. Exact full-model/512-token partition and all sanitizer checks pass; see
   [larger prefill](optimizations/larger-prefill.md).
