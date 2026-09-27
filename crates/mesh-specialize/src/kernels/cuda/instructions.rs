@@ -7,7 +7,7 @@ use anyhow::{Result, ensure};
 use serde_json::{Value, json};
 use std::ffi::c_void;
 
-pub(super) fn run(ptx: &str, device: i32) -> Result<Value> {
+pub(in crate::kernels) fn run(ptx: &str, device: i32) -> Result<Value> {
     ensure!(
         ptx.contains(".target sm_120a"),
         "instruction probes must target sm_120a"
