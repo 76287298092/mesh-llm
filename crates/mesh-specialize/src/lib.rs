@@ -18,6 +18,11 @@ pub mod gdn_prepare_reference;
 pub mod gdn_recurrent_reference;
 #[path = "../reference/projections.rs"]
 pub mod projection_reference;
+#[path = "../reference/residual_norm.rs"]
+pub mod residual_norm_reference;
 
 #[path = "../reference/arithmetic.rs"]
 pub mod reference;
+
+#[path = "../reference/nvfp4_quantize.rs"]
+pub mod nvfp4_quantize_reference;

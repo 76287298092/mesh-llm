@@ -15,6 +15,7 @@ mod memory;
 mod nvfp4_gemm;
 mod ordinary_mma;
 mod register_budget;
+mod residual_norm;
 mod rms_norm;
 
 #[panic_handler]
@@ -82,3 +83,5 @@ pub unsafe extern "ptx-kernel" fn probe_nvfp4_mma(
         output.add(lane * 4 + 3).write(d3);
     }
 }
+
+mod nvfp4_quantize;

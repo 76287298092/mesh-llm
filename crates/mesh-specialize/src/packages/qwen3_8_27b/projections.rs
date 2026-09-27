@@ -3,7 +3,7 @@ use crate::{
     artifact::reader::VerifiedArtifact,
     kernels::{
         Bf16Projection, CausalConv4Weights, EmbeddingNormInput, Fp8Projection, GdnOutputWeights,
-        GdnWeights, ProjectionInput,
+        GdnWeights, ProjectionInput, ResidualNormWeights,
     },
 };
 use anyhow::Result;
@@ -83,7 +83,30 @@ pub fn trial(path: &Path, ptx: &str, device: i32) -> Result<Value> {
         &format!("{prefix}.out_proj.weight_scale"),
         &mut output_scales,
     )?;
+    let mut post_attention_weight = Vec::new();
+    artifact.copy_object(
+        "tensors/model.language_model.layers.0.post_attention_layernorm.weight",
+        &mut post_attention_weight,
+    )?;
+    let mut mlp_input_scales = Vec::new();
+    for name in ["gate_proj", "up_proj"] {
+        let mut bytes = Vec::new();
+        artifact.copy_object(
+            &format!("tensors/model.language_model.layers.0.mlp.{name}.input_global_scale"),
+            &mut bytes,
+        )?;
+        let raw: [u8; 4] = bytes
+            .try_into()
+            .map_err(|_| anyhow::anyhow!("MLP input global scale extent mismatch"))?;
+        mlp_input_scales.push((name.into(), f32::from_le_bytes(raw)));
+    }
     let input = ProjectionInput {
+        mlp_input_scales,
+
+        post_attention_norm: Some(ResidualNormWeights {
+            weight: post_attention_weight,
+            epsilon: 1e-6,
+        }),
         entry,
         projections,
         bf16_projections,

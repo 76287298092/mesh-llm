@@ -69,13 +69,19 @@ pub(super) fn validate(input: &ProjectionInput, weights: &GdnOutputWeights) -> R
     Ok(())
 }
 
-pub(super) fn check(
-    context: &Context,
-    module: &Module<'_>,
+pub(super) struct CheckedOutput<'a> {
+    pub(super) output: Buffer<'a>,
+    pub(super) words: Vec<u16>,
+    pub(super) report: Value,
+}
+
+pub(super) fn check<'a>(
+    context: &'a Context,
+    module: &Module<'a>,
     input: Input<'_, '_>,
     weights: &GdnOutputWeights,
     shape: [usize; 3],
-) -> Result<Value> {
+) -> Result<CheckedOutput<'a>> {
     let [rows, heads, width] = shape;
     let norm = normalize(
         context,
@@ -133,11 +139,14 @@ pub(super) fn check(
     report["shape_mnk"] = json!([rows, channels, inner]);
     report["activation_codes_exact"] = json!(true);
     report["activation_scales_exact"] = json!(true);
-    Ok(
-        json!({"all_passed":true,"gated_norm":norm.report,"output_projection":report,
+    let report = json!({"all_passed":true,"gated_norm":norm.report,"output_projection":report,
         "device_inputs_resident":true,"model_executable":false,
-        "scope":"layer-zero attention components chained from resident embedding/norm; no independent full-layer or model logit parity yet"}),
-    )
+        "scope":"layer-zero attention components chained from resident embedding/norm; no independent full-layer or model logit parity yet"});
+    Ok(CheckedOutput {
+        output: result.bf16,
+        words: actual.0,
+        report,
+    })
 }
 
 struct Normalized<'a> {

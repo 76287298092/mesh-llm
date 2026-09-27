@@ -9,6 +9,7 @@ mod gdn_recurrent;
 mod gemm;
 pub(super) mod instructions;
 pub(super) mod projections;
+mod residual_norm;
 mod rms_norm;
 pub(super) mod workloads;
 
@@ -184,3 +185,5 @@ fn compare(actual: &[f32], expected: &[f32]) -> Result<(f32, usize)> {
     }
     Ok((max_error, mismatches))
 }
+
+mod nvfp4_quantize;

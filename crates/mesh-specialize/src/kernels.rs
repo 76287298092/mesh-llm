@@ -23,6 +23,13 @@ pub struct ProjectionInput {
     pub convolution: Option<CausalConv4Weights>,
     pub gdn: Option<GdnWeights>,
     pub gdn_output: Option<GdnOutputWeights>,
+    pub post_attention_norm: Option<ResidualNormWeights>,
+    pub mlp_input_scales: Vec<(String, f32)>,
+}
+
+pub struct ResidualNormWeights {
+    pub weight: Vec<u8>,
+    pub epsilon: f32,
 }
 
 pub struct GdnOutputWeights {
