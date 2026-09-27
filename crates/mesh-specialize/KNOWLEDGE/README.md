@@ -5,7 +5,7 @@ Start with [the implementation plan](../PLAN.md) and the
 
 | Entry | Status |
 | --- | --- |
-| [Resident decoder connection](findings/resident-decoder.md) | Operation wrappers and persistent state wiring in progress; connected qualification pending |
+| [Resident decoder connection](findings/resident-decoder.md) | Resident GDN block, whole/chunk/token state equivalence and sanitizers pass; full decoder pending |
 | [Resident FP8 MLP](findings/resident-fp8-mlp.md) | Layers 56/63 one/17-token scalar comparisons and three sanitizers pass; reference-free device execution |
 | [Persistent residency](findings/persistent-residency.md) | All 1,620 text weight hashes, 131K-capacity state allocation, entry operation and sanitizers pass; full model pending |
 | [Initial constraints](findings/initial-constraints.md) | Original assessment; execution evidence now in probe entry |
