@@ -264,3 +264,22 @@ not a stable performance or quality claim. Four-way is selected for the next
 32-output, three-repetition Python/prose comparison because its screening result
 is within 0.7% of sixteen-way with one-quarter the partial storage. No default
 change. Ninfer remained inactive and ComfyUI PID448118 remained resident.
+
+Repeated model comparison (`splitk-bench-1`, source `a06b71bfa`, same PTX):
+32 output tokens, depth four, three repetitions, full-forward recovery,
+sequential paired shared-GPU timings with ComfyUI resident:
+
+| Prompt | Control median tokens/s | Split4 median tokens/s | Change |
+| --- | ---: | ---: | ---: |
+| Python | 40.0866 | 48.4357 | +20.83% |
+| Prose | 13.2723 | 14.9865 | +12.91% |
+
+Both profiles retain identical generated tokens and complete target-state hashes,
+including forced acceptance and rejection at every draft position. Acceptance
+is 100% for Python and 32.075% for prose in every repetition. The unchanged
+full-forward recovery makes prose slower than ordinary greedy decode despite
+faster verification. Compact recovery plus split-K remains unmeasured. Independent
+kernel sanitizers passed; whole-model split-K sanitizer qualification remains
+pending. Default remains off. These bounded results establish neither broad
+model quality nor matched Ninfer performance. Ninfer stayed inactive; ComfyUI
+PID448118 was preserved and no benchmark remains active at this checkpoint.
