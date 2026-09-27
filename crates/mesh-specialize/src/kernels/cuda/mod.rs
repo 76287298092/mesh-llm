@@ -38,6 +38,7 @@ pub(super) mod resident_gdn_trial;
 mod resident_head;
 mod resident_layer_diagnostic;
 mod resident_mlp;
+mod resident_projection;
 mod resident_model;
 pub(super) mod resident_model_bench;
 pub(super) mod resident_model_profile;
@@ -231,3 +232,7 @@ mod nvfp4_linear;
 mod mlp;
 mod mlp_activation;
 mod residual_add;
+
+mod resident_mtp;
+mod resident_speculation;
+pub(super) mod resident_mtp_trial;

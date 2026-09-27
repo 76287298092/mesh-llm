@@ -33,6 +33,23 @@ impl<'ctx> ResidentState<'ctx> {
         self.arena.belongs_to(context)
     }
 
+    pub(super) fn fork<'a>(&self, context: &'a Context) -> Result<ResidentState<'a>> {
+        ensure!(
+            self.belongs_to(context),
+            "resident state belongs to another CUDA context"
+        );
+        let layout = canonical_layout(&self.layout)?;
+        let bytes = usize::try_from(layout.bytes)
+            .context("resident-state layout size does not fit usize")?;
+        ensure!(
+            self.arena.len() == bytes,
+            "resident-state arena extent differs from its layout"
+        );
+        let arena = Buffer::new(context, bytes)?;
+        arena.copy_from_at(0, &self.arena, 0, bytes)?;
+        Ok(ResidentState { arena, layout })
+    }
+
     pub(super) fn pointer(&self, name: &str, bytes: usize) -> Result<u64> {
         let region = self.layout.region(name)?;
         ensure!(

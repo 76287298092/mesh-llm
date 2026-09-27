@@ -56,6 +56,27 @@ impl<'w, 'ctx> Head<'w, 'ctx> {
         let normalized = self.norm.run(context, module, &final_hidden, 1)?;
         self.projection.run(context, module, &normalized, 1)
     }
+
+    /// Normalize and project every hidden row, retaining one vocabulary row per input row.
+    pub(super) fn run_all<'a>(
+        &self,
+        context: &'a Context,
+        module: &Module<'_>,
+        hidden: &Buffer<'_>,
+        rows: usize,
+    ) -> Result<resident_fp8::Output<'a>> {
+        ensure!(
+            module.belongs_to(context),
+            "LM head module belongs to another context"
+        );
+        ensure!(
+            hidden.belongs_to(context),
+            "LM head hidden rows belong to another context"
+        );
+        validate_all_rows_extent(rows, self.width, hidden.len())?;
+        let normalized = self.norm.run(context, module, hidden, rows)?;
+        self.projection.run(context, module, &normalized, rows)
+    }
 }
 
 fn validate_shape(width: usize, vocabulary: usize) -> Result<()> {
@@ -89,6 +110,24 @@ fn last_row_extents(rows: usize, width: usize, input_bytes: usize) -> Result<(us
     Ok((source_offset, row_bytes))
 }
 
+fn validate_all_rows_extent(rows: usize, width: usize, input_bytes: usize) -> Result<()> {
+    ensure!(
+        (1..=2048).contains(&rows),
+        "LM head row count is out of range"
+    );
+    ensure!(
+        (1..=32768).contains(&width),
+        "LM head width is out of range"
+    );
+    let elements = checked_product(rows, width, "LM head BF16 input")?;
+    let expected_bytes = checked_product(elements, 2, "LM head BF16 input bytes")?;
+    ensure!(
+        input_bytes == expected_bytes,
+        "LM head input extent mismatch"
+    );
+    Ok(())
+}
+
 fn checked_product(left: usize, right: usize, label: &str) -> Result<usize> {
     left.checked_mul(right)
         .ok_or_else(|| anyhow::anyhow!("{label} extent overflows usize"))
@@ -96,7 +135,7 @@ fn checked_product(left: usize, right: usize, label: &str) -> Result<usize> {
 
 #[cfg(test)]
 mod tests {
-    use super::{checked_product, last_row_extents, validate_shape};
+    use super::{checked_product, last_row_extents, validate_all_rows_extent, validate_shape};
 
     #[test]
     fn computes_exact_final_row_offsets() {
@@ -122,5 +161,14 @@ mod tests {
     #[test]
     fn rejects_extent_arithmetic_overflow() {
         assert!(checked_product(usize::MAX, 2, "test").is_err());
+    }
+
+    #[test]
+    fn validates_all_row_hidden_extent() {
+        assert!(validate_all_rows_extent(17, 4, 136).is_ok());
+        assert!(validate_all_rows_extent(17, 4, 134).is_err());
+        assert!(validate_all_rows_extent(0, 4, 0).is_err());
+        assert!(validate_all_rows_extent(2049, 4, 16_392).is_err());
+        assert!(validate_all_rows_extent(usize::MAX, 4, 0).is_err());
     }
 }

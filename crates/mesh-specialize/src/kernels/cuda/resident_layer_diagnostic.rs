@@ -2,7 +2,7 @@
 use super::{
     driver::{Buffer, Context, Module},
     resident_attention, resident_gdn,
-    resident_mlp::Quantization,
+    resident_projection::Quantization,
     resident_state::ResidentState,
     resident_weights::ResidentWeights,
 };

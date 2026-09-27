@@ -61,6 +61,32 @@ pub fn model_profile(
     }
 }
 
+pub struct SpeculationRequest<'a> {
+    pub tokens: &'a [u32],
+    pub output_tokens: usize,
+    pub depth: usize,
+    pub repetitions: usize,
+}
+pub fn mtp_trial(
+    ptx: &str,
+    device: i32,
+    artifact: &mut crate::artifact::reader::VerifiedArtifact,
+    objects: &[crate::artifact::schema::Object],
+    config: &DecoderConfig,
+    reference: &crate::packages::qwen3_8_27b::mtp::Reference,
+    request: &SpeculationRequest<'_>,
+) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::resident_mtp_trial::run(
+        ptx, device, artifact, objects, config, reference, request,
+    );
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device, artifact, objects, config, reference, request);
+        anyhow::bail!("MTP trial requires Linux")
+    }
+}
+
 pub struct ModelBenchRequest<'a> {
     pub tokens: &'a [u32],
     pub output_tokens: usize,

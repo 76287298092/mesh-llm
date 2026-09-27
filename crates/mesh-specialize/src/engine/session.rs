@@ -39,6 +39,16 @@ impl Cursor {
         self.poisoned
     }
 
+    /// Copy the committed cursor position into an independent, usable cursor.
+    pub fn fork(&self) -> Result<Self> {
+        ensure!(!self.poisoned, "session cursor is poisoned");
+        Ok(Self {
+            past: self.past,
+            capacity: self.capacity,
+            poisoned: false,
+        })
+    }
+
     /// Begin a bounded decoder transaction.
     ///
     /// The caller must keep this transaction alive across every decoder layer and
@@ -164,6 +174,29 @@ mod tests {
         assert!(cursor.begin(1).is_err());
         assert_eq!(cursor.past(), 3);
         assert!(!cursor.is_poisoned());
+    }
+
+    #[test]
+    fn forked_cursors_advance_independently() {
+        let mut original = Cursor::new(20).unwrap();
+        original.begin(4).unwrap().commit();
+
+        let mut fork = original.fork().unwrap();
+        assert_eq!(fork.past(), 4);
+        assert_eq!(fork.capacity(), 20);
+        assert_eq!(fork.begin(3).unwrap().commit(), 7);
+        assert_eq!(fork.past(), 7);
+        assert_eq!(original.past(), 4);
+        assert!(!original.is_poisoned());
+        assert!(!fork.is_poisoned());
+    }
+
+    #[test]
+    fn poisoned_cursor_cannot_be_forked() {
+        let mut cursor = Cursor::new(20).unwrap();
+        drop(cursor.begin(1).unwrap());
+        assert!(cursor.is_poisoned());
+        assert!(cursor.fork().is_err());
     }
 
     #[test]

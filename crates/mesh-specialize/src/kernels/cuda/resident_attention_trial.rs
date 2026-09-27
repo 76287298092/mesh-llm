@@ -3,7 +3,7 @@ use super::{
     driver::{Buffer, Context, Module},
     resident_attention::{Layer, Step},
     resident_embedding::Embedding,
-    resident_mlp::Quantization,
+    resident_projection::Quantization,
     resident_state::ResidentState,
     resident_weights::ResidentWeights,
 };

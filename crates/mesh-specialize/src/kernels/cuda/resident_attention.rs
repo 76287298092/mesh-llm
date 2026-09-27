@@ -4,9 +4,9 @@ use super::{
     resident_attention_core::{self, Input},
     resident_attention_gate,
     resident_attention_prepare::{Preparation, Tables},
-    resident_fp8::Projection,
-    resident_mlp::{Mlp, Quantization},
+    resident_mlp::Mlp,
     resident_norm::{Norm, residual_add},
+    resident_projection::{Projection, Quantization},
     resident_state::ResidentState,
     resident_weights::ResidentWeights,
 };
@@ -54,6 +54,10 @@ impl<'w, 'ctx> Layer<'w, 'ctx> {
         let q_width = shape.query_heads * shape.head_width;
         let kv_width = shape.kv_heads * shape.head_width;
         let attention = format!("{prefix}.self_attn");
+        let attention_quantization = match quantization {
+            Quantization::Bf16 => Quantization::Bf16,
+            Quantization::Fp8 | Quantization::Nvfp4 => Quantization::Fp8,
+        };
         Ok(Self {
             norm: Norm::new(
                 owner,
@@ -72,20 +76,29 @@ impl<'w, 'ctx> Layer<'w, 'ctx> {
                 &format!("{attention}.q_proj"),
                 shape.hidden,
                 q_width * 2,
+                attention_quantization,
             )?,
             k: Projection::new(
                 owner,
                 &format!("{attention}.k_proj"),
                 shape.hidden,
                 kv_width,
+                attention_quantization,
             )?,
             v: Projection::new(
                 owner,
                 &format!("{attention}.v_proj"),
                 shape.hidden,
                 kv_width,
+                attention_quantization,
             )?,
-            out: Projection::new(owner, &format!("{attention}.o_proj"), q_width, shape.hidden)?,
+            out: Projection::new(
+                owner,
+                &format!("{attention}.o_proj"),
+                q_width,
+                shape.hidden,
+                attention_quantization,
+            )?,
             q_prepare: Preparation::new(
                 owner,
                 &format!("{attention}.q_norm.weight"),

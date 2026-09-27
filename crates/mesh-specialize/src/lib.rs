@@ -67,3 +67,6 @@ pub mod causal_attention_reference;
 pub mod attention_gate_reference;
 #[path = "../reference/qwen_attention_layer.rs"]
 pub mod qwen_attention_layer_reference;
+
+#[path = "../reference/mtp.rs"]
+pub mod mtp_reference;

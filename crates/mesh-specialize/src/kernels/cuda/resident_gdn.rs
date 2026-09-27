@@ -6,8 +6,9 @@ use super::{
     resident_conv::Convolution,
     resident_fp8,
     resident_gdn_core::{GdnCore, Input},
-    resident_mlp::{Mlp, Quantization},
+    resident_mlp::Mlp,
     resident_norm::{Norm, residual_add},
+    resident_projection::Quantization,
     resident_state::ResidentState,
     resident_weights::ResidentWeights,
 };

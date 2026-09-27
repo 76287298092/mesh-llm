@@ -5,7 +5,7 @@ use super::{
     resident_embedding::Embedding,
     resident_gdn,
     resident_head::Head,
-    resident_mlp::Quantization,
+    resident_projection::Quantization,
     resident_state::ResidentState,
     resident_weights::ResidentWeights,
 };
@@ -34,6 +34,17 @@ pub(super) struct Output {
     pub token: u32,
     pub past: usize,
 }
+#[derive(Clone, Copy)]
+pub(super) enum LogitsSelection {
+    Last,
+    All,
+}
+pub(super) struct DetailedOutput<'ctx> {
+    pub hidden: Buffer<'ctx>,
+    pub logits: Vec<u16>,
+    pub tokens: Vec<u32>,
+    pub past: usize,
+}
 pub(super) type Observer<'a> = dyn FnMut(usize, &Buffer<'_>) -> Result<()> + 'a;
 
 impl<'ctx> Session<'ctx> {
@@ -42,6 +53,12 @@ impl<'ctx> Session<'ctx> {
             state: ResidentState::new(ctx, &config.state_layout)?,
             cursor: Cursor::new(config.capacity)?,
         })
+    }
+
+    pub(super) fn fork<'a>(&self, ctx: &'a Context) -> Result<Session<'a>> {
+        let cursor = self.cursor.fork()?;
+        let state = self.state.fork(ctx)?;
+        Ok(Session { state, cursor })
     }
 }
 impl<'w, 'ctx> Model<'w, 'ctx> {
@@ -108,8 +125,36 @@ impl<'w, 'ctx> Model<'w, 'ctx> {
         module: &Module<'_>,
         tokens: &[u32],
         session: &mut Session<'_>,
-        mut observer: Option<&mut Observer<'_>>,
+        observer: Option<&mut Observer<'_>>,
     ) -> Result<Output> {
+        let detailed = self.forward_detailed(
+            ctx,
+            module,
+            tokens,
+            session,
+            LogitsSelection::Last,
+            observer,
+        )?;
+        ensure!(
+            detailed.tokens.len() == 1,
+            "last-row model forward did not return one token"
+        );
+        Ok(Output {
+            logits: detailed.logits,
+            token: detailed.tokens[0],
+            past: detailed.past,
+        })
+    }
+
+    pub(super) fn forward_detailed<'a>(
+        &self,
+        ctx: &'a Context,
+        module: &Module<'_>,
+        tokens: &[u32],
+        session: &mut Session<'_>,
+        selection: LogitsSelection,
+        mut observer: Option<&mut Observer<'_>>,
+    ) -> Result<DetailedOutput<'a>> {
         ensure!(
             tokens.iter().all(|&id| (id as usize) < self.vocabulary),
             "decoder token is outside vocabulary"
@@ -118,6 +163,7 @@ impl<'w, 'ctx> Model<'w, 'ctx> {
             session.state.belongs_to(ctx) && module.belongs_to(ctx),
             "decoder context mismatch"
         );
+        validate_selection_rows(selection, tokens.len())?;
         let transaction = session.cursor.begin(tokens.len())?;
         let entry = self.embedding.run(ctx, module, tokens)?;
         let mut hidden = entry.residual;
@@ -143,25 +189,79 @@ impl<'w, 'ctx> Model<'w, 'ctx> {
                 inspect(index, &hidden)?;
             }
         }
-        let output = self.head.run(ctx, module, &hidden, transaction.rows())?;
-        let mut raw = vec![0; output.values.len()];
+        let (output, logit_rows) = match selection {
+            LogitsSelection::Last => (self.head.run(ctx, module, &hidden, transaction.rows())?, 1),
+            LogitsSelection::All => (
+                self.head
+                    .run_all(ctx, module, &hidden, transaction.rows())?,
+                transaction.rows(),
+            ),
+        };
+        let expected_bytes = checked_logit_bytes(logit_rows, self.vocabulary)?;
+        ensure!(
+            output.values.len() == expected_bytes,
+            "decoder logit extent mismatch"
+        );
+        let mut raw = vec![0; expected_bytes];
         output.values.download(&mut raw)?;
         let logits = raw
             .as_chunks::<2>()
             .0
             .iter()
-            .map(|v| u16::from_le_bytes(*v))
+            .map(|word| u16::from_le_bytes(*word))
             .collect::<Vec<_>>();
         ensure!(
-            logits.len() == self.vocabulary,
-            "decoder logit extent mismatch"
+            logits.len() == expected_bytes / 2,
+            "decoded logit extent mismatch"
         );
-        let token = sampling::greedy(&logits)?;
+        let selected_tokens = match selection {
+            LogitsSelection::Last => vec![sampling::greedy(&logits)?],
+            LogitsSelection::All => logits
+                .chunks_exact(self.vocabulary)
+                .map(sampling::greedy)
+                .collect::<Result<Vec<_>>>()?,
+        };
         let past = transaction.commit();
-        Ok(Output {
+        Ok(DetailedOutput {
+            hidden,
             logits,
-            token,
+            tokens: selected_tokens,
             past,
         })
+    }
+}
+
+fn checked_logit_bytes(rows: usize, vocabulary: usize) -> Result<usize> {
+    let elements = rows
+        .checked_mul(vocabulary)
+        .ok_or_else(|| anyhow::anyhow!("decoder logit element count overflows usize"))?;
+    elements
+        .checked_mul(2)
+        .ok_or_else(|| anyhow::anyhow!("decoder logit byte count overflows usize"))
+}
+
+fn validate_selection_rows(selection: LogitsSelection, rows: usize) -> Result<()> {
+    if matches!(selection, LogitsSelection::All) {
+        ensure!(rows <= 17, "all-row logits are limited to 17 input rows");
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{LogitsSelection, checked_logit_bytes, validate_selection_rows};
+
+    #[test]
+    fn bounds_all_row_logits_without_limiting_last_row_selection() {
+        assert!(validate_selection_rows(LogitsSelection::All, 17).is_ok());
+        assert!(validate_selection_rows(LogitsSelection::All, 18).is_err());
+        assert!(validate_selection_rows(LogitsSelection::Last, 2048).is_ok());
+    }
+
+    #[test]
+    fn logit_output_byte_count_is_checked() {
+        assert_eq!(checked_logit_bytes(17, 4).unwrap(), 136);
+        assert!(checked_logit_bytes(usize::MAX, 2).is_err());
+        assert!(checked_logit_bytes(usize::MAX / 2 + 1, 1).is_err());
     }
 }
