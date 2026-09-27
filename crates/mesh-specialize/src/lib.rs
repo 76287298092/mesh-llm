@@ -12,6 +12,8 @@ pub mod entry_reference;
 pub mod causal_conv4_reference;
 #[path = "../reference/gdn_prepare.rs"]
 pub mod gdn_prepare_reference;
+#[path = "../reference/gdn_recurrent.rs"]
+pub mod gdn_recurrent_reference;
 #[path = "../reference/projections.rs"]
 pub mod projection_reference;
 

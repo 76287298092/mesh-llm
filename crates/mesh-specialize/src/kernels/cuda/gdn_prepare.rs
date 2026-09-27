@@ -18,6 +18,15 @@ pub(super) struct Input<'a, 'ctx> {
     pub(super) b_words: &'a [u16],
 }
 
+pub(super) struct Prepared<'a> {
+    pub(super) q: Buffer<'a>,
+    pub(super) k: Buffer<'a>,
+    pub(super) beta: Buffer<'a>,
+    pub(super) decay: Buffer<'a>,
+    pub(super) host: reference::Prepared,
+    pub(super) report: Value,
+}
+
 pub(super) fn validate_connections(input: &ProjectionInput, weights: &GdnWeights) -> Result<()> {
     ensure!(
         (1..=64).contains(&weights.key_heads)
@@ -70,13 +79,13 @@ pub(super) fn validate_connections(input: &ProjectionInput, weights: &GdnWeights
     Ok(())
 }
 
-pub(super) fn check(
-    context: &Context,
-    module: &Module<'_>,
+pub(super) fn check<'a>(
+    context: &'a Context,
+    module: &Module<'a>,
     input: Input<'_, '_>,
     weights: &GdnWeights,
     rows: usize,
-) -> Result<Value> {
+) -> Result<Prepared<'a>> {
     let shape = reference::Shape {
         rows,
         key_heads: weights.key_heads,
@@ -158,13 +167,25 @@ pub(super) fn check(
             .all(|r| r["passed"] == true),
         "GDN preparation numerical mismatch: q={q_report}, k={k_report}, g={g_report}, decay={decay_report}"
     );
-    Ok(
-        json!({"all_passed":true,"shape":{"rows":rows,"key_heads":shape.key_heads,"value_heads":shape.value_heads,"width":shape.width},
+    let report = json!({"all_passed":true,"shape":{"rows":rows,"key_heads":shape.key_heads,"value_heads":shape.value_heads,"width":shape.width},
         "q":q_report,"k":k_report,"g":g_report,"decay":decay_report,
         "beta":{"elements":actual_beta.len(),"reference_differences":beta_differences,"maximum_bf16_ulp":beta_max_ulp,"allowed_bf16_ulp":1},
         "qk_head_mapping":"unrepeated key heads; value head maps to key head via integer division by value/key ratio",
-        "device_inputs_resident":true,"model_executable":false}),
-    )
+        "device_inputs_resident":true,"model_executable":false});
+    Ok(Prepared {
+        q,
+        k,
+        beta,
+        decay,
+        host: reference::Prepared {
+            q: actual_q,
+            k: actual_k,
+            beta: actual_beta,
+            g: actual_g,
+            decay: actual_decay,
+        },
+        report,
+    })
 }
 
 fn launch(
@@ -282,7 +303,7 @@ fn fixture_run(
     let qkv_device = upload(context, &bytes(qkv))?;
     let a_device = upload(context, &bytes(a))?;
     let b_device = upload(context, &bytes(b))?;
-    check(
+    Ok(check(
         context,
         module,
         Input {
@@ -295,7 +316,8 @@ fn fixture_run(
         },
         weights,
         rows,
-    )
+    )?
+    .report)
 }
 fn decode(bytes: &[u8]) -> Vec<u16> {
     bytes

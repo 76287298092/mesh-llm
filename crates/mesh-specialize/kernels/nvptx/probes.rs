@@ -9,6 +9,7 @@ mod embedding_norm;
 mod fp8_linear;
 mod fp8_quantize;
 mod gdn_prepare;
+mod gdn_recurrent;
 mod memory;
 mod nvfp4_gemm;
 mod ordinary_mma;
