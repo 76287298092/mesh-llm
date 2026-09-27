@@ -27,7 +27,7 @@ pub(super) fn run(args: &[String]) -> DynResult<()> {
         output,
     ] = args
     else {
-        return Err("usage: xtask specialize qwen-model-bench --artifact PATH --tokens COMMA_IDS --output-tokens 2..16 --repetitions 1..3 --ptx PATH --device ORDINAL --output NEW_FILE".into());
+        return Err("usage: xtask specialize qwen-model-bench --artifact PATH --tokens COMMA_IDS --output-tokens 2..512 --repetitions 1..3 --ptx PATH --device ORDINAL --output NEW_FILE".into());
     };
     if [
         artifact_flag.as_str(),

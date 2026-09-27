@@ -10,6 +10,12 @@ use std::{
 };
 
 pub(super) fn run(args: &[String]) -> DynResult<()> {
+    let (args, teacher_token) = match args {
+        [base @ .., flag, token] if flag == "--teacher-token" => {
+            (base, Some(token.parse::<u32>()?))
+        }
+        _ => (args, None),
+    };
     let [
         artifact_flag,
         artifact,
@@ -23,7 +29,7 @@ pub(super) fn run(args: &[String]) -> DynResult<()> {
         output,
     ] = args
     else {
-        return Err("usage: xtask specialize qwen-model-profile --artifact PATH --tokens COMMA_IDS --ptx PATH --device ORDINAL --output NEW_FILE".into());
+        return Err("usage: xtask specialize qwen-model-profile --artifact PATH --tokens COMMA_IDS --ptx PATH --device ORDINAL --output NEW_FILE [--teacher-token ID]".into());
     };
     if [
         artifact_flag.as_str(),
@@ -46,7 +52,7 @@ pub(super) fn run(args: &[String]) -> DynResult<()> {
         .create_new(true)
         .open(output)?;
     let start = Instant::now();
-    let mut report = model_profile::run(Path::new(artifact), &ptx, device, &tokens)
+    let mut report = model_profile::run(Path::new(artifact), &ptx, device, &tokens, teacher_token)
         .unwrap_or_else(|error| json!({"all_passed":false,"error":format!("{error:#}")}));
     report["harness_elapsed_seconds"] = json!(start.elapsed().as_secs_f64());
     report["artifact_path"] = json!(artifact);

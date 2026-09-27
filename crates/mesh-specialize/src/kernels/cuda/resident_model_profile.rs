@@ -50,7 +50,12 @@ pub(in crate::kernels) fn run(
     objects: &[Object],
     config: &DecoderConfig,
     tokens: &[u32],
+    teacher_token: Option<u32>,
 ) -> Result<Value> {
+    ensure!(
+        teacher_token.is_none_or(|t| (t as usize) < config.vocabulary),
+        "teacher token outside vocabulary"
+    );
     super::fp8_projection_audit::take_reports();
     validate_request(
         tokens,
@@ -82,13 +87,31 @@ pub(in crate::kernels) fn run(
     let weights = ResidentWeights::load(&context, artifact, objects)?;
     let model = Model::new(&weights, config)?;
     let warmup = run_warmup(&context, &module, &model, config, tokens[0])?;
-    let control = run_unprofiled(&context, &module, &model, config, tokens, false)?;
-    let partitioned = run_unprofiled(&context, &module, &model, config, tokens, true)?;
+    let control = run_unprofiled(
+        &context,
+        &module,
+        &model,
+        config,
+        tokens,
+        false,
+        teacher_token,
+    )?;
+    let partitioned = run_unprofiled(
+        &context,
+        &module,
+        &model,
+        config,
+        tokens,
+        true,
+        teacher_token,
+    )?;
     let partition = json!({
         "prefill_logits_bit_exact": control.prefill_logits == partitioned.prefill_logits,
         "whole_prefill_token": control.prefill_token,
         "token_prefill_token": partitioned.prefill_token,
-        "decode_inputs_equal":control.prefill_token==partitioned.prefill_token,
+        "decode_inputs_equal":teacher_token.is_some() || control.prefill_token==partitioned.prefill_token,
+        "prefill_distribution":crate::engine::logit_quality::compare(&control.prefill_logits,&partitioned.prefill_logits)?,
+        "teacher_forced_decode_distribution":if teacher_token.is_some() {crate::engine::logit_quality::compare(&control.output.logits,&partitioned.output.logits)?} else {Value::Null},
         "layer_tail_drift":control.layer_tails.iter().zip(&partitioned.layer_tails).enumerate().map(|(layer,(a,b))|json!({"layer":layer,"drift":logit_drift(a,b)})).collect::<Vec<_>>(),
         "prefill_logit_drift": logit_drift(&control.prefill_logits, &partitioned.prefill_logits),
         "decode_logit_drift": logit_drift(&control.output.logits, &partitioned.output.logits),
@@ -105,7 +128,7 @@ pub(in crate::kernels) fn run(
         && control.state_sha256 == partitioned.state_sha256
         && control.cursor_past == partitioned.cursor_past;
     drop(partitioned);
-    let profiled = run_profiled(&context, &module, &model, config, tokens)?;
+    let profiled = run_profiled(&context, &module, &model, config, tokens, teacher_token)?;
     validate_kernel_profile(&profiled.kernel_profile)?;
     validate_kernel_profile(&profiled.prefill_kernel_profile)?;
 
@@ -141,7 +164,7 @@ pub(in crate::kernels) fn run(
         && control_output.past == profiled_output.past
         && control_state_sha256 == profiled_state_sha256;
     let resulting_past = profiled_output.past;
-    let decode_input_token = profiled_prefill_token;
+    let decode_input_token = teacher_token.unwrap_or(profiled_prefill_token);
     drop(control_prefill_logits);
     drop(profiled_prefill_logits);
     drop(control_output);
@@ -171,6 +194,7 @@ pub(in crate::kernels) fn run(
         "arithmetic_profile": crate::kernels::fp8_profile::current()?.name(),
         "prefix_token_ids": tokens,
         "decode_input_token": decode_input_token,
+        "teacher_forced_token": teacher_token,
         "resulting_past": resulting_past,
         "exact_prefill_logits": prefill_exact,
         "whole_vs_token_partition": partition,
@@ -292,6 +316,7 @@ fn run_unprofiled(
     config: &DecoderConfig,
     tokens: &[u32],
     token_prefill: bool,
+    teacher_token: Option<u32>,
 ) -> Result<DecodeRun> {
     let mut session = Session::new(context, config)?;
     let mut layer_tails = Vec::new();
@@ -330,8 +355,13 @@ fn run_unprofiled(
         check_committed(&session, &output, tokens.len())?;
         (output.logits, output.token, output.past)
     };
-    let (output, wall_seconds) =
-        timed_forward(context, module, model, prefill_token, &mut session)?;
+    let (output, wall_seconds) = timed_forward(
+        context,
+        module,
+        model,
+        teacher_token.unwrap_or(prefill_token),
+        &mut session,
+    )?;
     check_committed(&session, &output, tokens.len() + 1)?;
     let state_sha256 = state_hash(&session)?;
     let cursor_past = session.cursor.past();
@@ -357,14 +387,20 @@ fn run_profiled(
     model: &Model<'_, '_>,
     config: &DecoderConfig,
     tokens: &[u32],
+    teacher_token: Option<u32>,
 ) -> Result<DecodeRun> {
     let mut session = Session::new(context, config)?;
     let ((prefill_logits, prefill_token, prefill_past), prefill_kernel_profile) =
         super::launch_profile::capture(context, || {
             run_prefill(context, module, model, tokens, &mut session)
         })?;
-    let (output, kernel_profile, wall_seconds) =
-        profiled_forward(context, module, model, prefill_token, &mut session)?;
+    let (output, kernel_profile, wall_seconds) = profiled_forward(
+        context,
+        module,
+        model,
+        teacher_token.unwrap_or(prefill_token),
+        &mut session,
+    )?;
     check_committed(&session, &output, tokens.len() + 1)?;
     let state_sha256 = state_hash(&session)?;
     let cursor_past = session.cursor.past();

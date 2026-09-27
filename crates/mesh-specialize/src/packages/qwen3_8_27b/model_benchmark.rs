@@ -11,7 +11,7 @@ pub fn run(
 ) -> Result<serde_json::Value> {
     ensure!(
         (1..=512).contains(&request.tokens.len())
-            && (2..=16).contains(&request.output_tokens)
+            && (2..=512).contains(&request.output_tokens)
             && (1..=3).contains(&request.repetitions),
         "benchmark request exceeds bounds"
     );

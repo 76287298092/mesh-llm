@@ -5,6 +5,7 @@ Start with [the implementation plan](../PLAN.md) and the
 
 | Entry | Status |
 | --- | --- |
+| [Ninfer model format](findings/ninfer-model-format.md) | Pinned packer/consumer analysis; row-major FP8, swizzled NVFP4 scales, provenance gaps and isolating experiments |
 | [Ninfer feature parity](findings/ninfer-feature-parity.md) | Parent source assessment of ten performance mechanisms, honest measurement gaps and one owner per feature |
 | [Resident MTP continuation](optimizations/mtp.md) | Independent head, exact target output/state, forced accept/reject and all sanitizers pass; text timing is acceptance-dependent, final set contended |
 | [Larger prefill continuation](optimizations/larger-prefill.md) | Exact tensor-core prefill retained: 259.38 at 128 inputs / 296.58 at 512; partition and sanitizer checks pass |

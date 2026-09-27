@@ -180,8 +180,8 @@ fn validate_request(
         "model bench prompt must contain 1..=512 tokens"
     );
     ensure!(
-        (2..=16).contains(&output_tokens),
-        "model bench output length must be in 2..=16 tokens"
+        (2..=512).contains(&output_tokens),
+        "model bench output length must be in 2..=512 tokens"
     );
     ensure!(
         (1..=3).contains(&repetitions),
@@ -421,6 +421,7 @@ mod tests {
 
     #[test]
     fn validates_bounded_fixed_length_requests() {
+        assert_eq!(validate_request(&[1], 10, 512, 64, 512, 1).unwrap(), 512);
         assert_eq!(validate_request(&[1, 2], 10, 32, 64, 4, 2).unwrap(), 5);
         assert!(validate_request(&[], 10, 32, 64, 2, 1).is_err());
         assert!(validate_request(&[1; 513], 256, 1024, 64, 2, 1).is_err());
@@ -428,7 +429,7 @@ mod tests {
         assert!(validate_request(&[1], 10, 2, 64, 3, 1).is_err());
         assert!(validate_request(&[1], 10, 32, 63, 2, 1).is_err());
         assert!(validate_request(&[1], 10, 32, 64, 1, 1).is_err());
-        assert!(validate_request(&[1], 10, 32, 64, 17, 1).is_err());
+        assert!(validate_request(&[1], 10, 1024, 64, 513, 1).is_err());
         assert!(validate_request(&[1], 10, 32, 64, 2, 0).is_err());
         assert!(validate_request(&[1], 10, 32, 64, 2, 4).is_err());
     }

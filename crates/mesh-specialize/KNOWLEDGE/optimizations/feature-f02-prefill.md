@@ -151,3 +151,34 @@ Initial Rust NVPTX compilation passes. GPU resource use, same-input real-weight
 error, model quality and performance for this candidate remain unmeasured.
 The previous PTX remains at `target/specialize/iterate-20260927/features-f05.ptx`;
 the candidate is separately saved as `native-short-k64.ptx`.
+
+The K64 audit at `16eb9a43345c74d904b683ad0e6b4d3e5331bf01` completed on Carrack.
+Seventeen finite-code projection cases pass unchanged budgets. JIT resources are
+55 registers, 64 local bytes and 6144 shared bytes versus original native 56/64/6144.
+Layer-zero QKV differences are 62, raw relative L2 9.8951e-8; Z 61, 9.8005e-8;
+output projection 46, 1.3499e-7. Each audit compares its candidate with exact on
+identical inputs. QKV/Z use the same initial input across variants; the output
+projection receives candidate-dependent intermediates, so its old/new counts
+are not a fixed-input cross-candidate ablation.
+
+Model evidence is mixed. Raw-prompt prefill logit relative L2 is 0.102432 versus
+original native 0.09462, but the K64 greedy token returns to exact token 98094.
+Strict partition equivalence still fails. Neither an improved operator error
+nor a recovered greedy token establishes model quality.
+
+Quality instrumentation now supports an optional explicit `--teacher-token ID`
+on `qwen-model-profile`. Both batched and token-prefill sessions consume that
+same continuation token. Reports distinguish that teacher-forced comparison
+from free-running greedy divergence and include KL(control||candidate), total
+variation, top-token probabilities and margins. No acceptance threshold is
+inferred from these diagnostics. The exact profile's strict checks are unchanged.
+Ordinary benchmark output is bounded at 512 tokens instead of 16, permitting
+complete-answer inspection. Prompt and capacity bounds remain unchanged for now.
+
+Paired shared-GPU medians at 128/512 inputs, three repetitions and eight outputs:
+exact 256.59/295.23, original native 393.02/444.79, K64 394.92/445.11 tokens/s.
+Candidate differences are within the observed ranges; no speed improvement over
+original native is established. K64 synthetic memcheck, racecheck and synccheck
+all pass with zero errors/hazards. Ninfer began and ended inactive; ComfyUI remained
+resident. See `../evidence/iterate-20260927/native-short-audit-1/` and
+`native-short-bench-1/`. This evidence does not promote either native profile.

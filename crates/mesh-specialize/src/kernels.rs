@@ -53,12 +53,29 @@ pub fn model_profile(
     objects: &[crate::artifact::schema::Object],
     config: &DecoderConfig,
     tokens: &[u32],
+    teacher_token: Option<u32>,
 ) -> anyhow::Result<serde_json::Value> {
     #[cfg(target_os = "linux")]
-    return cuda::resident_model_profile::run(ptx, device, artifact, objects, config, tokens);
+    return cuda::resident_model_profile::run(
+        ptx,
+        device,
+        artifact,
+        objects,
+        config,
+        tokens,
+        teacher_token,
+    );
     #[cfg(not(target_os = "linux"))]
     {
-        let _ = (ptx, device, artifact, objects, config, tokens);
+        let _ = (
+            ptx,
+            device,
+            artifact,
+            objects,
+            config,
+            tokens,
+            teacher_token,
+        );
         anyhow::bail!("Model profiling requires Linux")
     }
 }

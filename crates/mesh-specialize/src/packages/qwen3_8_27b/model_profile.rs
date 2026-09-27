@@ -3,7 +3,13 @@ use crate::artifact::reader::VerifiedArtifact;
 use anyhow::{Result, ensure};
 use std::path::Path;
 
-pub fn run(path: &Path, ptx: &str, device: i32, tokens: &[u32]) -> Result<serde_json::Value> {
+pub fn run(
+    path: &Path,
+    ptx: &str,
+    device: i32,
+    tokens: &[u32],
+    teacher_token: Option<u32>,
+) -> Result<serde_json::Value> {
     ensure!(
         (1..=512).contains(&tokens.len()),
         "model profile requires 1..512 prefix tokens"
@@ -12,8 +18,15 @@ pub fn run(path: &Path, ptx: &str, device: i32, tokens: &[u32]) -> Result<serde_
     super::inventory::validate(artifact.directory())?;
     let objects = super::schedule::text_objects(artifact.directory())?;
     let config = super::decoder::config(tokens.len() + 1)?;
-    let mut report =
-        crate::kernels::model_profile(ptx, device, &mut artifact, &objects, &config, tokens)?;
+    let mut report = crate::kernels::model_profile(
+        ptx,
+        device,
+        &mut artifact,
+        &objects,
+        &config,
+        tokens,
+        teacher_token,
+    )?;
     report["identity"] = serde_json::json!(artifact.identity());
     Ok(report)
 }
