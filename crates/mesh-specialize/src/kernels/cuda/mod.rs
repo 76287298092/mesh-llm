@@ -259,3 +259,10 @@ pub(super) mod resident_fp8_a16;
 pub(super) mod resident_logit_dump;
 
 pub(super) mod resident_fp8_splitk;
+
+pub(super) mod feature_fusion_trial;
+
+mod mlp_workspace_projection;
+mod resident_mlp_workspace;
+
+pub(super) mod mlp_workspace_trial;

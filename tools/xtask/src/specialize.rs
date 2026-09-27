@@ -3,6 +3,7 @@ mod baseline;
 mod checkpoint;
 mod entry;
 mod fixtures;
+mod mlp_workspace;
 mod model;
 mod model_bench;
 mod model_profile;
@@ -17,6 +18,7 @@ pub(crate) fn run(args: &[String]) -> DynResult<()> {
         [command, rest @ ..] if command == "qwen-model-profile" => model_profile::run(rest),
         [command, rest @ ..] if command == "qwen-mtp-reference" => mtp::reference(rest),
         [command, rest @ ..] if command == "qwen-mtp-check" => mtp::run(rest),
+        [command, rest @ ..] if command == "mlp-workspace-check" => mlp_workspace::run(rest),
         [command, rest @ ..] if command == "qwen-model-bench" => model_bench::run(rest),
         [command, rest @ ..] if command == "qwen-model-trace" => model::trace(rest),
         [command, rest @ ..] if command == "qwen-model-reference" => model::reference(rest),
@@ -42,6 +44,7 @@ pub(crate) fn run(args: &[String]) -> DynResult<()> {
             probe::feature_gdn_replay(rest)
         }
         [command, rest @ ..] if command == "feature-graph-check" => probe::feature_graph(rest),
+        [command, rest @ ..] if command == "feature-fusion-check" => probe::feature_fusion(rest),
         [command, rest @ ..] if command == "feature-projection-check" => {
             probe::feature_projection(rest)
         }

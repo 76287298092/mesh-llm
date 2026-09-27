@@ -63,3 +63,13 @@ Run memory, race, and synchronization sanitizers before any resident dispatch.
 For performance claims, compare matched fusion-on/off launches and model-path
 impact under the same arithmetic profile. Source revision, target device,
 toolchain, and evidence paths remain to be recorded by the parent integration.
+
+Parent continuation: a standalone `feature-fusion-check` host probe is prepared
+in `src/kernels/cuda/feature_fusion_trial.rs`. It compares seven signed/tail/
+maximum-K/cancellation fixtures against both the independent FP64 logical
+composition and separate exact GPU projections plus existing activation.
+It requires exact projection controls, final BF16, and final raw FP32 for these
+fixtures. Distinct gate/up scales are exercised. The device kernel is unchanged.
+This probe has not run on Linux/GPU and has no performance claim. Further model
+integration is held pending the requested deep runtime comparison with Ninfer;
+this prepared qualification does not establish that fusion is the next bottleneck.

@@ -529,3 +529,38 @@ pub fn fp8_exact_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json::Val
         anyhow::bail!("Exact FP8 qualification requires Linux")
     }
 }
+
+/// Check fused exact gate/up against independent and separate GPU controls.
+pub fn feature_fusion_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::feature_fusion_trial::run(ptx, device);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device);
+        anyhow::bail!("Fusion qualification requires Linux")
+    }
+}
+
+/// Model-owned shape/metadata for the bounded workspace experiment.
+pub struct MlpWorkspaceCase {
+    pub prefix: String,
+    pub width: usize,
+    pub channels: usize,
+    pub fp8: bool,
+}
+/// Compare identical resident MLP kernels under allocation/completion schedules.
+pub fn mlp_workspace_trial(
+    ptx: &str,
+    device: i32,
+    artifact: &mut crate::artifact::reader::VerifiedArtifact,
+    objects: &[crate::artifact::schema::Object],
+    cases: &[MlpWorkspaceCase],
+) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::mlp_workspace_trial::run(ptx, device, artifact, objects, cases);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device, artifact, objects, cases);
+        anyhow::bail!("MLP workspace trial requires Linux")
+    }
+}

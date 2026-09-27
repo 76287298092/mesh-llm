@@ -50,6 +50,16 @@ impl<'ctx> ResidentWorkspace<'ctx> {
         &self.layout
     }
 
+    /// Read completed scratch for diagnostics, never during an active mutable lease.
+    pub(super) fn read_region(&self, name: &str) -> Result<Vec<u8>> {
+        ensure!(!self.poisoned, "cannot read poisoned workspace");
+        let region = self.layout.region(name)?;
+        let mut bytes = vec![0; usize::try_from(region.length)?];
+        self.allocation
+            .download_at(usize::try_from(region.offset)?, &mut bytes)?;
+        Ok(bytes)
+    }
+
     pub(super) fn is_poisoned(&self) -> bool {
         self.poisoned
     }

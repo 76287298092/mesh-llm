@@ -119,7 +119,7 @@ fn upload<'a>(ctx: &'a Context, bytes: &[u8]) -> Result<Buffer<'a>> {
     Ok(b)
 }
 
-fn execute(
+pub(super) fn execute(
     ctx: &Context,
     module: &Module<'_>,
     shape: [usize; 4],

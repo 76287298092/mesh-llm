@@ -64,6 +64,19 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
         })
     }
 
+    pub(super) fn workspace_binding(&self) -> super::mlp_workspace_projection::Binding<'w, 'ctx> {
+        super::mlp_workspace_projection::Binding {
+            owner: self.owner,
+            weights: [self.weight_pointer, self.scale_pointer],
+            width: self.width,
+            channels: self.channels,
+            arithmetic: super::mlp_workspace_projection::Arithmetic::Nvfp4 {
+                input_scale: self.input_global_scale,
+                factor: self.global_factor,
+            },
+        }
+    }
+
     /// Quantize BF16 rows on-device, run NVFP4 MMA, and return device-resident outputs.
     pub(super) fn run<'a>(
         &self,

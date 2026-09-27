@@ -29,3 +29,27 @@ pub fn run(
     report["identity"] = serde_json::json!(artifact.identity());
     Ok(report)
 }
+
+/// Real-weight isolated workspace experiment, separate from model throughput.
+pub fn mlp_workspace(path: &Path, ptx: &str, device: i32) -> Result<serde_json::Value> {
+    let mut artifact = VerifiedArtifact::open(path)?;
+    super::inventory::validate(artifact.directory())?;
+    let cases = [(0, false), (56, true)].map(|(layer, fp8)| crate::kernels::MlpWorkspaceCase {
+        prefix: format!("tensors/model.language_model.layers.{layer}.mlp"),
+        width: 5120,
+        channels: 17408,
+        fp8,
+    });
+    let objects = super::schedule::text_objects(artifact.directory())?
+        .into_iter()
+        .filter(|o| {
+            cases
+                .iter()
+                .any(|c| o.name.starts_with(&format!("{}.", c.prefix)))
+        })
+        .collect::<Vec<_>>();
+    let mut report =
+        crate::kernels::mlp_workspace_trial(ptx, device, &mut artifact, &objects, &cases)?;
+    report["identity"] = serde_json::json!(artifact.identity());
+    Ok(report)
+}

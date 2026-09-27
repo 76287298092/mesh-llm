@@ -55,6 +55,21 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
         })
     }
 
+    pub(super) fn workspace_binding(
+        &self,
+    ) -> Result<super::mlp_workspace_projection::Binding<'w, 'ctx>> {
+        Ok(super::mlp_workspace_projection::Binding {
+            owner: self.owner,
+            weights: [
+                self.owner.pointer(&self.weight_name)?,
+                self.owner.pointer(&self.scale_name)?,
+            ],
+            width: self.width,
+            channels: self.channels,
+            arithmetic: super::mlp_workspace_projection::Arithmetic::Fp8,
+        })
+    }
+
     /// Quantize resident BF16 input rows, run the selected FP8 projection, and return device outputs.
     pub(super) fn run<'a>(
         &self,
