@@ -11,6 +11,7 @@ use crate::command::DynResult;
 
 pub(crate) fn run(args: &[String]) -> DynResult<()> {
     match args {
+        [command, rest @ ..] if command == "qwen-model-trace" => model::trace(rest),
         [command, rest @ ..] if command == "qwen-model-reference" => model::reference(rest),
         [command, rest @ ..] if command == "qwen-model-check" => model::check(rest),
         [command, rest @ ..] if command == "qwen-resident-gdn-check" => entry::resident_gdn(rest),

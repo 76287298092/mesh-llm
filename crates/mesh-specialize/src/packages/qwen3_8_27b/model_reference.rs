@@ -6,7 +6,16 @@ use crate::{
 };
 use anyhow::{Result, ensure};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::{path::Path, time::Instant};
+
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GdnDiagnostic {
+    pub layer: usize,
+    pub hidden: Vec<u16>,
+    pub stages: BTreeMap<String, Vec<u16>>,
+}
 
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -19,6 +28,56 @@ pub struct ModelReference {
     pub logits: Vec<u16>,
     pub elapsed_seconds: f64,
     pub layer_seconds: Vec<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub diagnostic: Option<GdnDiagnostic>,
+}
+
+/// Enrich existing independent model evidence with one layer's scalar boundaries.
+pub fn add_gdn_diagnostic(path: &Path, reference: &mut ModelReference, layer: usize) -> Result<()> {
+    ensure!(
+        reference.schema_version == 1 && (1..=17).contains(&reference.tokens.len()),
+        "invalid diagnostic model reference"
+    );
+    let mut artifact = VerifiedArtifact::open(path)?;
+    super::inventory::validate(artifact.directory())?;
+    ensure!(
+        reference.model_id == artifact.identity().model_id
+            && reference.weights_id == artifact.identity().weights_id,
+        "diagnostic reference identity mismatch"
+    );
+    let config = super::decoder::config(reference.tokens.len())?;
+    ensure!(
+        layer > 0
+            && layer < config.layers.len()
+            && matches!(config.layers[layer].block, DecoderBlockKind::Gdn),
+        "diagnostic requires GDN layer 1..63"
+    );
+    ensure!(
+        reference.layer_outputs.len() == config.layers.len(),
+        "diagnostic layer count mismatch"
+    );
+    let hidden = reference.layer_outputs[layer - 1].clone();
+    let mut stages = BTreeMap::new();
+    let output = decoder_gdn_reference::run_observed(
+        &hidden,
+        reference.tokens.len(),
+        &config.gdn_shape,
+        &weights::gdn(&mut artifact, layer)?,
+        &mut |name, values| {
+            stages.insert(name.to_owned(), values.to_vec());
+            Ok(())
+        },
+    )?;
+    ensure!(
+        output == reference.layer_outputs[layer],
+        "diagnostic recomputation differs from saved CPU output"
+    );
+    reference.diagnostic = Some(GdnDiagnostic {
+        layer,
+        hidden,
+        stages,
+    });
+    Ok(())
 }
 
 pub fn trial(
@@ -96,5 +155,6 @@ pub fn run(
         logits,
         elapsed_seconds: start.elapsed().as_secs_f64(),
         layer_seconds,
+        diagnostic: None,
     })
 }

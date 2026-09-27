@@ -55,7 +55,9 @@ pub(in crate::kernels) fn run(
         "causal_attention_bf16",
         "attention_gate_bf16",
     ] {
-        module.function(name)?;
+        module
+            .function(name)
+            .with_context(|| format!("load model kernel {name}"))?;
     }
     let before = context.memory()?;
     let layout = Layout::new(objects.iter().map(|o| (o.name.clone(), o.length)))?;
@@ -69,6 +71,16 @@ pub(in crate::kernels) fn run(
         "insufficient model trial memory"
     );
     let weights = ResidentWeights::load(&context, artifact, objects)?;
+    if let Some(diagnostic) = &reference.diagnostic {
+        return super::resident_gdn_diagnostic::run(
+            &context,
+            &module,
+            &weights,
+            config,
+            reference.tokens.len(),
+            diagnostic,
+        );
+    }
     let model = Model::new(&weights, config)?;
     let mut session = Session::new(&context, config)?;
     let mut layers = Vec::new();

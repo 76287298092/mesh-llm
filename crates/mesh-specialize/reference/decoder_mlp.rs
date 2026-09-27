@@ -20,23 +20,51 @@ pub enum Weights {
 
 /// Run the MLP from BF16 hidden rows through the final down-projection BF16 output.
 pub fn run(input: &[u16], rows: usize, width: usize, weights: &Weights) -> Result<Vec<u16>> {
+    run_observed(input, rows, width, weights, &mut |_, _| Ok(()))
+}
+
+/// Run the MLP and report each BF16 boundary to a read-only observer.
+pub fn run_observed(
+    input: &[u16],
+    rows: usize,
+    width: usize,
+    weights: &Weights,
+    observer: &mut dyn FnMut(&str, &[u16]) -> Result<()>,
+) -> Result<Vec<u16>> {
     match weights {
-        Weights::Nvfp4(weights) => run_nvfp4(input, rows, width, weights),
-        Weights::Fp8(weights) => Ok(fp8_mlp_reference::run(input, rows, width, weights)?.down),
+        Weights::Nvfp4(weights) => run_nvfp4(input, rows, width, weights, observer),
+        Weights::Fp8(weights) => {
+            let result = fp8_mlp_reference::run(input, rows, width, weights)?;
+            observer("mlp_gate", &result.gate)?;
+            observer("mlp_up", &result.up)?;
+            observer("mlp_activation", &result.activation)?;
+            observer("mlp_down", &result.down)?;
+            Ok(result.down)
+        }
     }
 }
 
-fn run_nvfp4(input: &[u16], rows: usize, width: usize, weights: &Nvfp4Mlp) -> Result<Vec<u16>> {
+fn run_nvfp4(
+    input: &[u16],
+    rows: usize,
+    width: usize,
+    weights: &Nvfp4Mlp,
+    observer: &mut dyn FnMut(&str, &[u16]) -> Result<()>,
+) -> Result<Vec<u16>> {
     validate_nvfp4(input, rows, width, weights)?;
     let gate = project_nvfp4(input, rows, width, &weights.gate)?;
+    observer("mlp_gate", &gate.normalized)?;
     let up = project_nvfp4(input, rows, width, &weights.up)?;
+    observer("mlp_up", &up.normalized)?;
     let activated = mlp_activation_reference::run(&gate.normalized, &up.normalized)?;
+    observer("mlp_activation", &activated.output)?;
     let down = project_nvfp4(
         &activated.output,
         rows,
         weights.gate.channels,
         &weights.down,
     )?;
+    observer("mlp_down", &down.normalized)?;
     Ok(down.normalized)
 }
 
@@ -129,7 +157,7 @@ fn checked_product(left: usize, right: usize, label: &str) -> Result<usize> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Weights, run};
+    use super::{Weights, run, run_observed};
     use crate::kernels::{Nvfp4Mlp, Nvfp4Projection};
 
     fn projection(name: &str, channels: usize) -> Nvfp4Projection {
@@ -152,6 +180,36 @@ mod tests {
         });
         let output = run(&[0x3f80; 16], 1, 16, &weights).unwrap();
         assert_eq!(output, [0; 16]);
+    }
+
+    #[test]
+    fn observer_receives_ordered_bf16_boundaries_and_can_stop_the_run() {
+        let weights = Weights::Nvfp4(Nvfp4Mlp {
+            gate: projection("gate", 16),
+            up: projection("up", 16),
+            down: projection("down", 16),
+        });
+        let mut stages = Vec::new();
+        let output = run_observed(&[0x3f80; 16], 1, 16, &weights, &mut |stage, values| {
+            stages.push((stage.to_owned(), values.to_vec()));
+            Ok(())
+        })
+        .unwrap();
+        assert_eq!(
+            stages
+                .iter()
+                .map(|(stage, _)| stage.as_str())
+                .collect::<Vec<_>>(),
+            ["mlp_gate", "mlp_up", "mlp_activation", "mlp_down"]
+        );
+        assert!(stages.iter().all(|(_, values)| values == &[0; 16]));
+        assert_eq!(output, stages[3].1);
+
+        let error = run_observed(&[0x3f80; 16], 1, 16, &weights, &mut |_, _| {
+            Err(anyhow::anyhow!("observer stopped"))
+        })
+        .unwrap_err();
+        assert!(error.to_string().contains("observer stopped"));
     }
 
     #[test]

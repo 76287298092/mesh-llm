@@ -15,6 +15,8 @@ use anyhow::{Result, ensure};
 
 use crate::kernels::GdnShape as Shape;
 
+pub(super) type StageObserver<'a> = dyn FnMut(&str, &Buffer<'_>) -> Result<()> + 'a;
+
 pub(super) struct Layer<'w, 'ctx> {
     norm: Norm<'w, 'ctx>,
     post_norm: Norm<'w, 'ctx>,
@@ -119,14 +121,32 @@ impl<'w, 'ctx> Layer<'w, 'ctx> {
         state: &mut ResidentState<'_>,
         rows: usize,
     ) -> Result<Buffer<'a>> {
+        self.forward_observed(ctx, module, hidden, state, rows, None)
+    }
+
+    pub(super) fn forward_observed<'a>(
+        &self,
+        ctx: &'a Context,
+        module: &Module<'_>,
+        hidden: &Buffer<'_>,
+        state: &mut ResidentState<'_>,
+        rows: usize,
+        mut observer: Option<&mut StageObserver<'_>>,
+    ) -> Result<Buffer<'a>> {
         let normalized = self.norm.run(ctx, module, hidden, rows)?;
+        observe(&mut observer, "normalized", &normalized)?;
         let qkv = self.qkv.run(ctx, module, &normalized, rows)?;
+        observe(&mut observer, "qkv", &qkv.values)?;
         let z = self.z.run(ctx, module, &normalized, rows)?;
+        observe(&mut observer, "z", &z.values)?;
         let a = self.a.run(ctx, module, &normalized, rows)?;
+        observe(&mut observer, "a", &a.values)?;
         let b = self.b.run(ctx, module, &normalized, rows)?;
+        observe(&mut observer, "b", &b.values)?;
         let conv = self
             .conv
             .run(ctx, module, &qkv.values, state, &self.history, rows)?;
+        observe(&mut observer, "convolution", &conv)?;
         let gated = self.core.run(
             ctx,
             module,
@@ -140,11 +160,32 @@ impl<'w, 'ctx> Layer<'w, 'ctx> {
             &self.recurrent,
             rows,
         )?;
+        observe(&mut observer, "gated", &gated)?;
         let branch = self.out.run(ctx, module, &gated, rows)?;
+        observe(&mut observer, "out", &branch.values)?;
         let post = self
             .post_norm
             .add(ctx, module, hidden, &branch.values, rows)?;
+        observe(&mut observer, "post_residual", &post.residual)?;
+        observe(&mut observer, "post_norm", &post.normalized)?;
         let mlp = self.mlp.run(ctx, module, &post.normalized, rows)?;
-        residual_add(ctx, module, &post.residual, &mlp.down.values)
+        observe(&mut observer, "mlp_gate", &mlp.gate.values)?;
+        observe(&mut observer, "mlp_up", &mlp.up.values)?;
+        observe(&mut observer, "mlp_activation", &mlp.activation)?;
+        observe(&mut observer, "mlp_down", &mlp.down.values)?;
+        let output = residual_add(ctx, module, &post.residual, &mlp.down.values)?;
+        observe(&mut observer, "hidden", &output)?;
+        Ok(output)
     }
+}
+
+fn observe(
+    observer: &mut Option<&mut StageObserver<'_>>,
+    name: &str,
+    buffer: &Buffer<'_>,
+) -> Result<()> {
+    if let Some(callback) = observer.as_deref_mut() {
+        callback(name, buffer)?;
+    }
+    Ok(())
 }

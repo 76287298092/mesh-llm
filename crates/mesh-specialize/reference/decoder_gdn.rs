@@ -44,13 +44,29 @@ pub fn run(
     shape: &kernels::GdnShape,
     weights: &Weights,
 ) -> Result<Vec<u16>> {
+    run_observed(hidden, rows, shape, weights, &mut |_, _| Ok(()))
+}
+
+/// Run a complete GDN block and report each BF16 boundary to a read-only observer.
+pub fn run_observed(
+    hidden: &[u16],
+    rows: usize,
+    shape: &kernels::GdnShape,
+    weights: &Weights,
+    observer: &mut dyn FnMut(&str, &[u16]) -> Result<()>,
+) -> Result<Vec<u16>> {
     let dimensions = validate(hidden, rows, shape, weights)?;
     let normalized =
         decoder_ops_reference::normalize(hidden, &weights.input_norm, rows, shape.hidden)?;
+    observer("normalized", &normalized)?;
     let qkv = decoder_ops_reference::fp8(&normalized, &weights.qkv, rows, shape.hidden)?;
+    observer("qkv", &qkv)?;
     let z = decoder_ops_reference::fp8(&normalized, &weights.z, rows, shape.hidden)?;
+    observer("z", &z)?;
     let a = decoder_ops_reference::bf16(&normalized, &weights.a, rows, shape.hidden)?;
+    observer("a", &a)?;
     let b = decoder_ops_reference::bf16(&normalized, &weights.b, rows, shape.hidden)?;
+    observer("b", &b)?;
 
     let convolution = causal_conv4_reference::run(
         &qkv,
@@ -59,6 +75,7 @@ pub fn run(
         rows,
         dimensions.qkv_channels,
     )?;
+    observer("convolution", &convolution.output)?;
     let gdn_shape = gdn_prepare_reference::Shape {
         rows,
         key_heads: shape.key_heads,
@@ -103,8 +120,10 @@ pub fn run(
         shape.head_width,
         EPSILON,
     )?;
+    observer("gated", &gated.output)?;
     let output_projection =
         decoder_ops_reference::fp8(&gated.output, &weights.out, rows, dimensions.inner)?;
+    observer("out", &output_projection)?;
     let post_attention = residual_norm_reference::run(
         hidden,
         &output_projection,
@@ -113,9 +132,18 @@ pub fn run(
         shape.hidden,
         EPSILON,
     )?;
-    let mlp =
-        decoder_mlp_reference::run(&post_attention.normalized, rows, shape.hidden, &weights.mlp)?;
-    residual_add_reference::run(&post_attention.residual, &mlp)
+    observer("post_residual", &post_attention.residual)?;
+    observer("post_norm", &post_attention.normalized)?;
+    let mlp = decoder_mlp_reference::run_observed(
+        &post_attention.normalized,
+        rows,
+        shape.hidden,
+        &weights.mlp,
+        observer,
+    )?;
+    let output = residual_add_reference::run(&post_attention.residual, &mlp)?;
+    observer("hidden", &output)?;
+    Ok(output)
 }
 
 fn validate(
@@ -363,7 +391,7 @@ fn checked_product(left: usize, right: usize, name: &str) -> Result<usize> {
 
 #[cfg(test)]
 mod tests {
-    use super::{MAX_HIDDEN, MAX_ROWS, Weights, checked_product, dimensions, run};
+    use super::{MAX_HIDDEN, MAX_ROWS, Weights, checked_product, dimensions, run, run_observed};
     use crate::{
         decoder_mlp_reference,
         kernels::{Bf16Projection, Fp8Projection, GdnShape, Nvfp4Mlp, Nvfp4Projection},
@@ -477,6 +505,63 @@ mod tests {
         let hidden = [0x3f80; 16];
         let output = run(&hidden, 1, &shape_for_zero_branch(), &zero_branch_weights()).unwrap();
         assert_eq!(output, hidden);
+    }
+
+    #[test]
+    fn observed_run_reports_ordered_boundaries_without_changing_output() {
+        let hidden = [0x3f80; 16];
+        let shape = shape_for_zero_branch();
+        let weights = zero_branch_weights();
+        let expected = run(&hidden, 1, &shape, &weights).unwrap();
+        let mut stages = Vec::new();
+        let actual = run_observed(&hidden, 1, &shape, &weights, &mut |stage, _| {
+            stages.push(stage.to_owned());
+            Ok(())
+        })
+        .unwrap();
+
+        assert_eq!(actual, expected);
+        assert_eq!(
+            stages,
+            [
+                "normalized",
+                "qkv",
+                "z",
+                "a",
+                "b",
+                "convolution",
+                "gated",
+                "out",
+                "post_residual",
+                "post_norm",
+                "mlp_gate",
+                "mlp_up",
+                "mlp_activation",
+                "mlp_down",
+                "hidden",
+            ]
+        );
+    }
+
+    #[test]
+    fn observed_run_propagates_callback_errors_immediately() {
+        let mut stages = Vec::new();
+        let result = run_observed(
+            &[0x3f80; 16],
+            1,
+            &shape_for_zero_branch(),
+            &zero_branch_weights(),
+            &mut |stage, _| {
+                stages.push(stage.to_owned());
+                if stage == "a" {
+                    anyhow::bail!("observer stopped")
+                }
+                Ok(())
+            },
+        );
+
+        assert!(result.is_err());
+        assert_eq!(stages, ["normalized", "qkv", "z", "a"]);
     }
 
     #[test]

@@ -81,14 +81,7 @@ pub(super) fn check(args: &[String]) -> DynResult<()> {
     {
         return Err("expected --artifact, --reference, --ptx, --device, --output in order".into());
     }
-    let mut raw = Vec::new();
-    File::open(reference_path)?
-        .take(64 * 1024 * 1024 + 1)
-        .read_to_end(&mut raw)?;
-    if raw.len() > 64 * 1024 * 1024 {
-        return Err("reference exceeds 64 MiB".into());
-    }
-    let reference: ModelReference = serde_json::from_slice(&raw)?;
+    let (raw, reference) = read_reference(reference_path)?;
     let device = device.parse()?;
     let ptx = fs::read_to_string(ptx)?;
     let mut file = create(output)?;
@@ -113,6 +106,49 @@ pub(super) fn check(args: &[String]) -> DynResult<()> {
         return Err("model comparison failed; inspect saved report".into());
     }
     Ok(())
+}
+
+pub(super) fn trace(args: &[String]) -> DynResult<()> {
+    let [
+        artifact_flag,
+        artifact,
+        reference_flag,
+        reference_path,
+        layer_flag,
+        layer,
+        output_flag,
+        output,
+    ] = args
+    else {
+        return Err("usage: xtask specialize qwen-model-trace --artifact PATH --reference PATH --layer INDEX --output NEW_FILE".into());
+    };
+    if artifact_flag != "--artifact"
+        || reference_flag != "--reference"
+        || layer_flag != "--layer"
+        || output_flag != "--output"
+    {
+        return Err("expected --artifact, --reference, --layer, --output in order".into());
+    }
+    let layer = layer.parse()?;
+    let (_, mut reference) = read_reference(reference_path)?;
+    let mut file = create(output)?;
+    qwen3_8_27b::model_reference::add_gdn_diagnostic(Path::new(artifact), &mut reference, layer)?;
+    serde_json::to_writer(&mut file, &reference)?;
+    file.write_all(b"\n")?;
+    file.sync_all()?;
+    print_json(&json!({"output":output,"diagnostic_layer":layer}))
+}
+
+fn read_reference(path: &str) -> DynResult<(Vec<u8>, ModelReference)> {
+    let mut raw = Vec::new();
+    File::open(path)?
+        .take(64 * 1024 * 1024 + 1)
+        .read_to_end(&mut raw)?;
+    if raw.len() > 64 * 1024 * 1024 {
+        return Err("reference exceeds 64 MiB".into());
+    }
+    let reference = serde_json::from_slice(&raw)?;
+    Ok((raw, reference))
 }
 
 fn create(path: &str) -> DynResult<File> {
