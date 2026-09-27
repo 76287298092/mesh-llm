@@ -1,0 +1,16 @@
+    Checking mesh-specialize v0.76.1 (/Users/ndizazzo/.codex/worktrees/issue-1393-feasibility/mesh-llm/crates/mesh-specialize)
+error[E0425]: cannot find value `row_scale` in this scope
+   --> crates/mesh-specialize/src/../reference/fp8_native_prefill.rs:269:23
+    |
+269 |                     * row_scale
+    |                       ^^^^^^^^^
+    |
+help: a local variable with a similar name exists
+    |
+269 |                     * row_scales
+    |                                +
+
+For more information about this error, try `rustc --explain E0425`.
+error: could not compile `mesh-specialize` (lib test) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error: recipe `with-lld` failed with exit code 101

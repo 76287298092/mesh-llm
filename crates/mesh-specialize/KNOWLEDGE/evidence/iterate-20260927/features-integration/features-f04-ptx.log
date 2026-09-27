@@ -1,0 +1,14 @@
+mkdir -p target/specialize
+RUSTC="$(rustup which --toolchain nightly-2026-09-25 rustc)" RUSTC_WRAPPER= RUSTFLAGS='-Ctarget-cpu=sm_120a' rustup run nightly-2026-09-25 cargo build --manifest-path crates/mesh-specialize/kernels/nvptx/Cargo.toml --target nvptx64-nvidia-cuda -Zbuild-std=core --release --target-dir target/specialize/nvptx
+   Compiling mesh-specialize-nvptx v0.1.0 (/Users/ndizazzo/.codex/worktrees/issue-1393-feasibility/mesh-llm/crates/mesh-specialize/kernels/nvptx)
+warning: unused variable: `width`
+   --> gdn_chunked.rs:345:9
+    |
+345 |     let width = width as usize;
+    |         ^^^^^ help: if this is intentional, prefix it with an underscore: `_width`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: `mesh-specialize-nvptx` (lib) generated 1 warning (run `cargo fix --lib -p mesh-specialize-nvptx` to apply 1 suggestion)
+    Finished `release` profile [optimized] target(s) in 3.73s
+cp target/specialize/nvptx/nvptx64-nvidia-cuda/release/mesh_specialize_nvptx.ptx target/specialize/probes.ptx

@@ -1,0 +1,5 @@
+mkdir -p target/specialize
+RUSTC="$(rustup which --toolchain nightly-2026-09-25 rustc)" RUSTC_WRAPPER= RUSTFLAGS='-Ctarget-cpu=sm_120a' rustup run nightly-2026-09-25 cargo build --manifest-path crates/mesh-specialize/kernels/nvptx/Cargo.toml --target nvptx64-nvidia-cuda -Zbuild-std=core --release --target-dir target/specialize/nvptx
+   Compiling mesh-specialize-nvptx v0.1.0 (/Users/ndizazzo/.codex/worktrees/issue-1393-feasibility/mesh-llm/crates/mesh-specialize/kernels/nvptx)
+    Finished `release` profile [optimized] target(s) in 3.86s
+cp target/specialize/nvptx/nvptx64-nvidia-cuda/release/mesh_specialize_nvptx.ptx target/specialize/probes.ptx

@@ -1,0 +1,110 @@
+Note: mold is unavailable or failed the active target/toolchain link probe.
+Falling back to lld or the platform linker for this build.
+
+
+   Compiling mesh-specialize v0.76.1 (/home/ndizazzo/dev/mesh/mesh-llm/crates/mesh-specialize)
+error[E0433]: cannot find `kernels` in `crate`
+   --> crates/mesh-specialize/validation/../src/kernels/cuda/driver_graph.rs:132:15
+    |
+132 | pub(in crate::kernels::cuda) fn ensure_driver_operation_allowed(operation: &str) -> Result<()> {
+    |               ^^^^^^^ could not find `kernels` in the crate root
+
+error[E0433]: cannot find `kernels` in `crate`
+   --> crates/mesh-specialize/validation/../src/kernels/cuda/driver_graph.rs:140:15
+    |
+140 | pub(in crate::kernels::cuda) fn ensure_default_stream_launch_allowed(
+    |               ^^^^^^^ could not find `kernels` in the crate root
+
+error[E0433]: cannot find `kernels` in `crate`
+   --> crates/mesh-specialize/validation/../src/kernels/cuda/driver_graph.rs:147:15
+    |
+147 | pub(in crate::kernels::cuda) struct Stream<'ctx> {
+    |               ^^^^^^^ could not find `kernels` in the crate root
+
+error[E0433]: cannot find `kernels` in `crate`
+   --> crates/mesh-specialize/validation/../src/kernels/cuda/driver_graph.rs:157:19
+    |
+157 |     pub(in crate::kernels::cuda) fn new(context: &'ctx Context) -> Result<Self> {
+    |                   ^^^^^^^ could not find `kernels` in the crate root
+
+error[E0433]: cannot find `kernels` in `crate`
+   --> crates/mesh-specialize/validation/../src/kernels/cuda/driver_graph.rs:187:19
+    |
+187 |     pub(in crate::kernels::cuda) fn is_capturing(&self) -> bool {
+    |                   ^^^^^^^ could not find `kernels` in the crate root
+
+error[E0433]: cannot find `kernels` in `crate`
+   --> crates/mesh-specialize/validation/../src/kernels/cuda/driver_graph.rs:192:19
+    |
+192 |     pub(in crate::kernels::cuda) fn begin_capture(&self) -> Result<StreamCapture<'_, 'ctx>> {
+    |                   ^^^^^^^ could not find `kernels` in the crate root
+
+error[E0433]: cannot find `kernels` in `crate`
+   --> crates/mesh-specialize/validation/../src/kernels/cuda/driver_graph.rs:221:19
+    |
+221 |     pub(in crate::kernels::cuda) fn abort_capture(&mut self) -> Result<()> {
+    |                   ^^^^^^^ could not find `kernels` in the crate root
+
+error[E0433]: cannot find `kernels` in `crate`
+   --> crates/mesh-specialize/validation/../src/kernels/cuda/driver_graph.rs:229:19
+    |
+229 |     pub(in crate::kernels::cuda) fn synchronize(&self) -> Result<()> {
+    |                   ^^^^^^^ could not find `kernels` in the crate root
+
+error[E0433]: cannot find `kernels` in `crate`
+   --> crates/mesh-specialize/validation/../src/kernels/cuda/driver_graph.rs:271:15
+    |
+271 | pub(in crate::kernels::cuda) struct StreamCapture<'stream, 'ctx> {
+    |               ^^^^^^^ could not find `kernels` in the crate root
+
+error[E0433]: cannot find `kernels` in `crate`
+   --> crates/mesh-specialize/validation/../src/kernels/cuda/driver_graph.rs:287:19
+    |
+287 |     pub(in crate::kernels::cuda) unsafe fn finish(mut self) -> Result<Graph<'ctx>> {
+    |                   ^^^^^^^ could not find `kernels` in the crate root
+
+error[E0433]: cannot find `kernels` in `crate`
+   --> crates/mesh-specialize/validation/../src/kernels/cuda/driver_graph.rs:313:19
+    |
+313 |     pub(in crate::kernels::cuda) fn abort(mut self) -> Result<()> {
+    |                   ^^^^^^^ could not find `kernels` in the crate root
+
+error[E0433]: cannot find `kernels` in `crate`
+   --> crates/mesh-specialize/validation/../src/kernels/cuda/driver_graph.rs:371:15
+    |
+371 | pub(in crate::kernels::cuda) struct Graph<'ctx> {
+    |               ^^^^^^^ could not find `kernels` in the crate root
+
+error[E0433]: cannot find `kernels` in `crate`
+   --> crates/mesh-specialize/validation/../src/kernels/cuda/driver_graph.rs:386:19
+    |
+386 |     pub(in crate::kernels::cuda) unsafe fn instantiate(&self) -> Result<GraphExec<'ctx>> {
+    |                   ^^^^^^^ could not find `kernels` in the crate root
+
+error[E0433]: cannot find `kernels` in `crate`
+   --> crates/mesh-specialize/validation/../src/kernels/cuda/driver_graph.rs:430:15
+    |
+430 | pub(in crate::kernels::cuda) struct GraphExec<'ctx> {
+    |               ^^^^^^^ could not find `kernels` in the crate root
+
+error[E0433]: cannot find `kernels` in `crate`
+   --> crates/mesh-specialize/validation/../src/kernels/cuda/driver_graph.rs:445:19
+    |
+445 |     pub(in crate::kernels::cuda) unsafe fn launch(&self, stream: &Stream<'_>) -> Result<()> {
+    |                   ^^^^^^^ could not find `kernels` in the crate root
+
+error[E0433]: cannot find `kernels` in `crate`
+   --> crates/mesh-specialize/validation/../src/kernels/cuda/driver_graph.rs:490:19
+    |
+490 |     pub(in crate::kernels::cuda) unsafe fn launch_on_stream(
+    |                   ^^^^^^^ could not find `kernels` in the crate root
+
+warning: linker stderr: Note: mold is unavailable or failed the active target/toolchain link probe.
+         Falling back to lld or the platform linker for this build.
+  |
+  = note: `#[warn(linker_messages)]` on by default
+
+warning: `mesh-specialize` (lib test) generated 1 warning
+For more information about this error, try `rustc --explain E0433`.
+error: could not compile `mesh-specialize` (bin "mesh-specialize-validate" test) due to 16 previous errors
+error: recipe `with-lld` failed with exit code 101

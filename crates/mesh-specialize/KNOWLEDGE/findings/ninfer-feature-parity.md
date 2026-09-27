@@ -127,7 +127,7 @@ exist, keep the percentage column unmeasured.
 | F05 | `feature_tiled_attention` | Online-softmax synthetic GPU checks and all three sanitizers pass; model integration pending |
 | F06 | `feature_fp8_kv` | Codec delivered; CPU tests and PTX compilation pass; GPU/cache integration pending |
 | F07 | `feature_workspace` | Reusable layout and lease checks pass on GPU; operator integration pending |
-| F08 | `feature_graphs` | Driver graph API delivered; parent Linux compile and fixed-shape probe pending |
+| F08 | `feature_graphs` | Driver graph API passes Linux checks, fixed-shape replay and leak/memory check; model capture pending |
 | F09 | `feature_mtp_recovery` | Queued; native spawn rejected by agent thread limit after prior workers completed |
 | F10 | `feature_prefix_cache` | Queued; native spawn rejected by agent thread limit after prior workers completed |
 

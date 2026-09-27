@@ -1,0 +1,20 @@
+    Checking mesh-specialize v0.76.1 (/Users/ndizazzo/.codex/worktrees/issue-1393-feasibility/mesh-llm/crates/mesh-specialize)
+error: the loop variable `row` is used to index `weight_scale_bf16`
+  --> crates/mesh-specialize/src/../reference/fp8_a16_decode.rs:67:16
+   |
+67 |     for row in 0..n {
+   |                ^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#needless_range_loop
+   = note: `-D clippy::needless-range-loop` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_range_loop)]`
+help: consider using an iterator and enumerate()
+   |
+67 -     for row in 0..n {
+67 +     for (row, <item>) in weight_scale_bf16.iter().enumerate().take(n) {
+   |
+
+error: could not compile `mesh-specialize` (lib) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `mesh-specialize` (lib test) due to 1 previous error
+error: recipe `with-lld` failed with exit code 101

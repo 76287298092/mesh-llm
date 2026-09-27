@@ -1,0 +1,22 @@
+Note: mold is unavailable or failed the active target/toolchain link probe.
+Falling back to lld or the platform linker for this build.
+
+
+    Checking mesh-specialize v0.76.1 (/home/ndizazzo/dev/mesh/mesh-llm/crates/mesh-specialize)
+error[E0603]: function `run` is private
+   --> crates/mesh-specialize/src/kernels.rs:462:44
+    |
+462 |     return cuda::feature_projection_trial::run(ptx, device);
+    |                                            ^^^ private function
+    |
+note: the function `run` is defined here
+   --> crates/mesh-specialize/src/kernels/cuda/feature_projection_trial.rs:11:1
+    |
+ 11 | pub(super) fn run(ptx: &str, device: i32) -> Result<Value> {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+For more information about this error, try `rustc --explain E0603`.
+error: could not compile `mesh-specialize` (lib) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `mesh-specialize` (lib test) due to 1 previous error
+error: recipe `with-lld` failed with exit code 101

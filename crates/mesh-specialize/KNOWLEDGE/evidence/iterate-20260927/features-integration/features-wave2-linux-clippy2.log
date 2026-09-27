@@ -1,0 +1,32 @@
+Note: mold is unavailable or failed the active target/toolchain link probe.
+Falling back to lld or the platform linker for this build.
+
+
+    Checking mesh-specialize v0.76.1 (/home/ndizazzo/dev/mesh/mesh-llm/crates/mesh-specialize)
+error: this `if` statement can be collapsed
+   --> crates/mesh-specialize/src/kernels/cuda/driver_graph.rs:250:9
+    |
+250 | /         if self.capturing.get() {
+251 | |             if let Err(error) =
+252 | |                 abort_capture_inner(self.context, self.api, self.raw, &self.capturing)
+...   |
+256 | |         }
+    | |_________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#collapsible_if
+    = note: `-D clippy::collapsible-if` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::collapsible_if)]`
+help: collapse nested if block
+    |
+250 ~         if self.capturing.get()
+251 ~             && let Err(error) =
+252 |                 abort_capture_inner(self.context, self.api, self.raw, &self.capturing)
+253 |             {
+254 |                 tracing::warn!(error = %error, "failed to abort CUDA capture before destroying stream");
+255 ~             }
+    |
+
+error: could not compile `mesh-specialize` (lib) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `mesh-specialize` (lib test) due to 1 previous error
+error: recipe `with-lld` failed with exit code 101
