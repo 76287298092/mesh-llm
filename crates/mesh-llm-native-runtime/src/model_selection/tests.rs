@@ -249,3 +249,30 @@ fn same_id_cached_runtime_with_different_serves_metadata_is_not_selected_as_resi
     assert!(resolution.selected.serves.is_empty());
     assert!(matches!(resolution.source, NativeRuntimeSource::Missing));
 }
+
+#[test]
+fn resident_backend_requirements_must_match_the_evaluated_artifact() {
+    for cached in [false, true] {
+        let resident = tempfile::tempdir().unwrap();
+        let cache_root = tempfile::tempdir().unwrap();
+        let general = artifact("same-runtime", 0, Vec::new());
+        let mut different_backend = general.clone();
+        different_backend.backend = NativeRuntimeBackend::cuda(12, vec!["sm_86".into()]);
+        write_runtime(resident.path(), different_backend);
+        let cache = NativeRuntimeCache::new(cache_root.path());
+        if cached {
+            cache.install_from_dir(resident.path()).unwrap();
+        }
+        let resolver = resolver(general, cache).with_bundle_dirs(if cached {
+            Vec::new()
+        } else {
+            vec![resident.path().to_path_buf()]
+        });
+        let resolution = resolver.resolve(&RuntimeSelection::Recommended).unwrap();
+        assert_eq!(
+            resolution.selected.backend.kind,
+            NativeRuntimeBackendKind::Cpu
+        );
+        assert!(matches!(resolution.source, NativeRuntimeSource::Missing));
+    }
+}

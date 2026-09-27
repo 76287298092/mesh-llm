@@ -53,6 +53,7 @@ pub enum CandidateRejection {
         backend: NativeRuntimeBackendKind,
     },
     CudaProfileMissing,
+    CudaAdmission(crate::cuda_admission::CudaAdmissionRejection),
     CudaToolkitMajorMismatch {
         required: u32,
         installed: Vec<u32>,
@@ -80,6 +81,7 @@ pub enum CandidateRejection {
 impl std::fmt::Display for CandidateRejection {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::CudaAdmission(reason) => reason.fmt(f),
             Self::ModelIdentityMissing => write!(
                 f,
                 "specialized runtime requires a verified resident model and weight identity"
@@ -491,19 +493,21 @@ fn evaluate_artifact(
     skippy_abi: Option<&str>,
     selection: &RuntimeSelection,
 ) -> CandidateEvaluation {
-    evaluate_artifact_for_model(artifact, profile, mesh_version, skippy_abi, selection, None)
+    evaluate_artifact_for_request(artifact, profile, mesh_version, skippy_abi, selection, None)
 }
 
-pub(crate) fn evaluate_artifact_for_model(
+pub(crate) fn evaluate_artifact_for_request(
     artifact: &NativeRuntimeArtifact,
     profile: &HostRuntimeProfile,
     mesh_version: &str,
     skippy_abi: Option<&str>,
     selection: &RuntimeSelection,
-    requested: Option<&crate::model_identity::ModelIdentity>,
+    request: Option<&crate::model_selection::ModelRuntimeRequest<'_>>,
 ) -> CandidateEvaluation {
     let mut reasons = Vec::new();
-    if let Some(reason) = crate::model_selection::rejection(&artifact.serves, requested) {
+    if let Some(reason) =
+        crate::model_selection::rejection(&artifact.serves, request.map(|r| r.identity))
+    {
         reasons.push(reason);
     }
     if artifact.mesh_version.as_deref() != Some(mesh_version) {
@@ -567,7 +571,15 @@ pub(crate) fn evaluate_artifact_for_model(
             backend: artifact.backend.kind.clone(),
         });
     }
-    evaluate_backend_requirements(artifact, profile, &mut reasons);
+    if crate::cuda_selection::is_driver_only(artifact) {
+        crate::cuda_selection::evaluate(
+            artifact,
+            request.and_then(|r| r.cuda_device),
+            &mut reasons,
+        );
+    } else {
+        evaluate_backend_requirements(artifact, profile, &mut reasons);
+    }
     if let Some(reason) = selection_mismatch(selection, artifact) {
         reasons.push(reason);
     }
@@ -585,6 +597,7 @@ fn artifact_identity_matches(
 ) -> bool {
     candidate.id == selected.id
         && candidate.serves == selected.serves
+        && candidate.backend == selected.backend
         && candidate.mesh_version.as_deref() == selected.mesh_version.as_deref()
         && candidate.skippy_abi == selected.skippy_abi
 }
@@ -850,6 +863,7 @@ mod tests {
                 kind: NativeRuntimeBackendKind::Cuda,
                 cuda: Some(CudaRuntimeRequirements {
                     toolkit_major,
+                    driver_only: None,
                     min_driver: None,
                     gpu_arches: arches.iter().map(|value| value.to_string()).collect(),
                 }),

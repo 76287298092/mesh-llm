@@ -12,6 +12,24 @@ use driver::{Buffer, Context, Event, Function, Module};
 use serde_json::{Value, json};
 use std::ffi::c_void;
 
+pub(super) fn device_probe(device: i32) -> Result<Value> {
+    let context = Context::new(device)?;
+    let info = context.info();
+    let (free, total) = context.memory()?;
+    ensure!(
+        info.major > 0 && info.minor >= 0 && info.driver_version > 0,
+        "CUDA returned invalid selected-device properties"
+    );
+    Ok(json!({
+        "ordinal": info.ordinal,
+        "uuid": info.uuid,
+        "compute_arch": format!("sm_{}{}", info.major, info.minor),
+        "driver_api_version": info.driver_version,
+        "total_memory_bytes": total,
+        "free_memory_bytes": free,
+    }))
+}
+
 pub(super) fn run(ptx: &str, device: i32) -> Result<Value> {
     ensure!(ptx.contains(".target sm_120a"), "probe must target sm_120a");
     let context = Context::new(device)?;

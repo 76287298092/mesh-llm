@@ -33,6 +33,11 @@ type CuInitFn = unsafe extern "C" fn(c_uint) -> CuResult;
 type CuDriverGetVersionFn = unsafe extern "C" fn(*mut c_int) -> CuResult;
 type CuDeviceGetFn = unsafe extern "C" fn(*mut CuDevice, c_int) -> CuResult;
 type CuDeviceGetNameFn = unsafe extern "C" fn(*mut c_char, c_int, CuDevice) -> CuResult;
+#[repr(C)]
+struct CuUuid {
+    bytes: [u8; 16],
+}
+type CuDeviceGetUuidV2Fn = unsafe extern "C" fn(*mut CuUuid, CuDevice) -> CuResult;
 type CuDeviceComputeCapabilityFn =
     unsafe extern "C" fn(*mut c_int, *mut c_int, CuDevice) -> CuResult;
 type CuDeviceTotalMemV2Fn = unsafe extern "C" fn(*mut usize, CuDevice) -> CuResult;
@@ -80,6 +85,7 @@ struct Api {
     cu_driver_get_version: CuDriverGetVersionFn,
     cu_device_get: CuDeviceGetFn,
     cu_device_get_name: CuDeviceGetNameFn,
+    cu_device_get_uuid_v2: CuDeviceGetUuidV2Fn,
     cu_device_compute_capability: CuDeviceComputeCapabilityFn,
     cu_device_total_mem_v2: CuDeviceTotalMemV2Fn,
     cu_ctx_create_v2: CuCtxCreateV2Fn,
@@ -118,6 +124,7 @@ impl Api {
             cu_driver_get_version: load_symbol(&library, b"cuDriverGetVersion\0")?,
             cu_device_get: load_symbol(&library, b"cuDeviceGet\0")?,
             cu_device_get_name: load_symbol(&library, b"cuDeviceGetName\0")?,
+            cu_device_get_uuid_v2: load_symbol(&library, b"cuDeviceGetUuid_v2\0")?,
             cu_device_compute_capability: load_symbol(&library, b"cuDeviceComputeCapability\0")?,
             cu_device_total_mem_v2: load_symbol(&library, b"cuDeviceTotalMem_v2\0")?,
             cu_ctx_create_v2: load_symbol(&library, b"cuCtxCreate_v2\0")?,
@@ -236,11 +243,87 @@ impl Drop for CurrentContextGuard<'_> {
 /// Selected CUDA device properties collected when creating a context.
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub(super) struct DeviceInfo {
+    pub(super) ordinal: c_int,
+    pub(super) uuid: String,
     pub(super) name: String,
     pub(super) major: c_int,
     pub(super) minor: c_int,
     pub(super) total_bytes: usize,
     pub(super) driver_version: c_int,
+}
+
+fn query_device_info(
+    api: &Api,
+    device: CuDevice,
+    ordinal: c_int,
+    driver_version: c_int,
+) -> Result<DeviceInfo> {
+    let mut name_buffer = [0 as c_char; DEVICE_NAME_BUFFER_BYTES];
+    // SAFETY: name_buffer provides the writable capacity passed to the driver.
+    check_cuda(
+        unsafe {
+            (api.cu_device_get_name)(
+                name_buffer.as_mut_ptr(),
+                DEVICE_NAME_BUFFER_BYTES as c_int,
+                device,
+            )
+        },
+        "cuDeviceGetName",
+    )?;
+    let name = decode_c_string_buffer(&name_buffer);
+    if name.is_empty() {
+        bail!("cuDeviceGetName returned an empty name for CUDA device {ordinal}");
+    }
+    let mut uuid = CuUuid { bytes: [0; 16] };
+    // SAFETY: uuid is a writable CUuuid output and device came from cuDeviceGet.
+    check_cuda(
+        unsafe { (api.cu_device_get_uuid_v2)(&mut uuid, device) },
+        "cuDeviceGetUuid_v2",
+    )?;
+    let mut major = 0;
+    let mut minor = 0;
+    // SAFETY: Both integer outputs are writable and device came from cuDeviceGet.
+    check_cuda(
+        unsafe { (api.cu_device_compute_capability)(&mut major, &mut minor, device) },
+        "cuDeviceComputeCapability",
+    )?;
+    let mut total_bytes = 0;
+    // SAFETY: total_bytes is a valid writable size_t output location.
+    check_cuda(
+        unsafe { (api.cu_device_total_mem_v2)(&mut total_bytes, device) },
+        "cuDeviceTotalMem_v2",
+    )?;
+    Ok(DeviceInfo {
+        ordinal,
+        uuid: format_uuid(&uuid.bytes),
+        name,
+        major,
+        minor,
+        total_bytes,
+        driver_version,
+    })
+}
+
+fn format_uuid(bytes: &[u8; 16]) -> String {
+    format!(
+        "GPU-{:02x}{:02x}{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
+        bytes[0],
+        bytes[1],
+        bytes[2],
+        bytes[3],
+        bytes[4],
+        bytes[5],
+        bytes[6],
+        bytes[7],
+        bytes[8],
+        bytes[9],
+        bytes[10],
+        bytes[11],
+        bytes[12],
+        bytes[13],
+        bytes[14],
+        bytes[15],
+    )
 }
 /// An owned CUDA context and the API table used to create it.
 pub(super) struct Context {
@@ -279,35 +362,7 @@ impl Context {
                 unsafe { (api.cu_device_get)(&mut device, device_ordinal) },
                 "cuDeviceGet",
             )?;
-            let mut name_buffer = [0 as c_char; DEVICE_NAME_BUFFER_BYTES];
-            // SAFETY: `name_buffer` provides the writable capacity passed to the driver.
-            check_cuda(
-                unsafe {
-                    (api.cu_device_get_name)(
-                        name_buffer.as_mut_ptr(),
-                        DEVICE_NAME_BUFFER_BYTES as c_int,
-                        device,
-                    )
-                },
-                "cuDeviceGetName",
-            )?;
-            let name = decode_c_string_buffer(&name_buffer);
-            if name.is_empty() {
-                bail!("cuDeviceGetName returned an empty name for CUDA device {device_ordinal}");
-            }
-            let mut major = 0;
-            let mut minor = 0;
-            // SAFETY: Both integer outputs are writable and `device` came from cuDeviceGet.
-            check_cuda(
-                unsafe { (api.cu_device_compute_capability)(&mut major, &mut minor, device) },
-                "cuDeviceComputeCapability",
-            )?;
-            let mut total_bytes = 0;
-            // SAFETY: `total_bytes` is a valid writable size_t output location.
-            check_cuda(
-                unsafe { (api.cu_device_total_mem_v2)(&mut total_bytes, device) },
-                "cuDeviceTotalMem_v2",
-            )?;
+            let info = query_device_info(&api, device, device_ordinal, driver_version)?;
             let mut raw = ptr::null_mut();
             // SAFETY: `raw` is writable; `device` is a valid driver device handle.
             check_cuda(
@@ -331,13 +386,7 @@ impl Context {
             Ok(Self {
                 api,
                 raw,
-                info: DeviceInfo {
-                    name,
-                    major,
-                    minor,
-                    total_bytes,
-                    driver_version,
-                },
+                info,
                 _thread_bound: PhantomData,
             })
         }
@@ -781,7 +830,7 @@ fn format_jit_logs(info_log: &str, error_log: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{check_transfer_len, decode_c_string_buffer, format_jit_logs};
+    use super::{check_transfer_len, decode_c_string_buffer, format_jit_logs, format_uuid};
     use std::ffi::c_char;
     #[test]
     fn transfer_length_must_fit_allocation() {
@@ -804,5 +853,18 @@ mod tests {
             "info: compiled\nerror: warning"
         );
         assert_eq!(format_jit_logs("", ""), "");
+    }
+
+    #[test]
+    fn cuda_uuid_uses_lowercase_gpu_uuid_format() {
+        let bytes = std::array::from_fn(|index| index as u8);
+        assert_eq!(
+            format_uuid(&bytes),
+            "GPU-00010203-0405-0607-0809-0a0b0c0d0e0f"
+        );
+        assert_eq!(
+            format_uuid(&[0; 16]),
+            "GPU-00000000-0000-0000-0000-000000000000"
+        );
     }
 }

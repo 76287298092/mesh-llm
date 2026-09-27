@@ -1823,6 +1823,7 @@ mod dynamic {
             write_runtime_with_backend(&cuda_dir, Some(&release_version), cuda_id, |backend| {
                 backend.kind = mesh_llm_native_runtime::NativeRuntimeBackendKind::Cuda;
                 backend.cuda = Some(mesh_llm_native_runtime::CudaRuntimeRequirements {
+                    driver_only: None,
                     toolkit_major: 12,
                     min_driver: None,
                     gpu_arches: Vec::new(),
@@ -1887,6 +1888,7 @@ mod dynamic {
                         let mut backend = NativeRuntimeBackend::cpu();
                         backend.kind = mesh_llm_native_runtime::NativeRuntimeBackendKind::Cuda;
                         backend.cuda = Some(mesh_llm_native_runtime::CudaRuntimeRequirements {
+                            driver_only: None,
                             toolkit_major: 12,
                             min_driver: None,
                             gpu_arches: Vec::new(),

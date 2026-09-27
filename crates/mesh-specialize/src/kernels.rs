@@ -22,6 +22,18 @@ mod ordinary_fixtures;
 #[cfg(any(target_os = "linux", test))]
 mod rms_norm_fixtures;
 
+/// Snapshot the exact selected CUDA device and its current free memory. This
+/// creates and destroys a context, but loads no model or device kernel.
+pub fn device_probe(device: i32) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::device_probe(device);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = device;
+        anyhow::bail!("CUDA device admission trials require Linux")
+    }
+}
+
 /// Run representative RMSNorm and tiled GEMM fixtures with resident GPU timing.
 /// These are kernel workloads, not model prefill/decode measurements.
 pub fn workload_probe(ptx: &str, device: i32) -> anyhow::Result<serde_json::Value> {

@@ -739,6 +739,7 @@ mod tests {
         artifact.backend = NativeRuntimeBackend {
             kind: NativeRuntimeBackendKind::Cuda,
             cuda: Some(CudaRuntimeRequirements {
+                driver_only: None,
                 toolkit_major: 12,
                 min_driver: None,
                 gpu_arches: vec!["86".to_string(), "89".to_string()],

@@ -14,6 +14,7 @@ Start with [the implementation plan](../PLAN.md) and the
 | [Representative kernels](findings/representative-kernels.md) | 14 GPU cases pass; preliminary timings; sanitizer recovery complete |
 | [CUDA-library reference](findings/cuda-library-reference.md) | 14 independent cuBLAS cases pass; runtime library has no cuBLAS references |
 | [Model identity selection](findings/model-identity-selection.md) | Exact policy and legacy fallback; resident discovery/startup pending |
+| [Selected CUDA device admission](findings/selected-device-admission.md) | Driver-only mode and explicit selected-device evidence; live trial pending |
 | [Prebuilt core target mismatch](dead-ends/prebuilt-core-target-mismatch.md) | Resolved by rebuilding core; emitted PTX executed |
 | [Racecheck timing repetitions](dead-ends/racecheck-timing-repetitions.md) | Failed with host OOM; bounded check-only recovery passed |
 

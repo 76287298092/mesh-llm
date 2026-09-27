@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "requested": {
+    "model_id": "fixture:admission-probe",
+    "weights_id": "fixture:no-model-weights"
+  },
+  "runtime": {
+    "id": "fixture-driver-only-sm120",
+    "serves": [
+      {"model_id": "fixture:admission-probe", "weights_id": "fixture:no-model-weights"}
+    ],
+    "mesh_version": "0.76.1",
+    "skippy_abi": "0.1.64",
+    "platform": {"os": "linux", "arch": "x86_64"},
+    "backend": {
+      "kind": "cuda",
+      "cuda": {
+        "toolkit_major": 0,
+        "driver_only": {
+          "min_driver_api_version": 13040,
+          "min_device_memory_bytes": 30064771072
+        },
+        "gpu_arches": ["sm_120"]
+      }
+    },
+    "rank": 10000,
+    "libraries": ["lib/libmesh_specialize.so"]
+  }
+}

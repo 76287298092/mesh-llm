@@ -1,3 +1,4 @@
+mod admission;
 mod baseline;
 mod fixtures;
 mod observations;
@@ -7,6 +8,7 @@ use crate::command::DynResult;
 
 pub(crate) fn run(args: &[String]) -> DynResult<()> {
     match args {
+        [command, rest @ ..] if command == "admission-probe" => admission::run(rest),
         [command, rest @ ..] if command == "baseline" => baseline::run(rest),
         [command, rest @ ..] if command == "baseline-plan" => fixtures::run(rest),
         [command, rest @ ..] if command == "nvfp4-probe" => probe::run(rest),

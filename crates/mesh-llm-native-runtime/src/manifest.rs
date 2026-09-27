@@ -167,6 +167,7 @@ impl NativeRuntimeReleaseManifest {
 }
 
 fn validate_artifact(artifact: &NativeRuntimeArtifact) -> Result<()> {
+    crate::cuda_selection::validate_driver_only_artifact(artifact)?;
     for identity in &artifact.serves {
         identity
             .validate()

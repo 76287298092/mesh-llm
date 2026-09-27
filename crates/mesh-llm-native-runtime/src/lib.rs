@@ -1,6 +1,8 @@
 //! Shared native runtime manifest, resolution, and cache policy.
 
 mod cache;
+pub mod cuda_admission;
+mod cuda_selection;
 mod flavor;
 pub mod host;
 mod load_plan;

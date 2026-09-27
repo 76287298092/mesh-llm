@@ -32,6 +32,10 @@ pub struct NativeRuntimeBackend {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct CudaRuntimeRequirements {
     pub toolkit_major: u32,
+    /// Explicit driver-only specialization. Requires toolkit_major=0; absence
+    /// preserves the existing CUDA runtime-library dependency contract.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub driver_only: Option<crate::cuda_admission::CudaDriverOnlyRequirements>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub min_driver: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -108,6 +112,7 @@ impl NativeRuntimeBackend {
             kind: NativeRuntimeBackendKind::Cuda,
             cuda: Some(CudaRuntimeRequirements {
                 toolkit_major,
+                driver_only: None,
                 min_driver: None,
                 gpu_arches,
             }),
