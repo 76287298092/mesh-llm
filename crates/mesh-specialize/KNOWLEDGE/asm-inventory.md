@@ -128,3 +128,8 @@ F03 experimental `fp8_swiglu_exact.rs` shares activation decoding across exact
 gate/up dots and preserves every BF16 epilogue boundary. Coordinate reads and
 existing exact integer arithmetic PTX are covered by the independent composed
 reference in `optimizations/feature-f03-fusion.md`. GPU qualification is pending.
+
+F04 experimental `gdn_chunked.rs` implements coefficient/RHS preparation,
+triangular solve and output/final-state reconstruction using explicit FP32
+arithmetic. Its independent sequential FP64 oracle and supported contracts are
+in `optimizations/feature-f04-gdn.md`; GPU/model qualification remains pending.

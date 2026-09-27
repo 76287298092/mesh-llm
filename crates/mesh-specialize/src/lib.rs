@@ -79,3 +79,6 @@ pub mod fp8_native_prefill_reference;
 
 #[path = "../reference/fp8_swiglu_exact.rs"]
 pub mod fp8_swiglu_exact_reference;
+
+#[path = "../reference/gdn_chunked.rs"]
+pub mod gdn_chunked_reference;

@@ -26,6 +26,7 @@ mod fp8_quantize;
 mod gated_rms_norm;
 mod gdn_prepare;
 mod gdn_recurrent;
+mod gdn_chunked;
 mod memory;
 mod nvfp4_gemm;
 mod ordinary_mma;

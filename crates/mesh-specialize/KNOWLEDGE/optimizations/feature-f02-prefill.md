@@ -84,3 +84,5 @@ No model prefill, parity, or serving-readiness claim follows from this source.
 Parent integration: 229 crate tests and host Clippy passed on macOS on 2026-09-27, together with F03. NVPTX compilation passed. No GPU or model qualification has occurred. The parent added a synthetic projection-check command with fixed numerical budgets and workspace reuse checks; Linux compilation and GPU execution remain pending.
 
 Linux compile caught the new parent probe entrypoint visibility; corrected to crate visibility before GPU execution.
+
+The parent Linux probe also required the current Clippy byte-chunk API; updated before execution.

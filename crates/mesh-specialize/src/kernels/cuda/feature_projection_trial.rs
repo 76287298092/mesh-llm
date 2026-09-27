@@ -184,11 +184,15 @@ fn compare(
     let mut raw_bytes = vec![0; raw.len()];
     raw.download(&mut raw_bytes)?;
     let actual = out_bytes
-        .chunks_exact(2)
+        .as_chunks::<2>()
+        .0
+        .iter()
         .map(|v| u16::from_le_bytes([v[0], v[1]]))
         .collect::<Vec<_>>();
     let unrounded = raw_bytes
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .map(|v| f32::from_le_bytes([v[0], v[1], v[2], v[3]]))
         .collect::<Vec<_>>();
     let f = |v: u16| f32::from_bits(u32::from(v) << 16) as f64;
