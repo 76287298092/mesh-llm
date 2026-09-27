@@ -12,6 +12,7 @@ Start with [the implementation plan](../PLAN.md) and the
 | [Rust NVFP4 probe](findings/rust-nvfp4-probe.md) | 4,096 exact output matches on RTX5090 |
 | [Remaining instruction qualification](findings/instruction-qualification.md) | 29 GPU cases pass; three sanitizer tools clean |
 | [Representative kernels](findings/representative-kernels.md) | 14 GPU cases pass; preliminary timings; sanitizer recovery complete |
+| [CUDA-library reference](findings/cuda-library-reference.md) | Separate validation executable; comparison pending |
 | [Prebuilt core target mismatch](dead-ends/prebuilt-core-target-mismatch.md) | Resolved by rebuilding core; emitted PTX executed |
 | [Racecheck timing repetitions](dead-ends/racecheck-timing-repetitions.md) | Failed with host OOM; bounded check-only recovery passed |
 

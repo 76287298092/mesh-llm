@@ -2,6 +2,10 @@
 specialize-tools-build:
     just with-lld cargo build --release -p xtask
 
+# cuBLAS exists only in this separate validation executable, never the runtime.
+specialize-validation-build:
+    just with-lld cargo build --release -p mesh-specialize --features validation --bin mesh-specialize-validate
+
 specialize-baseline plan output:
     ./target/release/xtask specialize baseline --plan "{{plan}}" --output "{{output}}"
 

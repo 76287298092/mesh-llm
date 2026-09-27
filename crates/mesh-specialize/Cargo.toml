@@ -6,6 +6,14 @@ license.workspace = true
 description = "Internal Rust-only specialized GPU runtime experiments"
 publish = false
 
+[features]
+validation = []
+
+[[bin]]
+name = "mesh-specialize-validate"
+path = "validation/main.rs"
+required-features = ["validation"]
+
 [dependencies]
 anyhow.workspace = true
 serde.workspace = true

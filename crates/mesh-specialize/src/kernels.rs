@@ -5,6 +5,13 @@ mod cuda;
 #[cfg(any(target_os = "linux", test))]
 mod fixtures;
 #[cfg(any(target_os = "linux", test))]
+#[cfg_attr(
+    feature = "validation",
+    allow(
+        dead_code,
+        reason = "Dense fixture materialization is used by the separate validation binary"
+    )
+)]
 mod gemm_fixtures;
 #[cfg(any(target_os = "linux", test))]
 mod memory_fixtures;

@@ -14,6 +14,8 @@ const ZERO_A: [u8; TILE_M * TILE_K] = [0; TILE_M * TILE_K];
 const ZERO_B: [u8; TILE_K * TILE_N] = [0; TILE_K * TILE_N];
 const ZERO_SCALE_A: [u8; TILE_M * 4] = [0; TILE_M * 4];
 const ZERO_SCALE_B: [u8; 4 * TILE_N] = [0; 4 * TILE_N];
+#[cfg(any(test, feature = "validation"))]
+const MAX_DENSE_INPUT_ELEMENTS: usize = 32 * 1024 * 1024;
 
 pub(super) struct Fixture {
     pub name: String,
@@ -28,6 +30,62 @@ pub(super) struct Fixture {
     pub scale_a: Vec<u32>,
     pub scale_b: Vec<u32>,
     pub expected: Vec<f32>,
+}
+
+#[cfg(any(test, feature = "validation"))]
+pub(super) fn dense_inputs(m: usize, n: usize, k: usize) -> Result<(Vec<f32>, Vec<f32>), String> {
+    let (a_len, b_len) = dense_input_lengths(m, n, k)?;
+    let scales = decoded_scale_codes()?;
+    let mut a = reserve_dense_values(a_len, "A")?;
+    let mut b = reserve_dense_values(b_len, "B")?;
+
+    for row in 0..m {
+        for index in 0..k {
+            let group = index / 16;
+            let value = decode_e2m1(a_code(row, index))? * scales[(row + group) % 4];
+            a.push(value);
+        }
+    }
+    for index in 0..k {
+        for column in 0..n {
+            let group = index / 16;
+            let value = decode_e2m1(b_code(index, column))? * scales[(group + column) % 4];
+            b.push(value);
+        }
+    }
+    Ok((a, b))
+}
+
+#[cfg(any(test, feature = "validation"))]
+fn decoded_scale_codes() -> Result<[f32; 4], String> {
+    Ok([
+        decode_ue4m3(SCALE_CODES[0])?,
+        decode_ue4m3(SCALE_CODES[1])?,
+        decode_ue4m3(SCALE_CODES[2])?,
+        decode_ue4m3(SCALE_CODES[3])?,
+    ])
+}
+
+#[cfg(any(test, feature = "validation"))]
+fn dense_input_lengths(m: usize, n: usize, k: usize) -> Result<(usize, usize), String> {
+    if m == 0 || n == 0 || k == 0 {
+        return Err("dense GEMM dimensions must be positive".to_string());
+    }
+    let a_len = checked_product(m, k, "dense A input")?;
+    let b_len = checked_product(k, n, "dense B input")?;
+    if a_len > MAX_DENSE_INPUT_ELEMENTS || b_len > MAX_DENSE_INPUT_ELEMENTS {
+        return Err("dense GEMM inputs exceed the 32 Mi-element limit".to_string());
+    }
+    Ok((a_len, b_len))
+}
+
+#[cfg(any(test, feature = "validation"))]
+fn reserve_dense_values(size: usize, label: &str) -> Result<Vec<f32>, String> {
+    let mut values = Vec::new();
+    values
+        .try_reserve_exact(size)
+        .map_err(|_| format!("dense {label} input allocation failed"))?;
+    Ok(values)
 }
 
 #[cfg(target_os = "linux")]
@@ -250,7 +308,10 @@ fn reserve_words(size: usize, label: &str) -> Result<Vec<u32>, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{SCALE_CODES, TILE_K, TILE_M, TILE_N, make_a_tile, make_b_tile, make_fixture};
+    use super::{
+        MAX_DENSE_INPUT_ELEMENTS, SCALE_CODES, TILE_K, TILE_M, TILE_N, dense_inputs, make_a_tile,
+        make_b_tile, make_fixture,
+    };
     use crate::reference::{decode_e2m1, decode_ue4m3, matmul};
 
     #[test]
@@ -298,6 +359,47 @@ mod tests {
             }
         }
         assert!(scale_b.iter().all(|scale| SCALE_CODES.contains(scale)));
+    }
+
+    #[test]
+    fn dense_inputs_match_independent_logical_values_and_fixture_product() {
+        let (m, n, k) = (17, 13, 71);
+        let (a, b) = dense_inputs(m, n, k).unwrap();
+
+        let mut expected_a = Vec::with_capacity(m * k);
+        for row in 0..m {
+            for index in 0..k {
+                let sign = if row % 3 == 0 { 8 } else { 0 };
+                let code = sign | (index % 8) as u8;
+                let scale = SCALE_CODES[(row + index / 16) % 4];
+                expected_a.push(decode_e2m1(code).unwrap() * decode_ue4m3(scale).unwrap());
+            }
+        }
+        let mut expected_b = Vec::with_capacity(k * n);
+        for index in 0..k {
+            for column in 0..n {
+                let sign = if column % 5 == 0 { 8 } else { 0 };
+                let code = sign | ((index * 5 + 3) % 8) as u8;
+                let scale = SCALE_CODES[(index / 16 + column) % 4];
+                expected_b.push(decode_e2m1(code).unwrap() * decode_ue4m3(scale).unwrap());
+            }
+        }
+
+        assert_eq!(a, expected_a);
+        assert_eq!(b, expected_b);
+        let product = matmul(&a, &b, m, n, k).unwrap();
+        let fixture = make_fixture("dense-input-check", m, n, k).unwrap();
+        assert_eq!(product, fixture.expected);
+        assert_eq!(product, naive_expected(m, n, k));
+    }
+
+    #[test]
+    fn dense_inputs_reject_invalid_dimensions_and_sizes() {
+        assert!(dense_inputs(0, 13, 71).is_err());
+        assert!(dense_inputs(usize::MAX, 1, 2).is_err());
+        assert!(dense_inputs(1, usize::MAX, 2).is_err());
+        assert!(dense_inputs(MAX_DENSE_INPUT_ELEMENTS + 1, 1, 1).is_err());
+        assert!(dense_inputs(1, MAX_DENSE_INPUT_ELEMENTS + 1, 1).is_err());
     }
 
     fn naive_expected(m: usize, n: usize, k: usize) -> Vec<f32> {

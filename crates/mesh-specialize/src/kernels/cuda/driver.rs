@@ -171,7 +171,7 @@ fn report_cleanup_error(operation: &str, result: CuResult) {
     }
 }
 /// Temporarily make one context current and restore the prior context on drop.
-struct CurrentContextGuard<'api> {
+pub(super) struct CurrentContextGuard<'api> {
     api: &'api Api,
     context: CuContext,
     active: bool,
@@ -367,7 +367,7 @@ impl Context {
             "cuCtxSynchronize",
         )
     }
-    fn activate(&self) -> Result<CurrentContextGuard<'_>> {
+    pub(super) fn activate(&self) -> Result<CurrentContextGuard<'_>> {
         CurrentContextGuard::push(&self.api, self.raw)
     }
 }
