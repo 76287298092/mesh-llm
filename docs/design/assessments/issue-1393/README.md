@@ -5,8 +5,12 @@ Assessed September 26, 2026, America/Toronto. MeshLLM revision
 
 Subsequent implementation evidence is in the
 [runtime work ledger](../../../../crates/mesh-specialize/PLAN.md).
-The authorized experiment has now measured the deployed Ninfer baseline and
-executed the required Rust instruction probes on carrack. The original assessment
+The authorized experiment has now measured the deployed Ninfer baseline, qualified
+the required Rust instruction probes, and connected all 64 decoder layers on
+carrack. The first one-token hidden/logit comparison matches the independent CPU
+reference bit-for-bit after correcting SiLU rounding. See the
+[full-model evidence](../../../../crates/mesh-specialize/KNOWLEDGE/findings/resident-model.md)
+for the current qualification boundary. The original assessment
 below records the initial snapshot; its service-state and implementation-state
 observations are historical. End-to-end performance parity remains unproven.
 

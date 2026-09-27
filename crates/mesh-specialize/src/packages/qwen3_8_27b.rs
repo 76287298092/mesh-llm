@@ -1,4 +1,4 @@
-//! Fixed Qwen3.8-27B text model. Full execution is not yet implemented.
+//! Fixed Qwen3.8-27B text decoder and bounded independent correctness trials.
 mod entry;
 pub mod inventory;
 pub mod projections;

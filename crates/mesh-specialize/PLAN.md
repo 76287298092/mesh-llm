@@ -1,8 +1,9 @@
 # Specialized Qwen runtime implementation plan
 
-Status: deployed-profile baseline, required instruction probes and first GEMM/RMSNorm
-GPU trials and independent cuBLAS comparison complete. Profiling and specialized
-model inference remain open.
+Status: deployed-profile baseline, kernel and resident-block qualification complete.
+The first 64-layer GPU run now matches the independent CPU hidden/logit reference
+bit-for-bit for one token. Multi-token qualification, profiling and measured model
+prefill/decode/context remain open.
 
 Host policy now checks exact model/weights and explicit selected-device admission.
 The [live device-policy trial](KNOWLEDGE/findings/selected-device-admission.md)
@@ -192,6 +193,7 @@ that control's rates directly to MTP4 as an isolated speedup across different in
 | H03 discovery and H04 ABI | Pending | No executable specialized model yet |
 | Persistent text weights and compiled state layout | Allocation/transfer gate passes | `KNOWLEDGE/findings/persistent-residency.md`; all 1,620 hashes and 128 zeroed regions pass, first resident entry exact, sanitizers clean; decoder execution pending |
 | Full model performance/context trial | Pending | None |
+| Connected 64-layer decoder and final vocabulary head | One-token independent hidden/logit comparison bit exact | `KNOWLEDGE/findings/resident-model.md`; initial SiLU rounding failure diagnosed and corrected; multi-token/sanitizer qualification pending |
 | Reference-free resident decoder connection | GDN layer zero and full-attention layer three qualified; full schedule pending | `KNOWLEDGE/findings/resident-decoder.md`; independent whole-block comparisons, exact whole/chunk/token state and all three sanitizers pass |
 | Resident final-eight-layer FP8 MLP | Branch execution qualified for layers 56/63, one/17 tokens | `KNOWLEDGE/findings/resident-fp8-mlp.md`; independent scalar comparisons and three sanitizers pass; full schedule pending |
 

@@ -1,7 +1,7 @@
 # Resident full-model connection
 
-Status: first 64-layer GPU execution completed, independent numerical comparison
-failed. No full-model correctness or performance claim.
+Status: one-token 64-layer hidden/logit comparison is bit exact after the SiLU
+correction. Multi-token qualification and model performance remain open.
 
 The decoder follows the compiled 64-layer schedule with persistent checkpoint
 weights and one session state arena. A transaction advances the sequence cursor
@@ -90,3 +90,54 @@ to FP32. No host table or reference function enters device execution. An exhaust
 host test and device probe compare every finite BF16 input with the independent
 libm-backed reference. The model trial must pass this probe before loading weights.
 Device validation and the unchanged full-model comparison remain pending.
+
+### Corrected one-token run
+
+Source `b800646d9ff122b7fb367143c5dce37f4fcefa5f`, release xtask SHA256
+`bd0060d1d06fb778c7e610373e0bdb73c188c63abc6ee856ba8a013ba4206454`, PTX SHA256
+`7e7d363e34779f0efdd85dade38437362f3c219842e187c0773695cf68522a3d`.
+The unchanged CPU reference SHA256 is
+`2ad8afddf4afdb9959f8eac45ac10956ddf4b3df2d88f13745c0b38d22d4a809`.
+
+All 65,280 finite BF16 inputs now produce exactly the reference FP32 SiLU result
+on the RTX5090. All 64 model layers and 248,320 final BF16 logits match the saved
+independent reference bit-for-bit for `[248044]`. Greedy output is 271, repeated
+session logits/state are exact, cursor commit and failed-session rejection pass,
+and device memory returns to the pre-weight baseline after release. The trial
+took 21.841696232 seconds including load/checks/repeats, not an inference timing.
+
+macOS passes 205 tests and Clippy; Linux passes 260 library and 20 validator tests,
+Clippy and the release build. Rust PTX and offline assembly succeed. Probe,
+MLP-SiLU, GDN-gated-norm and convolution use 28/28/32/34 registers with no stack
+frame or spills; only gated norm uses shared memory, 1,024 bytes. This is resource
+evidence, not performance evidence. Ninfer resumed at 06:49:04 EDT, PID 3133806,
+HTTP 200; ComfyUI PID 448118 remained at 498 MiB.
+
+The next reference appends the independently selected token: `[248044,271]`.
+It will test actual recurrent/KV history across calls, not just repeated empty
+sessions. One token does not establish multi-token quality, usable context or
+throughput. All failed attempts remain preserved.
+
+### Two-token qualification and BF16 gate projection
+
+The independent `[248044,271]` reference finished in 197.56316971 seconds while
+Ninfer stayed online. The initial SiLU-corrected GPU run is exact through layer 11;
+layer 12 differs in three of 10,240 hidden values, all in the second token. By the
+last layer, logits fail the unchanged budget: relative L2 0.11124162377990778,
+cosine 0.9953314708288528. Greedy selection still agrees at 271. GPU full-batch
+and token-by-token logits plus all recurrent/KV state are bit exact. Sanitizers
+were not run because the normal comparison failed. Ninfer resumed with HTTP 200.
+
+An independent layer-12 replay identifies BF16 A projection output 88 as the first
+different boundary: device 0.8828125, CPU 0.88671875. Normalization, QKV, Z, B,
+convolution and all MLP boundaries match. The gate error propagates into recurrent
+output and produces the three hidden differences. This is not a cursor or cache
+partition issue. The diagnostic restored Ninfer at 06:54:52 EDT, PID 3137439,
+ComfyUI unchanged.
+
+The next correction retains BF16 tensor-core tiles but starts each K16 tile from
+zero and accumulates its result in FP64. Positive-product tiles estimate an error
+interval; BF16-ambiguous outputs use an ordered scalar FP64 dot from the original
+BF16 values. The interval is deliberately conservative empirical protection, not
+a formal floating-point proof. Tail and cancellation fixtures plus unchanged
+model references qualify the change. Performance cost remains unmeasured.

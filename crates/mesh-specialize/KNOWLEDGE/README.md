@@ -5,7 +5,7 @@ Start with [the implementation plan](../PLAN.md) and the
 
 | Entry | Status |
 | --- | --- |
-| [Resident full model](findings/resident-model.md) | CPU reference and 64-layer device composition implemented; live qualification pending |
+| [Resident full model](findings/resident-model.md) | One-token 64-layer hidden/logit match is bit exact after SiLU correction; multi-token and performance pending |
 | [Resident decoder connection](findings/resident-decoder.md) | Resident GDN and attention blocks, whole/chunk/token state equivalence and sanitizers pass; full decoder pending |
 | [Resident FP8 MLP](findings/resident-fp8-mlp.md) | Layers 56/63 one/17-token scalar comparisons and three sanitizers pass; reference-free device execution |
 | [Persistent residency](findings/persistent-residency.md) | All 1,620 text weight hashes, 131K-capacity state allocation, entry operation and sanitizers pass; full model pending |

@@ -86,6 +86,52 @@ fn mma_bf16(
 }
 
 #[inline(always)]
+fn fp32_to_fp64_exact(value: f32) -> f64 {
+    let converted: f64;
+    // SAFETY: This scalar conversion has no memory or stack effects.
+    unsafe {
+        asm!(
+            "cvt.f64.f32 {converted}, {value};",
+            converted = out(reg64) converted,
+            value = in(reg32) value,
+            options(nomem, nostack),
+        )
+    };
+    converted
+}
+
+#[inline(always)]
+fn fp64_add_rn(left: f64, right: f64) -> f64 {
+    let sum: f64;
+    // SAFETY: This scalar FP64 operation has no memory or stack effects.
+    unsafe {
+        asm!(
+            "add.rn.f64 {sum}, {left}, {right};",
+            sum = out(reg64) sum,
+            left = in(reg64) left,
+            right = in(reg64) right,
+            options(nomem, nostack),
+        )
+    };
+    sum
+}
+
+#[inline(always)]
+fn fp64_to_fp32_rn(value: f64) -> f32 {
+    let converted: f32;
+    // SAFETY: This scalar conversion has no memory or stack effects.
+    unsafe {
+        asm!(
+            "cvt.rn.f32.f64 {converted}, {value};",
+            converted = out(reg32) converted,
+            value = in(reg64) value,
+            options(nomem, nostack),
+        )
+    };
+    converted
+}
+
+#[inline(always)]
 fn encode_bf16_rne(value: f32) -> u16 {
     let bits = value.to_bits();
     let exponent = bits & 0x7f80_0000;
@@ -99,23 +145,46 @@ fn encode_bf16_rne(value: f32) -> u16 {
 /// Store one in-range BF16 linear result in both FP32 and rounded BF16 form.
 ///
 /// # Safety
-/// `out` and `unrounded` must cover disjoint `m * n` allocations, remain live, and
-/// have index arithmetic that fits `usize`.
+/// `matrices` and `output` must cover the input and disjoint `m * n` output
+/// allocations, remain live, and have index arithmetic that fits `usize`.
 #[inline(always)]
 unsafe fn store_output(
-    out: *mut u16,
-    unrounded: *mut f32,
+    output: &OutputBuffers,
+    matrices: &InputMatrices,
     row: usize,
     column: usize,
-    n: usize,
     accumulator: f32,
+    absolute_sum: f64,
 ) {
-    let index = row * n + column;
+    // SAFETY: The output guards prove these coordinates are in range, and the
+    // kernel contract supplies complete finite BF16 matrix extents for refinement.
+    let value = unsafe {
+        super::bf16_linear_rounding::refine(
+            matrices.a,
+            matrices.w,
+            [row, column, matrices.k],
+            accumulator,
+            absolute_sum,
+        )
+    };
+    let index = row * output.n + column;
     // SAFETY: The caller supplies valid, disjoint output extents and an in-range index.
     unsafe {
-        unrounded.add(index).write(accumulator);
-        out.add(index).write(encode_bf16_rne(accumulator));
+        output.unrounded.add(index).write(value);
+        output.out.add(index).write(encode_bf16_rne(value));
     }
+}
+
+struct InputMatrices {
+    a: *const u16,
+    w: *const u16,
+    k: usize,
+}
+
+struct OutputBuffers {
+    out: *mut u16,
+    unrounded: *mut f32,
+    n: usize,
 }
 
 /// Compute one row-major BF16 linear layer using warp-level tensor-core MMA.
@@ -126,7 +195,7 @@ unsafe fn store_output(
 ///
 /// # Safety
 /// Launch `grid = [ceil(n / 8), ceil(m / 16), 1]` and `block = [32, 1, 1]`, with
-/// nonzero `m`, `n`, and `k`. All dimension products, padded K offsets, and launch
+/// nonzero `m` and `n`, and `k` in `1..=32768`. All dimension products, padded K offsets, and launch
 /// dimensions must fit the device address space and hardware limits. `a` must point
 /// to at least `m * k` readable BF16 values and `w` to at least `n * k` readable BF16
 /// values in row-major order. The host must validate every input value is finite.
@@ -152,7 +221,14 @@ pub unsafe extern "ptx-kernel" fn bf16_linear(
     let m_usize = m as usize;
     let n_usize = n as usize;
     let k_usize = k as usize;
-    let mut accumulators = (0.0_f32, 0.0_f32, 0.0_f32, 0.0_f32);
+    let mut wide_totals = (0.0_f64, 0.0_f64, 0.0_f64, 0.0_f64);
+    let mut absolute_totals = (0.0_f64, 0.0_f64, 0.0_f64, 0.0_f64);
+    let input_matrices = InputMatrices { a, w, k: k_usize };
+    let output_buffers = OutputBuffers {
+        out,
+        unrounded,
+        n: n_usize,
+    };
 
     for k_tile in 0..k.div_ceil(16) {
         let k_start = k_tile as usize * 16 + thread_in_group * 2;
@@ -174,51 +250,78 @@ pub unsafe extern "ptx-kernel" fn bf16_linear(
                 load_bf16x2(w, b_row, n_usize, k_usize, k_start + 8),
             )
         };
-        accumulators = mma_bf16(a0, a1, a2, a3, b0, b1, accumulators);
+        let tile = mma_bf16(a0, a1, a2, a3, b0, b1, (0.0, 0.0, 0.0, 0.0));
+        let absolute_tile = mma_bf16(
+            a0 & 0x7fff_7fff,
+            a1 & 0x7fff_7fff,
+            a2 & 0x7fff_7fff,
+            a3 & 0x7fff_7fff,
+            b0 & 0x7fff_7fff,
+            b1 & 0x7fff_7fff,
+            (0.0, 0.0, 0.0, 0.0),
+        );
+        wide_totals = (
+            fp64_add_rn(wide_totals.0, fp32_to_fp64_exact(tile.0)),
+            fp64_add_rn(wide_totals.1, fp32_to_fp64_exact(tile.1)),
+            fp64_add_rn(wide_totals.2, fp32_to_fp64_exact(tile.2)),
+            fp64_add_rn(wide_totals.3, fp32_to_fp64_exact(tile.3)),
+        );
+        absolute_totals = (
+            fp64_add_rn(absolute_totals.0, fp32_to_fp64_exact(absolute_tile.0)),
+            fp64_add_rn(absolute_totals.1, fp32_to_fp64_exact(absolute_tile.1)),
+            fp64_add_rn(absolute_totals.2, fp32_to_fp64_exact(absolute_tile.2)),
+            fp64_add_rn(absolute_totals.3, fp32_to_fp64_exact(absolute_tile.3)),
+        );
     }
 
+    let accumulators = (
+        fp64_to_fp32_rn(wide_totals.0),
+        fp64_to_fp32_rn(wide_totals.1),
+        fp64_to_fp32_rn(wide_totals.2),
+        fp64_to_fp32_rn(wide_totals.3),
+    );
     let lane_column_start = column_start + 2 * thread_in_group;
     // SAFETY: This lane owns these four distinct tile outputs; the dimension guards
     // ensure each write maps to valid input-independent scale-free output extents.
     unsafe {
         if row_start + lane_group < m_usize && lane_column_start < n_usize {
             store_output(
-                out,
-                unrounded,
+                &output_buffers,
+                &input_matrices,
                 row_start + lane_group,
                 lane_column_start,
-                n_usize,
                 accumulators.0,
+                absolute_totals.0,
             );
         }
         if row_start + lane_group < m_usize && lane_column_start + 1 < n_usize {
             store_output(
-                out,
-                unrounded,
+                &output_buffers,
+                &input_matrices,
                 row_start + lane_group,
                 lane_column_start + 1,
-                n_usize,
                 accumulators.1,
+                absolute_totals.1,
             );
         }
         if row_start + lane_group + 8 < m_usize && lane_column_start < n_usize {
             store_output(
-                out,
-                unrounded,
+                &output_buffers,
+                &input_matrices,
                 row_start + lane_group + 8,
                 lane_column_start,
-                n_usize,
                 accumulators.2,
+                absolute_totals.2,
             );
         }
         if row_start + lane_group + 8 < m_usize && lane_column_start + 1 < n_usize {
             store_output(
-                out,
-                unrounded,
+                &output_buffers,
+                &input_matrices,
                 row_start + lane_group + 8,
                 lane_column_start + 1,
-                n_usize,
                 accumulators.3,
+                absolute_totals.3,
             );
         }
     }

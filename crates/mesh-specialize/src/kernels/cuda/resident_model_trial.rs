@@ -67,6 +67,12 @@ pub(in crate::kernels) fn run(
         );
     }
     let layout = Layout::new(objects.iter().map(|o| (o.name.clone(), o.length)))?;
+    let bf16_probe = super::bf16_trial::run(&context, &module)?;
+    if bf16_probe["all_passed"] != true {
+        return Ok(
+            json!({"all_passed":false,"full_model_executed":false,"bf16_probe":bf16_probe,"activation_probe":activation_probe}),
+        );
+    }
     let needed = layout
         .bytes
         .checked_add(config.state_layout.bytes)
@@ -87,6 +93,7 @@ pub(in crate::kernels) fn run(
             diagnostic,
         )?;
         report["activation_probe"] = activation_probe;
+        report["bf16_probe"] = bf16_probe;
         return Ok(report);
     }
     let model = Model::new(&weights, config)?;
@@ -154,7 +161,7 @@ pub(in crate::kernels) fn run(
     context.synchronize()?;
     let after = context.memory()?;
     Ok(
-        json!({"schema_version":1,"kind":"qwen-resident-full-model-correctness","device":info,"tokens":reference.tokens,"layers":layers,"logits":logits,"activation_probe":activation_probe,
+        json!({"schema_version":1,"kind":"qwen-resident-full-model-correctness","device":info,"tokens":reference.tokens,"layers":layers,"logits":logits,"activation_probe":activation_probe,"bf16_probe":bf16_probe,
         "selected_token":output.token,"reference_token":expected_token,"greedy_token_exact":output.token==expected_token,
         "whole_vs_token_logits_and_state_bit_exact":partition_exact,"prefix_committed_correctly":prefix_correct,"failed_session_reuse_rejected":poison_rejected,
         "all_passed":layers.iter().all(|r|r["all_passed"]==true)&&logits["all_passed"]==true&&output.token==expected_token&&partition_exact&&prefix_correct&&poison_rejected&&after.0>=before.0,

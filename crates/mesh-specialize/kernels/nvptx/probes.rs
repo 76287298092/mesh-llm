@@ -6,6 +6,7 @@ use core::arch::asm;
 mod attention_gate;
 mod attention_prepare;
 mod bf16_linear;
+mod bf16_linear_rounding;
 mod causal_attention;
 mod causal_conv4;
 mod embedding_norm;
