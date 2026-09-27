@@ -6,12 +6,14 @@ use std::sync::OnceLock;
 pub enum Profile {
     Exact,
     NativePrefill,
+    NativePrefillAudit,
 }
 impl Profile {
     pub fn name(self) -> &'static str {
         match self {
             Self::Exact => "exact-a8-v1",
             Self::NativePrefill => "native-fp8-prefill-v1",
+            Self::NativePrefillAudit => "native-fp8-prefill-v1-audit",
         }
     }
 }
@@ -19,7 +21,10 @@ fn parse(value: Option<&str>) -> Result<Profile> {
     match value {
         None | Some("exact") => Ok(Profile::Exact),
         Some("native-prefill") => Ok(Profile::NativePrefill),
-        _ => bail!("MESH_SPECIALIZE_FP8_PROFILE must be exact or native-prefill"),
+        Some("native-prefill-audit") => Ok(Profile::NativePrefillAudit),
+        _ => bail!(
+            "MESH_SPECIALIZE_FP8_PROFILE must be exact, native-prefill, or native-prefill-audit"
+        ),
     }
 }
 /// Read once per process. This is an internal benchmark profile, not a serving setting.

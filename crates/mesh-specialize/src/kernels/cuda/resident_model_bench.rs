@@ -49,6 +49,11 @@ pub(in crate::kernels) fn run(
     config: &DecoderConfig,
     request: &ModelBenchRequest<'_>,
 ) -> Result<Value> {
+    ensure!(
+        crate::kernels::fp8_profile::current()?
+            != crate::kernels::fp8_profile::Profile::NativePrefillAudit,
+        "projection audit is diagnostic; use qwen-model-profile rather than a throughput benchmark"
+    );
     let final_cursor = validate_request(
         request.tokens,
         config.vocabulary,

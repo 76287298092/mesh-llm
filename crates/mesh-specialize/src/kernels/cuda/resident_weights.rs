@@ -97,6 +97,22 @@ impl<'ctx> ResidentWeights<'ctx> {
         self.pointer(name)
     }
 
+    /// Bounded immutable readback for diagnostic projection oracles.
+    pub(super) fn read_range(&self, name: &str, offset: usize, bytes: &mut [u8]) -> Result<()> {
+        let region = self.layout.region(name)?;
+        let end = offset
+            .checked_add(bytes.len())
+            .ok_or_else(|| anyhow!("diagnostic range overflow"))?;
+        ensure!(
+            u64::try_from(end)? <= region.length,
+            "diagnostic read exceeds tensor extent"
+        );
+        let arena_offset = usize::try_from(region.offset)?
+            .checked_add(offset)
+            .ok_or_else(|| anyhow!("diagnostic arena offset overflow"))?;
+        self.arena.download_at(arena_offset, bytes)
+    }
+
     /// Read one immutable scale during binding, never during a forward operation.
     pub(super) fn positive_scalar(&self, name: &str) -> Result<f32> {
         self.tensor(name, DType::F32, &[1], 4)?;

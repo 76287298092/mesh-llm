@@ -51,6 +51,7 @@ pub(in crate::kernels) fn run(
     config: &DecoderConfig,
     tokens: &[u32],
 ) -> Result<Value> {
+    super::fp8_projection_audit::take_reports();
     validate_request(
         tokens,
         config.vocabulary,
@@ -161,6 +162,7 @@ pub(in crate::kernels) fn run(
         prefill_exact && exact_output_and_state && past_exact && memory_released && partition_exact;
 
     Ok(json!({
+        "projection_audit": super::fp8_projection_audit::take_reports(),
         "schema_version": 1,
         "kind": "resident-model-single-decode-kernel-profile",
         "completed": true,
