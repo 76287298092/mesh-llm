@@ -4,6 +4,11 @@ Status: deployed-profile baseline, required instruction probes and first GEMM/RM
 GPU trials and independent cuBLAS comparison complete. Profiling and specialized
 model inference remain open.
 
+Host policy now checks exact model/weights and explicit selected-device admission.
+The [live device-policy trial](KNOWLEDGE/findings/selected-device-admission.md)
+passes. Resident artifact discovery, ABI loading and full model execution are
+still required before this can serve a request.
+
 ## Objective and boundaries
 
 Build the first stages of issue 1393 in `codex/issue-1393-feasibility`, with bounded

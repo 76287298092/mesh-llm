@@ -1,0 +1,221 @@
+{
+  "schema_version": 1,
+  "kind": "driver-admission-policy-probe",
+  "fixture": {
+    "schema_version": 1,
+    "runtime": {
+      "id": "fixture-driver-only-sm120",
+      "serves": [
+        {
+          "model_id": "fixture:admission-probe",
+          "weights_id": "fixture:no-model-weights"
+        }
+      ],
+      "mesh_version": "0.76.1",
+      "skippy_abi": "0.1.64",
+      "platform": {
+        "os": "linux",
+        "arch": "x86_64"
+      },
+      "backend": {
+        "kind": "cuda",
+        "cuda": {
+          "toolkit_major": 0,
+          "driver_only": {
+            "min_driver_api_version": 13040,
+            "min_device_memory_bytes": 30064771072
+          },
+          "gpu_arches": [
+            "sm_120"
+          ]
+        }
+      },
+      "rank": 10000,
+      "libraries": [
+        "lib/libmesh_specialize.so"
+      ]
+    },
+    "requested": {
+      "model_id": "fixture:admission-probe",
+      "weights_id": "fixture:no-model-weights"
+    }
+  },
+  "device": {
+    "ordinal": 1,
+    "uuid": "GPU-6b7fe24c-5f15-4ac5-88d6-c8934135a4ea",
+    "compute_arch": "sm_86",
+    "driver_api_version": 13040,
+    "total_memory_bytes": 10410328064,
+    "free_memory_bytes": 10158145536
+  },
+  "host_profile": {
+    "os": "linux",
+    "arch": "x86_64",
+    "target_triple": null,
+    "glibc_version": "2.44",
+    "available_flavors": [
+      "cpu",
+      "cuda",
+      "vulkan"
+    ],
+    "gpus": [
+      {
+        "display_name": "NVIDIA GeForce RTX 5090",
+        "backend_device": "CUDA0",
+        "stable_id": "uuid:GPU-80ded6bd-1a89-2628-3d94-902187dbab1d",
+        "vram_bytes": null,
+        "unified_memory": false,
+        "probe": {
+          "source": "linux_nvidia_proc",
+          "path": "/proc/driver/nvidia/gpus/0000:01:00.0/information",
+          "fields": {
+            "Bus Location": "0000:01:00.0",
+            "Bus Type": "PCIe",
+            "DMA Mask": "0xfffffffffffff",
+            "DMA Size": "52 bits",
+            "Device Minor": "0",
+            "GPU Excluded": "No",
+            "GPU Firmware": "615.71.09",
+            "GPU UUID": "GPU-80ded6bd-1a89-2628-3d94-902187dbab1d",
+            "IRQ": "16",
+            "Model": "NVIDIA GeForce RTX 5090",
+            "Video BIOS": "98.02.2e.40.7f"
+          },
+          "raw_lines": [
+            "Model: \t\t NVIDIA GeForce RTX 5090",
+            "IRQ:   \t\t 16",
+            "GPU UUID: \t GPU-80ded6bd-1a89-2628-3d94-902187dbab1d",
+            "Video BIOS: \t 98.02.2e.40.7f",
+            "Bus Type: \t PCIe",
+            "DMA Size: \t 52 bits",
+            "DMA Mask: \t 0xfffffffffffff",
+            "Bus Location: \t 0000:01:00.0",
+            "Device Minor: \t 0",
+            "GPU Firmware: \t 615.71.09",
+            "GPU Excluded:\t No"
+          ]
+        },
+        "cuda_sm": "120"
+      },
+      {
+        "display_name": "NVIDIA GeForce RTX 3080",
+        "backend_device": "CUDA1",
+        "stable_id": "uuid:GPU-6b7fe24c-5f15-4ac5-88d6-c8934135a4ea",
+        "vram_bytes": null,
+        "unified_memory": false,
+        "probe": {
+          "source": "linux_nvidia_proc",
+          "path": "/proc/driver/nvidia/gpus/0000:06:00.0/information",
+          "fields": {
+            "Bus Location": "0000:06:00.0",
+            "Bus Type": "PCIe",
+            "DMA Mask": "0x7fffffffffff",
+            "DMA Size": "47 bits",
+            "Device Minor": "1",
+            "GPU Excluded": "No",
+            "GPU Firmware": "615.71.09",
+            "GPU UUID": "GPU-6b7fe24c-5f15-4ac5-88d6-c8934135a4ea",
+            "IRQ": "134",
+            "Model": "NVIDIA GeForce RTX 3080",
+            "Video BIOS": "94.02.42.80.31"
+          },
+          "raw_lines": [
+            "Model: \t\t NVIDIA GeForce RTX 3080",
+            "IRQ:   \t\t 134",
+            "GPU UUID: \t GPU-6b7fe24c-5f15-4ac5-88d6-c8934135a4ea",
+            "Video BIOS: \t 94.02.42.80.31",
+            "Bus Type: \t PCIe",
+            "DMA Size: \t 47 bits",
+            "DMA Mask: \t 0x7fffffffffff",
+            "Bus Location: \t 0000:06:00.0",
+            "Device Minor: \t 1",
+            "GPU Firmware: \t 615.71.09",
+            "GPU Excluded:\t No"
+          ]
+        },
+        "cuda_sm": "86"
+      }
+    ],
+    "cuda": {
+      "toolkit_majors": [
+        12,
+        13
+      ],
+      "driver_max_major": 13,
+      "gpu_arches": [
+        "120",
+        "86"
+      ]
+    },
+    "vulkan": {}
+  },
+  "evaluation": {
+    "artifact": {
+      "id": "fixture-driver-only-sm120",
+      "serves": [
+        {
+          "model_id": "fixture:admission-probe",
+          "weights_id": "fixture:no-model-weights"
+        }
+      ],
+      "mesh_version": "0.76.1",
+      "skippy_abi": "0.1.64",
+      "platform": {
+        "os": "linux",
+        "arch": "x86_64"
+      },
+      "backend": {
+        "kind": "cuda",
+        "cuda": {
+          "toolkit_major": 0,
+          "driver_only": {
+            "min_driver_api_version": 13040,
+            "min_device_memory_bytes": 30064771072
+          },
+          "gpu_arches": [
+            "sm_120"
+          ]
+        }
+      },
+      "rank": 10000,
+      "libraries": [
+        "lib/libmesh_specialize.so"
+      ]
+    },
+    "compatible": false,
+    "rank": 10650,
+    "rejection_reasons": [
+      {
+        "cuda_admission": {
+          "architecture_unsupported": {
+            "supported": [
+              "sm_120"
+            ],
+            "selected": "sm_86"
+          }
+        }
+      },
+      {
+        "cuda_admission": {
+          "insufficient_total_memory": {
+            "required": 30064771072,
+            "available": 10410328064
+          }
+        }
+      },
+      {
+        "cuda_admission": {
+          "insufficient_free_memory": {
+            "required": 30064771072,
+            "available": 10158145536
+          }
+        }
+      }
+    ]
+  },
+  "expected_compatible": false,
+  "all_passed": true,
+  "model_artifact_verified": false,
+  "note": "Synthetic policy fixture only; no model files were loaded.",
+  "error": null
+}
