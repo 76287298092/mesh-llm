@@ -129,3 +129,8 @@ hidden input. It checks whole/chunk/token output/cache equivalence, exact initia
 K/V and the zero unused tail at every append boundary, plus capacity rejection
 without cache mutation. Capacity is 20 in this bounded check, not a context claim.
 Local/Linux checks and all three Carrack sanitizers remain pending for this change.
+
+Initial attention Linux tests caught an incorrect expected value in the maximum
+RoPE-table extent test: 2,048 rows * 128 frequencies * 2 bytes is 524,288 bytes,
+not 262,144. The implementation's checked extent was correct; fix the test literal
+and preserve the failure log. macOS passed 184 tests, Clippy and no-console checks.

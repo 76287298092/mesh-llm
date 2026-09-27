@@ -246,7 +246,7 @@ mod tests {
 
         let maximum = extents(2048, 128, 256, 256, true).unwrap();
         assert_eq!(maximum.input_bytes, 268_435_456);
-        assert_eq!(maximum.table_bytes, 262_144);
+        assert_eq!(maximum.table_bytes, 524_288);
         assert_eq!(maximum.output_bytes, 134_217_728);
         assert_eq!(maximum.diagnostic_bytes, 268_435_456);
         assert_eq!(maximum.grid_x, 262_144);
