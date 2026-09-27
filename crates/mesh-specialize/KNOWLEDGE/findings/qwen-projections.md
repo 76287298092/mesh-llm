@@ -1,7 +1,7 @@
 # Layer-zero FP8 and BF16 projections
 
-Status: FP8 QKV/Z passes real-weight GPU execution and all three sanitizers.
-BF16 A/B implementation and host checks pass; its Carrack execution is pending.
+Status: FP8 QKV/Z and BF16 A/B pass real-weight GPU execution and all three
+sanitizers on Carrack.
 Full recurrent attention and model execution remain open.
 
 The pinned checkpoint config specifies dynamic per-token FP8 input activation
@@ -125,5 +125,52 @@ checks all tails. A/B reads the original normalized device buffer, never the FP8
 codes. Completing these projections still leaves convolution, gates, recurrent
 state, GDN normalization and output projection before layer-zero attention works.
 The BF16 worker owns only the device kernel; the parent owns reference arithmetic,
-loading, launch/checks and integration. GPU evidence for this extension follows
+loading, launch/checks and integration. GPU evidence for this extension is recorded
 in a separate directory so the first FP8 trial remains reproducible.
+
+## BF16 extension GPU trial
+
+Source `9d8d730c72c7b653aea53b99cf7c5fe9f2c5fbba` adds the BF16 A/B path.
+Release xtask SHA-256 is
+`0bc372b23d5d5db40b0f233c30904907a5fcc2550852464a67fec820ad830928` and PTX
+SHA-256 is `479dd4a1e4eb183b1372f7e586b7d651ad977f6c0f6ae5e28d4d69986861f1f7`.
+The GPU, driver and pinned Rust device toolchain match the first FP8 trial.
+The host build used `just specialize-tools-build` and Rust 1.98.1 with LLVM 22.1.8.
+Offline assembly accepts BF16 `m16n8k16`; both ptxas and driver report 34 registers,
+zero shared/local memory, and ptxas reports no spills.
+
+The [normal report](../evidence/qwen-projections-bf16-20260927/normal.json) passes
+all eight real-weight cases: 296,640 outputs including 1,728 A/B outputs. The
+largest A/B FP32 error is 0.00006103515625. Five A/B BF16 outputs differ from
+rounding the f64-based reference. Every BF16 result still exactly rounds its GPU
+FP32 output, and all FP32 errors meet the documented bound. The QKV/Z results are
+unchanged, including their 44 BF16 reference differences. The BF16 signed tail
+fixture adds 221 exact FP32/BF16 outputs; the FP8 tail and quantizer fixtures pass
+again. A read-only worker review found no lane mapping, tail, argument, routing or
+shape issue, and confirmed that the pass flag means tolerance-based acceptance.
+
+[Memcheck](../evidence/qwen-projections-bf16-20260927/memcheck.log),
+[racecheck](../evidence/qwen-projections-bf16-20260927/racecheck.log) and
+[synccheck](../evidence/qwen-projections-bf16-20260927/synccheck.log) each pass
+with zero errors or hazards, and all numerical checks pass under each tool. The
+same 8 GiB, no-swap, 240-second execution bounds apply. Local validation passes
+93 library tests; Carrack passes 98 library tests and 17 validator tests.
+Focused all-target/all-feature Clippy with warnings denied, changed-source
+formatting, Rust PTX build and repository no-console checks also pass. GitHub
+reports no Actions runs for the branch; these results are local/live validation.
+
+With the embedding table, norm, four projection weights and trial buffers live,
+driver free memory is 29,591,994,368 bytes. It returns to 32,221,822,976 after
+the trial. This excludes other layers and serving state and does not measure an
+allocator peak. The normal command takes 12.170 seconds including hashing,
+uploads and CPU reference arithmetic; GPU performance timing is deliberately
+absent. Model prefill, decode and context fields remain null.
+
+Ninfer restarted at 01:47:54 EDT on September 27 as PID 2849413, reached
+engine-ready at 01:48:00, and returned HTTP 200 from `/health`. Its allocation is
+30,046 MiB; ComfyUI PID 448118 remains at 498 MiB. Before/during/after records
+are in the [evidence directory](../evidence/qwen-projections-bf16-20260927/).
+Raw logs and exact PTX remain under `target/specialize/qwen-projections-bf16-20260927/`
+on both hosts. All four input projections are now qualified for these fixtures.
+The next gate is GDN convolution and activation, followed by gate transforms and
+recurrent state checks. No complete attention layer or model request runs yet.
