@@ -20,6 +20,13 @@ pub struct ProjectionInput {
     pub entry: EmbeddingNormInput,
     pub projections: Vec<Fp8Projection>,
     pub bf16_projections: Vec<Bf16Projection>,
+    pub convolution: Option<CausalConv4Weights>,
+}
+
+/// Fixed-width causal convolution attached to one FP8 projection output.
+pub struct CausalConv4Weights {
+    pub projection: usize,
+    pub weights: Vec<u8>,
 }
 
 pub struct Bf16Projection {

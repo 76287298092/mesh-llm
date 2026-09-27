@@ -1,5 +1,6 @@
 //! Linux CUDA Driver API instruction qualification.
 
+mod causal_conv4;
 mod driver;
 pub(super) mod embedding_norm;
 mod gemm;

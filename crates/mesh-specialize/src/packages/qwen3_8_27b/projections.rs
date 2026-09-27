@@ -1,7 +1,9 @@
 //! Layer-zero FP8 QKV/Z and BF16 A/B projections from resident normalized activations.
 use crate::{
     artifact::reader::VerifiedArtifact,
-    kernels::{Bf16Projection, EmbeddingNormInput, Fp8Projection, ProjectionInput},
+    kernels::{
+        Bf16Projection, CausalConv4Weights, EmbeddingNormInput, Fp8Projection, ProjectionInput,
+    },
 };
 use anyhow::Result;
 use serde_json::{Value, json};
@@ -55,10 +57,19 @@ pub fn trial(path: &Path, ptx: &str, device: i32) -> Result<Value> {
             channels: 48,
         });
     }
+    let mut conv_weights = Vec::new();
+    artifact.copy_object(
+        "tensors/model.language_model.layers.0.linear_attn.conv1d.weight",
+        &mut conv_weights,
+    )?;
     let input = ProjectionInput {
         entry,
         projections,
         bf16_projections,
+        convolution: Some(CausalConv4Weights {
+            projection: 0,
+            weights: conv_weights,
+        }),
     };
     let mut report = crate::kernels::projection_check(ptx, device, &input)?;
     report["identity"] = json!(identity);

@@ -1,11 +1,14 @@
 //! Resident embedding/norm feeding FP8 QKV/Z and BF16 A/B tensor-core projections.
 use super::{
+    causal_conv4,
     driver::{Buffer, Context, Function, Module},
     embedding_norm,
 };
 use crate::{
     entry_reference,
-    kernels::{Bf16Projection, EmbeddingNormInput, Fp8Projection, ProjectionInput},
+    kernels::{
+        Bf16Projection, CausalConv4Weights, EmbeddingNormInput, Fp8Projection, ProjectionInput,
+    },
     projection_reference,
 };
 use anyhow::{Result, ensure};
@@ -27,21 +30,24 @@ pub(in crate::kernels) fn run(ptx: &str, device: i32, input: &ProjectionInput) -
     let before = context.memory()?;
     let module = Module::load(&context, ptx)?;
     let quantization_fixtures = quantization_fixtures(&context, &module)?;
+    let convolution_fixtures = causal_conv4::fixtures(&context, &module)?;
     let fixture = fixture()?;
     let fixture_cases = run_input(&context, &module, &fixture)?;
     let cases = run_input(&context, &module, input)?;
     let after = context.memory()?;
     Ok(
-        json!({"schema_version":2,"kind":"qwen-projection-trial","device":info,
+        json!({"schema_version":3,"kind":"qwen-projection-convolution-trial","device":info,
         "all_passed":cases.iter().chain(&fixture_cases).all(|c|c["passed"]==true),
         "cases":cases,"fixture_cases":fixture_cases,"quantization_fixtures":quantization_fixtures,
+        "convolution_fixtures":convolution_fixtures,
         "memory_before":{"free_bytes":before.0,"total_bytes":before.1},
         "memory_after":{"free_bytes":after.0,"total_bytes":after.1},
         "quantize_resources":module.function("fp8_quantize_bf16")?.resources()?,
         "linear_resources":module.function("fp8_linear")?.resources()?,
         "bf16_linear_resources":module.function("bf16_linear")?.resources()?,
+        "convolution_resources":module.function("causal_conv4_bf16")?.resources()?,
         "activation_profile":"E4M3FN dynamic token scale in FP32; amax/448, zero scale replaced with 1; RNE finite saturation",
-        "gpu_chain":"embedding/norm -> FP8 quantization -> FP8 QKV/Z MMA; same normalized BF16 -> BF16 A/B MMA; no host replacement of intermediate device data",
+        "gpu_chain":"embedding/norm -> FP8 quantization -> QKV projection -> causal convolution/SiLU; same normalized BF16 -> BF16 A/B; no host replacement of intermediate device data",
         "timing_collected":false,"full_model_executed":false}),
     )
 }
@@ -100,6 +106,28 @@ fn validate(input: &ProjectionInput) -> Result<()> {
                 .iter()
                 .all(|b| { entry_reference::bf16_to_f32(u16::from_le_bytes(*b)).is_finite() }),
             "nonfinite checkpoint BF16 weight"
+        );
+    }
+    if let Some(conv) = &input.convolution {
+        let projection = input
+            .projections
+            .get(conv.projection)
+            .ok_or_else(|| anyhow::anyhow!("convolution projection index outside input"))?;
+        ensure!(
+            projection.channels <= 32768,
+            "too many convolution channels"
+        );
+        ensure!(
+            conv.weights.len() == projection.channels * 4 * 2,
+            "convolution weight extent mismatch"
+        );
+        ensure!(
+            conv.weights
+                .as_chunks::<2>()
+                .0
+                .iter()
+                .all(|b| { entry_reference::bf16_to_f32(u16::from_le_bytes(*b)).is_finite() }),
+            "nonfinite convolution weight"
         );
     }
     Ok(())
@@ -204,14 +232,16 @@ fn run_input(
             floats(&scales, tokens.len())? == expected_quant.scales,
             "GPU FP8 activation scales differ from scalar reference"
         );
-        for (projection, (w, sw)) in input.projections.iter().zip(&projections) {
+        for (index, (projection, (w, sw))) in input.projections.iter().zip(&projections).enumerate()
+        {
             let shape = [tokens.len(), projection.channels, input.entry.width];
-            let actual = run_linear(
+            let device_output = run_linear(
                 context,
                 &module.function("fp8_linear")?,
                 &[&codes, w, &scales, sw],
                 shape,
             )?;
+            let actual = device_output.read(tokens.len() * projection.channels)?;
             let weight_scales: Vec<_> = projection
                 .scales
                 .as_chunks::<2>()
@@ -233,16 +263,31 @@ fn run_input(
             report["activation_codes_exact"] = json!(true);
             report["activation_scales_exact"] = json!(true);
             report["free_device_bytes_with_allocations"] = json!(context.memory()?.0);
+            if let Some(conv) = &input.convolution
+                && conv.projection == index
+            {
+                let result = causal_conv4::check(
+                    context,
+                    module,
+                    &device_output.bf16,
+                    &actual.0,
+                    &conv.weights,
+                    [tokens.len(), projection.channels],
+                )?;
+                ensure!(result["all_passed"] == true, "chained convolution failed");
+                report["convolution"] = result;
+            }
             cases.push(report);
         }
         for (projection, w) in input.bf16_projections.iter().zip(&bf16_projections) {
             let shape = [tokens.len(), projection.channels, input.entry.width];
-            let actual = run_linear(
+            let device_output = run_linear(
                 context,
                 &module.function("bf16_linear")?,
                 &[&normalized, w],
                 shape,
             )?;
+            let actual = device_output.read(tokens.len() * projection.channels)?;
             let weights: Vec<_> = projection
                 .weights
                 .as_chunks::<2>()
@@ -289,12 +334,22 @@ fn quantize(
     unsafe { function.launch([u32::try_from(rows)?, 1, 1], [256, 1, 1], 0, &mut args) }
 }
 
-fn run_linear(
-    context: &Context,
+struct LinearOutput<'a> {
+    bf16: Buffer<'a>,
+    unrounded: Buffer<'a>,
+}
+impl LinearOutput<'_> {
+    fn read(&self, count: usize) -> Result<(Vec<u16>, Vec<f32>)> {
+        Ok((words(&self.bf16, count)?, floats(&self.unrounded, count)?))
+    }
+}
+
+fn run_linear<'a>(
+    context: &'a Context,
     function: &Function<'_, '_>,
     buffers: &[&Buffer<'_>],
     shape: [usize; 3],
-) -> Result<(Vec<u16>, Vec<f32>)> {
+) -> Result<LinearOutput<'a>> {
     let [m, n, k] = shape;
     let count = m * n;
     let output = upload(context, &vec![0xa5; count * 2])?;
@@ -323,7 +378,10 @@ fn run_linear(
         )?;
     }
     context.synchronize()?;
-    Ok((words(&output, count)?, floats(&unrounded, count)?))
+    Ok(LinearOutput {
+        bf16: output,
+        unrounded,
+    })
 }
 
 fn compare(
@@ -394,6 +452,14 @@ fn fixture() -> Result<ProjectionInput> {
                 .collect(),
             channels,
         }],
+        convolution: Some(CausalConv4Weights {
+            projection: 0,
+            weights: (0..channels * 4)
+                .flat_map(|i| {
+                    entry_reference::round_bf16(((i * 5 % 17) as f32 - 8.0) / 16.0).to_le_bytes()
+                })
+                .collect(),
+        }),
     })
 }
 

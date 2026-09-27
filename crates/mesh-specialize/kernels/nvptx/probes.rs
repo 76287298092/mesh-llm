@@ -4,6 +4,7 @@
 use core::arch::asm;
 
 mod bf16_linear;
+mod causal_conv4;
 mod embedding_norm;
 mod fp8_linear;
 mod fp8_quantize;
