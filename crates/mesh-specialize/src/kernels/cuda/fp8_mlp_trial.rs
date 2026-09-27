@@ -2,7 +2,7 @@
 
 use super::{
     driver::{Buffer, Context, Module},
-    resident_mlp::Fp8Mlp,
+    resident_mlp::{Mlp, Quantization},
     resident_weights::ResidentWeights,
 };
 use crate::{
@@ -134,7 +134,13 @@ fn run_case(
     weights: &ResidentWeights<'_>,
     case: &Fp8MlpCase,
 ) -> Result<Value> {
-    let mlp = Fp8Mlp::new(weights, &case.prefix, case.width, case.channels)?;
+    let mlp = Mlp::new(
+        weights,
+        &case.prefix,
+        case.width,
+        case.channels,
+        Quantization::Fp8,
+    )?;
     let bytes: Vec<_> = case
         .input
         .iter()

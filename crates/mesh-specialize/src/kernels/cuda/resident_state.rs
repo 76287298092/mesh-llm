@@ -29,6 +29,38 @@ impl<'ctx> ResidentState<'ctx> {
         &self.layout
     }
 
+    pub(super) fn belongs_to(&self, context: &Context) -> bool {
+        self.arena.belongs_to(context)
+    }
+
+    pub(super) fn pointer(&self, name: &str, bytes: usize) -> Result<u64> {
+        let region = self.layout.region(name)?;
+        ensure!(
+            region.length == u64::try_from(bytes)?,
+            "state region extent mismatch: {name}"
+        );
+        self.arena
+            .pointer()
+            .checked_add(region.offset)
+            .context("state pointer overflow")
+    }
+
+    pub(super) fn copy_from(&mut self, name: &str, source: &Buffer<'_>) -> Result<()> {
+        self.pointer(name, source.len())?;
+        self.arena.copy_from_at(
+            usize::try_from(self.layout.region(name)?.offset)?,
+            source,
+            0,
+            source.len(),
+        )
+    }
+
+    pub(super) fn read_region(&self, name: &str, bytes: &mut [u8]) -> Result<()> {
+        self.pointer(name, bytes.len())?;
+        self.arena
+            .download_at(usize::try_from(self.layout.region(name)?.offset)?, bytes)
+    }
+
     pub(super) fn verify_zero(&self) -> Result<Value> {
         let bytes_checked = usize::try_from(self.layout.bytes)
             .context("resident-state layout size does not fit usize")?;

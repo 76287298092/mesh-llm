@@ -1,7 +1,7 @@
 use crate::{
     artifact::{
         reader::VerifiedArtifact,
-        schema::{Object, ObjectKind},
+        schema::{DType, Object, ObjectKind},
     },
     engine::layout::Layout,
 };
@@ -75,6 +75,40 @@ impl<'ctx> ResidentWeights<'ctx> {
             .iter()
             .find(|object| object.name == name)
             .ok_or_else(|| anyhow!("resident weight object `{name}` is missing"))
+    }
+
+    /// Bind an exact row-major tensor view while keeping ownership with the arena.
+    pub(super) fn tensor(
+        &self,
+        name: &str,
+        dtype: DType,
+        shape: &[u64],
+        bytes: u64,
+    ) -> Result<u64> {
+        let object = self.object(name)?;
+        ensure!(
+            object.kind == ObjectKind::Tensor
+                && object.dtype == dtype
+                && object.layout == "safetensors-row-major-v1"
+                && object.shape == shape
+                && object.length == bytes,
+            "resident tensor metadata mismatch: {name}"
+        );
+        self.pointer(name)
+    }
+
+    /// Read one immutable scale during binding, never during a forward operation.
+    pub(super) fn positive_scalar(&self, name: &str) -> Result<f32> {
+        self.tensor(name, DType::F32, &[1], 4)?;
+        let offset = usize::try_from(self.layout.region(name)?.offset)?;
+        let mut bytes = [0; 4];
+        self.arena.download_at(offset, &mut bytes)?;
+        let value = f32::from_le_bytes(bytes);
+        ensure!(
+            value.is_finite() && value > 0.0,
+            "invalid resident scale: {name}"
+        );
+        Ok(value)
     }
 
     /// Read back and hash each tensor in bounded chunks.

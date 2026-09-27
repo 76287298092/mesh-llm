@@ -12,6 +12,13 @@ pub(super) fn run(args: &[String]) -> DynResult<()> {
     run_trial(args, mesh_specialize::packages::qwen3_8_27b::trial)
 }
 
+pub(super) fn resident_gdn(args: &[String]) -> DynResult<()> {
+    run_trial(
+        args,
+        mesh_specialize::packages::qwen3_8_27b::resident_gdn::trial,
+    )
+}
+
 pub(super) fn residency(args: &[String]) -> DynResult<()> {
     run_trial(
         args,

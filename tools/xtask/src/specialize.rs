@@ -10,6 +10,7 @@ use crate::command::DynResult;
 
 pub(crate) fn run(args: &[String]) -> DynResult<()> {
     match args {
+        [command, rest @ ..] if command == "qwen-resident-gdn-check" => entry::resident_gdn(rest),
         [command, rest @ ..] if command == "qwen-fp8-mlp-check" => entry::fp8_mlp(rest),
         [command, rest @ ..] if command == "qwen-residency-check" => entry::residency(rest),
         [command, rest @ ..] if command == "qwen-attention-check" => entry::attention(rest),

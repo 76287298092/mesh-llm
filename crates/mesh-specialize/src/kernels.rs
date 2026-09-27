@@ -1,5 +1,41 @@
 //! Device-specific instruction qualification, separate from model execution.
 
+pub struct GdnShape {
+    pub hidden: usize,
+    pub key_heads: usize,
+    pub value_heads: usize,
+    pub head_width: usize,
+    pub intermediate: usize,
+}
+pub struct ResidentGdnConfig {
+    pub shape: GdnShape,
+    pub prefix: String,
+    pub state_prefix: String,
+    pub table_name: String,
+    pub vocabulary: usize,
+    pub state_layout: crate::engine::layout::Layout,
+}
+pub struct ResidentGdnCase {
+    pub tokens: Vec<u32>,
+    pub reference: crate::qwen_gdn_layer_reference::Layer,
+}
+pub fn resident_gdn_check(
+    ptx: &str,
+    device: i32,
+    artifact: &mut crate::artifact::reader::VerifiedArtifact,
+    objects: &[crate::artifact::schema::Object],
+    config: &ResidentGdnConfig,
+    cases: &[ResidentGdnCase],
+) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::resident_gdn_trial::run(ptx, device, artifact, objects, config, cases);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device, artifact, objects, config, cases);
+        anyhow::bail!("Resident GDN trial requires Linux")
+    }
+}
+
 pub struct Fp8MlpCase {
     pub prefix: String,
     pub rows: usize,

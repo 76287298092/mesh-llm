@@ -14,6 +14,22 @@ pub fn trial(path: &Path, ptx: &str, device: i32) -> Result<Value> {
     let mut artifact = VerifiedArtifact::open(path)?;
     let inventory = super::inventory::validate(artifact.directory())?;
     let identity = artifact.identity().clone();
+    let input = load_input(&mut artifact)?;
+    let mut report = crate::kernels::projection_check(ptx, device, &input)?;
+    report["identity"] = json!(identity);
+    report["compiled_inventory"] = json!(inventory);
+    report["model_executable"] = json!(false);
+    for key in [
+        "model_prefill_tokens_per_second",
+        "model_decode_tokens_per_second",
+        "model_context_tokens",
+    ] {
+        report[key] = Value::Null;
+    }
+    Ok(report)
+}
+
+pub(super) fn load_input(artifact: &mut VerifiedArtifact) -> Result<ProjectionInput> {
     let mut table = Vec::with_capacity(248320 * 5120 * 2);
     artifact.copy_object(
         "tensors/model.language_model.embed_tokens.weight",
@@ -89,9 +105,9 @@ pub fn trial(path: &Path, ptx: &str, device: i32) -> Result<Value> {
         &mut post_attention_weight,
     )?;
     let mlp = Nvfp4Mlp {
-        gate: load_nvfp4(&mut artifact, "gate_proj", 17408)?,
-        up: load_nvfp4(&mut artifact, "up_proj", 17408)?,
-        down: load_nvfp4(&mut artifact, "down_proj", 5120)?,
+        gate: load_nvfp4(artifact, "gate_proj", 17408)?,
+        up: load_nvfp4(artifact, "up_proj", 17408)?,
+        down: load_nvfp4(artifact, "down_proj", 5120)?,
     };
     let input = ProjectionInput {
         mlp: Some(mlp),
@@ -127,18 +143,7 @@ pub fn trial(path: &Path, ptx: &str, device: i32) -> Result<Value> {
             dt_bias,
         }),
     };
-    let mut report = crate::kernels::projection_check(ptx, device, &input)?;
-    report["identity"] = json!(identity);
-    report["compiled_inventory"] = json!(inventory);
-    report["model_executable"] = json!(false);
-    for key in [
-        "model_prefill_tokens_per_second",
-        "model_decode_tokens_per_second",
-        "model_context_tokens",
-    ] {
-        report[key] = Value::Null;
-    }
-    Ok(report)
+    Ok(input)
 }
 
 fn load_nvfp4(

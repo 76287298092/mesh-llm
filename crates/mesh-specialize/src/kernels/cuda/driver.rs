@@ -51,6 +51,7 @@ type CuMemAllocV2Fn = unsafe extern "C" fn(*mut CuDevicePtr, usize) -> CuResult;
 type CuMemFreeV2Fn = unsafe extern "C" fn(CuDevicePtr) -> CuResult;
 type CuMemcpyHtoDV2Fn = unsafe extern "C" fn(CuDevicePtr, *const c_void, usize) -> CuResult;
 type CuMemcpyDtoHV2Fn = unsafe extern "C" fn(*mut c_void, CuDevicePtr, usize) -> CuResult;
+type CuMemcpyDtoDV2Fn = unsafe extern "C" fn(CuDevicePtr, CuDevicePtr, usize) -> CuResult;
 type CuModuleLoadDataExFn = unsafe extern "C" fn(
     *mut CuModule,
     *const c_void,
@@ -98,6 +99,7 @@ struct Api {
     cu_mem_free_v2: CuMemFreeV2Fn,
     cu_memcpy_htod_v2: CuMemcpyHtoDV2Fn,
     cu_memcpy_dtoh_v2: CuMemcpyDtoHV2Fn,
+    cu_memcpy_dtod_v2: CuMemcpyDtoDV2Fn,
     cu_module_load_data_ex: CuModuleLoadDataExFn,
     cu_module_unload: CuModuleUnloadFn,
     cu_module_get_function: CuModuleGetFunctionFn,
@@ -137,6 +139,7 @@ impl Api {
             cu_mem_free_v2: load_symbol(&library, b"cuMemFree_v2\0")?,
             cu_memcpy_htod_v2: load_symbol(&library, b"cuMemcpyHtoD_v2\0")?,
             cu_memcpy_dtoh_v2: load_symbol(&library, b"cuMemcpyDtoH_v2\0")?,
+            cu_memcpy_dtod_v2: load_symbol(&library, b"cuMemcpyDtoD_v2\0")?,
             cu_module_load_data_ex: load_symbol(&library, b"cuModuleLoadDataEx\0")?,
             cu_module_unload: load_symbol(&library, b"cuModuleUnload\0")?,
             cu_module_get_function: load_symbol(&library, b"cuModuleGetFunction\0")?,
@@ -467,6 +470,32 @@ impl<'ctx> Buffer<'ctx> {
     }
     pub(super) fn belongs_to(&self, context: &Context) -> bool {
         std::ptr::eq(self.context, context)
+    }
+    /// Synchronous copy between disjoint allocations in this context.
+    pub(super) fn copy_from_at(
+        &self,
+        offset: usize,
+        source: &Buffer<'_>,
+        source_offset: usize,
+        bytes: usize,
+    ) -> Result<()> {
+        if !source.belongs_to(self.context) || self.pointer == source.pointer {
+            bail!("CUDA device copy requires distinct allocations in the same CUDA context");
+        }
+        check_transfer_range(self.bytes, offset, bytes, "device copy destination")?;
+        check_transfer_range(source.bytes, source_offset, bytes, "device copy source")?;
+        if bytes == 0 {
+            return Ok(());
+        }
+        let destination = checked_device_pointer_offset(self.pointer, offset, "device copy")?;
+        let source = checked_device_pointer_offset(source.pointer, source_offset, "device copy")?;
+        let _current_context = self.context.activate()?;
+        // SAFETY: Distinct live allocations in the active context have checked
+        // source/destination ranges, and this driver copy is synchronous.
+        check_cuda(
+            unsafe { (self.context.api.cu_memcpy_dtod_v2)(destination, source, bytes) },
+            "cuMemcpyDtoD_v2",
+        )
     }
     /// Copy host bytes into the beginning of this device allocation.
     pub(super) fn upload(&self, source: &[u8]) -> Result<()> {
