@@ -73,3 +73,7 @@ pub(super) fn feature_attention(args: &[String]) -> DynResult<()> {
 pub(super) fn feature_graph(args: &[String]) -> DynResult<()> {
     run_probe(args, mesh_specialize::kernels::feature_graph_trial)
 }
+
+pub(super) fn feature_gdn_replay(args: &[String]) -> DynResult<()> {
+    run_probe(args, mesh_specialize::kernels::feature_gdn_replay_trial)
+}

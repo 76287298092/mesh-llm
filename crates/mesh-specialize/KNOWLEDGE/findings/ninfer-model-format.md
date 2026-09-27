@@ -20,6 +20,37 @@ Our intake pins quantized revision `f0b7c9e722f5565102fff8481c99e4d86ae099c7`, s
 
 Ninfer's official recipe generates FP8 embedding weights from base BF16, imports encoded FP8/NVFP4 for text projections, and quantizes optional MTP projections to Q8. Our BF16 MTP and embedding are therefore additional potential workload/quality differences. No claim is made that the installed Ninfer model follows this current recipe.
 
+## Hugging Face revision metadata follow-up
+
+A read-only metadata lookup on September 27, 2026 resolved our pinned revision through the [Hugging Face model API](https://huggingface.co/api/models/unsloth/Qwen3.8-27B-NVFP4/revision/f0b7c9e722f5565102fff8481c99e4d86ae099c7?blobs=true). The response `sha` exactly matched the requested revision. It reported these identities; no weight payload was downloaded or rehashed in this follow-up.
+
+| File | Bytes | Reported identity at `f0b7c9e7` |
+| --- | ---: | --- |
+| `model.safetensors` | 22,568,192,096 | LFS SHA-256 `c473512c70eace07e2256fe9fd76596ac03e3295bee7d54cfb72676416afcc05` |
+| `model_mtp.safetensors` | 849,400,392 | LFS SHA-256 `1d8268aa85ace093a561e3e7b63b9d390dac1cd55a90cd55b5ec509c3c9da9fe` |
+| `tokenizer.json` | 19,989,325 | LFS SHA-256 `06b9509352d2af50381ab2247e083b80d32d5c0aba91c272ca9ff729b6a0e523` |
+| `model.safetensors.index.json` | 164,371 | Git blob ID `7608ff001dbfc8936318df32aaaaef7c8c9f340d` |
+| `config.json` | 22,564 | Git blob ID `b6f6347774036d406eabed6cfffb0fec424ba075` |
+| `tokenizer_config.json` | 1,047 | Git blob ID `088fbebf189b39e2dabcdb12a83a31617fe98c2e` |
+| `generation_config.json` | 214 | Git blob ID `0bc3addd19dc59c5c8899fc1fb887d50b592e7c3` |
+| `chat_template.jinja` | 9,993 | Git blob ID `a087700658910c336c9ca9f5780a75a3cdd4fcdd` |
+| `vocab.json` | 6,722,759 | Git blob ID `0aa0ce0658d60ac4a5d609f4eadb0e8e43514176` |
+| `preprocessor_config.json` | 390 | Git blob ID `2ea84a437d448ff71b08df68fdd949d5cc4ebb64` |
+| `video_preprocessor_config.json` | 385 | Git blob ID `3ba673a5ad7d4d13f54155ecd38b2a94a6dac8fe` |
+
+The other two listed files were `.gitattributes`, 1,570 bytes, blob `52373fe24473b1aa44333d318f578ae6bf04b49b`, and `README.md`, 6,746 bytes, blob `3ddbfc9c1f10c6c82edbcb04a0edfde3f830b6f4`. Git blob IDs are not raw-file SHA-256 digests; their equality would be a metadata identity comparison of the corresponding Git objects.
+
+The published Ninfer manifest's quantized revision `60e813d4dbbdc5d64cf3f5a8caf2897bedf03679` returned HTTP 404 from all four attempted primary endpoints:
+
+- [Model revision with blob metadata](https://huggingface.co/api/models/unsloth/Qwen3.8-27B-NVFP4/revision/60e813d4dbbdc5d64cf3f5a8caf2897bedf03679?blobs=true).
+- [Recursive expanded tree](https://huggingface.co/api/models/unsloth/Qwen3.8-27B-NVFP4/tree/60e813d4dbbdc5d64cf3f5a8caf2897bedf03679?recursive=true&expand=true).
+- [Commit listing at the revision](https://huggingface.co/api/models/unsloth/Qwen3.8-27B-NVFP4/commits/60e813d4dbbdc5d64cf3f5a8caf2897bedf03679).
+- [Raw config at the revision](https://huggingface.co/unsloth/Qwen3.8-27B-NVFP4/raw/60e813d4dbbdc5d64cf3f5a8caf2897bedf03679/config.json).
+
+The [current main commit listing](https://huggingface.co/api/models/unsloth/Qwen3.8-27B-NVFP4/commits/main) returned five commits: `f0b7c9e7`, `57926bac`, `9e3d73c7`, `7d6f8d4d`, and `16b6615a`. The last is titled `Super-squash branch 'main' using huggingface_hub`, dated August 15, 2026. This suggests a possible reason historical metadata is unavailable, but does not establish that the missing revision was an ancestor or that its payload matched. The listing is a current observation, not an immutable historical proof.
+
+Result: our existing source pins are confirmed by current primary metadata. Comparison against the manifest revision is unresolved. There is no evidence here to classify its differences as weight changes, metadata-only changes, or repository additions. Closing this gap needs an independently preserved tree/LFS manifest for that exact revision, or canonical logical tensor hashes from the actual Ninfer conversion inputs. The installed Ninfer artifact and executable remain outside this comparison.
+
 ## Conversion and numeric choices
 
 The actual CLI builds the architecture model and recipe, records source provenance, and calls `convert`; the pipeline prepares jobs and writes their objects through `ArtifactWriter`, then writes a `.conversion.json` report. See `N:tools/convert/__main__.py:84-184` and `N:tools/convert/pipeline.py:27-139`.

@@ -249,3 +249,5 @@ pub(super) mod feature_attention_trial;
 pub(super) mod feature_graph_trial;
 
 mod fp8_projection_audit;
+
+pub(super) mod feature_gdn_replay_trial;

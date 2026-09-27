@@ -182,3 +182,37 @@ original native is established. K64 synthetic memcheck, racecheck and synccheck
 all pass with zero errors/hazards. Ninfer began and ended inactive; ComfyUI remained
 resident. See `../evidence/iterate-20260927/native-short-audit-1/` and
 `native-short-bench-1/`. This evidence does not promote either native profile.
+
+
+### Natural-language diagnostics and bounded answer checks
+
+Source `1cbcad00d428d23bfbaf609e8d1d749c3aee3058`, retained K64 PTX
+`df40b1dcfe8d60b313f21a6a1bbe585ef197baf8b26377d15bcef5796df54a32`.
+Evidence: `../evidence/iterate-20260927/native-quality-1/` and
+`../evidence/iterate-20260927/native-answers-1/`. Three text prompts use the
+pinned tokenizer SHA256 `06b9509352d2af50381ab2247e083b80d32d5c0aba91c272ca9ff729b6a0e523`.
+These are small diagnostic samples, not a quality benchmark or Ninfer comparison.
+
+| Prompt | Original native prefill KL(exact||candidate) | K64 prefill KL |
+| --- | ---: | ---: |
+| Count to thirty | 0.076775 | 0.003280 |
+| Python Fibonacci | 0.063619 | 0.055094 |
+| Bicycle explanation | 0.016435 | 0.064966 |
+
+All profiles agree on the greedy token at the prompt boundary and after the same
+teacher-forced continuation token. Same-profile control/profile output is exact;
+strict cross-partition checks still fail for native profiles. K64 improves some
+prompt distributions and worsens another, so shorter accumulation does not
+establish uniformly improved model behavior. Only two distribution positions per
+prompt were measured.
+
+All three 128-output counting samples count correctly through thirty before the
+first end-of-turn token. Python and prose initially hit the 128-output cap, so a
+follow-up generated 512 tokens per sample. All six follow-up samples reach
+end-of-turn. Each Python answer was inspected before executing its sole function;
+all three pass independent Fibonacci checks at n=-1,0,1,2,3,10,100. Complete prose
+is retained for review, without a factual-quality pass claim. The harness keeps
+generating past end-of-turn, so post-end text is excluded from answer assessment;
+this does not qualify serving EOS behavior. One sample per profile is insufficient
+for broad semantic-quality conclusions. Timings share GPU0 with ComfyUI and are
+not matched Ninfer measurements. Ninfer remained inactive before and after.

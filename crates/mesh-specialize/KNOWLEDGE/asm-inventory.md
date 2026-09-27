@@ -151,3 +151,11 @@ shared with the original entry. Independent reference is
 `reference/fp8_native_prefill.rs`; both native entries run the same finite-code,
 signed/tail/cancellation fixtures without relaxing budgets. NVIDIA PTX FP8 MMA
 rounding/order is unspecified. Compilation passes; GPU/model qualification pending.
+
+F09 `gdn_replay.rs` records GDN deltas with the existing explicit
+`mul.rn.f32`/`sub.rn.f32`/`add.rn.f32` order, then replays accepted
+rows from a retained base using rounded decay and key/update terms. Coordinate
+reads and BF16 conversion have independent `reference/gdn_replay.rs` coverage,
+anchored against the original ordered recurrence for each accepted prefix.
+See `optimizations/feature-f09-mtp-recovery.md` for all pointer/shape contracts.
+GPU/model integration and qualification remain pending.

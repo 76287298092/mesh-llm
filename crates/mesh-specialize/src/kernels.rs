@@ -507,3 +507,14 @@ pub fn feature_graph_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json:
         anyhow::bail!("Graph qualification requires Linux")
     }
 }
+
+/// Check compact recurrence records against independent state prefixes.
+pub fn feature_gdn_replay_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::feature_gdn_replay_trial::run(ptx, device);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device);
+        anyhow::bail!("GDN replay qualification requires Linux")
+    }
+}

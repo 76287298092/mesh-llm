@@ -297,3 +297,16 @@ acceptance-dependent gains and regressions; fixed depth four is not a safe
 default. Verification-kernel tuning and sanitizer completion are recorded in
 `KNOWLEDGE/optimizations/mtp.md`. This does not implement frontend/ABI serving,
 adaptive speculation, sampling or EOS policy, or establish parity with Ninfer.
+
+
+## Resumed-chat workspace checkpoint, 2026-09-27
+
+The former issue-1393-feasibility checkout was removed by app archive cleanup.
+Its snapshot `4308f1fcf4a1a30429a835f55660154811858b3d` preserved all pending
+tracked and untracked work. Work resumed in the attached managed checkout
+`/Users/ndizazzo/.codex/worktrees/ninfer-performance/mesh-llm`, on the same
+`codex/issue-1393-feasibility` branch. The primary checkout was untouched.
+Ignored PTX/scripts needed for current trials were recovered from Carrack.
+F09 and F10 workers have delivered bounded components; whole-model integration
+and qualification remain open. F02 natural-language evidence is diagnostic and
+neither native profile is promoted.

@@ -38,6 +38,9 @@ pub(crate) fn run(args: &[String]) -> DynResult<()> {
         [command, rest @ ..] if command == "feature-attention-check" => {
             probe::feature_attention(rest)
         }
+        [command, rest @ ..] if command == "feature-gdn-replay-check" => {
+            probe::feature_gdn_replay(rest)
+        }
         [command, rest @ ..] if command == "feature-graph-check" => probe::feature_graph(rest),
         [command, rest @ ..] if command == "feature-projection-check" => {
             probe::feature_projection(rest)

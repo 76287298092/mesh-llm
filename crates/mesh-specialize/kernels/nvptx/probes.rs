@@ -3,32 +3,32 @@
 
 use core::arch::asm;
 
-mod exponential;
 mod attention_gate;
-mod attention_reduction;
+mod attention_online;
 mod attention_prepare;
+mod attention_reduction;
 mod bf16_linear;
 mod bf16_linear_decode;
 mod bf16_linear_rounding;
 mod causal_attention;
-mod kv_fp8;
-mod attention_online;
 mod causal_conv4;
 mod embedding_norm;
-mod fp8_linear;
+mod exponential;
 mod fp8_a16_decode;
-mod fp8_native_prefill;
-mod fp8_swiglu_exact;
+mod fp8_linear;
 mod fp8_linear_exact;
 mod fp8_linear_exact4;
-mod fp8_prefill_exact;
-mod fp8_verify_exact;
 mod fp8_linear_rounding;
+mod fp8_native_prefill;
+mod fp8_prefill_exact;
 mod fp8_quantize;
+mod fp8_swiglu_exact;
+mod fp8_verify_exact;
 mod gated_rms_norm;
+mod gdn_chunked;
 mod gdn_prepare;
 mod gdn_recurrent;
-mod gdn_chunked;
+mod kv_fp8;
 mod memory;
 mod nvfp4_gemm;
 mod ordinary_mma;
@@ -106,9 +106,11 @@ pub unsafe extern "ptx-kernel" fn probe_nvfp4_mma(
 
 mod nvfp4_quantize;
 
-mod nvfp4_linear;
 mod nvfp4_decode;
 mod nvfp4_decode_exact;
+mod nvfp4_linear;
 
 mod mlp_activation;
 mod residual_add;
+
+mod gdn_replay;

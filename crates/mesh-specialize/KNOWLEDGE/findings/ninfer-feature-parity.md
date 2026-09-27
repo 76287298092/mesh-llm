@@ -128,11 +128,16 @@ exist, keep the percentage column unmeasured.
 | F06 | `feature_fp8_kv` | Codec delivered; CPU tests and PTX compilation pass; GPU/cache integration pending |
 | F07 | `feature_workspace` | Reusable layout and lease checks pass on GPU; operator integration pending |
 | F08 | `feature_graphs` | Driver graph API passes Linux checks, fixed-shape replay and leak/memory check; model capture pending |
-| F09 | `feature_mtp_recovery` | Queued; native spawn rejected by agent thread limit after prior workers completed |
-| F10 | `feature_prefix_cache` | Queued; native spawn rejected by agent thread limit after prior workers completed |
+| F09 | `feature_mtp_recovery` | Dedicated resumed worker delivered bounded source; parent integration and qualification pending |
+| F10 | `feature_prefix_cache` | Dedicated resumed worker delivered bounded source; parent integration and qualification pending |
 
 A delivered primitive is not an integrated or performance-qualified feature.
 Only the parent promotes candidates after independent tests, GPU qualification
 and appropriately labeled measurements. Existing defaults remain the control.
 
 Allocation limit: eight distinct feature owners have run. The native agent tool repeatedly rejected F09 and F10 with `agent thread limit reached`, including after all three current workers completed. No worker was reassigned to another feature. F09/F10 remain unimplemented queued assignments, not claimed dispatched work.
+
+Resumed conversation dispatched fresh dedicated F09 and F10 workers using
+GPT-6-Luna max, and the format investigation using GPT-6-Astra low. F09 owns
+record/replay kernels and independent CPU reference; F10 owns generic checkpoint
+identity/eviction policy. Delivered primitives do not close either feature.
