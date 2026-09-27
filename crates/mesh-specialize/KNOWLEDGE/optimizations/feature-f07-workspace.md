@@ -110,3 +110,14 @@ passed memcheck, racecheck and synccheck with zero errors/hazards. Ordinary CPU
 selection and split-K off were retained. Initial/final Ninfer state remained
 inactive; ComfyUI stayed resident. This qualifies model workspace integration for
 these bounded cases; longer-prefill ablation and broader goal gates remain open.
+
+
+Longer bounded prefill ablation `workspace-prefill-1` at source `3d72188a4`
+completed: 128-token median prefill 256.5696 -> 278.0622 tokens/s (+8.38%);
+512-token 295.0388 -> 306.3456 (+3.83%). All generated tokens, four exported
+logit hashes, and full model-state hashes matched across modes. Both modes
+passed whole/token partition and profiled/control gates. Three repetitions,
+eight output tokens, fixed off/on order, shared GPU with ComfyUI; these retained
+raw-token fixtures are performance/partition evidence, not semantic quality.
+Ninfer remained inactive. The 5% short decode gain and this smaller 512-token
+gain do not explain most of the Ninfer gap or qualify long-context serving.
