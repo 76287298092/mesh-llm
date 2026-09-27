@@ -13,6 +13,8 @@ use super::{
 use crate::{engine::rope::TextRope, kernels::ResidentAttentionShape};
 use anyhow::{Result, ensure};
 
+pub(super) type StageObserver<'a> = dyn FnMut(&str, &Buffer<'_>) -> Result<()> + 'a;
+
 pub(super) struct Layer<'w, 'ctx> {
     norm: Norm<'w, 'ctx>,
     post_norm: Norm<'w, 'ctx>,
@@ -125,6 +127,18 @@ impl<'w, 'ctx> Layer<'w, 'ctx> {
         state: &mut ResidentState<'_>,
         step: &Step,
     ) -> Result<Buffer<'a>> {
+        self.forward_observed(ctx, module, hidden, state, step, None)
+    }
+
+    pub(super) fn forward_observed<'a>(
+        &self,
+        ctx: &'a Context,
+        module: &Module<'_>,
+        hidden: &Buffer<'_>,
+        state: &mut ResidentState<'_>,
+        step: &Step,
+        mut observer: Option<&mut StageObserver<'_>>,
+    ) -> Result<Buffer<'a>> {
         ensure!(
             (1..=262144).contains(&step.capacity)
                 && step
@@ -137,36 +151,43 @@ impl<'w, 'ctx> Layer<'w, 'ctx> {
         let cos = upload_words(ctx, &tables.cos)?;
         let sin = upload_words(ctx, &tables.sin)?;
         let normalized = self.norm.run(ctx, module, hidden, step.rows)?;
-        let q = self.q.run(ctx, module, &normalized, step.rows)?;
-        let k = self.k.run(ctx, module, &normalized, step.rows)?;
-        let v = self.v.run(ctx, module, &normalized, step.rows)?;
-        let q = self.q_prepare.run(
+        observe(&mut observer, "normalized", &normalized)?;
+        let q_linear = self.q.run(ctx, module, &normalized, step.rows)?;
+        observe(&mut observer, "q_linear", &q_linear.values)?;
+        let k_linear = self.k.run(ctx, module, &normalized, step.rows)?;
+        observe(&mut observer, "k_linear", &k_linear.values)?;
+        let v_linear = self.v.run(ctx, module, &normalized, step.rows)?;
+        observe(&mut observer, "v_linear", &v_linear.values)?;
+        let prepared_q = self.q_prepare.run(
             ctx,
             module,
-            &q.values,
+            &q_linear.values,
             Tables {
                 cos: &cos,
                 sin: &sin,
             },
             step.rows,
         )?;
-        let k = self.k_prepare.run(
+        observe(&mut observer, "q_prepared", &prepared_q.values)?;
+        observe(&mut observer, "q_gate", &prepared_q.gate)?;
+        let prepared_k = self.k_prepare.run(
             ctx,
             module,
-            &k.values,
+            &k_linear.values,
             Tables {
                 cos: &cos,
                 sin: &sin,
             },
             step.rows,
         )?;
+        observe(&mut observer, "k_prepared", &prepared_k.values)?;
         let attended = resident_attention_core::run(
             ctx,
             module,
             Input {
-                q: &q.values,
-                k: &k.values,
-                v: &v.values,
+                q: &prepared_q.values,
+                k: &prepared_k.values,
+                v: &v_linear.values,
             },
             state,
             &self.state_prefix,
@@ -179,14 +200,36 @@ impl<'w, 'ctx> Layer<'w, 'ctx> {
                 capacity: step.capacity,
             },
         )?;
-        let gated = resident_attention_gate::run(ctx, module, &attended, &q.gate)?;
+        observe(&mut observer, "attended", &attended)?;
+        let gated = resident_attention_gate::run(ctx, module, &attended, &prepared_q.gate)?;
+        observe(&mut observer, "gated", &gated)?;
         let branch = self.out.run(ctx, module, &gated, step.rows)?;
+        observe(&mut observer, "out", &branch.values)?;
         let post = self
             .post_norm
             .add(ctx, module, hidden, &branch.values, step.rows)?;
+        observe(&mut observer, "post_residual", &post.residual)?;
+        observe(&mut observer, "post_norm", &post.normalized)?;
         let mlp = self.mlp.run(ctx, module, &post.normalized, step.rows)?;
-        residual_add(ctx, module, &post.residual, &mlp.down.values)
+        observe(&mut observer, "mlp_gate", &mlp.gate.values)?;
+        observe(&mut observer, "mlp_up", &mlp.up.values)?;
+        observe(&mut observer, "mlp_activation", &mlp.activation)?;
+        observe(&mut observer, "mlp_down", &mlp.down.values)?;
+        let output = residual_add(ctx, module, &post.residual, &mlp.down.values)?;
+        observe(&mut observer, "hidden", &output)?;
+        Ok(output)
     }
+}
+
+fn observe(
+    observer: &mut Option<&mut StageObserver<'_>>,
+    name: &str,
+    buffer: &Buffer<'_>,
+) -> Result<()> {
+    if let Some(callback) = observer.as_deref_mut() {
+        callback(name, buffer)?;
+    }
+    Ok(())
 }
 
 fn upload_words<'a>(ctx: &'a Context, words: &[u16]) -> Result<Buffer<'a>> {

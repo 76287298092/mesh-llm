@@ -84,7 +84,7 @@ pub(in crate::kernels) fn run(
     );
     let weights = ResidentWeights::load(&context, artifact, objects)?;
     if let Some(diagnostic) = &reference.diagnostic {
-        let mut report = super::resident_gdn_diagnostic::run(
+        let mut report = super::resident_layer_diagnostic::run(
             &context,
             &module,
             &weights,

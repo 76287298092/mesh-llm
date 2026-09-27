@@ -132,7 +132,7 @@ pub(super) fn trace(args: &[String]) -> DynResult<()> {
     let layer = layer.parse()?;
     let (_, mut reference) = read_reference(reference_path)?;
     let mut file = create(output)?;
-    qwen3_8_27b::model_reference::add_gdn_diagnostic(Path::new(artifact), &mut reference, layer)?;
+    qwen3_8_27b::model_reference::add_layer_diagnostic(Path::new(artifact), &mut reference, layer)?;
     serde_json::to_writer(&mut file, &reference)?;
     file.write_all(b"\n")?;
     file.sync_all()?;

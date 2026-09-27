@@ -11,7 +11,7 @@ use std::{path::Path, time::Instant};
 
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct GdnDiagnostic {
+pub struct LayerDiagnostic {
     pub layer: usize,
     pub hidden: Vec<u16>,
     pub stages: BTreeMap<String, Vec<u16>>,
@@ -29,11 +29,15 @@ pub struct ModelReference {
     pub elapsed_seconds: f64,
     pub layer_seconds: Vec<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub diagnostic: Option<GdnDiagnostic>,
+    pub diagnostic: Option<LayerDiagnostic>,
 }
 
 /// Enrich existing independent model evidence with one layer's scalar boundaries.
-pub fn add_gdn_diagnostic(path: &Path, reference: &mut ModelReference, layer: usize) -> Result<()> {
+pub fn add_layer_diagnostic(
+    path: &Path,
+    reference: &mut ModelReference,
+    layer: usize,
+) -> Result<()> {
     ensure!(
         reference.schema_version == 1 && (1..=17).contains(&reference.tokens.len()),
         "invalid diagnostic model reference"
@@ -47,10 +51,8 @@ pub fn add_gdn_diagnostic(path: &Path, reference: &mut ModelReference, layer: us
     );
     let config = super::decoder::config(reference.tokens.len())?;
     ensure!(
-        layer > 0
-            && layer < config.layers.len()
-            && matches!(config.layers[layer].block, DecoderBlockKind::Gdn),
-        "diagnostic requires GDN layer 1..63"
+        layer > 0 && layer < config.layers.len(),
+        "diagnostic requires layer 1..63"
     );
     ensure!(
         reference.layer_outputs.len() == config.layers.len(),
@@ -58,21 +60,31 @@ pub fn add_gdn_diagnostic(path: &Path, reference: &mut ModelReference, layer: us
     );
     let hidden = reference.layer_outputs[layer - 1].clone();
     let mut stages = BTreeMap::new();
-    let output = decoder_gdn_reference::run_observed(
-        &hidden,
-        reference.tokens.len(),
-        &config.gdn_shape,
-        &weights::gdn(&mut artifact, layer)?,
-        &mut |name, values| {
-            stages.insert(name.to_owned(), values.to_vec());
-            Ok(())
-        },
-    )?;
+    let mut observer = |name: &str, values: &[u16]| {
+        stages.insert(name.to_owned(), values.to_vec());
+        Ok(())
+    };
+    let output = match config.layers[layer].block {
+        DecoderBlockKind::Gdn => decoder_gdn_reference::run_observed(
+            &hidden,
+            reference.tokens.len(),
+            &config.gdn_shape,
+            &weights::gdn(&mut artifact, layer)?,
+            &mut observer,
+        )?,
+        DecoderBlockKind::Attention => decoder_attention_reference::run_observed(
+            &hidden,
+            reference.tokens.len(),
+            &config.attention_shape,
+            &weights::attention(&mut artifact, layer)?,
+            &mut observer,
+        )?,
+    };
     ensure!(
         output == reference.layer_outputs[layer],
         "diagnostic recomputation differs from saved CPU output"
     );
-    reference.diagnostic = Some(GdnDiagnostic {
+    reference.diagnostic = Some(LayerDiagnostic {
         layer,
         hidden,
         stages,

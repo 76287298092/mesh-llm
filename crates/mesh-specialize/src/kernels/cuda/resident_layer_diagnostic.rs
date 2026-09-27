@@ -1,7 +1,7 @@
-//! Diagnostic-only replay of one GDN block from independent CPU hidden input.
+//! Diagnostic-only replay of one decoder block from independent CPU hidden input.
 use super::{
     driver::{Buffer, Context, Module},
-    resident_gdn,
+    resident_attention, resident_gdn,
     resident_mlp::Quantization,
     resident_state::ResidentState,
     resident_weights::ResidentWeights,
@@ -9,7 +9,7 @@ use super::{
 use crate::{
     entry_reference::bf16_to_f32,
     kernels::{DecoderBlockKind, DecoderConfig, DecoderMlpKind},
-    packages::qwen3_8_27b::model_reference::GdnDiagnostic,
+    packages::qwen3_8_27b::model_reference::LayerDiagnostic,
 };
 use anyhow::{Result, ensure};
 use serde_json::{Value, json};
@@ -20,17 +20,13 @@ pub(super) fn run(
     weights: &ResidentWeights<'_>,
     config: &DecoderConfig,
     rows: usize,
-    diagnostic: &GdnDiagnostic,
+    diagnostic: &LayerDiagnostic,
 ) -> Result<Value> {
     ensure!(
         diagnostic.layer < config.layers.len(),
         "invalid diagnostic layer"
     );
     let descriptor = &config.layers[diagnostic.layer];
-    ensure!(
-        matches!(descriptor.block, DecoderBlockKind::Gdn),
-        "diagnostic layer is not GDN"
-    );
     ensure!(
         diagnostic.hidden.len() == rows * config.hidden,
         "diagnostic hidden extent mismatch"
@@ -39,13 +35,6 @@ pub(super) fn run(
         DecoderMlpKind::Nvfp4 => Quantization::Nvfp4,
         DecoderMlpKind::Fp8 => Quantization::Fp8,
     };
-    let layer = resident_gdn::Layer::new(
-        weights,
-        &descriptor.prefix,
-        &descriptor.state_prefix,
-        &config.gdn_shape,
-        quantization,
-    )?;
     let raw = diagnostic
         .hidden
         .iter()
@@ -79,14 +68,41 @@ pub(super) fn run(
         stages.push(json!({"name":name,"comparison":comparison,"bf16_differences":differences.len(),"first_differences":differences.iter().take(16).collect::<Vec<_>>() }));
         Ok(())
     };
-    let _output =
-        layer.forward_observed(ctx, module, &hidden, &mut state, rows, Some(&mut observer))?;
+    let _output = match descriptor.block {
+        DecoderBlockKind::Gdn => resident_gdn::Layer::new(
+            weights,
+            &descriptor.prefix,
+            &descriptor.state_prefix,
+            &config.gdn_shape,
+            quantization,
+        )?
+        .forward_observed(ctx, module, &hidden, &mut state, rows, Some(&mut observer))?,
+        DecoderBlockKind::Attention => resident_attention::Layer::new(
+            weights,
+            &descriptor.prefix,
+            &descriptor.state_prefix,
+            &config.attention_shape,
+            quantization,
+        )?
+        .forward_observed(
+            ctx,
+            module,
+            &hidden,
+            &mut state,
+            &resident_attention::Step {
+                rows,
+                past: 0,
+                capacity: config.capacity,
+            },
+            Some(&mut observer),
+        )?,
+    };
     ensure!(
         stages.len() == diagnostic.stages.len(),
         "unvisited diagnostic stage"
     );
     Ok(
-        json!({"kind":"isolated-gdn-boundary-diagnostic","full_model_executed":false,"layer":diagnostic.layer,"stages":stages,
-        "all_passed":stages.iter().all(|s|s["bf16_differences"]==0),"scope":"Isolated GDN block supplied with independent CPU hidden input, diagnosing numerical divergence; not model execution or performance"}),
+        json!({"kind":"isolated-decoder-boundary-diagnostic","full_model_executed":false,"layer":diagnostic.layer,"stages":stages,
+        "all_passed":stages.iter().all(|s|s["bf16_differences"]==0),"scope":"Isolated decoder block supplied with independent CPU hidden input, diagnosing numerical divergence; not model execution or performance"}),
     )
 }

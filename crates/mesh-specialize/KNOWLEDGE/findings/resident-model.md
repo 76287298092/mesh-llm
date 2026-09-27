@@ -141,3 +141,27 @@ interval; BF16-ambiguous outputs use an ordered scalar FP64 dot from the origina
 BF16 values. The interval is deliberately conservative empirical protection, not
 a formal floating-point proof. Tail and cancellation fixtures plus unchanged
 model references qualify the change. Performance cost remains unmeasured.
+
+### BF16 correction and next attention boundary
+
+Source `a6003edcbf7a96b331dc6a500188afc972c99fea`, PTX SHA256
+`4a5b55a1d4a29325b1b357f4f822e815caab9f9f1648c05b4632d898ba40ad77`,
+passes Linux tests, Clippy, release build and offline assembly. All three BF16
+projection fixtures, including cancellation and partial tiles, match independent
+FP64 dots exactly in FP32 and BF16. The kernel uses 45 registers, no local or
+shared memory. The exhaustive SiLU probe remains exact.
+
+The unchanged two-token reference now matches hidden outputs through layer 46
+bit-for-bit. The first difference is attention layer 47 (17/10,240 BF16 values);
+layer 49 first exceeds the fixed budget. Final-logit normalized L2 is
+0.06517841049660603 and cosine 0.9979641448221243, still failing. Greedy selection
+and full-batch/token-by-token logits and state agree exactly. Harness duration
+22.929358517 seconds is not throughput. The suite stops before sanitizers on this
+numerical failure. Ninfer resumes at 07:05:07 EDT, PID 3145777, HTTP 200; ComfyUI
+PID 448118 remains unchanged. Raw evidence: `two-bf16-suite/`.
+
+The next diagnostic extends the existing read-only boundary observer to attention
+blocks. It replays a selected layer from the saved independent previous-layer
+hidden values and records Q/K/V projection, prepared Q/K/gate, attention, output
+and MLP boundaries. Saved reference structure remains compatible; no arithmetic,
+tolerance or normal execution readback changes are made.

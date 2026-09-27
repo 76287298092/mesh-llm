@@ -38,12 +38,27 @@ pub fn run(
     shape: &kernels::ResidentAttentionShape,
     weights: &Weights,
 ) -> Result<Vec<u16>> {
+    run_observed(hidden, rows, shape, weights, &mut |_, _| Ok(()))
+}
+
+/// Run the decoder block and observe its BF16 boundaries without changing computation.
+pub fn run_observed(
+    hidden: &[u16],
+    rows: usize,
+    shape: &kernels::ResidentAttentionShape,
+    weights: &Weights,
+    observer: &mut dyn FnMut(&str, &[u16]) -> Result<()>,
+) -> Result<Vec<u16>> {
     let dimensions = validate(hidden, rows, shape, weights)?;
-    let input =
+    let normalized =
         decoder_ops_reference::normalize(hidden, &weights.input_norm, rows, dimensions.hidden)?;
-    let q_linear = decoder_ops_reference::fp8(&input, &weights.q, rows, dimensions.hidden)?;
-    let k_linear = decoder_ops_reference::fp8(&input, &weights.k, rows, dimensions.hidden)?;
-    let v_linear = decoder_ops_reference::fp8(&input, &weights.v, rows, dimensions.hidden)?;
+    observer("normalized", &normalized)?;
+    let q_linear = decoder_ops_reference::fp8(&normalized, &weights.q, rows, dimensions.hidden)?;
+    observer("q_linear", &q_linear)?;
+    let k_linear = decoder_ops_reference::fp8(&normalized, &weights.k, rows, dimensions.hidden)?;
+    observer("k_linear", &k_linear)?;
+    let v_linear = decoder_ops_reference::fp8(&normalized, &weights.v, rows, dimensions.hidden)?;
+    observer("v_linear", &v_linear)?;
 
     let positions = (0..u32::try_from(rows)?).collect::<Vec<_>>();
     let (cos, sin) = attention_prepare_reference::text_rope_tables(
@@ -65,6 +80,8 @@ pub fn run(
         },
         1e-6,
     )?;
+    observer("q_prepared", &q.output)?;
+    observer("q_gate", &q.gate)?;
     let k = attention_prepare_reference::run(
         &k_linear,
         &weights.k_norm,
@@ -79,6 +96,7 @@ pub fn run(
         },
         1e-6,
     )?;
+    observer("k_prepared", &k.output)?;
     let attended = causal_attention_reference::run(
         &q.output,
         &k.output,
@@ -93,9 +111,12 @@ pub fn run(
             scale: 1.0 / (shape.head_width as f32).sqrt(),
         },
     )?;
+    observer("attended", &attended.output)?;
     let gated = attention_gate_reference::run(&attended.output, &q.gate)?;
+    observer("gated", &gated.output)?;
     let projected =
         decoder_ops_reference::fp8(&gated.output, &weights.out, rows, dimensions.query_inner)?;
+    observer("out", &projected)?;
     let post_attention = residual_norm_reference::run(
         hidden,
         &projected,
@@ -104,13 +125,18 @@ pub fn run(
         dimensions.hidden,
         1e-6,
     )?;
-    let mlp = decoder_mlp_reference::run(
+    observer("post_residual", &post_attention.residual)?;
+    observer("post_norm", &post_attention.normalized)?;
+    let mlp = decoder_mlp_reference::run_observed(
         &post_attention.normalized,
         rows,
         dimensions.hidden,
         &weights.mlp,
+        observer,
     )?;
-    residual_add_reference::run(&post_attention.residual, &mlp)
+    let output = residual_add_reference::run(&post_attention.residual, &mlp)?;
+    observer("hidden", &output)?;
+    Ok(output)
 }
 
 fn validate(
@@ -257,7 +283,7 @@ fn checked_product(left: usize, right: usize, label: &str) -> Result<usize> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Weights, run};
+    use super::{Weights, run, run_observed};
     use crate::{
         decoder_mlp_reference,
         fp8_mlp_reference::{self, Projection},
@@ -324,6 +350,41 @@ mod tests {
     fn zero_branches_preserve_each_input_residual_row() {
         let (hidden, shape, weights) = zero_branch_fixture();
         assert_eq!(run(&hidden, 2, &shape, &weights).unwrap(), hidden);
+    }
+
+    #[test]
+    fn observer_receives_decoder_boundaries_in_contract_order() {
+        let (hidden, shape, weights) = zero_branch_fixture();
+        let expected = run(&hidden, 2, &shape, &weights).unwrap();
+        let mut stages = Vec::new();
+        let actual = run_observed(&hidden, 2, &shape, &weights, &mut |stage, _| {
+            stages.push(stage.to_owned());
+            Ok(())
+        })
+        .unwrap();
+        assert_eq!(actual, expected);
+        assert_eq!(
+            stages,
+            [
+                "normalized",
+                "q_linear",
+                "k_linear",
+                "v_linear",
+                "q_prepared",
+                "q_gate",
+                "k_prepared",
+                "attended",
+                "gated",
+                "out",
+                "post_residual",
+                "post_norm",
+                "mlp_gate",
+                "mlp_up",
+                "mlp_activation",
+                "mlp_down",
+                "hidden",
+            ]
+        );
     }
 
     #[test]
