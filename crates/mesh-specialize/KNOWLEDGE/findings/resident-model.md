@@ -1,7 +1,9 @@
 # Resident full-model connection
 
-Status: one-token 64-layer hidden/logit comparison is bit exact after the SiLU
-correction. Multi-token qualification and model performance remain open.
+Status: one/two-token 64-layer hidden/logit fixtures match bit-for-bit after SiLU,
+BF16 projection and attention corrections. Two-token whole/token state equality
+and all three sanitizers pass. [Initial model timings](model-timing-20260927.md)
+are measured; wider numerical quality, usable long context and serving remain open.
 
 The decoder follows the compiled 64-layer schedule with persistent checkpoint
 weights and one session state arena. A transaction advances the sequence cursor
@@ -196,3 +198,33 @@ establish transient peak allocation. Fixed-length raw-token execution does not
 certify tokenizer/chat quality or a matched Ninfer workload. Numerical correctness
 and timing results are reported separately; an executed benchmark is not a parity
 claim. No device instruction sites are introduced by the timing harness.
+
+### Corrected two-token execution
+
+Source `d99306f87cee4f669590e6b2ae259c96d1f150ab`, release xtask SHA256
+`60653b0574f4e1217fa47d9e1f8d40b6dc1cc1e47b9df0c64307cf60940ab512`, PTX SHA256
+`fa04eb2e19c22bcd47fc657c9adb6d8e079349719d31f7bbb213fe85a8a70ab6`, saved
+reference SHA256 `6e5fd184d8b93d04c3716ec10a12605a3b51065580d9dc711812c8e2c1525da1`.
+All 64 layer outputs and 248,320 final logits match bit-for-bit for `[248044,271]`.
+Greedy selection, full-batch/token-by-token logits and complete state, cursor
+commit and failed-session rejection pass. Normal harness duration is
+22.665269635 seconds; memcheck duration is 93.129410347 seconds, with zero errors.
+These durations include loading and diagnostics, not just inference.
+
+Weight arena payload is 21,646,588,928 bytes; two-token state is 154,075,136 bytes.
+Normal-run free device memory is 32,219,725,824 bytes before loading,
+10,417,733,632 bytes after the sequence, and the same pre-load value after release.
+These checkpoints are not transient peak measurements. Offline `ptxas` reports
+64 registers, 2,048 bytes shared memory and 152 bytes stack per attention thread,
+with no spill loads/stores. This is offline resource evidence, not a runtime
+performance claim. macOS passes 208 library tests; Linux passes 264 library and
+20 validator tests. Both Clippy lanes, console policy, Rust PTX, release build and
+offline assembly pass. Remaining sanitizer results and timing measurements follow.
+
+Racecheck completes in 55.943112534 seconds with zero hazards, errors or warnings;
+synccheck completes in 22.998965258 seconds with zero errors. Both retain exact
+hidden/logit/state results. Ninfer resumes at 07:22:09 EDT, PID 3175256, HTTP 200,
+with ComfyUI unchanged. All four reports are in `two-attention-wide-suite/`.
+Subsequent [model timing](model-timing-20260927.md) measures real prefill/decode,
+with raw-token workloads and memory/context limits explicitly separated from
+numerical qualification and from the deployed Ninfer baseline.

@@ -5,7 +5,8 @@ Start with [the implementation plan](../PLAN.md) and the
 
 | Entry | Status |
 | --- | --- |
-| [Resident full model](findings/resident-model.md) | One-token 64-layer hidden/logit match is bit exact after SiLU correction; multi-token and performance pending |
+| [First model timing](findings/model-timing-20260927.md) | Raw-token 128-token prefill 19.2 tokens/s, decode 1.55 tokens/s; 135 positions exercised, no matched Ninfer comparison |
+| [Resident full model](findings/resident-model.md) | One/two-token hidden/logit fixtures bit exact; two-token state equivalence and all three sanitizers pass; wider quality/context pending |
 | [Resident decoder connection](findings/resident-decoder.md) | Resident GDN and attention blocks, whole/chunk/token state equivalence and sanitizers pass; full decoder pending |
 | [Resident FP8 MLP](findings/resident-fp8-mlp.md) | Layers 56/63 one/17-token scalar comparisons and three sanitizers pass; reference-free device execution |
 | [Persistent residency](findings/persistent-residency.md) | All 1,620 text weight hashes, 131K-capacity state allocation, entry operation and sanitizers pass; full model pending |

@@ -1,0 +1,223 @@
+{
+  "allocation_bytes": {
+    "persistent_arena_payload": 21801122816,
+    "state_arena_payload": 154533888,
+    "weight_arena_payload": 21646588928
+  },
+  "artifact_path": "/data/ai/models/mesh-specialize/qwen3.8-27b-f0b7c9e7-raw-v1.mspec",
+  "completed": true,
+  "configured_capacity": 9,
+  "device": {
+    "driver_version": 13040,
+    "major": 12,
+    "minor": 0,
+    "name": "NVIDIA GeForce RTX 5090",
+    "ordinal": 0,
+    "total_bytes": 33731248128,
+    "uuid": "GPU-80ded6bd-1a89-2628-3d94-902187dbab1d"
+  },
+  "fixed_output_tokens": 8,
+  "harness_elapsed_seconds": 26.160490424,
+  "identity": {
+    "model_id": "qwen3.8-27b:text:nvfp4-fp8:upstream-raw-v1",
+    "weights_id": "sha256:f49713878a072f8c9043060dc0e2f3b28421301e49471bee0c13c7570e59e81e"
+  },
+  "kind": "resident-model-fixed-token-benchmark",
+  "memory": {
+    "after_release_free_bytes": 32219725824,
+    "arena_memory_release_observed": true,
+    "minimum_sampled_free_bytes": 10417733632,
+    "samples": [
+      {
+        "device_used_bytes_snapshot": 1511522304,
+        "free_bytes": 32219725824,
+        "repetition": null,
+        "stage": "before_model_allocations",
+        "step": null,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 23158325248,
+        "free_bytes": 10572922880,
+        "repetition": null,
+        "stage": "after_weights_loaded",
+        "step": null,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 23313514496,
+        "free_bytes": 10417733632,
+        "repetition": null,
+        "stage": "warmup_session_allocated",
+        "step": null,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 23313514496,
+        "free_bytes": 10417733632,
+        "repetition": null,
+        "stage": "warmup_forward_completed",
+        "step": null,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 23158325248,
+        "free_bytes": 10572922880,
+        "repetition": null,
+        "stage": "warmup_session_released",
+        "step": null,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 23313514496,
+        "free_bytes": 10417733632,
+        "repetition": 1,
+        "stage": "repetition_session_allocated",
+        "step": null,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 23313514496,
+        "free_bytes": 10417733632,
+        "repetition": 1,
+        "stage": "prefill_forward_completed",
+        "step": 0,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 23313514496,
+        "free_bytes": 10417733632,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 1,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 23313514496,
+        "free_bytes": 10417733632,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 2,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 23313514496,
+        "free_bytes": 10417733632,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 3,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 23313514496,
+        "free_bytes": 10417733632,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 4,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 23313514496,
+        "free_bytes": 10417733632,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 5,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 23313514496,
+        "free_bytes": 10417733632,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 6,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 23313514496,
+        "free_bytes": 10417733632,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 7,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 23158325248,
+        "free_bytes": 10572922880,
+        "repetition": 1,
+        "stage": "repetition_session_released",
+        "step": null,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 1511522304,
+        "free_bytes": 32219725824,
+        "repetition": null,
+        "stage": "after_model_release",
+        "step": null,
+        "total_bytes": 33731248128
+      }
+    ],
+    "transient_peak_measured": false
+  },
+  "profile": {
+    "eos_termination_ignored": true,
+    "kind": "fixed-length raw-token engineering measurement",
+    "memory_note": "CUDA memory values are checkpoints, not a transient peak measurement.",
+    "prefill_includes_final_logits_and_first_greedy_token": true,
+    "qualification_claim": false,
+    "serving_claim": false,
+    "timing_excludes": [
+      "weight loading",
+      "session allocation",
+      "memory sampling",
+      "JIT warmup"
+    ]
+  },
+  "prompt_token_ids": [
+    248044,
+    271
+  ],
+  "prompt_tokens": 2,
+  "ptx_sha256": "fa04eb2e19c22bcd47fc657c9adb6d8e079349719d31f7bbb213fe85a8a70ab6",
+  "repetition_count": 1,
+  "repetitions": [
+    {
+      "cursor_poisoned": false,
+      "decode_interval_count": 7,
+      "decode_intervals": [
+        0.645395257,
+        0.648260521,
+        0.646875877,
+        0.647596826,
+        0.646437574,
+        0.643269657,
+        0.644493081
+      ],
+      "decode_tokens_per_second": 1.5478750706572075,
+      "decode_total_seconds": 4.522328793000001,
+      "final_cursor_past": 9,
+      "generated_token_ids": [
+        271,
+        271,
+        271,
+        271,
+        271,
+        271,
+        271,
+        271
+      ],
+      "prefill_cursor_past": 2,
+      "prefill_input_tokens": 2,
+      "prefill_input_tokens_per_second": 3.0802871200926725,
+      "prefill_seconds": 0.649290122,
+      "repetition": 1
+    }
+  ],
+  "requested_final_cursor_past": 9,
+  "schema_version": 1,
+  "warmup": {
+    "final_cursor_past": 1,
+    "input_token_id": 248044,
+    "output_token_id": 271
+  }
+}

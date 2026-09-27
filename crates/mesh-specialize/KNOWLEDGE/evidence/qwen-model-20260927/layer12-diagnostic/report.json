@@ -1,0 +1,610 @@
+{
+  "activation_probe": {
+    "all_passed": true,
+    "bf16_differences": 0,
+    "finite_inputs": 65280,
+    "first_mismatching_codes": [],
+    "maximum_scaled_fp32_error": 0.0
+  },
+  "all_passed": false,
+  "artifact_path": "/data/ai/models/mesh-specialize/qwen3.8-27b-f0b7c9e7-raw-v1.mspec",
+  "elapsed_seconds": 20.266788365,
+  "full_model_executed": false,
+  "identity": {
+    "model_id": "qwen3.8-27b:text:nvfp4-fp8:upstream-raw-v1",
+    "weights_id": "sha256:f49713878a072f8c9043060dc0e2f3b28421301e49471bee0c13c7570e59e81e"
+  },
+  "kind": "isolated-gdn-boundary-diagnostic",
+  "layer": 12,
+  "ptx_sha256": "7e7d363e34779f0efdd85dade38437362f3c219842e187c0773695cf68522a3d",
+  "reference_path": "target/specialize/qwen-model-20260927/reference-two-layer12.json",
+  "reference_sha256": "3f73d9e5ad3a6951509d50f33f5cd1580a443c386d3bc243432c8a75348ce200",
+  "scope": "Isolated GDN block supplied with independent CPU hidden input, diagnosing numerical divergence; not model execution or performance",
+  "stages": [
+    {
+      "bf16_differences": 0,
+      "comparison": {
+        "cosine_similarity": 0.9999999999999998,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "first_differences": [],
+      "name": "normalized"
+    },
+    {
+      "bf16_differences": 0,
+      "comparison": {
+        "cosine_similarity": 1.0,
+        "elements": 20480,
+        "exact_f32_elements": 20480,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "first_differences": [],
+      "name": "qkv"
+    },
+    {
+      "bf16_differences": 0,
+      "comparison": {
+        "cosine_similarity": 1.0,
+        "elements": 12288,
+        "exact_f32_elements": 12288,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "first_differences": [],
+      "name": "z"
+    },
+    {
+      "bf16_differences": 1,
+      "comparison": {
+        "cosine_similarity": 0.999999967074166,
+        "elements": 96,
+        "exact_f32_elements": 95,
+        "max_abs_error": 0.00390625,
+        "normalized_l2": 0.0002570499257163694,
+        "passed": true,
+        "rms_error": 0.00039867997115611623,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "first_differences": [
+        {
+          "actual": 0.8828125,
+          "actual_bits": 16226,
+          "expected": 0.88671875,
+          "expected_bits": 16227,
+          "index": 88
+        }
+      ],
+      "name": "a"
+    },
+    {
+      "bf16_differences": 0,
+      "comparison": {
+        "cosine_similarity": 1.0,
+        "elements": 96,
+        "exact_f32_elements": 96,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "first_differences": [],
+      "name": "b"
+    },
+    {
+      "bf16_differences": 0,
+      "comparison": {
+        "cosine_similarity": 1.0,
+        "elements": 20480,
+        "exact_f32_elements": 20480,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "first_differences": [],
+      "name": "convolution"
+    },
+    {
+      "bf16_differences": 15,
+      "comparison": {
+        "cosine_similarity": 0.9999999990136522,
+        "elements": 12288,
+        "exact_f32_elements": 12273,
+        "max_abs_error": 0.0001220703125,
+        "normalized_l2": 0.00004441558707879802,
+        "passed": true,
+        "rms_error": 1.174502760331378e-6,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "first_differences": [
+        {
+          "actual": 0.0164794921875,
+          "actual_bits": 15495,
+          "expected": 0.0166015625,
+          "expected_bits": 15496,
+          "index": 11293
+        },
+        {
+          "actual": 0.000629425048828125,
+          "actual_bits": 14885,
+          "expected": 0.0006256103515625,
+          "expected_bits": 14884,
+          "index": 11300
+        },
+        {
+          "actual": 0.0021209716796875,
+          "actual_bits": 15115,
+          "expected": 0.00213623046875,
+          "expected_bits": 15116,
+          "index": 11301
+        },
+        {
+          "actual": 0.000591278076171875,
+          "actual_bits": 14875,
+          "expected": 0.00058746337890625,
+          "expected_bits": 14874,
+          "index": 11306
+        },
+        {
+          "actual": 0.00018215179443359375,
+          "actual_bits": 14655,
+          "expected": 0.00018596649169921875,
+          "expected_bits": 14659,
+          "index": 11318
+        },
+        {
+          "actual": 0.0025787353515625,
+          "actual_bits": 15145,
+          "expected": 0.002593994140625,
+          "expected_bits": 15146,
+          "index": 11322
+        },
+        {
+          "actual": 7.987022399902344e-6,
+          "actual_bits": 14086,
+          "expected": 6.556510925292969e-6,
+          "expected_bits": 14044,
+          "index": 11332
+        },
+        {
+          "actual": 0.000102996826171875,
+          "actual_bits": 14552,
+          "expected": 0.00010442733764648438,
+          "expected_bits": 14555,
+          "index": 11346
+        },
+        {
+          "actual": 0.001312255859375,
+          "actual_bits": 15020,
+          "expected": 0.00130462646484375,
+          "expected_bits": 15019,
+          "index": 11349
+        },
+        {
+          "actual": 0.005279541015625,
+          "actual_bits": 15277,
+          "expected": 0.0052490234375,
+          "expected_bits": 15276,
+          "index": 11351
+        },
+        {
+          "actual": 0.00003600120544433594,
+          "actual_bits": 14359,
+          "expected": 0.000035762786865234375,
+          "expected_bits": 14358,
+          "index": 11353
+        },
+        {
+          "actual": -0.0028533935546875,
+          "actual_bits": 47931,
+          "expected": -0.00286865234375,
+          "expected_bits": 47932,
+          "index": 11365
+        },
+        {
+          "actual": 0.00151824951171875,
+          "actual_bits": 15047,
+          "expected": 0.0015106201171875,
+          "expected_bits": 15046,
+          "index": 11371
+        },
+        {
+          "actual": 0.00006914138793945312,
+          "actual_bits": 14481,
+          "expected": 0.00006437301635742188,
+          "expected_bits": 14471,
+          "index": 11377
+        },
+        {
+          "actual": -0.002593994140625,
+          "actual_bits": 47914,
+          "expected": -0.0025787353515625,
+          "expected_bits": 47913,
+          "index": 11388
+        }
+      ],
+      "name": "gated"
+    },
+    {
+      "bf16_differences": 28,
+      "comparison": {
+        "cosine_similarity": 0.9999999873817462,
+        "elements": 10240,
+        "exact_f32_elements": 10212,
+        "max_abs_error": 0.000244140625,
+        "normalized_l2": 0.0001588810345735102,
+        "passed": true,
+        "rms_error": 5.217644413055997e-6,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "first_differences": [
+        {
+          "actual": -0.00006628036499023438,
+          "actual_bits": 47243,
+          "expected": -0.0000667572021484375,
+          "expected_bits": 47244,
+          "index": 5172
+        },
+        {
+          "actual": -0.06201171875,
+          "actual_bits": 48510,
+          "expected": -0.061767578125,
+          "expected_bits": 48509,
+          "index": 5497
+        },
+        {
+          "actual": 0.000431060791015625,
+          "actual_bits": 14818,
+          "expected": 0.0004329681396484375,
+          "expected_bits": 14819,
+          "index": 5578
+        },
+        {
+          "actual": 0.00010395050048828125,
+          "actual_bits": 14554,
+          "expected": 0.00010442733764648438,
+          "expected_bits": 14555,
+          "index": 6134
+        },
+        {
+          "actual": -0.00799560546875,
+          "actual_bits": 48131,
+          "expected": -0.008056640625,
+          "expected_bits": 48132,
+          "index": 6175
+        },
+        {
+          "actual": 0.00010585784912109375,
+          "actual_bits": 14558,
+          "expected": 0.00010633468627929688,
+          "expected_bits": 14559,
+          "index": 6553
+        },
+        {
+          "actual": -0.0000820159912109375,
+          "actual_bits": 47276,
+          "expected": -0.00008249282836914062,
+          "expected_bits": 47277,
+          "index": 6555
+        },
+        {
+          "actual": 0.0230712890625,
+          "actual_bits": 15549,
+          "expected": 0.02294921875,
+          "expected_bits": 15548,
+          "index": 6619
+        },
+        {
+          "actual": 0.0019683837890625,
+          "actual_bits": 15105,
+          "expected": 0.001953125,
+          "expected_bits": 15104,
+          "index": 6701
+        },
+        {
+          "actual": -0.00543212890625,
+          "actual_bits": 48050,
+          "expected": -0.005401611328125,
+          "expected_bits": 48049,
+          "index": 6705
+        },
+        {
+          "actual": -0.000232696533203125,
+          "actual_bits": 47476,
+          "expected": -0.00023365020751953125,
+          "expected_bits": 47477,
+          "index": 6759
+        },
+        {
+          "actual": 0.0002079010009765625,
+          "actual_bits": 14682,
+          "expected": 0.00020694732666015625,
+          "expected_bits": 14681,
+          "index": 7009
+        },
+        {
+          "actual": -0.011962890625,
+          "actual_bits": 48196,
+          "expected": -0.01202392578125,
+          "expected_bits": 48197,
+          "index": 7051
+        },
+        {
+          "actual": -0.0419921875,
+          "actual_bits": 48428,
+          "expected": -0.041748046875,
+          "expected_bits": 48427,
+          "index": 7239
+        },
+        {
+          "actual": 0.0228271484375,
+          "actual_bits": 15547,
+          "expected": 0.02294921875,
+          "expected_bits": 15548,
+          "index": 7340
+        },
+        {
+          "actual": -0.001556396484375,
+          "actual_bits": 47820,
+          "expected": -0.00154876708984375,
+          "expected_bits": 47819,
+          "index": 7753
+        }
+      ],
+      "name": "out"
+    },
+    {
+      "bf16_differences": 4,
+      "comparison": {
+        "cosine_similarity": 0.9999999999031501,
+        "elements": 10240,
+        "exact_f32_elements": 10236,
+        "max_abs_error": 0.0009765625,
+        "normalized_l2": 0.000013917602024773114,
+        "passed": true,
+        "rms_error": 0.0000152587890625,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "first_differences": [
+        {
+          "actual": -0.208984375,
+          "actual_bits": 48726,
+          "expected": -0.2080078125,
+          "expected_bits": 48725,
+          "index": 5497
+        },
+        {
+          "actual": -0.099609375,
+          "actual_bits": 48588,
+          "expected": -0.10009765625,
+          "expected_bits": 48589,
+          "index": 7051
+        },
+        {
+          "actual": -0.064453125,
+          "actual_bits": 48516,
+          "expected": -0.06396484375,
+          "expected_bits": 48515,
+          "index": 7239
+        },
+        {
+          "actual": 0.1611328125,
+          "actual_bits": 15909,
+          "expected": 0.162109375,
+          "expected_bits": 15910,
+          "index": 7340
+        }
+      ],
+      "name": "post_residual"
+    },
+    {
+      "bf16_differences": 3,
+      "comparison": {
+        "cosine_similarity": 0.9999999992978869,
+        "elements": 10240,
+        "exact_f32_elements": 10237,
+        "max_abs_error": 0.0009765625,
+        "normalized_l2": 0.000037473527360994593,
+        "passed": true,
+        "rms_error": 0.000014475758332069607,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "first_differences": [
+        {
+          "actual": -0.130859375,
+          "actual_bits": 48646,
+          "expected": -0.1318359375,
+          "expected_bits": 48647,
+          "index": 7051
+        },
+        {
+          "actual": -0.08447265625,
+          "actual_bits": 48557,
+          "expected": -0.083984375,
+          "expected_bits": 48556,
+          "index": 7239
+        },
+        {
+          "actual": 0.220703125,
+          "actual_bits": 15970,
+          "expected": 0.2216796875,
+          "expected_bits": 15971,
+          "index": 7340
+        }
+      ],
+      "name": "post_norm"
+    },
+    {
+      "bf16_differences": 0,
+      "comparison": {
+        "cosine_similarity": 1.0,
+        "elements": 34816,
+        "exact_f32_elements": 34816,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "first_differences": [],
+      "name": "mlp_gate"
+    },
+    {
+      "bf16_differences": 0,
+      "comparison": {
+        "cosine_similarity": 1.0,
+        "elements": 34816,
+        "exact_f32_elements": 34816,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "first_differences": [],
+      "name": "mlp_up"
+    },
+    {
+      "bf16_differences": 0,
+      "comparison": {
+        "cosine_similarity": 1.0,
+        "elements": 34816,
+        "exact_f32_elements": 34816,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "first_differences": [],
+      "name": "mlp_activation"
+    },
+    {
+      "bf16_differences": 0,
+      "comparison": {
+        "cosine_similarity": 1.0,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "first_differences": [],
+      "name": "mlp_down"
+    },
+    {
+      "bf16_differences": 3,
+      "comparison": {
+        "cosine_similarity": 0.9999999999139055,
+        "elements": 10240,
+        "exact_f32_elements": 10237,
+        "max_abs_error": 0.0009765625,
+        "normalized_l2": 0.000013122075538692047,
+        "passed": true,
+        "rms_error": 0.000014475758332069607,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "first_differences": [
+        {
+          "actual": -0.2041015625,
+          "actual_bits": 48721,
+          "expected": -0.203125,
+          "expected_bits": 48720,
+          "index": 5497
+        },
+        {
+          "actual": -0.1279296875,
+          "actual_bits": 48643,
+          "expected": -0.12890625,
+          "expected_bits": 48644,
+          "index": 7051
+        },
+        {
+          "actual": -0.09912109375,
+          "actual_bits": 48587,
+          "expected": -0.0986328125,
+          "expected_bits": 48586,
+          "index": 7239
+        }
+      ],
+      "name": "hidden"
+    }
+  ]
+}

@@ -5,14 +5,17 @@ Assessed September 26, 2026, America/Toronto. MeshLLM revision
 
 Subsequent implementation evidence is in the
 [runtime work ledger](../../../../crates/mesh-specialize/PLAN.md).
-The authorized experiment has now measured the deployed Ninfer baseline, qualified
-the required Rust instruction probes, and connected all 64 decoder layers on
-carrack. The first one-token hidden/logit comparison matches the independent CPU
-reference bit-for-bit after correcting SiLU rounding. See the
-[full-model evidence](../../../../crates/mesh-specialize/KNOWLEDGE/findings/resident-model.md)
-for the current qualification boundary. The original assessment
-below records the initial snapshot; its service-state and implementation-state
-observations are historical. End-to-end performance parity remains unproven.
+The authorized experiment now executes all 64 decoder layers on Carrack in Rust.
+Independent one/two-token hidden/logit fixtures match bit-for-bit; the two-token
+run passes state-equivalence checks and all three sanitizers. The first untuned
+model measurement is **19.2 tokens/s prefill at 128 raw input tokens and 1.55
+tokens/s decode**, far below the measured deployed Ninfer rates. See the
+[model timing and comparison limits](../../../../crates/mesh-specialize/KNOWLEDGE/findings/model-timing-20260927.md)
+and [numerical evidence](../../../../crates/mesh-specialize/KNOWLEDGE/findings/resident-model.md).
+This establishes execution feasibility, not competitive performance or useful
+language quality. Serving integration and long-context qualification remain open.
+The original assessment below records the initial snapshot; its service and
+implementation observations are historical.
 
 **Recommendation: proceed with a bounded Rust kernel and host-integration experiment.
 Matching ninfer is technically plausible, but it is not demonstrated and the issue

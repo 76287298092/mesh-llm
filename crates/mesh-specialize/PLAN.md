@@ -1,9 +1,11 @@
 # Specialized Qwen runtime implementation plan
 
 Status: deployed-profile baseline, kernel and resident-block qualification complete.
-The first 64-layer GPU run now matches the independent CPU hidden/logit reference
-bit-for-bit for one token. Multi-token qualification, profiling and measured model
-prefill/decode/context remain open.
+The connected 64-layer GPU decoder matches independent one/two-token hidden/logit
+fixtures bit-for-bit, with two-token state equivalence and all three sanitizers
+passing. Initial raw-token timing is 19.2 tokens/s prefill at 128 inputs and 1.55
+tokens/s decode, exercising 135 positions. Profiling, text quality, longer-context
+qualification and a matched Ninfer performance comparison remain open.
 
 Host policy now checks exact model/weights and explicit selected-device admission.
 The [live device-policy trial](KNOWLEDGE/findings/selected-device-admission.md)
@@ -34,8 +36,9 @@ required to meet the unchanged per-token error budget; its performance cost is
 unmeasured. All 1,620 text tensors now remain resident together in one verified
 device arena, with the 64-layer schedule's state allocated at capacity 131,072.
 Full readback hashes, zeroed state, resident entry operation and three sanitizers
-pass. This is allocation capacity, not tested inference context. The connected decoder now executes all layers; multi-token logit qualification
-and model performance remain open. The final-eight-layer
+pass. This is allocation capacity, not tested inference context. The connected
+decoder now executes all layers; wider logit qualification and performance tuning
+remain open. The final-eight-layer
 FP8 MLP execution path now uses persistent weights without host intermediate
 readbacks or scalar reference work in the execution path. Layers 56 and 63 pass
 independent one/17-token branch comparisons and all three sanitizers.
@@ -192,8 +195,8 @@ that control's rates directly to MTP4 as an isolated speedup across different in
 | Q02 complete attention layer | Partial: one/17-token full layer and exact initialized K/V pass fixed aggregate/per-token budgets; sanitizers clean | `KNOWLEDGE/findings/full-attention-layer.md`; full-model scheduling/logits and performance remain pending |
 | H03 discovery and H04 ABI | Pending | Standalone experimental decoder executes; host discovery and ABI integration are not implemented |
 | Persistent text weights and compiled state layout | Allocation/transfer gate passes | `KNOWLEDGE/findings/persistent-residency.md`; all 1,620 hashes and 128 zeroed regions pass, first resident entry exact, sanitizers clean; decoder execution pending |
-| Full model performance/context trial | Pending | None |
-| Connected 64-layer decoder and final vocabulary head | One-token independent hidden/logit comparison bit exact | `KNOWLEDGE/findings/resident-model.md`; initial SiLU rounding failure diagnosed and corrected; multi-token/sanitizer qualification pending |
+| Full model performance/context trial | Partial: raw-token 128-input prefill, seven decode intervals, memory checkpoints and execution through 135 positions measured | `KNOWLEDGE/findings/model-timing-20260927.md`; matched corpus, peak memory, text quality and long context pending |
+| Connected 64-layer decoder and final vocabulary head | One/two-token independent hidden/logit fixtures bit exact; whole/token state and all three sanitizers pass | `KNOWLEDGE/findings/resident-model.md`; broader numerical/text quality remains open |
 | Reference-free resident decoder connection | GDN layer zero and full-attention layer three qualified; full schedule pending | `KNOWLEDGE/findings/resident-decoder.md`; independent whole-block comparisons, exact whole/chunk/token state and all three sanitizers pass |
 | Resident final-eight-layer FP8 MLP | Branch execution qualified for layers 56/63, one/17 tokens | `KNOWLEDGE/findings/resident-fp8-mlp.md`; independent scalar comparisons and three sanitizers pass; full schedule pending |
 

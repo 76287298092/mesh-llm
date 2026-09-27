@@ -1,0 +1,3344 @@
+{
+  "activation_probe": {
+    "all_passed": true,
+    "bf16_differences": 0,
+    "finite_inputs": 65280,
+    "first_mismatching_codes": [],
+    "maximum_scaled_fp32_error": 0.0
+  },
+  "all_passed": false,
+  "artifact_path": "/data/ai/models/mesh-specialize/qwen3.8-27b-f0b7c9e7-raw-v1.mspec",
+  "bf16_probe": {
+    "all_passed": true,
+    "cases": [
+      {
+        "all_passed": true,
+        "bf16_differences": 0,
+        "cancellation": false,
+        "max_fp32_abs_error": 0.0,
+        "rounding_mismatches": 0,
+        "shape": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "all_passed": true,
+        "bf16_differences": 0,
+        "cancellation": false,
+        "max_fp32_abs_error": 0.0,
+        "rounding_mismatches": 0,
+        "shape": [
+          17,
+          9,
+          513
+        ]
+      },
+      {
+        "all_passed": true,
+        "bf16_differences": 0,
+        "cancellation": true,
+        "max_fp32_abs_error": 0.0,
+        "rounding_mismatches": 0,
+        "shape": [
+          2,
+          9,
+          5120
+        ]
+      }
+    ],
+    "resources": {
+      "local_bytes": 0,
+      "max_threads_per_block": 1024,
+      "registers": 45,
+      "static_shared_bytes": 0
+    }
+  },
+  "device": {
+    "driver_version": 13040,
+    "major": 12,
+    "minor": 0,
+    "name": "NVIDIA GeForce RTX 5090",
+    "ordinal": 0,
+    "total_bytes": 33731248128,
+    "uuid": "GPU-80ded6bd-1a89-2628-3d94-902187dbab1d"
+  },
+  "elapsed_seconds": 22.929358517,
+  "failed_session_reuse_rejected": true,
+  "full_model_executed": true,
+  "greedy_token_exact": true,
+  "identity": {
+    "model_id": "qwen3.8-27b:text:nvfp4-fp8:upstream-raw-v1",
+    "weights_id": "sha256:f49713878a072f8c9043060dc0e2f3b28421301e49471bee0c13c7570e59e81e"
+  },
+  "kind": "qwen-resident-full-model-correctness",
+  "layers": [
+    {
+      "aggregate": {
+        "cosine_similarity": 1.0,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 0,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 0.9999999999999999,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 1.0,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 1,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 0.9999999999999998,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 2,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 0.9999999999999999,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 3,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 0.9999999999999999,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 1.0,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 4,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 1.0,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 5,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 0.9999999999999998,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 6,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 0.9999999999999998,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 7,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 0.9999999999999999,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 0.9999999999999998,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 8,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 0.9999999999999999,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 9,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 0.9999999999999999,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 10,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 1.0,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 11,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 0.9999999999999999,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 12,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 0.9999999999999998,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 1.0,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 13,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 1.0,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 14,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 0.9999999999999998,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 0.9999999999999999,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 1.0,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 15,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 1.0,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 16,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 1.0,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 17,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 0.9999999999999999,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 0.9999999999999999,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 18,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 0.9999999999999999,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 19,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 1.0,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 20,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 1.0,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 21,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 0.9999999999999999,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 1.0,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 22,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 0.9999999999999999,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 1.0,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 23,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 1.0,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 24,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 0.9999999999999999,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 1.0,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 25,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 0.9999999999999999,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 0.9999999999999998,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 26,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 0.9999999999999999,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 27,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 1.0,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 28,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 0.9999999999999999,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 0.9999999999999999,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 29,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 1.0,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 30,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 1.0,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 31,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 0.9999999999999999,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 32,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 0.9999999999999999,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 1.0,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 33,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 1.0,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 34,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 0.9999999999999998,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 1.0,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 35,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 1.0,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 36,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 0.9999999999999998,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 1.0,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 37,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 0.9999999999999998,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 0.9999999999999999,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 38,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 1.0,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 39,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 0.9999999999999999,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 1.0,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 40,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 0.9999999999999999,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 1.0,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 41,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 0.9999999999999999,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 0.9999999999999999,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 1.0,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 42,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 0.9999999999999999,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 43,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 1.0,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 44,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 0.9999999999999999,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 0.9999999999999999,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 45,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 0.9999999999999999,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 0.9999999999999998,
+        "elements": 10240,
+        "exact_f32_elements": 10240,
+        "max_abs_error": 0.0,
+        "normalized_l2": 0.0,
+        "passed": true,
+        "rms_error": 0.0,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 0,
+      "layer": 46,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 0.9999999999999999,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 0.9999999999999999,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 0.9999999877237015,
+        "elements": 10240,
+        "exact_f32_elements": 10223,
+        "max_abs_error": 0.0078125,
+        "normalized_l2": 0.00015670491614815934,
+        "passed": true,
+        "rms_error": 0.00013724430433208532,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 17,
+      "layer": 47,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 0.9999999828209899,
+          "elements": 5120,
+          "exact_f32_elements": 5103,
+          "max_abs_error": 0.0078125,
+          "normalized_l2": 0.00018537941823216594,
+          "passed": true,
+          "rms_error": 0.0001940927565448956,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 0.9999897445869144,
+        "elements": 10240,
+        "exact_f32_elements": 6344,
+        "max_abs_error": 0.0625,
+        "normalized_l2": 0.004529484757162292,
+        "passed": true,
+        "rms_error": 0.003795872136837335,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 3896,
+      "layer": 48,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 0.9999853658579025,
+          "elements": 5120,
+          "exact_f32_elements": 1224,
+          "max_abs_error": 0.0625,
+          "normalized_l2": 0.005411034597490199,
+          "passed": true,
+          "rms_error": 0.0053681738569495005,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 0.9995693510293817,
+        "elements": 10240,
+        "exact_f32_elements": 5315,
+        "max_abs_error": 0.1328125,
+        "normalized_l2": 0.02938304167487895,
+        "passed": false,
+        "rms_error": 0.025095532669675808,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": false,
+      "bf16_differences": 4925,
+      "layer": 49,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 0.9993814537484889,
+          "elements": 5120,
+          "exact_f32_elements": 195,
+          "max_abs_error": 0.1328125,
+          "normalized_l2": 0.03523291611668529,
+          "passed": false,
+          "rms_error": 0.035490442656432614,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 0.9982451685220345,
+        "elements": 10240,
+        "exact_f32_elements": 5227,
+        "max_abs_error": 0.5,
+        "normalized_l2": 0.0592909716508839,
+        "passed": false,
+        "rms_error": 0.05617717353328365,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": false,
+      "bf16_differences": 5013,
+      "layer": 50,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 0.9974303822703612,
+          "elements": 5120,
+          "exact_f32_elements": 107,
+          "max_abs_error": 0.5,
+          "normalized_l2": 0.07177454778760209,
+          "passed": false,
+          "rms_error": 0.07944652070655661,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 0.9963865048159984,
+        "elements": 10240,
+        "exact_f32_elements": 5199,
+        "max_abs_error": 0.75,
+        "normalized_l2": 0.08527853950291975,
+        "passed": false,
+        "rms_error": 0.10652430684899383,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": false,
+      "bf16_differences": 5041,
+      "layer": 51,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 0.9947299870403055,
+          "elements": 5120,
+          "exact_f32_elements": 79,
+          "max_abs_error": 0.75,
+          "normalized_l2": 0.10313550262728129,
+          "passed": false,
+          "rms_error": 0.15064811946824025,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 0.9950281353105793,
+        "elements": 10240,
+        "exact_f32_elements": 5192,
+        "max_abs_error": 0.7890625,
+        "normalized_l2": 0.09983474356451019,
+        "passed": false,
+        "rms_error": 0.13851463605288855,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": false,
+      "bf16_differences": 5048,
+      "layer": 52,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 0.9999999999999999,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 0.9926453311035437,
+          "elements": 5120,
+          "exact_f32_elements": 72,
+          "max_abs_error": 0.7890625,
+          "normalized_l2": 0.12149174768547989,
+          "passed": false,
+          "rms_error": 0.19588927689316826,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 0.9941388512424788,
+        "elements": 10240,
+        "exact_f32_elements": 5187,
+        "max_abs_error": 1.5,
+        "normalized_l2": 0.1082715709894027,
+        "passed": false,
+        "rms_error": 0.16659463999561258,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": false,
+      "bf16_differences": 5053,
+      "layer": 53,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 0.9910011238907712,
+          "elements": 5120,
+          "exact_f32_elements": 67,
+          "max_abs_error": 1.5,
+          "normalized_l2": 0.13415952812852108,
+          "passed": false,
+          "rms_error": 0.23560039930045856,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 0.994283146198938,
+        "elements": 10240,
+        "exact_f32_elements": 5186,
+        "max_abs_error": 4.0,
+        "normalized_l2": 0.10683415374539248,
+        "passed": false,
+        "rms_error": 0.1989273185018355,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": false,
+      "bf16_differences": 5054,
+      "layer": 54,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 0.9917900965670756,
+          "elements": 5120,
+          "exact_f32_elements": 66,
+          "max_abs_error": 4.0,
+          "normalized_l2": 0.12797804379630467,
+          "passed": false,
+          "rms_error": 0.2813257117518081,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 0.9936176161343439,
+        "elements": 10240,
+        "exact_f32_elements": 5164,
+        "max_abs_error": 3.0,
+        "normalized_l2": 0.11284020236205286,
+        "passed": false,
+        "rms_error": 0.22734500018382406,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": false,
+      "bf16_differences": 5076,
+      "layer": 55,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 0.9903084441758512,
+          "elements": 5120,
+          "exact_f32_elements": 44,
+          "max_abs_error": 3.0,
+          "normalized_l2": 0.13895926187076066,
+          "passed": false,
+          "rms_error": 0.3215143825976778,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 0.9942146116188499,
+        "elements": 10240,
+        "exact_f32_elements": 5181,
+        "max_abs_error": 3.0,
+        "normalized_l2": 0.10743844829073165,
+        "passed": false,
+        "rms_error": 0.23280904899444554,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": false,
+      "bf16_differences": 5059,
+      "layer": 56,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 0.9999999999999998,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 0.9907643085381216,
+          "elements": 5120,
+          "exact_f32_elements": 61,
+          "max_abs_error": 3.0,
+          "normalized_l2": 0.13564904872899256,
+          "passed": false,
+          "rms_error": 0.32924171453112727,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 0.9949312689947876,
+        "elements": 10240,
+        "exact_f32_elements": 5176,
+        "max_abs_error": 4.0,
+        "normalized_l2": 0.10055757906702978,
+        "passed": false,
+        "rms_error": 0.24068711275454502,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": false,
+      "bf16_differences": 5064,
+      "layer": 57,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 0.9916977671570842,
+          "elements": 5120,
+          "exact_f32_elements": 56,
+          "max_abs_error": 4.0,
+          "normalized_l2": 0.12859117880929546,
+          "passed": false,
+          "rms_error": 0.34038297914589993,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 0.9949798962373417,
+        "elements": 10240,
+        "exact_f32_elements": 5169,
+        "max_abs_error": 4.0,
+        "normalized_l2": 0.10008103829543023,
+        "passed": false,
+        "rms_error": 0.24717075939145128,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": false,
+      "bf16_differences": 5071,
+      "layer": 58,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 0.9999999999999999,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 0.9921575467242371,
+          "elements": 5120,
+          "exact_f32_elements": 49,
+          "max_abs_error": 4.0,
+          "normalized_l2": 0.12500545388938836,
+          "passed": false,
+          "rms_error": 0.34955224015344744,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 0.995665072349903,
+        "elements": 10240,
+        "exact_f32_elements": 5181,
+        "max_abs_error": 1.671875,
+        "normalized_l2": 0.09347815683240132,
+        "passed": false,
+        "rms_error": 0.27892676250037113,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": false,
+      "bf16_differences": 5059,
+      "layer": 59,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 0.9999999999999998,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 0.9923186478783974,
+          "elements": 5120,
+          "exact_f32_elements": 61,
+          "max_abs_error": 1.671875,
+          "normalized_l2": 0.12481350520640225,
+          "passed": false,
+          "rms_error": 0.3944620104368441,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 0.9963915677656254,
+        "elements": 10240,
+        "exact_f32_elements": 5181,
+        "max_abs_error": 3.0,
+        "normalized_l2": 0.08554236735493187,
+        "passed": false,
+        "rms_error": 0.2920177652719771,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": false,
+      "bf16_differences": 5059,
+      "layer": 60,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 0.9933259526718345,
+          "elements": 5120,
+          "exact_f32_elements": 61,
+          "max_abs_error": 3.0,
+          "normalized_l2": 0.11703404480837193,
+          "passed": false,
+          "rms_error": 0.412975484101513,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 0.996140739429383,
+        "elements": 10240,
+        "exact_f32_elements": 5176,
+        "max_abs_error": 2.0,
+        "normalized_l2": 0.08819180094599524,
+        "passed": false,
+        "rms_error": 0.3111259227376061,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": false,
+      "bf16_differences": 5064,
+      "layer": 61,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 0.9929170407613092,
+          "elements": 5120,
+          "exact_f32_elements": 56,
+          "max_abs_error": 2.0,
+          "normalized_l2": 0.11986157808843924,
+          "passed": false,
+          "rms_error": 0.4399984995413663,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 0.9964357629625383,
+        "elements": 10240,
+        "exact_f32_elements": 5184,
+        "max_abs_error": 1.9375,
+        "normalized_l2": 0.08466540336011513,
+        "passed": false,
+        "rms_error": 0.3378234087801569,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": false,
+      "bf16_differences": 5056,
+      "layer": 62,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 0.9932062162239406,
+          "elements": 5120,
+          "exact_f32_elements": 64,
+          "max_abs_error": 1.9375,
+          "normalized_l2": 0.11718646843886449,
+          "passed": false,
+          "rms_error": 0.47775444638400794,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    {
+      "aggregate": {
+        "cosine_similarity": 0.9980018533620779,
+        "elements": 10240,
+        "exact_f32_elements": 5205,
+        "max_abs_error": 11.0,
+        "normalized_l2": 0.06432716772065789,
+        "passed": false,
+        "rms_error": 0.5292539227495406,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": false,
+      "bf16_differences": 5035,
+      "layer": 63,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 0.9956757368068311,
+          "elements": 5120,
+          "exact_f32_elements": 85,
+          "max_abs_error": 11.0,
+          "normalized_l2": 0.09672887113244617,
+          "passed": false,
+          "rms_error": 0.7484780754915628,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    }
+  ],
+  "logits": {
+    "aggregate": {
+      "cosine_similarity": 0.9979641448221243,
+      "elements": 248320,
+      "exact_f32_elements": 8123,
+      "max_abs_error": 1.0625,
+      "normalized_l2": 0.06517841049660603,
+      "passed": false,
+      "rms_error": 0.1830400261680833,
+      "scope": "single-layer engineering error budget; not model/logit parity",
+      "tolerance": {
+        "cosine_min": 0.9999,
+        "normalized_l2_max": 0.01
+      }
+    },
+    "all_passed": false,
+    "bf16_differences": 240197,
+    "partition_width": 248320,
+    "partitions": [
+      {
+        "cosine_similarity": 0.9979641448221243,
+        "elements": 248320,
+        "exact_f32_elements": 8123,
+        "max_abs_error": 1.0625,
+        "normalized_l2": 0.06517841049660603,
+        "passed": false,
+        "rms_error": 0.1830400261680833,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      }
+    ]
+  },
+  "memory_after_free": {
+    "free_bytes": 32221822976,
+    "total_bytes": 33731248128
+  },
+  "memory_after_sequence": {
+    "free_bytes": 10419830784,
+    "total_bytes": 33731248128
+  },
+  "memory_before": {
+    "free_bytes": 32221822976,
+    "total_bytes": 33731248128
+  },
+  "model_context_tokens": null,
+  "model_decode_tokens_per_second": null,
+  "model_layers_executed": 64,
+  "model_prefill_tokens_per_second": null,
+  "prefix_committed_correctly": true,
+  "ptx_sha256": "4a5b55a1d4a29325b1b357f4f822e815caab9f9f1648c05b4632d898ba40ad77",
+  "reference_path": "target/specialize/qwen-model-20260927/reference-two.json",
+  "reference_sha256": "6e5fd184d8b93d04c3716ec10a12605a3b51065580d9dc711812c8e2c1525da1",
+  "reference_token": 271,
+  "schema_version": 1,
+  "scope": "Correctness with hidden observers and state hashing; no model throughput measurement",
+  "selected_token": 271,
+  "state_arena_bytes": 154075136,
+  "tokens": [
+    248044,
+    271
+  ],
+  "weight_arena_bytes": 21646588928,
+  "whole_vs_token_logits_and_state_bit_exact": true
+}
