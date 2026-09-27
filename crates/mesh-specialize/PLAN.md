@@ -338,3 +338,7 @@ as the next performance priority. Existing split-K/compact full-model sanitizer
 qualification remains in progress; do not start competing GPU trials or change
 Carrack source/binaries until that process is terminal. Matched Ninfer quality,
 long context, concurrency and serving evidence remain required for completion.
+
+The split-K/compact sanitizer process subsequently completed successfully; see
+`KNOWLEDGE/evidence/iterate-20260927/splitk-compact-check-1`. No benchmark remains
+active at this checkpoint. Refresh live process/source state before the next run.

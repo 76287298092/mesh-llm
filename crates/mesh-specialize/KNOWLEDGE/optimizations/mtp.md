@@ -193,3 +193,12 @@ Ninfer was inactive before/after and ComfyUI PID448118 remained resident.
 A follow-up error-path fix drains the context if split-K setup/launch returns an
 error after input quantization was queued. It does not alter successful arithmetic
 or dispatch. Combined whole-model sanitizer qualification is the next gate.
+
+Combined qualification completed at source `28bbea8de136e943f8f5dee3a4a1ac531e155b80`
+with unchanged split-K PTX above: `splitk-compact-check-1` passes normal
+full-forward/compact runs (eight outputs, depth four), then compact runs under
+memcheck/racecheck/synccheck (six outputs, depth four). Every report passes exact
+target tokens/state, all-accepted, and rejection after each 0/1/2/3 accepted draft
+positions. All three sanitizer logs report zero errors/hazards. Ninfer remains
+inactive, ComfyUI PID448118 remains resident, and the bounded trial has ended.
+This qualifies the exercised combined path, not serving, sampling, or long context.
