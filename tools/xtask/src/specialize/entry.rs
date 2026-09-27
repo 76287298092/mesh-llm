@@ -19,6 +19,10 @@ pub(super) fn residency(args: &[String]) -> DynResult<()> {
     )
 }
 
+pub(super) fn fp8_mlp(args: &[String]) -> DynResult<()> {
+    run_trial(args, mesh_specialize::packages::qwen3_8_27b::fp8_mlp::trial)
+}
+
 pub(super) fn projections(args: &[String]) -> DynResult<()> {
     run_trial(
         args,

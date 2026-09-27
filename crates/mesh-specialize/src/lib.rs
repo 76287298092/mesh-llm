@@ -12,6 +12,9 @@ pub mod entry_reference;
 #[path = "../reference/resident_entry.rs"]
 pub mod resident_entry_reference;
 
+#[path = "../reference/fp8_mlp.rs"]
+pub mod fp8_mlp_reference;
+
 #[path = "../reference/causal_conv4.rs"]
 pub mod causal_conv4_reference;
 #[path = "../reference/gated_rms_norm.rs"]

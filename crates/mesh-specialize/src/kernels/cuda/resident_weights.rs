@@ -65,6 +65,18 @@ impl<'ctx> ResidentWeights<'ctx> {
         &self.layout
     }
 
+    pub(super) fn belongs_to(&self, context: &Context) -> bool {
+        self.arena.belongs_to(context)
+    }
+
+    /// Metadata for a tensor owned by this resident arena.
+    pub(super) fn object(&self, name: &str) -> Result<&Object> {
+        self.objects
+            .iter()
+            .find(|object| object.name == name)
+            .ok_or_else(|| anyhow!("resident weight object `{name}` is missing"))
+    }
+
     /// Read back and hash each tensor in bounded chunks.
     ///
     /// Hash mismatches are reported as `matches: false`; driver transfer errors

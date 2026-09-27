@@ -465,6 +465,9 @@ impl<'ctx> Buffer<'ctx> {
     pub(super) fn len(&self) -> usize {
         self.bytes
     }
+    pub(super) fn belongs_to(&self, context: &Context) -> bool {
+        std::ptr::eq(self.context, context)
+    }
     /// Copy host bytes into the beginning of this device allocation.
     pub(super) fn upload(&self, source: &[u8]) -> Result<()> {
         self.upload_at(0, source)
@@ -567,6 +570,9 @@ pub(super) struct Module<'ctx> {
     _thread_bound: PhantomData<Rc<()>>,
 }
 impl<'ctx> Module<'ctx> {
+    pub(super) fn belongs_to(&self, context: &Context) -> bool {
+        std::ptr::eq(self.context, context)
+    }
     /// JIT-load PTX with bounded information and error logs.
     pub(super) fn load(context: &'ctx Context, ptx: &str) -> Result<Self> {
         Self::load_with_register_limit(context, ptx, None)

@@ -189,6 +189,7 @@ that control's rates directly to MTP4 as an isolated speedup across different in
 | H03 discovery and H04 ABI | Pending | No executable specialized model yet |
 | Persistent text weights and compiled state layout | Allocation/transfer gate passes | `KNOWLEDGE/findings/persistent-residency.md`; all 1,620 hashes and 128 zeroed regions pass, first resident entry exact, sanitizers clean; decoder execution pending |
 | Full model performance/context trial | Pending | None |
+| Resident final-eight-layer FP8 MLP | In progress | `KNOWLEDGE/findings/resident-fp8-mlp.md`; reference-free execution with independent trial |
 
 Validation belongs to the parent: serial focused Rust tests/check/Clippy, formatting,
 repository no-console and crate-coverage checks where affected, and explicit

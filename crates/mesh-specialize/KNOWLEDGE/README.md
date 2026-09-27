@@ -5,6 +5,7 @@ Start with [the implementation plan](../PLAN.md) and the
 
 | Entry | Status |
 | --- | --- |
+| [Resident FP8 MLP](findings/resident-fp8-mlp.md) | Reference-free execution path in progress; qualification pending |
 | [Persistent residency](findings/persistent-residency.md) | All 1,620 text weight hashes, 131K-capacity state allocation, entry operation and sanitizers pass; full model pending |
 | [Initial constraints](findings/initial-constraints.md) | Original assessment; execution evidence now in probe entry |
 | [Assembly inventory](asm-inventory.md) | NVFP4 probe executed and numerically checked |

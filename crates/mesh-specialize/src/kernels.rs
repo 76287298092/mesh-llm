@@ -1,5 +1,30 @@
 //! Device-specific instruction qualification, separate from model execution.
 
+pub struct Fp8MlpCase {
+    pub prefix: String,
+    pub rows: usize,
+    pub width: usize,
+    pub channels: usize,
+    pub input: Vec<u16>,
+    pub reference: crate::fp8_mlp_reference::Output,
+}
+
+pub fn fp8_mlp_check(
+    ptx: &str,
+    device: i32,
+    artifact: &mut crate::artifact::reader::VerifiedArtifact,
+    objects: &[crate::artifact::schema::Object],
+    cases: &[Fp8MlpCase],
+) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::fp8_mlp_trial::run(ptx, device, artifact, objects, cases);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device, artifact, objects, cases);
+        anyhow::bail!("FP8 MLP GPU trial requires Linux")
+    }
+}
+
 /// First operation used to validate views into a complete resident weight arena.
 pub struct ResidentEntryInput {
     pub table_name: String,
