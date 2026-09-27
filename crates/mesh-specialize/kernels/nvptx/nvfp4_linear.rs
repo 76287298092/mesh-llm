@@ -29,7 +29,8 @@ fn warp_and_tile() -> (u32, u32, u32) {
 ///
 /// # Safety
 /// If `row < row_count`, `matrix` must cover `row_count * (k / 2)` readable bytes;
-/// row, column, and byte offset arithmetic must fit `usize`.
+/// its base address must be four-byte aligned, and row, column, and byte offset
+/// arithmetic must fit `usize`.
 #[inline(always)]
 unsafe fn load_e2m1x8(
     matrix: *const u8,
@@ -43,6 +44,13 @@ unsafe fn load_e2m1x8(
     }
 
     let row_start = row * (k / 2);
+    let byte_offset = row_start + column / 2;
+    if column + 8 <= k && byte_offset & 3 == 0 {
+        // SAFETY: The base and computed address are four-byte aligned, and the
+        // complete eight-value word lies within the row's packed allocation.
+        return unsafe { u32::from_le(matrix.add(byte_offset).cast::<u32>().read()) };
+    }
+
     let mut packed = 0_u32;
     let mut pair = 0_usize;
     while pair < 4 {
@@ -61,7 +69,8 @@ unsafe fn load_e2m1x8(
 ///
 /// # Safety
 /// If `row < row_count`, `scales` must cover `row_count * groups_per_row` readable
-/// bytes; row and group offset arithmetic must fit `usize`.
+/// bytes; its base address must be four-byte aligned, and row and group offset
+/// arithmetic must fit `usize`.
 #[inline(always)]
 unsafe fn load_ue4m3x4(
     scales: *const u8,
@@ -70,6 +79,15 @@ unsafe fn load_ue4m3x4(
     groups_per_row: usize,
     first_group: usize,
 ) -> u32 {
+    if row < row_count {
+        let byte_offset = row * groups_per_row + first_group;
+        if first_group + 4 <= groups_per_row && byte_offset & 3 == 0 {
+            // SAFETY: The base and computed address are four-byte aligned, and
+            // all four requested scale bytes lie within this row.
+            return unsafe { u32::from_le(scales.add(byte_offset).cast::<u32>().read()) };
+        }
+    }
+
     let mut packed = 0_u32;
     let mut group = 0_usize;
     while group < 4 {
@@ -193,7 +211,8 @@ unsafe fn store_scaled_output(
 /// fit the device address space and hardware limits. `a` and `w` must each cover
 /// respectively `m * (k / 2)` and `n * (k / 2)` readable bytes of low-first packed
 /// E2M1 values. `sa` and `sw` must cover respectively `m * (k / 16)` and
-/// `n * (k / 16)` readable unsigned E4M3 bytes with codes in `0..=126`.
+/// `n * (k / 16)` readable unsigned E4M3 bytes with codes in `0..=126`. The base
+/// addresses of `a`, `w`, `sa`, and `sw` must be four-byte aligned for packed loads.
 /// `global_factor` must be finite and positive. `out` and `unrounded` must each
 /// cover `m * n` writable BF16 and FP32 elements. All pointers must be correctly
 /// aligned, mutually disjoint, and live until completion. The host must reject

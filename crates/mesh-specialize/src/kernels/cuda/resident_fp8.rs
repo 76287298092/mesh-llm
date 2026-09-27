@@ -53,7 +53,7 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
         })
     }
 
-    /// Quantize resident BF16 input rows, run the wide FP8 projection, and return device outputs.
+    /// Quantize resident BF16 input rows, run the exact FP8 projection, and return device outputs.
     pub(super) fn run<'a>(
         &self,
         context: &'a Context,
@@ -73,12 +73,7 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
         let weight_pointer = self.owner.pointer(&self.weight_name)?;
         let scale_pointer = self.owner.pointer(&self.scale_name)?;
         let quantize = module.function("fp8_quantize_bf16")?;
-        let exact = rows == 1;
-        let linear = module.function(if exact {
-            "fp8_linear_exact"
-        } else {
-            "fp8_linear_wide"
-        })?;
+        let linear = module.function("fp8_linear_exact")?;
         let codes = Buffer::new(context, extents.code_bytes)?;
         let row_scales = Buffer::new(context, extents.row_scale_bytes)?;
         let output = Buffer::new(context, extents.output_bytes)?;
@@ -107,8 +102,8 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
                 .map(|dimension| (dimension as *mut u32).cast()),
         );
         let grid = [
-            u32::try_from(self.channels.div_ceil(if exact { 4 } else { 8 }))?,
-            u32::try_from(rows.div_ceil(if exact { 1 } else { 16 }))?,
+            u32::try_from(self.channels.div_ceil(4))?,
+            u32::try_from(rows)?,
             1,
         ];
         if let Err(error) =
@@ -122,18 +117,11 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
         }
         // SAFETY: Metadata and run extents validate the row-major inputs, resident weights,
         // temporary FP8/scales, BF16/FP32 outputs, and u32 dimensions. All buffers live through
-        // the synchronization below; the selected kernel uses either four warp-owned columns or 8x16 MMA tiles.
-        if let Err(error) = unsafe {
-            linear.launch(
-                grid,
-                [if exact { 128 } else { 32 }, 1, 1],
-                0,
-                &mut arguments,
-            )
-        } {
+        // the synchronization below; four warps each own one column in the exact-dot kernel.
+        if let Err(error) = unsafe { linear.launch(grid, [128, 1, 1], 0, &mut arguments) } {
             return Err(synchronize_after_failed_launch(
                 context,
-                "wide FP8 projection",
+                "exact FP8 projection",
                 error,
             ));
         }

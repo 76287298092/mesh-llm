@@ -21,8 +21,8 @@ const MEMORY_RESERVE_BYTES: u64 = 1024 * 1024 * 1024;
 const REQUIRED_KERNELS: [&str; 18] = [
     "embedding_norm_bf16",
     "fp8_quantize_bf16",
-    "fp8_linear_wide",
-    "bf16_linear",
+    "fp8_linear_exact",
+    "bf16_linear_decode",
     "causal_conv4_bf16",
     "gdn_qk_norm",
     "gdn_gates",

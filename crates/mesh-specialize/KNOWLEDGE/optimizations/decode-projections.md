@@ -42,3 +42,27 @@ BF16 gates now account for 71.57 ms. This motivates the second candidate.
 Raw evidence: `target/specialize/perf-20260927/fp8-exact-round/` on both hosts.
 Ninfer restored 09:15:47 EDT, PID3218546, HTTP200; ComfyUI448118 unchanged.
 Sanitizers for the final combined candidate remain pending.
+
+
+The next candidate also evaluates the exact FP8 kernel for prefill rows, retaining
+its existing multi-row launch contract. This is an experiment against the same
+128-token prompt, not a general large-batch GEMM claim. The old wide kernel stays
+available as an arithmetic/performance control. No activation-quantization policy
+or output conversion changes accompany this dispatch experiment.
+
+
+NVFP4 now reads aligned full four-byte data/scale words rather than reconstructing
+each from four separate byte reads. All MMA instructions, operand bits, reduction
+order and launch geometry remain unchanged. Bounds/alignment-checked tails keep
+the byte path. The model trial also runs the existing independent signed/tail
+NVFP4 fixtures at K16 and K80 to exercise both paths and unaligned scale rows.
+Resident arena objects and CUDA buffers provide the required base alignment.
+
+Second trial source `600c30cc0857abcca199835565356735f0f04fbd`, PTX SHA256
+`f8cec86413ab74197e06cee2a5a9e82613472c687ed58deccef6e503ad54edfc`.
+BF16 cancellation/tail probes and all full-model exact-output/state checks pass.
+Three short-prefix samples give 17.935, 17.928, 17.931 decode tokens/s; 128-prefix
+samples give 14.395, 14.391, 14.390. Prefill remains 19.66 tokens/s. The profile
+measures BF16 gates at 2.677 ms, down from 71.568 ms, and NVFP4 at 24.328 ms.
+Raw evidence: `target/specialize/perf-20260927/bf16-round/` on both hosts.
+Ninfer restored 09:20:18 EDT, PID3221946, HTTP200; ComfyUI448118 unchanged.
