@@ -9,6 +9,20 @@ use std::{
 };
 
 pub(super) fn run(args: &[String]) -> DynResult<()> {
+    run_trial(args, mesh_specialize::packages::qwen3_8_27b::trial)
+}
+
+pub(super) fn projections(args: &[String]) -> DynResult<()> {
+    run_trial(
+        args,
+        mesh_specialize::packages::qwen3_8_27b::projections::trial,
+    )
+}
+
+fn run_trial<E: std::fmt::Display>(
+    args: &[String],
+    trial: fn(&Path, &str, i32) -> Result<serde_json::Value, E>,
+) -> DynResult<()> {
     let [
         artifact_flag,
         artifact,
@@ -20,7 +34,7 @@ pub(super) fn run(args: &[String]) -> DynResult<()> {
         output,
     ] = args
     else {
-        return Err("usage: xtask specialize qwen-entry-check --artifact PATH --ptx PATH --device ORDINAL --output NEW_FILE".into());
+        return Err("usage: xtask specialize <qwen-entry-check|qwen-projection-check> --artifact PATH --ptx PATH --device ORDINAL --output NEW_FILE".into());
     };
     if artifact_flag != "--artifact"
         || ptx_flag != "--ptx"
@@ -36,8 +50,7 @@ pub(super) fn run(args: &[String]) -> DynResult<()> {
         .create_new(true)
         .open(output)?;
     let started = Instant::now();
-    let result =
-        mesh_specialize::packages::qwen3_8_27b::trial(Path::new(artifact), &ptx_bytes, device);
+    let result = trial(Path::new(artifact), &ptx_bytes, device);
     let mut report = match result {
         Ok(report) => report,
         Err(error) => {
@@ -52,7 +65,7 @@ pub(super) fn run(args: &[String]) -> DynResult<()> {
     file.sync_all()?;
     print_json(&json!({"output":output,"all_passed":report["all_passed"]}))?;
     if report["all_passed"] != true {
-        return Err("Qwen entry check failed; inspect saved report".into());
+        return Err("Qwen GPU check failed; inspect saved report".into());
     }
     Ok(())
 }

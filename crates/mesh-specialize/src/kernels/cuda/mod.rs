@@ -4,6 +4,7 @@ mod driver;
 pub(super) mod embedding_norm;
 mod gemm;
 pub(super) mod instructions;
+pub(super) mod projections;
 mod rms_norm;
 pub(super) mod workloads;
 

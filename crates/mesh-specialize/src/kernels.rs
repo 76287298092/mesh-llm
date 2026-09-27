@@ -9,6 +9,32 @@ pub struct EmbeddingNormInput {
     pub batches: Vec<Vec<u32>>,
 }
 
+pub struct Fp8Projection {
+    pub name: String,
+    pub weights: Vec<u8>,
+    pub scales: Vec<u8>,
+    pub channels: usize,
+}
+
+pub struct ProjectionInput {
+    pub entry: EmbeddingNormInput,
+    pub projections: Vec<Fp8Projection>,
+}
+
+pub fn projection_check(
+    ptx: &str,
+    device: i32,
+    input: &ProjectionInput,
+) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::projections::run(ptx, device, input);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device, input);
+        anyhow::bail!("Qwen projection GPU trial requires Linux")
+    }
+}
+
 pub fn embedding_norm_check(
     ptx: &str,
     device: i32,

@@ -119,7 +119,7 @@ fn run_case(
     compare(tokens, &residual, &normalized, &unrounded, reference)
 }
 
-fn launch(
+pub(super) fn launch(
     function: &Function<'_, '_>,
     buffers: &[&Buffer<'_>; 6],
     rows: usize,
