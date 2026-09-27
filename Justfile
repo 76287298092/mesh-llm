@@ -40,3 +40,4 @@ import 'just/ci.just'
 import 'just/mesh-client.just'
 
 import 'just/utilities.just'
+import 'just/specialize.just'

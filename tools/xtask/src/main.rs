@@ -5,6 +5,7 @@ mod no_console_print;
 mod publish_consistency;
 mod release_targets;
 mod repo_consistency;
+mod specialize;
 mod workflow_checks;
 
 use command::DynResult;
@@ -22,6 +23,7 @@ fn main() {
 fn run() -> DynResult<()> {
     let args = std::env::args().skip(1).collect::<Vec<_>>();
     match args.as_slice() {
+        [command, rest @ ..] if command == "specialize" => specialize::run(rest),
         [command, scope] if command == "repo-consistency" && scope == "release-targets" => {
             repo_consistency::check_release_targets_command()
         }

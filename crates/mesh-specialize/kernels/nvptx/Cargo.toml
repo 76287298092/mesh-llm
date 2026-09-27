@@ -1,0 +1,18 @@
+[package]
+name = "mesh-specialize-nvptx"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+# Device core must be rebuilt with the same architecture flags. Keep the nightly
+# NVPTX compilation isolated from the stable host workspace and its linker flags.
+[workspace]
+
+[lib]
+path = "probes.rs"
+crate-type = ["cdylib"]
+
+[profile.release]
+panic = "abort"
+opt-level = 3
+codegen-units = 1
