@@ -1,0 +1,1283 @@
+{
+  "observed_at_utc": "2026-09-27T02:24:24.719557+00:00",
+  "scope": "Read-only host inspection. Historical service logs, no new inference benchmark. No model artifact contents read.",
+  "metadata": "2026-09-26T22:24:24-04:00\nActiveState=inactive\nSubState=dead\nInactiveEnterTimestamp=Fri 2026-09-25 19:00:40 EDT\nExecStart={ path=/home/ndizazzo/dev/oss/ninfer/build/apps/ninfer-serve ; argv[]=/home/ndizazzo/dev/oss/ninfer/build/apps/ninfer-serve /data/ai/ninfer/models/qwen3_8_27b_nvfp4.ninfer --host 0.0.0.0 --port 1235 --device 0 --max-context 131072 --kv-capacity auto --kv-dtype fp8 --max-concurrency 2 --max-pending-requests 16 --pending-timeout-ms 1800000 --prefill-chunk 2048 --default-max-tokens 16384 --spec mtp --draft-tokens 4 --lm-head-draft --api-key <redacted> ; ignore_errors=no ; start_time=[Fri 2026-09-25 12:55:42 EDT] ; stop_time=[Fri 2026-09-25 19:00:40 EDT] ; pid=1578675 ; code=exited ; status=0 }\nWorkingDirectory=/home/ndizazzo/dev/oss/ninfer\nindex, name, uuid, driver_version, memory.total [MiB], memory.used [MiB], utilization.gpu [%]\n0, NVIDIA GeForce RTX 5090, GPU-80ded6bd-1a89-2628-3d94-902187dbab1d, 615.71.09, 32607 MiB, 937 MiB, 0 %\n1, NVIDIA GeForce RTX 3080, GPU-6b7fe24c-5f15-4ac5-88d6-c8934135a4ea, 615.71.09, 10240 MiB, 17 MiB, 0 %\n9e163eee4b8acec21ab0ac765107b6a3f287b217\n M src/serve/serve_options.h\n?? .omo/\n?? tools/convert/qwen3_8_27b/\n/home/ndizazzo/dev/oss/ninfer/build/apps/ninfer-serve 185273240 bytes 2026-09-19 15:02:12.915411120 -0400\n/data/ai/ninfer/models/qwen3_8_27b_nvfp4.ninfer 23719715844 bytes 2026-09-19 14:58:29.959571730 -0400\nrustc 1.98.1 (48a229cea 2026-09-01) (Arch Linux rust 1:1.98.1-1.1)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: x86_64-unknown-linux-gnu\nrelease: 1.98.1\nLLVM version: 22.1.8\n    sm_120\n    sm_120a\n    sm_120f\n    ptx87      - Use PTX version 87.\n    ptx88      - Use PTX version 88.\nmodels--Qwen--Qwen3.8-27B\nmodels--nvidia--Qwen3.8-27B-NVFP4\nmodels--unsloth--Qwen3.8-27B-GGUF\nmodels--unsloth--Qwen3.8-27B-NVFP4\nmodels--z-lab--Qwen3.8-27B-DFlash2\n",
+  "startup_log": [
+    "2026-09-25 12:55:46.763  INFO  weights ready | 19.7 GiB | 3.9s | 5.06 GiB/s",
+    "2026-09-25 12:55:46.925  INFO  host state pinned | 1.15 GiB | 159 ms",
+    "2026-09-25 12:55:48.248  INFO  host KV pinned | 8.00 GiB | 1.3s",
+    "2026-09-25 12:55:49.494  INFO  CUDA graphs ready | 1.2s",
+    "2026-09-25 12:55:49.495  INFO  engine ready | qwen3.8-27b | total 7.2s | weights 19.7 GiB",
+    "2026-09-25 12:55:49.495  INFO  capacity | KV 250,944 tokens, fp8, auto | pages 3,921/4,096 | runtime 9.28 GiB | free 1.14 GiB",
+    "2026-09-25 12:55:49.495  INFO  context cache | 2 active + 2 cached device states | host 8 states, 8.00 GiB KV | private 4 | shared 4 | anchors 2"
+  ],
+  "log_window": "2026-09-25 12:55:00 to 19:01:00 carrack local time",
+  "completed_requests": [
+    {
+      "timestamp": "2026-09-25 12:57:16.088",
+      "request": 1,
+      "prompt_tokens": "644",
+      "output_tokens": "317",
+      "decode_tokens_per_second": "141.9",
+      "ttft": "257 ms ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "188/528 (35.6%)"
+    },
+    {
+      "timestamp": "2026-09-25 12:57:18.039",
+      "request": 2,
+      "prompt_tokens": "33,585",
+      "output_tokens": "453",
+      "decode_tokens_per_second": "180.4",
+      "ttft": "4.2s ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "313/568 (55.1%)"
+    },
+    {
+      "timestamp": "2026-09-25 12:57:24.286",
+      "request": 3,
+      "prompt_tokens": "55,261",
+      "output_tokens": "353",
+      "decode_tokens_per_second": "175.5",
+      "ttft": "3.6s ",
+      "cache": "34,037 (61.6%, private endpoint) ",
+      "mtp_acceptance": "243/448 (54.2%)"
+    },
+    {
+      "timestamp": "2026-09-25 12:57:34.146",
+      "request": 4,
+      "prompt_tokens": "56,665",
+      "output_tokens": "246",
+      "decode_tokens_per_second": "189.7",
+      "ttft": "8.0s ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "176/288 (61.1%)"
+    },
+    {
+      "timestamp": "2026-09-25 12:57:40.733",
+      "request": 5,
+      "prompt_tokens": "63,168",
+      "output_tokens": "744",
+      "decode_tokens_per_second": "173.6",
+      "ttft": "1.7s ",
+      "cache": "55,613 (88.0%, private endpoint) ",
+      "mtp_acceptance": "510/944 (54.0%)"
+    },
+    {
+      "timestamp": "2026-09-25 12:57:44.328",
+      "request": 6,
+      "prompt_tokens": "64,287",
+      "output_tokens": "494",
+      "decode_tokens_per_second": "176.3",
+      "ttft": "170 ms ",
+      "cache": "63,911 (99.4%, private endpoint) ",
+      "mtp_acceptance": "342/616 (55.5%)"
+    },
+    {
+      "timestamp": "2026-09-25 12:57:55.208",
+      "request": 7,
+      "prompt_tokens": "76,030",
+      "output_tokens": "1,223",
+      "decode_tokens_per_second": "157.9",
+      "ttft": "2.5s ",
+      "cache": "64,780 (85.2%, private endpoint) ",
+      "mtp_acceptance": "806/1,676 (48.1%)"
+    },
+    {
+      "timestamp": "2026-09-25 12:58:03.363",
+      "request": 8,
+      "prompt_tokens": "83,604",
+      "output_tokens": "899",
+      "decode_tokens_per_second": "157.1",
+      "ttft": "1.6s ",
+      "cache": "77,252 (92.4%, private endpoint) ",
+      "mtp_acceptance": "591/1,228 (48.1%)"
+    },
+    {
+      "timestamp": "2026-09-25 12:58:06.072",
+      "request": 9,
+      "prompt_tokens": "85,042",
+      "output_tokens": "331",
+      "decode_tokens_per_second": "178.8",
+      "ttft": "271 ms ",
+      "cache": "84,502 (99.4%, private endpoint) ",
+      "mtp_acceptance": "231/396 (58.3%)"
+    },
+    {
+      "timestamp": "2026-09-25 12:58:08.910",
+      "request": 10,
+      "prompt_tokens": "86,024",
+      "output_tokens": "302",
+      "decode_tokens_per_second": "156.5",
+      "ttft": "281 ms ",
+      "cache": "85,372 (99.2%, private endpoint) ",
+      "mtp_acceptance": "201/412 (48.8%)"
+    },
+    {
+      "timestamp": "2026-09-25 12:58:12.820",
+      "request": 11,
+      "prompt_tokens": "86,807",
+      "output_tokens": "350",
+      "decode_tokens_per_second": "188.5",
+      "ttft": "264 ms ",
+      "cache": "86,325 (99.4%, private endpoint) ",
+      "mtp_acceptance": "250/396 (63.1%)"
+    },
+    {
+      "timestamp": "2026-09-25 12:58:16.193",
+      "request": 12,
+      "prompt_tokens": "87,557",
+      "output_tokens": "451",
+      "decode_tokens_per_second": "174.1",
+      "ttft": "200 ms ",
+      "cache": "87,156 (99.5%, private endpoint) ",
+      "mtp_acceptance": "315/552 (57.1%)"
+    },
+    {
+      "timestamp": "2026-09-25 12:58:22.828",
+      "request": 13,
+      "prompt_tokens": "89,011",
+      "output_tokens": "955",
+      "decode_tokens_per_second": "169.3",
+      "ttft": "380 ms ",
+      "cache": "88,007 (98.9%, private endpoint) ",
+      "mtp_acceptance": "657/1,200 (54.8%)"
+    },
+    {
+      "timestamp": "2026-09-25 12:58:28.894",
+      "request": 14,
+      "prompt_tokens": "91,137",
+      "output_tokens": "869",
+      "decode_tokens_per_second": "172.4",
+      "ttft": "414 ms ",
+      "cache": "89,965 (98.7%, private endpoint) ",
+      "mtp_acceptance": "604/1,068 (56.6%)"
+    },
+    {
+      "timestamp": "2026-09-25 12:58:34.124",
+      "request": 15,
+      "prompt_tokens": "93,416",
+      "output_tokens": "672",
+      "decode_tokens_per_second": "164.3",
+      "ttft": "503 ms ",
+      "cache": "92,005 (98.5%, private endpoint) ",
+      "mtp_acceptance": "458/864 (53.0%)"
+    },
+    {
+      "timestamp": "2026-09-25 12:58:37.806",
+      "request": 16,
+      "prompt_tokens": "98,288",
+      "output_tokens": "318",
+      "decode_tokens_per_second": "175.3",
+      "ttft": "1.3s ",
+      "cache": "94,087 (95.7%, private endpoint) ",
+      "mtp_acceptance": "226/380 (59.5%)"
+    },
+    {
+      "timestamp": "2026-09-25 12:58:52.944",
+      "request": 17,
+      "prompt_tokens": "99,800",
+      "output_tokens": "2,122",
+      "decode_tokens_per_second": "152.4",
+      "ttft": "583 ms ",
+      "cache": "98,283 (98.5%, response replay) ",
+      "mtp_acceptance": "1,395/2,916 (47.8%)"
+    },
+    {
+      "timestamp": "2026-09-25 12:59:14.993",
+      "request": 18,
+      "prompt_tokens": "105,321",
+      "output_tokens": "2,874",
+      "decode_tokens_per_second": "147.0",
+      "ttft": "1.8s ",
+      "cache": "99,795 (94.8%, response replay) ",
+      "mtp_acceptance": "1,862/4,056 (45.9%)"
+    },
+    {
+      "timestamp": "2026-09-25 12:59:18.622",
+      "request": 19,
+      "prompt_tokens": "108,849",
+      "output_tokens": "379",
+      "decode_tokens_per_second": "169.9",
+      "ttft": "333 ms ",
+      "cache": "108,194 (99.4%, private endpoint) ",
+      "mtp_acceptance": "266/460 (57.8%)"
+    },
+    {
+      "timestamp": "2026-09-25 12:59:20.576",
+      "request": 20,
+      "prompt_tokens": "109,267",
+      "output_tokens": "224",
+      "decode_tokens_per_second": "192.0",
+      "ttft": "195 ms ",
+      "cache": "109,227 (100.0%, private endpoint) ",
+      "mtp_acceptance": "167/240 (69.6%)"
+    },
+    {
+      "timestamp": "2026-09-25 12:59:24.575",
+      "request": 21,
+      "prompt_tokens": "110,509",
+      "output_tokens": "477",
+      "decode_tokens_per_second": "163.6",
+      "ttft": "442 ms ",
+      "cache": "109,490 (99.1%, private endpoint) ",
+      "mtp_acceptance": "329/600 (54.8%)"
+    },
+    {
+      "timestamp": "2026-09-25 12:59:28.118",
+      "request": 22,
+      "prompt_tokens": "111,106",
+      "output_tokens": "490",
+      "decode_tokens_per_second": "181.3",
+      "ttft": "202 ms ",
+      "cache": "110,985 (99.9%, private endpoint) ",
+      "mtp_acceptance": "354/556 (63.7%)"
+    },
+    {
+      "timestamp": "2026-09-25 12:59:38.701",
+      "request": 23,
+      "prompt_tokens": "112,285",
+      "output_tokens": "1,339",
+      "decode_tokens_per_second": "143.0",
+      "ttft": "596 ms ",
+      "cache": "111,101 (98.9%, response replay) ",
+      "mtp_acceptance": "861/1,924 (44.8%)"
+    },
+    {
+      "timestamp": "2026-09-25 12:59:48.466",
+      "request": 24,
+      "prompt_tokens": "114,130",
+      "output_tokens": "1,160",
+      "decode_tokens_per_second": "131.6",
+      "ttft": "325 ms ",
+      "cache": "113,623 (99.6%, private endpoint) ",
+      "mtp_acceptance": "710/1,808 (39.3%)"
+    },
+    {
+      "timestamp": "2026-09-25 13:00:12.461",
+      "request": 25,
+      "prompt_tokens": "20,637",
+      "output_tokens": "4,315",
+      "decode_tokens_per_second": "202.1",
+      "ttft": "2.2s ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "3,075/4,968 (61.9%)"
+    },
+    {
+      "timestamp": "2026-09-25 13:00:33.844",
+      "request": 26,
+      "prompt_tokens": "54,461",
+      "output_tokens": "2,181",
+      "decode_tokens_per_second": "175.8",
+      "ttft": "8.4s ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "1,492/2,768 (53.9%)"
+    },
+    {
+      "timestamp": "2026-09-25 13:00:35.845",
+      "request": 27,
+      "prompt_tokens": "57,038",
+      "output_tokens": "243",
+      "decode_tokens_per_second": "189.9",
+      "ttft": "166 ms ",
+      "cache": "56,641 (99.3%, private endpoint) ",
+      "mtp_acceptance": "174/284 (61.3%)"
+    },
+    {
+      "timestamp": "2026-09-25 13:00:50.017",
+      "request": 28,
+      "prompt_tokens": "57,820",
+      "output_tokens": "773",
+      "decode_tokens_per_second": "177.5",
+      "ttft": "9.3s ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "533/968 (55.1%)"
+    },
+    {
+      "timestamp": "2026-09-25 13:01:01.154",
+      "request": 29,
+      "prompt_tokens": "58,839",
+      "output_tokens": "184",
+      "decode_tokens_per_second": "175.4",
+      "ttft": "9.6s ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "129/232 (55.6%)"
+    },
+    {
+      "timestamp": "2026-09-25 13:01:24.622",
+      "request": 30,
+      "prompt_tokens": "59,057",
+      "output_tokens": "2,564",
+      "decode_tokens_per_second": "193.4",
+      "ttft": "9.7s ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "1,833/2,936 (62.4%)"
+    },
+    {
+      "timestamp": "2026-09-25 13:01:44.172",
+      "request": 31,
+      "prompt_tokens": "61,660",
+      "output_tokens": "1,815",
+      "decode_tokens_per_second": "210.3",
+      "ttft": "10.3s ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "1,341/1,904 (70.4%)"
+    },
+    {
+      "timestamp": "2026-09-25 13:01:56.113",
+      "request": 32,
+      "prompt_tokens": "63,511",
+      "output_tokens": "117",
+      "decode_tokens_per_second": "228.3",
+      "ttft": "10.9s ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "91/112 (81.2%)"
+    },
+    {
+      "timestamp": "2026-09-25 13:02:12.358",
+      "request": 33,
+      "prompt_tokens": "64,878",
+      "output_tokens": "864",
+      "decode_tokens_per_second": "191.5",
+      "ttft": "11.2s ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "616/992 (62.1%)"
+    },
+    {
+      "timestamp": "2026-09-25 13:08:04.752",
+      "request": 34,
+      "prompt_tokens": "65,945",
+      "output_tokens": "2,751",
+      "decode_tokens_per_second": "156.8",
+      "ttft": "11.8s ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "1,790/3,852 (46.5%)"
+    },
+    {
+      "timestamp": "2026-09-25 13:08:08.787",
+      "request": 35,
+      "prompt_tokens": "71,056",
+      "output_tokens": "518",
+      "decode_tokens_per_second": "182.2",
+      "ttft": "616 ms ",
+      "cache": "68,695 (96.7%, private endpoint) ",
+      "mtp_acceptance": "365/620 (58.9%)"
+    },
+    {
+      "timestamp": "2026-09-25 13:08:12.369",
+      "request": 36,
+      "prompt_tokens": "72,589",
+      "output_tokens": "475",
+      "decode_tokens_per_second": "178.2",
+      "ttft": "341 ms ",
+      "cache": "71,573 (98.6%, private endpoint) ",
+      "mtp_acceptance": "332/580 (57.2%)"
+    },
+    {
+      "timestamp": "2026-09-25 13:08:15.696",
+      "request": 37,
+      "prompt_tokens": "73,244",
+      "output_tokens": "459",
+      "decode_tokens_per_second": "178.3",
+      "ttft": "167 ms ",
+      "cache": "73,063 (99.8%, private endpoint) ",
+      "mtp_acceptance": "321/560 (57.3%)"
+    },
+    {
+      "timestamp": "2026-09-25 13:08:29.864",
+      "request": 38,
+      "prompt_tokens": "74,391",
+      "output_tokens": "2,045",
+      "decode_tokens_per_second": "153.2",
+      "ttft": "264 ms ",
+      "cache": "73,702 (99.1%, private endpoint) ",
+      "mtp_acceptance": "1,322/2,900 (45.6%)"
+    },
+    {
+      "timestamp": "2026-09-25 13:08:39.798",
+      "request": 39,
+      "prompt_tokens": "76,728",
+      "output_tokens": "1,388",
+      "decode_tokens_per_second": "151.4",
+      "ttft": "186 ms ",
+      "cache": "76,435 (99.6%, private endpoint) ",
+      "mtp_acceptance": "895/1,980 (45.2%)"
+    },
+    {
+      "timestamp": "2026-09-25 13:08:45.656",
+      "request": 40,
+      "prompt_tokens": "80,580",
+      "output_tokens": "807",
+      "decode_tokens_per_second": "174.0",
+      "ttft": "670 ms ",
+      "cache": "78,115 (96.9%, private endpoint) ",
+      "mtp_acceptance": "560/996 (56.2%)"
+    },
+    {
+      "timestamp": "2026-09-25 13:09:01.193",
+      "request": 41,
+      "prompt_tokens": "81,518",
+      "output_tokens": "2,332",
+      "decode_tokens_per_second": "157.2",
+      "ttft": "173 ms ",
+      "cache": "81,386 (99.8%, private endpoint) ",
+      "mtp_acceptance": "1,537/3,188 (48.2%)"
+    },
+    {
+      "timestamp": "2026-09-25 13:09:02.785",
+      "request": 42,
+      "prompt_tokens": "83,884",
+      "output_tokens": "158",
+      "decode_tokens_per_second": "191.4",
+      "ttft": "181 ms ",
+      "cache": "83,849 (100.0%, private endpoint) ",
+      "mtp_acceptance": "117/176 (66.5%)"
+    },
+    {
+      "timestamp": "2026-09-25 13:09:31.569",
+      "request": 43,
+      "prompt_tokens": "84,658",
+      "output_tokens": "5,062",
+      "decode_tokens_per_second": "181.2",
+      "ttft": "282 ms ",
+      "cache": "84,041 (99.3%, private endpoint) ",
+      "mtp_acceptance": "3,572/5,968 (59.9%)"
+    },
+    {
+      "timestamp": "2026-09-25 13:09:33.694",
+      "request": 44,
+      "prompt_tokens": "89,756",
+      "output_tokens": "216",
+      "decode_tokens_per_second": "154.6",
+      "ttft": "182 ms ",
+      "cache": "89,719 (100.0%, private endpoint) ",
+      "mtp_acceptance": "144/296 (48.6%)"
+    },
+    {
+      "timestamp": "2026-09-25 13:09:36.001",
+      "request": 45,
+      "prompt_tokens": "90,085",
+      "output_tokens": "284",
+      "decode_tokens_per_second": "185.8",
+      "ttft": "192 ms ",
+      "cache": "89,971 (99.9%, private endpoint) ",
+      "mtp_acceptance": "205/324 (63.3%)"
+    },
+    {
+      "timestamp": "2026-09-25 13:09:38.027",
+      "request": 46,
+      "prompt_tokens": "90,404",
+      "output_tokens": "212",
+      "decode_tokens_per_second": "162.5",
+      "ttft": "177 ms ",
+      "cache": "90,368 (100.0%, private endpoint) ",
+      "mtp_acceptance": "146/276 (52.9%)"
+    },
+    {
+      "timestamp": "2026-09-25 13:09:42.453",
+      "request": 47,
+      "prompt_tokens": "90,842",
+      "output_tokens": "623",
+      "decode_tokens_per_second": "173.7",
+      "ttft": "199 ms ",
+      "cache": "90,615 (99.8%, private endpoint) ",
+      "mtp_acceptance": "435/760 (57.2%)"
+    },
+    {
+      "timestamp": "2026-09-25 13:09:45.487",
+      "request": 48,
+      "prompt_tokens": "92,063",
+      "output_tokens": "323",
+      "decode_tokens_per_second": "149.7",
+      "ttft": "311 ms ",
+      "cache": "91,464 (99.3%, private endpoint) ",
+      "mtp_acceptance": "212/456 (46.5%)"
+    },
+    {
+      "timestamp": "2026-09-25 13:09:47.848",
+      "request": 49,
+      "prompt_tokens": "92,873",
+      "output_tokens": "217",
+      "decode_tokens_per_second": "173.1",
+      "ttft": "430 ms ",
+      "cache": "92,058 (99.1%, response replay) ",
+      "mtp_acceptance": "154/264 (58.3%)"
+    },
+    {
+      "timestamp": "2026-09-25 13:09:51.115",
+      "request": 50,
+      "prompt_tokens": "93,212",
+      "output_tokens": "427",
+      "decode_tokens_per_second": "171.9",
+      "ttft": "189 ms ",
+      "cache": "93,089 (99.9%, private endpoint) ",
+      "mtp_acceptance": "298/524 (56.9%)"
+    },
+    {
+      "timestamp": "2026-09-25 13:09:53.388",
+      "request": 51,
+      "prompt_tokens": "93,674",
+      "output_tokens": "219",
+      "decode_tokens_per_second": "144.0",
+      "ttft": "184 ms ",
+      "cache": "93,638 (100.0%, private endpoint) ",
+      "mtp_acceptance": "142/320 (44.4%)"
+    },
+    {
+      "timestamp": "2026-09-25 13:09:55.536",
+      "request": 52,
+      "prompt_tokens": "94,104",
+      "output_tokens": "264",
+      "decode_tokens_per_second": "207.2",
+      "ttft": "202 ms ",
+      "cache": "93,892 (99.8%, private endpoint) ",
+      "mtp_acceptance": "199/268 (74.3%)"
+    },
+    {
+      "timestamp": "2026-09-25 13:09:56.845",
+      "request": 53,
+      "prompt_tokens": "94,403",
+      "output_tokens": "101",
+      "decode_tokens_per_second": "182.0",
+      "ttft": "190 ms ",
+      "cache": "94,367 (100.0%, private endpoint) ",
+      "mtp_acceptance": "75/116 (64.7%)"
+    },
+    {
+      "timestamp": "2026-09-25 13:10:00.258",
+      "request": 54,
+      "prompt_tokens": "94,744",
+      "output_tokens": "370",
+      "decode_tokens_per_second": "160.9",
+      "ttft": "342 ms ",
+      "cache": "94,398 (99.6%, response replay) ",
+      "mtp_acceptance": "251/484 (51.9%)"
+    },
+    {
+      "timestamp": "2026-09-25 13:10:02.238",
+      "request": 55,
+      "prompt_tokens": "95,177",
+      "output_tokens": "250",
+      "decode_tokens_per_second": "208.4",
+      "ttft": "189 ms ",
+      "cache": "95,113 (99.9%, private endpoint) ",
+      "mtp_acceptance": "189/252 (75.0%)"
+    },
+    {
+      "timestamp": "2026-09-25 13:10:12.771",
+      "request": 56,
+      "prompt_tokens": "95,633",
+      "output_tokens": "1,895",
+      "decode_tokens_per_second": "195.0",
+      "ttft": "203 ms ",
+      "cache": "95,426 (99.8%, private endpoint) ",
+      "mtp_acceptance": "1,387/2,044 (67.9%)"
+    },
+    {
+      "timestamp": "2026-09-25 13:10:15.503",
+      "request": 57,
+      "prompt_tokens": "97,564",
+      "output_tokens": "337",
+      "decode_tokens_per_second": "176.4",
+      "ttft": "213 ms ",
+      "cache": "97,527 (100.0%, private endpoint) ",
+      "mtp_acceptance": "239/400 (59.8%)"
+    },
+    {
+      "timestamp": "2026-09-25 13:10:25.369",
+      "request": 58,
+      "prompt_tokens": "98,369",
+      "output_tokens": "1,258",
+      "decode_tokens_per_second": "140.7",
+      "ttft": "314 ms ",
+      "cache": "97,900 (99.5%, private endpoint) ",
+      "mtp_acceptance": "792/1,876 (42.2%)"
+    },
+    {
+      "timestamp": "2026-09-25 13:10:41.541",
+      "request": 59,
+      "prompt_tokens": "99,881",
+      "output_tokens": "2,381",
+      "decode_tokens_per_second": "159.1",
+      "ttft": "607 ms ",
+      "cache": "98,364 (98.5%, response replay) ",
+      "mtp_acceptance": "1,601/3,132 (51.1%)"
+    },
+    {
+      "timestamp": "2026-09-25 13:10:47.766",
+      "request": 60,
+      "prompt_tokens": "102,525",
+      "output_tokens": "1,081",
+      "decode_tokens_per_second": "228.1",
+      "ttft": "951 ms ",
+      "cache": "99,876 (97.4%, response replay) ",
+      "mtp_acceptance": "837/988 (84.7%)"
+    },
+    {
+      "timestamp": "2026-09-25 13:11:11.488",
+      "request": 61,
+      "prompt_tokens": "87,856",
+      "output_tokens": "779",
+      "decode_tokens_per_second": "193.9",
+      "ttft": "18.9s ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "566/856 (66.1%)"
+    },
+    {
+      "timestamp": "2026-09-25 16:57:22.906",
+      "request": 62,
+      "prompt_tokens": "627",
+      "output_tokens": "366",
+      "decode_tokens_per_second": "177.1",
+      "ttft": "277 ms ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "251/468 (53.6%)"
+    },
+    {
+      "timestamp": "2026-09-25 16:57:23.316",
+      "request": 63,
+      "prompt_tokens": "52,221",
+      "output_tokens": "265",
+      "decode_tokens_per_second": "176.5",
+      "ttft": "7.4s ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "188/320 (58.8%)"
+    },
+    {
+      "timestamp": "2026-09-25 16:57:26.475",
+      "request": 64,
+      "prompt_tokens": "53,419",
+      "output_tokens": "301",
+      "decode_tokens_per_second": "169.7",
+      "ttft": "300 ms ",
+      "cache": "52,485 (98.3%, private endpoint) ",
+      "mtp_acceptance": "204/396 (51.5%)"
+    },
+    {
+      "timestamp": "2026-09-25 16:57:37.361",
+      "request": 65,
+      "prompt_tokens": "53,927",
+      "output_tokens": "350",
+      "decode_tokens_per_second": "165.5",
+      "ttft": "7.5s ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "234/472 (49.6%)"
+    },
+    {
+      "timestamp": "2026-09-25 16:57:42.615",
+      "request": 66,
+      "prompt_tokens": "54,881",
+      "output_tokens": "636",
+      "decode_tokens_per_second": "171.4",
+      "ttft": "438 ms ",
+      "cache": "53,719 (97.9%, private endpoint) ",
+      "mtp_acceptance": "431/828 (52.1%)"
+    },
+    {
+      "timestamp": "2026-09-25 16:57:46.020",
+      "request": 67,
+      "prompt_tokens": "56,425",
+      "output_tokens": "409",
+      "decode_tokens_per_second": "196.2",
+      "ttft": "310 ms ",
+      "cache": "55,516 (98.4%, private endpoint) ",
+      "mtp_acceptance": "295/464 (63.6%)"
+    },
+    {
+      "timestamp": "2026-09-25 16:57:48.706",
+      "request": 68,
+      "prompt_tokens": "57,003",
+      "output_tokens": "315",
+      "decode_tokens_per_second": "194.5",
+      "ttft": "163 ms ",
+      "cache": "56,833 (99.7%, private endpoint) ",
+      "mtp_acceptance": "227/360 (63.1%)"
+    },
+    {
+      "timestamp": "2026-09-25 16:59:51.837",
+      "request": 69,
+      "prompt_tokens": "59,227",
+      "output_tokens": "265",
+      "decode_tokens_per_second": "146.8",
+      "ttft": "658 ms ",
+      "cache": "57,317 (96.8%, private endpoint) ",
+      "mtp_acceptance": "167/400 (41.8%)"
+    },
+    {
+      "timestamp": "2026-09-25 16:59:55.652",
+      "request": 70,
+      "prompt_tokens": "60,840",
+      "output_tokens": "414",
+      "decode_tokens_per_second": "178.6",
+      "ttft": "355 ms ",
+      "cache": "59,491 (97.8%, private endpoint) ",
+      "mtp_acceptance": "289/512 (56.4%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:04:53.307",
+      "request": 71,
+      "prompt_tokens": "61,336",
+      "output_tokens": "129",
+      "decode_tokens_per_second": "181.7",
+      "ttft": "9.6s ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "93/156 (59.6%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:04:55.937",
+      "request": 72,
+      "prompt_tokens": "62,676",
+      "output_tokens": "314",
+      "decode_tokens_per_second": "180.2",
+      "ttft": "332 ms ",
+      "cache": "61,464 (98.1%, private endpoint) ",
+      "mtp_acceptance": "220/384 (57.3%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:05:01.067",
+      "request": 73,
+      "prompt_tokens": "63,714",
+      "output_tokens": "766",
+      "decode_tokens_per_second": "192.6",
+      "ttft": "248 ms ",
+      "cache": "62,989 (98.9%, private endpoint) ",
+      "mtp_acceptance": "549/876 (62.7%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:05:05.473",
+      "request": 74,
+      "prompt_tokens": "65,984",
+      "output_tokens": "551",
+      "decode_tokens_per_second": "192.8",
+      "ttft": "415 ms ",
+      "cache": "64,479 (97.7%, private endpoint) ",
+      "mtp_acceptance": "396/628 (63.1%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:05:09.089",
+      "request": 75,
+      "prompt_tokens": "66,866",
+      "output_tokens": "508",
+      "decode_tokens_per_second": "175.3",
+      "ttft": "183 ms ",
+      "cache": "66,534 (99.5%, private endpoint) ",
+      "mtp_acceptance": "352/636 (55.3%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:05:15.197",
+      "request": 76,
+      "prompt_tokens": "76,926",
+      "output_tokens": "611",
+      "decode_tokens_per_second": "184.4",
+      "ttft": "2.2s ",
+      "cache": "67,373 (87.6%, private endpoint) ",
+      "mtp_acceptance": "435/716 (60.8%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:05:18.265",
+      "request": 77,
+      "prompt_tokens": "78,953",
+      "output_tokens": "368",
+      "decode_tokens_per_second": "180.2",
+      "ttft": "458 ms ",
+      "cache": "77,536 (98.2%, private endpoint) ",
+      "mtp_acceptance": "260/440 (59.1%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:05:21.456",
+      "request": 78,
+      "prompt_tokens": "80,651",
+      "output_tokens": "409",
+      "decode_tokens_per_second": "183.1",
+      "ttft": "397 ms ",
+      "cache": "79,320 (98.3%, private endpoint) ",
+      "mtp_acceptance": "291/480 (60.6%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:05:29.329",
+      "request": 79,
+      "prompt_tokens": "83,467",
+      "output_tokens": "1,116",
+      "decode_tokens_per_second": "167.8",
+      "ttft": "686 ms ",
+      "cache": "81,059 (97.1%, private endpoint) ",
+      "mtp_acceptance": "761/1,428 (53.3%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:05:40.965",
+      "request": 80,
+      "prompt_tokens": "85,550",
+      "output_tokens": "1,584",
+      "decode_tokens_per_second": "159.4",
+      "ttft": "383 ms ",
+      "cache": "84,582 (98.9%, private endpoint) ",
+      "mtp_acceptance": "1,055/2,128 (49.6%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:05:44.613",
+      "request": 81,
+      "prompt_tokens": "89,756",
+      "output_tokens": "205",
+      "decode_tokens_per_second": "141.0",
+      "ttft": "809 ms ",
+      "cache": "87,133 (97.1%, private endpoint) ",
+      "mtp_acceptance": "131/308 (42.5%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:05:47.916",
+      "request": 82,
+      "prompt_tokens": "91,247",
+      "output_tokens": "160",
+      "decode_tokens_per_second": "159.2",
+      "ttft": "434 ms ",
+      "cache": "89,960 (98.6%, private endpoint) ",
+      "mtp_acceptance": "109/212 (51.4%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:05:53.556",
+      "request": 83,
+      "prompt_tokens": "91,535",
+      "output_tokens": "619",
+      "decode_tokens_per_second": "155.4",
+      "ttft": "189 ms ",
+      "cache": "91,406 (99.9%, private endpoint) ",
+      "mtp_acceptance": "411/844 (48.7%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:06:29.508",
+      "request": 84,
+      "prompt_tokens": "92,446",
+      "output_tokens": "175",
+      "decode_tokens_per_second": "170.7",
+      "ttft": "424 ms ",
+      "cache": "92,153 (99.7%, private endpoint) ",
+      "mtp_acceptance": "124/216 (57.4%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:09:27.843",
+      "request": 85,
+      "prompt_tokens": "93,290",
+      "output_tokens": "635",
+      "decode_tokens_per_second": "138.1",
+      "ttft": "408 ms ",
+      "cache": "92,620 (99.3%, private endpoint) ",
+      "mtp_acceptance": "395/972 (40.6%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:09:30.874",
+      "request": 86,
+      "prompt_tokens": "94,125",
+      "output_tokens": "333",
+      "decode_tokens_per_second": "175.6",
+      "ttft": "441 ms ",
+      "cache": "93,285 (99.1%, response replay) ",
+      "mtp_acceptance": "235/400 (58.8%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:09:36.212",
+      "request": 87,
+      "prompt_tokens": "94,564",
+      "output_tokens": "671",
+      "decode_tokens_per_second": "152.6",
+      "ttft": "198 ms ",
+      "cache": "94,457 (99.9%, private endpoint) ",
+      "mtp_acceptance": "442/928 (47.6%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:09:38.566",
+      "request": 88,
+      "prompt_tokens": "95,496",
+      "output_tokens": "182",
+      "decode_tokens_per_second": "187.1",
+      "ttft": "213 ms ",
+      "cache": "95,234 (99.7%, private endpoint) ",
+      "mtp_acceptance": "134/204 (65.7%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:09:40.930",
+      "request": 89,
+      "prompt_tokens": "95,748",
+      "output_tokens": "176",
+      "decode_tokens_per_second": "174.2",
+      "ttft": "198 ms ",
+      "cache": "95,677 (99.9%, private endpoint) ",
+      "mtp_acceptance": "125/212 (59.0%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:09:53.233",
+      "request": 90,
+      "prompt_tokens": "96,168",
+      "output_tokens": "1,598",
+      "decode_tokens_per_second": "150.4",
+      "ttft": "210 ms ",
+      "cache": "95,923 (99.7%, private endpoint) ",
+      "mtp_acceptance": "1,040/2,236 (46.5%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:30:21.297",
+      "request": 92,
+      "prompt_tokens": "57,371",
+      "output_tokens": "195",
+      "decode_tokens_per_second": "188.7",
+      "ttft": "8.6s ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "145/212 (68.4%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:30:21.347",
+      "request": 91,
+      "prompt_tokens": "5,922",
+      "output_tokens": "293",
+      "decode_tokens_per_second": "178.7",
+      "ttft": "834 ms ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "205/352 (58.2%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:30:30.114",
+      "request": 93,
+      "prompt_tokens": "58,806",
+      "output_tokens": "1,286",
+      "decode_tokens_per_second": "169.9",
+      "ttft": "344 ms ",
+      "cache": "57,565 (97.9%, private endpoint) ",
+      "mtp_acceptance": "868/1,680 (51.7%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:31:02.177",
+      "request": 94,
+      "prompt_tokens": "60,665",
+      "output_tokens": "4,197",
+      "decode_tokens_per_second": "135.4",
+      "ttft": "232 ms ",
+      "cache": "60,091 (99.1%, private endpoint) ",
+      "mtp_acceptance": "2,487/6,848 (36.3%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:31:07.908",
+      "request": 95,
+      "prompt_tokens": "73,851",
+      "output_tokens": "363",
+      "decode_tokens_per_second": "171.4",
+      "ttft": "3.0s ",
+      "cache": "60,660 (82.1%, response replay) ",
+      "mtp_acceptance": "250/460 (54.3%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:31:33.052",
+      "request": 96,
+      "prompt_tokens": "76,725",
+      "output_tokens": "3,538",
+      "decode_tokens_per_second": "150.8",
+      "ttft": "719 ms ",
+      "cache": "74,213 (96.7%, private endpoint) ",
+      "mtp_acceptance": "2,274/5,068 (44.9%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:31:36.853",
+      "request": 97,
+      "prompt_tokens": "81,176",
+      "output_tokens": "394",
+      "decode_tokens_per_second": "141.9",
+      "ttft": "372 ms ",
+      "cache": "80,262 (98.9%, private endpoint) ",
+      "mtp_acceptance": "248/596 (41.6%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:32:31.201",
+      "request": 98,
+      "prompt_tokens": "85,241",
+      "output_tokens": "7,164",
+      "decode_tokens_per_second": "135.9",
+      "ttft": "983 ms ",
+      "cache": "81,569 (95.7%, private endpoint) ",
+      "mtp_acceptance": "4,356/11,240 (38.8%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:32:33.140",
+      "request": 99,
+      "prompt_tokens": "92,675",
+      "output_tokens": "226",
+      "decode_tokens_per_second": "205.4",
+      "ttft": "210 ms ",
+      "cache": "92,404 (99.7%, private endpoint) ",
+      "mtp_acceptance": "170/232 (73.3%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:33:05.236",
+      "request": 100,
+      "prompt_tokens": "102,978",
+      "output_tokens": "4,043",
+      "decode_tokens_per_second": "141.6",
+      "ttft": "2.8s ",
+      "cache": "92,900 (90.2%, private endpoint) ",
+      "mtp_acceptance": "2,561/5,936 (43.1%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:33:49.237",
+      "request": 101,
+      "prompt_tokens": "111,258",
+      "output_tokens": "5,786",
+      "decode_tokens_per_second": "142.5",
+      "ttft": "2.7s ",
+      "cache": "102,973 (92.6%, response replay) ",
+      "mtp_acceptance": "3,704/8,340 (44.4%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:34:36.485",
+      "request": 102,
+      "prompt_tokens": "41,938",
+      "output_tokens": "7,885",
+      "decode_tokens_per_second": "190.3",
+      "ttft": "5.3s ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "5,540/9,376 (59.1%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:35:01.972",
+      "request": 103,
+      "prompt_tokens": "65,265",
+      "output_tokens": "2,282",
+      "decode_tokens_per_second": "150.0",
+      "ttft": "9.7s ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "1,448/3,344 (43.3%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:35:04.899",
+      "request": 104,
+      "prompt_tokens": "68,224",
+      "output_tokens": "239",
+      "decode_tokens_per_second": "145.1",
+      "ttft": "268 ms ",
+      "cache": "67,546 (99.0%, private endpoint) ",
+      "mtp_acceptance": "152/360 (42.2%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:35:17.830",
+      "request": 105,
+      "prompt_tokens": "68,526",
+      "output_tokens": "321",
+      "decode_tokens_per_second": "170.3",
+      "ttft": "10.6s ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "220/412 (53.4%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:35:31.310",
+      "request": 106,
+      "prompt_tokens": "69,001",
+      "output_tokens": "397",
+      "decode_tokens_per_second": "187.0",
+      "ttft": "10.8s ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "283/464 (61.0%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:35:52.989",
+      "request": 107,
+      "prompt_tokens": "72,654",
+      "output_tokens": "1,390",
+      "decode_tokens_per_second": "152.6",
+      "ttft": "11.7s ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "897/1,984 (45.2%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:36:20.256",
+      "request": 108,
+      "prompt_tokens": "76,363",
+      "output_tokens": "2,036",
+      "decode_tokens_per_second": "146.0",
+      "ttft": "12.7s ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "1,281/3,016 (42.5%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:36:35.310",
+      "request": 109,
+      "prompt_tokens": "78,704",
+      "output_tokens": "253",
+      "decode_tokens_per_second": "206.2",
+      "ttft": "13.3s ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "189/264 (71.6%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:36:51.532",
+      "request": 110,
+      "prompt_tokens": "79,845",
+      "output_tokens": "348",
+      "decode_tokens_per_second": "201.0",
+      "ttft": "13.7s ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "257/372 (69.1%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:37:42.776",
+      "request": 111,
+      "prompt_tokens": "84,546",
+      "output_tokens": "5,000",
+      "decode_tokens_per_second": "140.5",
+      "ttft": "15.0s ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "3,100/7,612 (40.7%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:38:03.437",
+      "request": 112,
+      "prompt_tokens": "90,006",
+      "output_tokens": "578",
+      "decode_tokens_per_second": "162.4",
+      "ttft": "16.5s ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "391/756 (51.7%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:39:23.561",
+      "request": 113,
+      "prompt_tokens": "92,086",
+      "output_tokens": "8,148",
+      "decode_tokens_per_second": "131.4",
+      "ttft": "17.1s ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "4,885/13,064 (37.4%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:41:43.520",
+      "request": 114,
+      "prompt_tokens": "104,319",
+      "output_tokens": "16,384",
+      "decode_tokens_per_second": "138.0",
+      "ttft": "20.6s ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "10,271/24,445 (42.0%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:42:47.320",
+      "request": 115,
+      "prompt_tokens": "53,878",
+      "output_tokens": "10,689",
+      "decode_tokens_per_second": "192.1",
+      "ttft": "7.4s ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "7,600/12,352 (61.5%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:43:04.085",
+      "request": 116,
+      "prompt_tokens": "68,069",
+      "output_tokens": "887",
+      "decode_tokens_per_second": "168.0",
+      "ttft": "10.4s ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "601/1,156 (52.0%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:43:06.090",
+      "request": 117,
+      "prompt_tokens": "69,126",
+      "output_tokens": "182",
+      "decode_tokens_per_second": "215.4",
+      "ttft": "184 ms ",
+      "cache": "68,955 (99.8%, private endpoint) ",
+      "mtp_acceptance": "138/184 (75.0%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:43:22.326",
+      "request": 118,
+      "prompt_tokens": "69,777",
+      "output_tokens": "2,781",
+      "decode_tokens_per_second": "189.1",
+      "ttft": "639 ms ",
+      "cache": "68,062 (97.5%, shared prefix) ",
+      "mtp_acceptance": "1,981/3,212 (61.7%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:43:26.038",
+      "request": 119,
+      "prompt_tokens": "72,594",
+      "output_tokens": "241",
+      "decode_tokens_per_second": "198.2",
+      "ttft": "1.4s ",
+      "cache": "68,062 (93.8%, shared prefix) ",
+      "mtp_acceptance": "178/264 (67.4%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:44:12.445",
+      "request": 120,
+      "prompt_tokens": "82,487",
+      "output_tokens": "6,380",
+      "decode_tokens_per_second": "153.4",
+      "ttft": "3.8s ",
+      "cache": "68,062 (82.5%, shared prefix) ",
+      "mtp_acceptance": "4,155/8,912 (46.6%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:44:29.915",
+      "request": 121,
+      "prompt_tokens": "89,099",
+      "output_tokens": "198",
+      "decode_tokens_per_second": "218.6",
+      "ttft": "15.9s ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "152/192 (79.2%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:44:59.790",
+      "request": 122,
+      "prompt_tokens": "94,978",
+      "output_tokens": "1,742",
+      "decode_tokens_per_second": "150.0",
+      "ttft": "17.5s ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "1,132/2,448 (46.2%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:45:22.044",
+      "request": 123,
+      "prompt_tokens": "99,825",
+      "output_tokens": "455",
+      "decode_tokens_per_second": "178.9",
+      "ttft": "19.0s ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "325/532 (61.1%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:46:48.836",
+      "request": 124,
+      "prompt_tokens": "101,454",
+      "output_tokens": "11,149",
+      "decode_tokens_per_second": "167.8",
+      "ttft": "19.6s ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "7,705/13,788 (55.9%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:47:56.350",
+      "request": 125,
+      "prompt_tokens": "107,004",
+      "output_tokens": "7,237",
+      "decode_tokens_per_second": "159.8",
+      "ttft": "21.2s ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "4,902/9,352 (52.4%)"
+    },
+    {
+      "timestamp": "2026-09-25 17:48:31.298",
+      "request": 126,
+      "prompt_tokens": "96,544",
+      "output_tokens": "2,667",
+      "decode_tokens_per_second": "163.0",
+      "ttft": "17.7s ",
+      "cache": "0 (0.0%) ",
+      "mtp_acceptance": "1,810/3,440 (52.6%)"
+    }
+  ],
+  "decode_summary_uncontrolled": {
+    "n": 126,
+    "min": 131.4,
+    "median": 173.64999999999998,
+    "max": 228.3
+  }
+}
