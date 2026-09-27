@@ -79,3 +79,26 @@ keeps its dedicated path. Source `65ab2242c` measured 204 ms verification out of
 on kernels, dominated by `fp8_linear_exact4`. MTP-head kernels took only 5.21 ms
 for the two-row oracle. Existing FP8 fixtures already exercise the larger tile's
 partial rows; the candidate still needs full-model and MTP regression evidence.
+
+Uninstrumented real-text baseline at `65ab2242c` (32 outputs, three samples):
+
+| Prompt | Target-only decode | MTP depth 1 | MTP depth 4 | Depth-4 accepted drafts |
+| --- | ---: | ---: | ---: | ---: |
+| Counting, 24 inputs | 24.53 | 30.56 | 31.34 | 92.3% |
+| Python, 32 inputs | 24.36 | 30.42 | 38.21 | 100% |
+| Explanation, 31 inputs | 24.35 | 25.33 | 12.95 | 32.1% |
+
+Rates are median decode tokens/s for the speculative runs. Target controls are
+measured in the same process. Every result preserves all greedy output tokens and
+the entire final target state, including forced rejection. At depth one the prose
+case is still slightly slower end to end because of MTP prefill. Fixed depth four
+is not a safe default: low acceptance makes target replay expensive. Preserve this
+negative result, and distinguish a bounded working MTP engine from a serving policy.
+
+Rejected candidate `c51fe9e66`: selecting the existing 16-row tile for all multirow
+work passes the independent model and MTP checks but reduces synthetic MTP decode
+from 23.37 to 20.71 tokens/s. Two-row prefill/replay rises from 55.7 to 94.3 ms;
+five-row verification remains about 204 ms across two rounds. Revert that dispatch.
+The next candidate transposes the exact integer MMA operands: 16 output channels
+by eight input rows, with transposed stores and unchanged final scale order. This
+halves the padding of small verification batches without changing arithmetic.
