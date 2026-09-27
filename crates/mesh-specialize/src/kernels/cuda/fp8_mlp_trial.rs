@@ -2,7 +2,8 @@
 
 use super::{
     driver::{Buffer, Context, Module},
-    resident_mlp::{Mlp, Quantization},
+    resident_mlp::Mlp,
+    resident_projection::Quantization,
     resident_weights::ResidentWeights,
 };
 use crate::{
