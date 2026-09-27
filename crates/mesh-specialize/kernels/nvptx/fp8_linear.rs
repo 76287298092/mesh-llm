@@ -69,12 +69,12 @@ fn fp32_multiply_rn(left: f32, right: f32) -> f32 {
 }
 
 #[inline(always)]
-fn fp32_to_fp64_rn(value: f32) -> f64 {
+fn fp32_to_fp64_exact(value: f32) -> f64 {
     let converted: f64;
     // SAFETY: This scalar conversion has no memory or stack effects.
     unsafe {
         asm!(
-            "cvt.rn.f64.f32 {converted}, {value};",
+            "cvt.f64.f32 {converted}, {value};",
             converted = out(reg64) converted,
             value = in(reg32) value,
             options(nomem, nostack),
@@ -322,10 +322,10 @@ unsafe fn fp8_linear_impl<const WIDE: bool>(
         );
         if WIDE {
             wide_totals = (
-                fp64_add_rn(wide_totals.0, fp32_to_fp64_rn(tile_accumulators.0)),
-                fp64_add_rn(wide_totals.1, fp32_to_fp64_rn(tile_accumulators.1)),
-                fp64_add_rn(wide_totals.2, fp32_to_fp64_rn(tile_accumulators.2)),
-                fp64_add_rn(wide_totals.3, fp32_to_fp64_rn(tile_accumulators.3)),
+                fp64_add_rn(wide_totals.0, fp32_to_fp64_exact(tile_accumulators.0)),
+                fp64_add_rn(wide_totals.1, fp32_to_fp64_exact(tile_accumulators.1)),
+                fp64_add_rn(wide_totals.2, fp32_to_fp64_exact(tile_accumulators.2)),
+                fp64_add_rn(wide_totals.3, fp32_to_fp64_exact(tile_accumulators.3)),
             );
         } else {
             accumulators = tile_accumulators;

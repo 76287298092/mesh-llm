@@ -82,3 +82,8 @@ The wide-entrypoint trial also compares original/wide projection kernels on
 independent reference. Gate edge fixtures cover 1/257/513 elements, negative-zero
 attention values, saturated gates and a subnormal sigmoid. These run in every
 normal and sanitizer invocation.
+
+Offline CUDA assembly rejected the first wide PTX before Ninfer was stopped.
+FP32-to-FP64 widening is exact and PTX rejects a rounding modifier on that
+conversion. It now uses `cvt.f64.f32`; narrowing retains `cvt.rn.f32.f64`.
+The rejected PTX and assembler log remain as `probes-wide.ptx`/`ptxas-wide.log`.
