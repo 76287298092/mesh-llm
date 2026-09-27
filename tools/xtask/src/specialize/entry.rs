@@ -1,0 +1,58 @@
+use crate::command::{DynResult, print_json};
+use serde_json::json;
+use sha2::{Digest, Sha256};
+use std::{
+    fs::{self, OpenOptions},
+    io::Write,
+    path::Path,
+    time::Instant,
+};
+
+pub(super) fn run(args: &[String]) -> DynResult<()> {
+    let [
+        artifact_flag,
+        artifact,
+        ptx_flag,
+        ptx,
+        device_flag,
+        device,
+        output_flag,
+        output,
+    ] = args
+    else {
+        return Err("usage: xtask specialize qwen-entry-check --artifact PATH --ptx PATH --device ORDINAL --output NEW_FILE".into());
+    };
+    if artifact_flag != "--artifact"
+        || ptx_flag != "--ptx"
+        || device_flag != "--device"
+        || output_flag != "--output"
+    {
+        return Err("expected --artifact, --ptx, --device, --output in order".into());
+    }
+    let device = device.parse()?;
+    let ptx_bytes = fs::read_to_string(ptx)?;
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(output)?;
+    let started = Instant::now();
+    let result =
+        mesh_specialize::packages::qwen3_8_27b::trial(Path::new(artifact), &ptx_bytes, device);
+    let mut report = match result {
+        Ok(report) => report,
+        Err(error) => {
+            json!({"all_passed":false,"error":format!("{error:#}"),"model_executable":false})
+        }
+    };
+    report["elapsed_seconds"] = json!(started.elapsed().as_secs_f64());
+    report["artifact_path"] = json!(artifact);
+    report["ptx_sha256"] = json!(hex::encode(Sha256::digest(ptx_bytes.as_bytes())));
+    serde_json::to_writer_pretty(&mut file, &report)?;
+    file.write_all(b"\n")?;
+    file.sync_all()?;
+    print_json(&json!({"output":output,"all_passed":report["all_passed"]}))?;
+    if report["all_passed"] != true {
+        return Err("Qwen entry check failed; inspect saved report".into());
+    }
+    Ok(())
+}

@@ -14,3 +14,7 @@
 
 Compiler emission alone is not qualification. Keep execution evidence and any
 failed attempts in a findings/dead-ends entry before promoting these rows.
+
+| Source symbol | Operation | Required target | Reference | Status |
+| --- | --- | --- | --- | --- |
+| `kernels/nvptx/embedding_norm.rs` | Thread/block coordinates, shared 256-thread reduction and barriers, explicit rounded FP32 add/multiply/divide/square-root | SM120a | Independent scalar real-weight embedding and zero-centered RMSNorm in `reference/embedding_norm.rs` | Integration pending; see [entry trial](findings/qwen-entry.md) |

@@ -1,5 +1,28 @@
 //! Device-specific instruction qualification, separate from model execution.
 
+/// Validated by the scalar reference before any GPU allocation or launch.
+pub struct EmbeddingNormInput {
+    pub table: Vec<u8>,
+    pub weight: Vec<u8>,
+    pub width: usize,
+    pub epsilon: f32,
+    pub batches: Vec<Vec<u32>>,
+}
+
+pub fn embedding_norm_check(
+    ptx: &str,
+    device: i32,
+    input: &EmbeddingNormInput,
+) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::embedding_norm::run(ptx, device, input);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device, input);
+        anyhow::bail!("Qwen entry GPU trial requires Linux")
+    }
+}
+
 #[cfg(target_os = "linux")]
 mod cuda;
 #[cfg(any(target_os = "linux", test))]

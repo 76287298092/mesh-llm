@@ -3,6 +3,7 @@
 
 use core::arch::asm;
 
+mod embedding_norm;
 mod memory;
 mod nvfp4_gemm;
 mod ordinary_mma;

@@ -1,6 +1,7 @@
 //! Linux CUDA Driver API instruction qualification.
 
 mod driver;
+pub(super) mod embedding_norm;
 mod gemm;
 pub(super) mod instructions;
 mod rms_norm;
