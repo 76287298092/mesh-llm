@@ -20,22 +20,6 @@ fn block_and_thread() -> (u32, u32) {
 }
 
 #[inline(always)]
-fn fp32_add_rn(left: f32, right: f32) -> f32 {
-    let sum: f32;
-    // SAFETY: This scalar FP32 operation has no memory or stack effects.
-    unsafe {
-        asm!(
-            "add.rn.f32 {sum}, {left}, {right};",
-            sum = out(reg32) sum,
-            left = in(reg32) left,
-            right = in(reg32) right,
-            options(nomem, nostack),
-        )
-    };
-    sum
-}
-
-#[inline(always)]
 fn fp32_multiply_rn(left: f32, right: f32) -> f32 {
     let product: f32;
     // SAFETY: This scalar FP32 operation has no memory or stack effects.
@@ -49,37 +33,6 @@ fn fp32_multiply_rn(left: f32, right: f32) -> f32 {
         )
     };
     product
-}
-
-#[inline(always)]
-fn fp32_divide_rn(numerator: f32, denominator: f32) -> f32 {
-    let quotient: f32;
-    // SAFETY: This scalar FP32 operation has no memory or stack effects.
-    unsafe {
-        asm!(
-            "div.rn.f32 {quotient}, {numerator}, {denominator};",
-            quotient = out(reg32) quotient,
-            numerator = in(reg32) numerator,
-            denominator = in(reg32) denominator,
-            options(nomem, nostack),
-        )
-    };
-    quotient
-}
-
-#[inline(always)]
-fn fp32_exp2_approx(exponent: f32) -> f32 {
-    let result: f32;
-    // SAFETY: This scalar approximate exponential has no memory or stack effects.
-    unsafe {
-        asm!(
-            "ex2.approx.f32 {result}, {exponent};",
-            result = out(reg32) result,
-            exponent = in(reg32) exponent,
-            options(nomem, nostack),
-        )
-    };
-    result
 }
 
 #[inline(always)]
@@ -98,27 +51,12 @@ fn encode_bf16_rne(value: f32) -> u16 {
     ((bits + 0x7fff + ((bits >> 16) & 1)) >> 16) as u16
 }
 
-#[inline(always)]
-fn stable_silu(value: f32) -> f32 {
-    let absolute = f32::from_bits(value.to_bits() & 0x7fff_ffff);
-    let negative_absolute = f32::from_bits(absolute.to_bits() | 0x8000_0000);
-    let exponent = fp32_multiply_rn(negative_absolute, core::f32::consts::LOG2_E);
-    let exponential = fp32_exp2_approx(exponent);
-    let denominator = fp32_add_rn(1.0_f32, exponential);
-    let sigmoid = if value >= 0.0_f32 {
-        fp32_divide_rn(1.0_f32, denominator)
-    } else {
-        fp32_divide_rn(exponential, denominator)
-    };
-    fp32_multiply_rn(value, sigmoid)
-}
-
 /// Compute SiLU on BF16 gate values, round the activation to BF16, then multiply by up.
 ///
-/// `gate` and `up` are BF16 vectors. SiLU is evaluated in FP32 with the same stable
-/// profile used by the gated RMSNorm kernel. `activated` records its BF16 rounding
-/// boundary; the final product consumes that decoded BF16 activation and is stored
-/// both as FP32 diagnostics and BF16 round-to-nearest-even.
+/// `gate` and `up` are BF16 vectors. SiLU uses the shared FP64 reference profile and
+/// is converted once to FP32. `activated` records its BF16 rounding boundary; the
+/// final product consumes that decoded BF16 activation and is stored both as FP32
+/// diagnostics and BF16 round-to-nearest-even.
 ///
 /// # Safety
 /// Launch `grid = [ceil(count / 256), 1, 1]` and `block = [256, 1, 1]`, with
@@ -149,7 +87,7 @@ pub unsafe extern "ptx-kernel" fn mlp_silu_product(
     // are disjoint arrays of the same exact element count.
     let (gate_value, up_value) =
         unsafe { (decode_bf16(*gate.add(index)), decode_bf16(*up.add(index))) };
-    let silu_value = stable_silu(gate_value);
+    let silu_value = super::silu::silu(gate_value);
     let activated_bits = encode_bf16_rne(silu_value);
     let product = fp32_multiply_rn(decode_bf16(activated_bits), up_value);
 

@@ -42,6 +42,7 @@ mod resident_state;
 mod resident_weights;
 mod residual_norm;
 mod rms_norm;
+mod silu_trial;
 pub(super) mod workloads;
 
 use super::{fixtures, nvfp4_layout};

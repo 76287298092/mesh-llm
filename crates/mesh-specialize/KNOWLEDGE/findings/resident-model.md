@@ -66,3 +66,27 @@ hidden output against the existing reference. A diagnostic `qwen-model-check`
 replays only that layer from CPU hidden input, comparing operation boundaries to
 locate the first cause. It is explicitly marked as isolated layer execution.
 No tolerance or device arithmetic has changed.
+
+### First cause: convolution SiLU rounding
+
+Diagnostic source `f50e7189a5c86dfcde011880593803525dbb65b2` passed 257 Linux
+library tests, 20 validator tests and Clippy. Layer 2's input normalization,
+QKV/Z/A/B projections are bit exact. The first difference is the convolution
+activation: ten outputs round to `0xbaff` instead of reference `0xbb00`.
+The same run has eight gated-output differences and thirteen final hidden
+differences; MLP gate/up/activation/down happen to be exact for this input.
+This isolates an operation mismatch without propagated input error. The trial
+restored Ninfer at 06:41:50 EDT, PID 3120992, HTTP 200, ComfyUI unchanged.
+
+The old SiLU uses approximate FP32 exp2. At input -1/256, independently evaluated
+SiLU is approximately -0.001949310307585006. Rounding it to FP32 lands exactly on
+the BF16 midpoint -0.001949310302734375, which rounds to `0xbb00` by ties-to-even.
+Small FP32 exponential error can place it on the other side of that midpoint.
+
+The proposed correction shares one pure Rust SiLU calculation across convolution,
+MLP activation and gated normalization. It evaluates the stable sigmoid in FP64
+using ln(2) range reduction and a degree-16 Taylor polynomial, then converts once
+to FP32. No host table or reference function enters device execution. An exhaustive
+host test and device probe compare every finite BF16 input with the independent
+libm-backed reference. The model trial must pass this probe before loading weights.
+Device validation and the unchanged full-model comparison remain pending.

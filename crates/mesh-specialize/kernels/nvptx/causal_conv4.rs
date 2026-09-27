@@ -1,7 +1,6 @@
 use core::arch::asm;
 
 const BLOCK_THREADS: usize = 256;
-const LOG2_E: f32 = core::f32::consts::LOG2_E;
 
 #[inline(always)]
 fn linear_thread_index() -> usize {
@@ -92,65 +91,15 @@ fn fp32_add_rn(left: f32, right: f32) -> f32 {
     sum
 }
 
-#[inline(always)]
-fn fp32_divide_rn(numerator: f32, denominator: f32) -> f32 {
-    let quotient: f32;
-    // SAFETY: This scalar FP32 operation has no memory or stack effects.
-    unsafe {
-        asm!(
-            "div.rn.f32 {quotient}, {numerator}, {denominator};",
-            quotient = out(reg32) quotient,
-            numerator = in(reg32) numerator,
-            denominator = in(reg32) denominator,
-            options(nomem, nostack),
-        )
-    };
-    quotient
-}
-
-#[inline(always)]
-fn fp32_exp2_approx_ftz(exponent: f32) -> f32 {
-    let result: f32;
-    // SAFETY: This scalar approximate exponential has no memory or stack effects.
-    unsafe {
-        asm!(
-            "ex2.approx.ftz.f32 {result}, {exponent};",
-            result = out(reg32) result,
-            exponent = in(reg32) exponent,
-            options(nomem, nostack),
-        )
-    };
-    result
-}
-
-#[inline(always)]
-fn stable_silu(value: f32) -> f32 {
-    let absolute = f32::from_bits(value.to_bits() & 0x7fff_ffff);
-    let negative_absolute = f32::from_bits(absolute.to_bits() | 0x8000_0000);
-    let exponent = fp32_multiply_rn(negative_absolute, LOG2_E);
-    let exponential = if exponent < -126.0_f32 {
-        0.0_f32
-    } else {
-        fp32_exp2_approx_ftz(exponent)
-    };
-    let denominator = fp32_add_rn(1.0_f32, exponential);
-    let sigmoid = if value >= 0.0_f32 {
-        fp32_divide_rn(1.0_f32, denominator)
-    } else {
-        fp32_divide_rn(exponential, denominator)
-    };
-    fp32_multiply_rn(value, sigmoid)
-}
-
 /// Fuse a causal four-tap BF16 convolution with BF16-rounded SiLU and state update.
 ///
 /// `input` and `output` are time-major `[rows, channels]`; `weight` is channel-major
 /// `[channels, 4]`; and `history` and `next_history` are time-major `[3, channels]`,
 /// ordered oldest to newest. For each row and channel, this computes the four-tap
 /// convolution in ascending tap order with no bias, records its FP32 result, rounds
-/// once to BF16, decodes that rounded value, then applies stable SiLU and records both
-/// its FP32 and BF16 results. The last row's channel owners also shift the raw input
-/// and history values into `next_history`.
+/// once to BF16, decodes that rounded value, then applies the shared FP64-profile SiLU
+/// converted once to FP32 and records its FP32 and BF16 results. The last row's
+/// channel owners also shift the raw input and history values into `next_history`.
 ///
 /// # Safety
 /// Launch a 1D grid with `ceil(rows * channels / 256)` blocks and `block = [256, 1, 1]`.
@@ -209,7 +158,7 @@ pub unsafe extern "ptx-kernel" fn causal_conv4_bf16(
     unsafe { conv_unrounded.add(flat_index).write(convolution) };
     let rounded_convolution = encode_bf16_rne(convolution);
     let activation_input = decode_bf16(rounded_convolution);
-    let silu = stable_silu(activation_input);
+    let silu = super::silu::silu(activation_input);
     // SAFETY: Each flat output thread owns one distinct activation slot and output value.
     unsafe {
         silu_unrounded.add(flat_index).write(silu);

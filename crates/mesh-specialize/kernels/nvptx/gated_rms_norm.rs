@@ -134,21 +134,6 @@ fn fp32_sqrt_rn(value: f32) -> f32 {
 }
 
 #[inline(always)]
-fn fp32_exp2_approx(exponent: f32) -> f32 {
-    let result: f32;
-    // SAFETY: This scalar approximate exponential has no memory or stack effects.
-    unsafe {
-        asm!(
-            "ex2.approx.f32 {result}, {exponent};",
-            result = out(reg32) result,
-            exponent = in(reg32) exponent,
-            options(nomem, nostack),
-        )
-    };
-    result
-}
-
-#[inline(always)]
 fn decode_bf16(bits: u16) -> f32 {
     f32::from_bits((bits as u32) << 16)
 }
@@ -164,28 +149,14 @@ fn encode_bf16_rne(value: f32) -> u16 {
     ((bits + 0x7fff + ((bits >> 16) & 1)) >> 16) as u16
 }
 
-#[inline(always)]
-fn stable_silu(value: f32) -> f32 {
-    let absolute = f32::from_bits(value.to_bits() & 0x7fff_ffff);
-    let negative_absolute = f32::from_bits(absolute.to_bits() | 0x8000_0000);
-    let exponent = fp32_multiply_rn(negative_absolute, core::f32::consts::LOG2_E);
-    let exponential = fp32_exp2_approx(exponent);
-    let denominator = fp32_add_rn(1.0_f32, exponential);
-    let sigmoid = if value >= 0.0_f32 {
-        fp32_divide_rn(1.0_f32, denominator)
-    } else {
-        fp32_divide_rn(exponential, denominator)
-    };
-    fp32_multiply_rn(value, sigmoid)
-}
-
 /// Apply Qwen's gated RMSNorm in FP32 with the model's BF16 rounding points.
 ///
 /// `x` and `z` are row-major `[groups, width]` BF16 inputs. The shared `weight`
 /// vector is direct gamma, with no added one. Each row is RMS-normalized first,
 /// then its FP32 normalized values are recorded, BF16-rounded, multiplied by gamma,
-/// and rounded to BF16 as `weighted`. SiLU is computed from FP32 `z`; the final FP32
-/// result multiplies decoded `weighted` by that SiLU value before BF16 rounding.
+/// and rounded to BF16 as `weighted`. The shared FP64 reference-profile SiLU from
+/// FP32 `z` is converted once to FP32; the final FP32 result multiplies decoded
+/// `weighted` by that value before BF16 rounding.
 ///
 /// # Safety
 /// Launch exactly `grid = [groups, 1, 1]` and `block = [256, 1, 1]`. `groups` must
@@ -258,7 +229,7 @@ pub unsafe extern "ptx-kernel" fn gdn_gated_rms_norm(
     let rounded_normalized = decode_bf16(normalized_bf16);
     let weighted_value = fp32_multiply_rn(gamma, rounded_normalized);
     let weighted_bf16 = encode_bf16_rne(weighted_value);
-    let silu_value = stable_silu(gate);
+    let silu_value = super::silu::silu(gate);
     let result = fp32_multiply_rn(decode_bf16(weighted_bf16), silu_value);
 
     // SAFETY: Each active thread writes its unique element in all output extents.

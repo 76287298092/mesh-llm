@@ -60,6 +60,12 @@ pub(in crate::kernels) fn run(
             .with_context(|| format!("load model kernel {name}"))?;
     }
     let before = context.memory()?;
+    let activation_probe = super::silu_trial::run(&context, &module)?;
+    if activation_probe["all_passed"] != true {
+        return Ok(
+            json!({"all_passed":false,"full_model_executed":false,"activation_probe":activation_probe}),
+        );
+    }
     let layout = Layout::new(objects.iter().map(|o| (o.name.clone(), o.length)))?;
     let needed = layout
         .bytes
@@ -72,14 +78,16 @@ pub(in crate::kernels) fn run(
     );
     let weights = ResidentWeights::load(&context, artifact, objects)?;
     if let Some(diagnostic) = &reference.diagnostic {
-        return super::resident_gdn_diagnostic::run(
+        let mut report = super::resident_gdn_diagnostic::run(
             &context,
             &module,
             &weights,
             config,
             reference.tokens.len(),
             diagnostic,
-        );
+        )?;
+        report["activation_probe"] = activation_probe;
+        return Ok(report);
     }
     let model = Model::new(&weights, config)?;
     let mut session = Session::new(&context, config)?;
@@ -146,7 +154,7 @@ pub(in crate::kernels) fn run(
     context.synchronize()?;
     let after = context.memory()?;
     Ok(
-        json!({"schema_version":1,"kind":"qwen-resident-full-model-correctness","device":info,"tokens":reference.tokens,"layers":layers,"logits":logits,
+        json!({"schema_version":1,"kind":"qwen-resident-full-model-correctness","device":info,"tokens":reference.tokens,"layers":layers,"logits":logits,"activation_probe":activation_probe,
         "selected_token":output.token,"reference_token":expected_token,"greedy_token_exact":output.token==expected_token,
         "whole_vs_token_logits_and_state_bit_exact":partition_exact,"prefix_committed_correctly":prefix_correct,"failed_session_reuse_rejected":poison_rejected,
         "all_passed":layers.iter().all(|r|r["all_passed"]==true)&&logits["all_passed"]==true&&output.token==expected_token&&partition_exact&&prefix_correct&&poison_rejected&&after.0>=before.0,

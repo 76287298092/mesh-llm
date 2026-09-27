@@ -21,6 +21,8 @@ mod ordinary_mma;
 mod register_budget;
 mod residual_norm;
 mod rms_norm;
+mod silu;
+mod silu_probe;
 
 #[panic_handler]
 fn panic(_: &core::panic::PanicInfo<'_>) -> ! {

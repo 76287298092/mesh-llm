@@ -385,3 +385,5 @@ pub fn nvfp4_probe(ptx: &str, device: i32) -> anyhow::Result<serde_json::Value> 
         anyhow::bail!("CUDA instruction trials require Linux")
     }
 }
+#[path = "../kernels/nvptx/silu.rs"]
+pub mod silu;
