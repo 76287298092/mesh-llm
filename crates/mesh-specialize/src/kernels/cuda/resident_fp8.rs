@@ -76,7 +76,7 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
         let (tile_rows, tile_columns, threads, kernel) = if rows >= 16 {
             (16, 8, 32, "fp8_prefill_exact")
         } else if rows >= 4 {
-            (8, 16, 32, "fp8_verify_exact")
+            (4, 4, 128, "fp8_linear_exact4")
         } else {
             (1, 4, 128, "fp8_linear_exact")
         };

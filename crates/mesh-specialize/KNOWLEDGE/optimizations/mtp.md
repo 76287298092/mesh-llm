@@ -108,3 +108,12 @@ one-to-three-row dispatch stays at the qualified baseline. Every MTP trial now
 runs the complete independent FP8 probe across all four variants, so the reduced
 sanitizer workload still exercises the new tile, including every finite code pair
 and M/N/K tails, even when its target verification batch contains only two rows.
+
+Rejected transposed tile `97383f9ee`: every FP8 fixture, independent model, MTP
+partition and exact target output/state check passes, but synthetic MTP drops to
+21.39 tokens/s. Verification rises from 204.07 to 231.49 ms; replay stays 56.54 ms.
+The ordinary target control remains 25.27 tokens/s. Restore the existing four-row
+FP8 kernel for four-to-fifteen rows. The new kernel remains an explicitly
+experimental probe, with no resident-model dispatch. Offline compilation uses
+64 registers with no spills; zero spills alone does not establish performance.
+Ninfer was restored at 15:08:42 EDT, PID 3400966, HTTP 200; ComfyUI unchanged.
