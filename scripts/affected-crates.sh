@@ -45,6 +45,7 @@ WORKSPACE_MEMBERS=(
   "mesh-mixture-of-agents"
   "mesh-native-serving-plugin-api"
   "mesh-native-serving-plugin-host"
+  "mesh-specialize"
   "mesh-llm-api-client"
   "mesh-llm-api-server"
   "mesh-llm-node"

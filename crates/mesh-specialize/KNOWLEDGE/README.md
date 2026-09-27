@@ -8,6 +8,8 @@ Start with [the implementation plan](../PLAN.md) and the
 | [Initial constraints](findings/initial-constraints.md) | Source-backed; GPU execution unproven |
 | [Assembly inventory](asm-inventory.md) | NVFP4 probe emitted as PTX; GPU untested |
 | [Baseline harness](findings/baseline-harness.md) | 18 host tests and Clippy pass; live baseline pending |
+| [Ninfer baseline](findings/ninfer-baseline-20260926.md) | Nine measured requests; tested through 42,837 input tokens |
+| [Rust NVFP4 probe](findings/rust-nvfp4-probe.md) | Host arithmetic/packing tests pass; CUDA execution pending |
 | [Prebuilt core target mismatch](dead-ends/prebuilt-core-target-mismatch.md) | Compiler failure; recipe correction under validation |
 
 New entries belong in `findings/`, `pitfalls/`, `optimizations/`, `dead-ends/`,

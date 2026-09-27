@@ -130,12 +130,12 @@ that control's rates directly to MTP4 as an isolated speedup across different in
 | Requirement | State | Evidence |
 | --- | --- | --- |
 | New isolated branch and assessment | Complete | `docs/design/assessments/issue-1393/` |
-| Plan and knowledge base before engine | Written, pending initial commit | This plan and `KNOWLEDGE/` |
-| B01/B02 bounded baseline tool | Pending | None |
-| Fresh NInfer baseline | Pending | Historical observations are not sufficient |
-| Rust instruction gate | Pending | Compiler target enumeration only |
+| Plan and knowledge base before engine | Committed | `2d9ea2073` |
+| B01/B02 bounded baseline tool | Complete | 18 focused tests and successful live run |
+| Fresh NInfer baseline | Complete for deployed serial profile | `KNOWLEDGE/findings/ninfer-baseline-20260926.md` |
+| Rust instruction gate | PTX emitted; host integrated; GPU launch pending | `KNOWLEDGE/findings/rust-nvfp4-probe.md` |
 | Representative GEMM/RMSNorm | Pending | None |
-| Upstream push and carrack branch synchronization | Pending | None |
+| Upstream push and carrack branch synchronization | Complete for baseline | `dc1e24fe9`; original carrack branch retained |
 | First carrack Rust GPU trial | Pending | None |
 | Full model performance/context trial | Pending | None |
 
