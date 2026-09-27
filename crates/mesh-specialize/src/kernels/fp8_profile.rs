@@ -5,6 +5,7 @@ use std::sync::OnceLock;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Profile {
     Exact,
+    A16Decode,
     NativePrefill,
     NativePrefillAudit,
     NativePrefillShort,
@@ -14,6 +15,7 @@ impl Profile {
     pub fn name(self) -> &'static str {
         match self {
             Self::Exact => "exact-a8-v1",
+            Self::A16Decode => "fp8-a16-decode-v1",
             Self::NativePrefill => "native-fp8-prefill-v1",
             Self::NativePrefillAudit => "native-fp8-prefill-v1-audit",
             Self::NativePrefillShort => "native-fp8-prefill-k64-v1",
@@ -28,7 +30,7 @@ impl Profile {
     }
     pub fn native_kernel(self) -> Option<&'static str> {
         match self {
-            Self::Exact => None,
+            Self::Exact | Self::A16Decode => None,
             Self::NativePrefill | Self::NativePrefillAudit => Some("fp8_prefill_native"),
             Self::NativePrefillShort | Self::NativePrefillShortAudit => {
                 Some("fp8_prefill_native_short")
@@ -39,12 +41,13 @@ impl Profile {
 fn parse(value: Option<&str>) -> Result<Profile> {
     match value {
         None | Some("exact") => Ok(Profile::Exact),
+        Some("a16-decode") => Ok(Profile::A16Decode),
         Some("native-prefill") => Ok(Profile::NativePrefill),
         Some("native-prefill-audit") => Ok(Profile::NativePrefillAudit),
         Some("native-prefill-short") => Ok(Profile::NativePrefillShort),
         Some("native-prefill-short-audit") => Ok(Profile::NativePrefillShortAudit),
         _ => bail!(
-            "MESH_SPECIALIZE_FP8_PROFILE must be exact, native-prefill, native-prefill-audit, native-prefill-short, or native-prefill-short-audit"
+            "MESH_SPECIALIZE_FP8_PROFILE must be exact, a16-decode, native-prefill, native-prefill-audit, native-prefill-short, or native-prefill-short-audit"
         ),
     }
 }
@@ -83,6 +86,8 @@ mod tests {
                 .unwrap()
                 .is_audit()
         );
+        assert_eq!(parse(Some("a16-decode")).unwrap(), Profile::A16Decode);
+        assert!(Profile::A16Decode.native_kernel().is_none());
         assert!(!parse(None).unwrap().is_audit());
         assert!(parse(Some("native")).is_err());
     }

@@ -74,6 +74,15 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
 
         let weight_pointer = self.owner.pointer(&self.weight_name)?;
         let scale_pointer = self.owner.pointer(&self.scale_name)?;
+        if rows == 1 && self.profile == crate::kernels::fp8_profile::Profile::A16Decode {
+            return super::resident_fp8_a16::run(
+                context,
+                module,
+                input,
+                [weight_pointer, scale_pointer],
+                [self.channels, self.width],
+            );
+        }
         let quantize = module.function("fp8_quantize_bf16")?;
         let (tile_rows, tile_columns, threads, kernel) =
             if let Some(kernel) = self.profile.native_kernel().filter(|_| rows >= 16) {

@@ -105,6 +105,16 @@ pub(in crate::kernels) fn run(
         true,
         teacher_token,
     )?;
+    let logit_dump = super::resident_logit_dump::write(
+        tokens,
+        teacher_token,
+        [
+            ("whole-prefill", &control.prefill_logits),
+            ("whole-decode", &control.output.logits),
+            ("token-prefill", &partitioned.prefill_logits),
+            ("token-decode", &partitioned.output.logits),
+        ],
+    )?;
     let partition = json!({
         "prefill_logits_bit_exact": control.prefill_logits == partitioned.prefill_logits,
         "whole_prefill_token": control.prefill_token,
@@ -196,6 +206,7 @@ pub(in crate::kernels) fn run(
         "decode_input_token": decode_input_token,
         "teacher_forced_token": teacher_token,
         "resulting_past": resulting_past,
+        "logit_dump":logit_dump,
         "exact_prefill_logits": prefill_exact,
         "whole_vs_token_partition": partition,
         "whole_vs_token_partition_exact": partition_exact,

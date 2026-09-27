@@ -1,7 +1,8 @@
 # F01: FP8 A16 decode GEMV candidate
 
-Status: candidate kernel and independent CPU oracle authored on 2026-09-27.
-Compilation, GPU execution, sanitizer checks, and timing have not been performed.
+Status: synthetic GPU checks and sanitizers pass. Parent one-row resident
+integration is authored behind `MESH_SPECIALIZE_FP8_PROFILE=a16-decode`;
+real-model timing and arithmetic/quality comparison are pending.
 This is a separate A16 arithmetic profile; it does not replace or relax any A8
 decode qualification gate.
 
@@ -96,3 +97,20 @@ was changed. Logs, including initial failures, are under
 `KNOWLEDGE/evidence/features-20260927/`.
 
 Parent GPU check, 2026-09-27: eleven synthetic F01/F02 cases passed on Carrack RTX5090, including M/N/K tails and K=5120. BF16 outputs matched the independent fixtures exactly; native FP8 raw FP32 scaled error was at most 9.58e-7. Workspace stable-address reuse and aborted-lease poisoning passed. All three CUDA sanitizer tools reported zero errors/hazards. Evidence: `../evidence/iterate-20260927/features-projection/`. PTX SHA256 `35c12bcfe57d282985b02bae256be0770991816519bc1a6cbf825a9cf369aa75`. JIT decode uses 33 registers and no local memory; prefill uses 56 registers, 64 local bytes and 6144 shared bytes. These are synthetic correctness checks, not model qualification or speed measurements. Ninfer and other GPU processes remained running.
+
+
+## Parent resident integration
+
+`a16-decode` selects the candidate only for one-row FP8 projections, including
+one-row output-head calls. Multirow projections retain exact A8 arithmetic.
+This hybrid experimental profile is not partition-equivalent by construction;
+it does not relax the exact profile's checks. MTP rejects it until a consistent
+verification profile is qualified. The default remains exact A8.
+
+Optional `MESH_SPECIALIZE_LOGIT_DUMP_DIR` on model-profile diagnostics creates a
+fresh directory containing raw BF16 logits for whole and token-partitioned
+prefill and one subsequent decode, plus hashes and input IDs. It does not change
+model inputs or outputs. Cross-process exact/A16 comparisons must use identical
+prompt and teacher-token IDs and artifact/PTX identities; within-profile partition
+metrics alone are not an A16-versus-exact comparison. Neither throughput nor
+quality improvement is claimed before real-model evidence exists.

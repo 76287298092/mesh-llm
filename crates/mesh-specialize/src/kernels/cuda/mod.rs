@@ -253,3 +253,7 @@ mod fp8_projection_audit;
 pub(super) mod feature_gdn_replay_trial;
 
 pub(super) mod resident_recovery;
+
+pub(super) mod resident_fp8_a16;
+
+pub(super) mod resident_logit_dump;
