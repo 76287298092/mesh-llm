@@ -371,6 +371,22 @@ fn fp32_multiply_rn(left: f32, right: f32) -> f32 {
     product
 }
 
+#[inline(always)]
+fn fp32_add_rn(left: f32, right: f32) -> f32 {
+    let sum: f32;
+    // SAFETY: Scalar FP32 addition has no memory or stack effects.
+    unsafe {
+        asm!(
+            "add.rn.f32 {sum}, {left}, {right};",
+            sum = out(reg32) sum,
+            left = in(reg32) left,
+            right = in(reg32) right,
+            options(nomem, nostack),
+        )
+    };
+    sum
+}
+
 /// Store one output using the existing row-scale then channel-scale epilogue order.
 ///
 /// # Safety
@@ -436,6 +452,43 @@ pub unsafe extern "ptx-kernel" fn fp8_prefill_native(
     n: u32,
     k: u32,
 ) {
+    // SAFETY: Both exported entries use the documented identical pointer/launch contract.
+    unsafe { project::<false>(a, w, row_scales, weight_scales, out, unrounded, m, n, k) };
+}
+
+/// Experimental K64 partial sums, combined with explicit FP32 round-to-nearest adds.
+///
+/// # Safety
+/// The complete pointer, dimensions, aliasing and launch contract of
+/// `fp8_prefill_native` applies unchanged.
+#[unsafe(no_mangle)]
+pub unsafe extern "ptx-kernel" fn fp8_prefill_native_short(
+    a: *const u8,
+    w: *const u8,
+    row_scales: *const f32,
+    weight_scales: *const u16,
+    out: *mut u16,
+    unrounded: *mut f32,
+    m: u32,
+    n: u32,
+    k: u32,
+) {
+    // SAFETY: Both exported entries use the documented identical pointer/launch contract.
+    unsafe { project::<true>(a, w, row_scales, weight_scales, out, unrounded, m, n, k) };
+}
+
+#[inline(always)]
+unsafe fn project<const SHORT: bool>(
+    a: *const u8,
+    w: *const u8,
+    row_scales: *const f32,
+    weight_scales: *const u16,
+    out: *mut u16,
+    unrounded: *mut f32,
+    m: u32,
+    n: u32,
+    k: u32,
+) {
     let (lane, thread, tile_n, tile_m, shared_base) = cta_coordinates();
     let m = m as usize;
     let n = n as usize;
@@ -474,17 +527,32 @@ pub unsafe extern "ptx-kernel" fn fp8_prefill_native(
             )
         };
 
+        let mut partial = if SHORT {
+            [[0.0_f32; 4]; 4]
+        } else {
+            accumulators
+        };
         let mut k_part = 0_usize;
         while k_part < 2 {
             let a_fragment = load_a_fragment(shared_base, warp_m, lane, k_part);
             let mut fragment_n = 0_usize;
             while fragment_n < 4 {
                 let b_fragment = load_b_fragment(shared_base, warp_n, fragment_n, lane, k_part);
-                accumulators[fragment_n] =
-                    mma_e4m3(a_fragment, b_fragment, accumulators[fragment_n]);
+                partial[fragment_n] = mma_e4m3(a_fragment, b_fragment, partial[fragment_n]);
                 fragment_n += 1;
             }
             k_part += 1;
+        }
+
+        if SHORT {
+            for fragment in 0..4 {
+                for element in 0..4 {
+                    accumulators[fragment][element] =
+                        fp32_add_rn(accumulators[fragment][element], partial[fragment][element]);
+                }
+            }
+        } else {
+            accumulators = partial;
         }
 
         // All warps must finish shared fragment reads before the next K tile reuses it.

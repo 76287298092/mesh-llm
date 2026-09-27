@@ -50,8 +50,7 @@ pub(in crate::kernels) fn run(
     request: &ModelBenchRequest<'_>,
 ) -> Result<Value> {
     ensure!(
-        crate::kernels::fp8_profile::current()?
-            != crate::kernels::fp8_profile::Profile::NativePrefillAudit,
+        !crate::kernels::fp8_profile::current()?.is_audit(),
         "projection audit is diagnostic; use qwen-model-profile rather than a throughput benchmark"
     );
     let final_cursor = validate_request(

@@ -143,3 +143,11 @@ F06 experimental `kv_fp8.rs` uses CTA shared reductions and explicit FP16,
 BF16 and FP32 conversion/arithmetic instructions. The independent logical codec
 reference and invalid-row status contract are in `optimizations/feature-f06-kv.md`.
 GPU and cache-attention qualification remain pending.
+
+F02 K64 experiment adds explicit scalar `add.rn.f32` in
+`fp8_native_prefill.rs::fp32_add_rn`, combining independent K64 native MMA
+partials. Existing shared-copy/barrier/fragment instructions and epilogue remain
+shared with the original entry. Independent reference is
+`reference/fp8_native_prefill.rs`; both native entries run the same finite-code,
+signed/tail/cancellation fixtures without relaxing budgets. NVIDIA PTX FP8 MMA
+rounding/order is unspecified. Compilation passes; GPU/model qualification pending.

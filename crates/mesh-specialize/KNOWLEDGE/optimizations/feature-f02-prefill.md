@@ -119,3 +119,35 @@ Evidence: `../evidence/iterate-20260927/native-prefill-ablation-2/` and `native-
 Expanded finite-code GPU checks pass all eleven cases under unchanged budgets. The native kernel's largest scaled raw FP32 error is 2.3184e-6 at K=5120; one BF16 output differs in the 32x64x128 case, normalized L2 6.5217e-5. This narrows suspicion toward accumulation/rounding differences amplified through layers, but does not prove that mechanism for real weights. Next improvement must examine matched real-weight projection inputs and accumulation accuracy before accepting the 51% throughput candidate. Evidence and build logs: `../evidence/iterate-20260927/native-prefill-integration/`.
 
 Added an opt-in `native-prefill-audit` diagnostic profile. On the first call to each layer-zero FP8 projection it runs the exact GPU kernel on the identical already-quantized activations and resident weights, reports all-output drift, and checks selected differing/worst outputs against the independent FP64 CPU dot oracle. Diagnostic outputs never feed the model and carry no timing claim.
+
+### Same-input real-weight audit
+
+Executed on Carrack GPU0 RTX5090 at source `5298b42708088fa04e507ddcfd44f0e1f62402a4`, using the same pinned PTX above and 128 raw input tokens. Linux release tools build and all-target Clippy passed before execution. The audit completed and retained same-profile control/profile output and state equality; strict whole/token partition equivalence still failed as expected. No throughput claim is made for this diagnostic.
+
+| Layer-zero projection | BF16 differences / outputs | Raw normalized L2 | Maximum raw absolute error |
+| --- | ---: | ---: | ---: |
+| QKV | 160 / 1,310,720 | 4.3060e-7 | 4.9591e-5 |
+| Z | 108 / 786,432 | 3.9807e-7 | 1.5259e-5 |
+| Output | 251 / 655,360 | 2.1567e-6 | 6.6757e-5 |
+
+All 21 selected outputs agree exactly between the exact GPU path and the independent CPU oracle, including raw FP32 values and BF16 bits. Native differences include crossing a BF16 rounding midpoint and cancellation near zero. For example QKV row 0/channel 337 has CPU/exact value 0.1499022990 versus native 0.14990234375, changing the BF16 result by one code. These results support accumulation/rounding sensitivity as a contributor to early divergence, but do not prove every later-layer difference has that cause or establish semantic quality loss.
+
+Next experiments should distinguish accumulation error from model sensitivity: compare shorter native accumulation chains on these identical inputs, then run teacher-forced natural-language logits and output-quality comparisons against the exact and Ninfer paths. Preserve the strict existing exact-profile tests. A numerical tolerance must have an independent quality basis; the observed speedup alone is not a reason to widen it.
+
+Evidence: `../evidence/iterate-20260927/native-prefill-audit-1/`. One-second GPU process samples are retained. ComfyUI remained resident; Ninfer was initially inactive and remained inactive. Audit instrumentation is diagnostic only and cannot establish isolated performance.
+
+### K64 shorter-accumulation experiment
+
+A separate `native-prefill-short` profile resets native MMA accumulators for each
+K64 tile and combines its partials with explicit `add.rn.f32`. The original native
+profile and exact profile remain separate controls. `native-prefill-short-audit`
+runs the same diagnostic as the original audit and is rejected by throughput
+commands. This tests whether shortening MMA chains reduces real-weight drift; it
+does not assume an accuracy improvement. Native MMA internal accumulation order
+and rounding remain unspecified by the NVIDIA PTX ISA. The independent FP64
+reference and fixed synthetic numerical budgets are unchanged. No promotion.
+
+Initial Rust NVPTX compilation passes. GPU resource use, same-input real-weight
+error, model quality and performance for this candidate remain unmeasured.
+The previous PTX remains at `target/specialize/iterate-20260927/features-f05.ptx`;
+the candidate is separately saved as `native-short-k64.ptx`.

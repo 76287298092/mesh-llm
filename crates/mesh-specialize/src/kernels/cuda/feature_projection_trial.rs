@@ -28,7 +28,9 @@ pub(crate) fn run(ptx: &str, device: i32) -> Result<Value> {
         [33, 65, 129],
         [2, 5, 5120],
     ] {
-        cases.push(prefill(&ctx, &module, shape)?);
+        for kernel in ["fp8_prefill_native", "fp8_prefill_native_short"] {
+            cases.push(prefill(&ctx, &module, shape, kernel)?);
+        }
     }
     let workspace = workspace(&ctx)?;
     Ok(
@@ -36,6 +38,7 @@ pub(crate) fn run(ptx: &str, device: i32) -> Result<Value> {
         "all_passed":cases.iter().all(|v|v["all_passed"]==true),"cases":cases,"workspace":workspace,
         "decode_resources":module.function("fp8_a16_decode")?.resources()?,
         "prefill_resources":module.function("fp8_prefill_native")?.resources()?,
+        "short_prefill_resources":module.function("fp8_prefill_native_short")?.resources()?,
         "scope":"synthetic independent numerical probes only; no model or Ninfer performance qualification"}),
     )
 }
@@ -112,7 +115,7 @@ fn decode(ctx: &Context, module: &Module<'_>, n: usize, k: usize) -> Result<Valu
     )
 }
 
-fn prefill(ctx: &Context, module: &Module<'_>, shape: [usize; 3]) -> Result<Value> {
+fn prefill(ctx: &Context, module: &Module<'_>, shape: [usize; 3], kernel: &str) -> Result<Value> {
     let [m, n, k] = shape;
     let a = codes(m * k, 5);
     let w = codes(n * k, 7);
@@ -150,7 +153,7 @@ fn prefill(ctx: &Context, module: &Module<'_>, shape: [usize; 3]) -> Result<Valu
     // SAFETY: Buffers implement the six-pointer ABI, dimensions are bounded fixture constants,
     // and all inputs/outputs live through completion. The kernel guards partial tiles.
     unsafe {
-        module.function("fp8_prefill_native")?.launch(
+        module.function(kernel)?.launch(
             [
                 u32::try_from(n.div_ceil(64))?,
                 u32::try_from(m.div_ceil(32))?,
@@ -167,7 +170,7 @@ fn prefill(ctx: &Context, module: &Module<'_>, shape: [usize; 3]) -> Result<Valu
         &raw,
         &reference.bf16,
         &reference.unrounded,
-        "F02",
+        kernel,
         shape,
     )
 }

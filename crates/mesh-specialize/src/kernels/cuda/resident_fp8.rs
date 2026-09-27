@@ -76,8 +76,8 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
         let scale_pointer = self.owner.pointer(&self.scale_name)?;
         let quantize = module.function("fp8_quantize_bf16")?;
         let (tile_rows, tile_columns, threads, kernel) =
-            if rows >= 16 && self.profile != crate::kernels::fp8_profile::Profile::Exact {
-                (32, 64, 128, "fp8_prefill_native")
+            if let Some(kernel) = self.profile.native_kernel().filter(|_| rows >= 16) {
+                (32, 64, 128, kernel)
             } else if rows >= 16 {
                 (16, 8, 32, "fp8_prefill_exact")
             } else if rows >= 4 && self.channels >= 16_384 {
@@ -140,7 +140,7 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
             ));
         }
         context.synchronize()?;
-        if rows >= 16 && self.profile == crate::kernels::fp8_profile::Profile::NativePrefillAudit {
+        if rows >= 16 && self.profile.is_audit() {
             super::fp8_projection_audit::compare(
                 context,
                 module,
