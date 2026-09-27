@@ -61,3 +61,11 @@ SHA256 e18df0fb02524af65d00e3b313183da18ce549fce93a65a6a22011ccfc3c6136.
 Ninfer remained inactive and ComfyUI remained resident. Mac259tests, Clippy on
 both hosts and release tools build passed. Explicit address-stability checks and
 post-gate abort/drain/poison checks were then added for the next sanitizer trial.
+
+Integration constraint: use one model/execution-owned workspace shared across
+sequential layers, with a capacity admitted for maximum active rows. Do not
+retain a 233MiB prefill arena in each of64 MLP objects. The isolated chain owns
+its arena only to qualify one block; that ownership is not the model design.
+Keep diagnostic outputs in the qualification lane while adding an explicit
+output-only consumer path. Workspace lease must cover the final residual
+consumer or a checked ordered output copy before scratch reuse.
