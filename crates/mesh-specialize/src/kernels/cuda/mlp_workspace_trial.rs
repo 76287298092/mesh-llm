@@ -115,6 +115,19 @@ fn snapshot(output: ResultBuffers<'_>) -> Result<BTreeMap<String, Vec<u8>>> {
         .map(|(name, buffer)| {
             let mut bytes = vec![0; buffer.len()];
             buffer.download(&mut bytes)?;
+            let finite =
+                if name.ends_with(".raw") {
+                    bytes
+                        .as_chunks::<4>()
+                        .0
+                        .iter()
+                        .all(|v| f32::from_le_bytes(*v).is_finite())
+                } else {
+                    bytes.as_chunks::<2>().0.iter().all(|v| {
+                        f32::from_bits(u32::from(u16::from_le_bytes(*v)) << 16).is_finite()
+                    })
+                };
+            ensure!(finite, "nonfinite control MLP values in {name}");
             Ok((name.to_owned(), bytes))
         })
         .collect()
