@@ -2,11 +2,15 @@
 
 pub mod artifact;
 pub mod checkpoint;
+pub mod engine;
 pub mod kernels;
 pub mod packages;
 
 #[path = "../reference/embedding_norm.rs"]
 pub mod entry_reference;
+
+#[path = "../reference/resident_entry.rs"]
+pub mod resident_entry_reference;
 
 #[path = "../reference/causal_conv4.rs"]
 pub mod causal_conv4_reference;

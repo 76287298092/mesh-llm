@@ -461,18 +461,28 @@ impl<'ctx> Buffer<'ctx> {
     pub(super) fn pointer(&self) -> CuDevicePtr {
         self.pointer
     }
+    /// Return the allocation size in bytes.
+    pub(super) fn len(&self) -> usize {
+        self.bytes
+    }
     /// Copy host bytes into the beginning of this device allocation.
     pub(super) fn upload(&self, source: &[u8]) -> Result<()> {
-        check_transfer_len(self.bytes, source.len(), "upload")?;
+        self.upload_at(0, source)
+    }
+    /// Copy host bytes into this allocation beginning at byte `offset`.
+    pub(super) fn upload_at(&self, offset: usize, source: &[u8]) -> Result<()> {
+        check_transfer_range(self.bytes, offset, source.len(), "upload")?;
         if source.is_empty() {
             return Ok(());
         }
+        let destination = checked_device_pointer_offset(self.pointer, offset, "upload")?;
         let _current_context = self.context.activate()?;
-        // SAFETY: The source slice is live for the synchronous copy; its length fits the allocation.
+        // SAFETY: The source is live through this synchronous copy, and the validated
+        // range and checked device pointer cover every transferred byte.
         check_cuda(
             unsafe {
                 (self.context.api.cu_memcpy_htod_v2)(
-                    self.pointer,
+                    destination,
                     source.as_ptr().cast::<c_void>(),
                     source.len(),
                 )
@@ -482,17 +492,23 @@ impl<'ctx> Buffer<'ctx> {
     }
     /// Copy bytes from the beginning of this device allocation into `destination`.
     pub(super) fn download(&self, destination: &mut [u8]) -> Result<()> {
-        check_transfer_len(self.bytes, destination.len(), "download")?;
+        self.download_at(0, destination)
+    }
+    /// Copy bytes from this allocation beginning at byte `offset` into `destination`.
+    pub(super) fn download_at(&self, offset: usize, destination: &mut [u8]) -> Result<()> {
+        check_transfer_range(self.bytes, offset, destination.len(), "download")?;
         if destination.is_empty() {
             return Ok(());
         }
+        let source = checked_device_pointer_offset(self.pointer, offset, "download")?;
         let _current_context = self.context.activate()?;
-        // SAFETY: The destination slice is writable for the synchronous copy; its length fits the allocation.
+        // SAFETY: The destination is writable through this synchronous copy, and
+        // the validated range and checked device pointer cover every transferred byte.
         check_cuda(
             unsafe {
                 (self.context.api.cu_memcpy_dtoh_v2)(
                     destination.as_mut_ptr().cast::<c_void>(),
-                    self.pointer,
+                    source,
                     destination.len(),
                 )
             },
@@ -515,18 +531,33 @@ impl Drop for Buffer<'_> {
     }
 }
 
-fn check_transfer_len(
+fn check_transfer_range(
     allocation_bytes: usize,
+    offset: usize,
     transfer_bytes: usize,
     operation: &str,
-) -> Result<()> {
-    if transfer_bytes <= allocation_bytes {
-        Ok(())
-    } else {
-        Err(anyhow!(
-            "CUDA {operation} length {transfer_bytes} exceeds allocation size {allocation_bytes}"
-        ))
+) -> Result<usize> {
+    let end = offset.checked_add(transfer_bytes).ok_or_else(|| {
+        anyhow!("CUDA {operation} offset {offset} plus length {transfer_bytes} overflows usize")
+    })?;
+    if offset > allocation_bytes || end > allocation_bytes {
+        return Err(anyhow!(
+            "CUDA {operation} range offset {offset} length {transfer_bytes} exceeds allocation size {allocation_bytes}"
+        ));
     }
+    Ok(end)
+}
+
+fn checked_device_pointer_offset(
+    pointer: CuDevicePtr,
+    offset: usize,
+    operation: &str,
+) -> Result<CuDevicePtr> {
+    let offset = u64::try_from(offset)
+        .map_err(|_| anyhow!("CUDA {operation} offset exceeds the device pointer range"))?;
+    pointer
+        .checked_add(offset)
+        .ok_or_else(|| anyhow!("CUDA {operation} device pointer plus offset overflows u64"))
 }
 /// A loaded PTX module that unloads before its borrowed context can be dropped.
 pub(super) struct Module<'ctx> {
@@ -830,17 +861,40 @@ fn format_jit_logs(info_log: &str, error_log: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{check_transfer_len, decode_c_string_buffer, format_jit_logs, format_uuid};
+    use super::{
+        check_transfer_range, checked_device_pointer_offset, decode_c_string_buffer,
+        format_jit_logs, format_uuid,
+    };
     use std::ffi::c_char;
     #[test]
-    fn transfer_length_must_fit_allocation() {
-        assert!(check_transfer_len(8, 8, "upload").is_ok());
+    fn transfer_range_accepts_exact_end_and_rejects_overrun() {
+        assert_eq!(check_transfer_range(8, 4, 4, "upload").unwrap(), 8);
         assert!(
-            check_transfer_len(8, 9, "upload")
+            check_transfer_range(8, 7, 2, "upload")
                 .unwrap_err()
                 .to_string()
-                .contains("length 9 exceeds allocation size 8")
+                .contains("range offset 7 length 2 exceeds allocation size 8")
         );
+    }
+    #[test]
+    fn transfer_range_rejects_usize_overflow() {
+        assert!(
+            check_transfer_range(usize::MAX, usize::MAX, 1, "download")
+                .unwrap_err()
+                .to_string()
+                .contains("overflows usize")
+        );
+    }
+    #[test]
+    fn empty_transfer_is_allowed_at_end_but_not_beyond_it() {
+        assert_eq!(check_transfer_range(8, 8, 0, "upload").unwrap(), 8);
+        assert!(check_transfer_range(8, 9, 0, "upload").is_err());
+        assert_eq!(check_transfer_range(8, 3, 0, "download").unwrap(), 3);
+    }
+    #[test]
+    fn device_pointer_offset_is_checked() {
+        assert_eq!(checked_device_pointer_offset(32, 7, "upload").unwrap(), 39);
+        assert!(checked_device_pointer_offset(u64::MAX, 1, "upload").is_err());
     }
     #[test]
     fn jit_log_buffers_are_bounded_cleaned_and_labeled() {

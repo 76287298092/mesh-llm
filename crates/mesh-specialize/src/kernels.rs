@@ -1,5 +1,32 @@
 //! Device-specific instruction qualification, separate from model execution.
 
+/// First operation used to validate views into a complete resident weight arena.
+pub struct ResidentEntryInput {
+    pub table_name: String,
+    pub norm_name: String,
+    pub tokens: Vec<u32>,
+    pub width: usize,
+    pub epsilon: f32,
+    pub reference: crate::entry_reference::EntryReference,
+}
+
+pub fn residency_check(
+    ptx: &str,
+    device: i32,
+    artifact: &mut crate::artifact::reader::VerifiedArtifact,
+    objects: &[crate::artifact::schema::Object],
+    state_layout: &crate::engine::layout::Layout,
+    entry: &ResidentEntryInput,
+) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::residency::run(ptx, device, artifact, objects, state_layout, entry);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device, artifact, objects, state_layout, entry);
+        anyhow::bail!("Qwen residency GPU trial requires Linux")
+    }
+}
+
 /// Validated by the scalar reference before any GPU allocation or launch.
 pub struct EmbeddingNormInput {
     pub table: Vec<u8>,

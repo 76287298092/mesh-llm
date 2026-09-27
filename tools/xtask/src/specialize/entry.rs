@@ -12,6 +12,13 @@ pub(super) fn run(args: &[String]) -> DynResult<()> {
     run_trial(args, mesh_specialize::packages::qwen3_8_27b::trial)
 }
 
+pub(super) fn residency(args: &[String]) -> DynResult<()> {
+    run_trial(
+        args,
+        mesh_specialize::packages::qwen3_8_27b::residency::trial,
+    )
+}
+
 pub(super) fn projections(args: &[String]) -> DynResult<()> {
     run_trial(
         args,
@@ -41,7 +48,7 @@ fn run_trial<E: std::fmt::Display>(
         output,
     ] = args
     else {
-        return Err("usage: xtask specialize <qwen-entry-check|qwen-projection-check|qwen-attention-check> --artifact PATH --ptx PATH --device ORDINAL --output NEW_FILE".into());
+        return Err("usage: xtask specialize <qwen-entry-check|qwen-projection-check|qwen-attention-check|qwen-residency-check> --artifact PATH --ptx PATH --device ORDINAL --output NEW_FILE".into());
     };
     if artifact_flag != "--artifact"
         || ptx_flag != "--ptx"

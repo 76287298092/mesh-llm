@@ -183,6 +183,7 @@ that control's rates directly to MTP4 as an isolated speedup across different in
 | Q02 causal attention and KV | Partial: 110,592 real outputs pass; whole/chunk/token FP32/BF16 outputs and KV states exact; sanitizers clean | `KNOWLEDGE/findings/causal-attention.md`; full attention layer/model pending |
 | Q02 complete attention layer | Partial: one/17-token full layer and exact initialized K/V pass fixed aggregate/per-token budgets; sanitizers clean | `KNOWLEDGE/findings/full-attention-layer.md`; full-model scheduling/logits and performance remain pending |
 | H03 discovery and H04 ABI | Pending | No executable specialized model yet |
+| Persistent text weights and compiled state layout | In progress | `KNOWLEDGE/findings/persistent-residency.md`; live qualification pending |
 | Full model performance/context trial | Pending | None |
 
 Validation belongs to the parent: serial focused Rust tests/check/Clippy, formatting,
