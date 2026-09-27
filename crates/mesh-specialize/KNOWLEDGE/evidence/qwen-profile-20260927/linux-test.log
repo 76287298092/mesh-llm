@@ -1,0 +1,20 @@
+Note: mold is unavailable or failed the active target/toolchain link probe.
+Falling back to lld or the platform linker for this build.
+
+
+   Compiling mesh-specialize v0.76.1 (/home/ndizazzo/dev/mesh/mesh-llm/crates/mesh-specialize)
+warning: linker stderr: Note: mold is unavailable or failed the active target/toolchain link probe.
+         Falling back to lld or the platform linker for this build.
+  |
+  = note: `#[warn(linker_messages)]` on by default
+
+warning: `mesh-specialize` (lib test) generated 1 warning
+error[E0433]: cannot find `launch_profile` in `super`
+   --> crates/mesh-specialize/validation/../src/kernels/cuda/driver.rs:770:29
+    |
+770 |         let timing = super::launch_profile::begin(
+    |                             ^^^^^^^^^^^^^^ could not find `launch_profile` in the crate root
+
+For more information about this error, try `rustc --explain E0433`.
+error: could not compile `mesh-specialize` (bin "mesh-specialize-validate" test) due to 1 previous error
+error: recipe `with-lld` failed with exit code 101

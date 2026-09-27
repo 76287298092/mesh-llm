@@ -5,6 +5,7 @@ Start with [the implementation plan](../PLAN.md) and the
 
 | Entry | Status |
 | --- | --- |
+| [Full-decode kernel profile](findings/model-profile.md) | Control/profile logits and state exactly agree; FP8 projections account for 83.39% of short-prefix event time |
 | [First model timing](findings/model-timing-20260927.md) | Raw-token 128-token prefill 19.2 tokens/s, decode 1.55 tokens/s; 135 positions exercised, no matched Ninfer comparison |
 | [Resident full model](findings/resident-model.md) | One/two-token hidden/logit fixtures bit exact; two-token state equivalence and all three sanitizers pass; wider quality/context pending |
 | [Resident decoder connection](findings/resident-decoder.md) | Resident GDN and attention blocks, whole/chunk/token state equivalence and sanitizers pass; full decoder pending |

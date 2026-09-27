@@ -14,6 +14,10 @@ tokens/s decode**, far below the measured deployed Ninfer rates. See the
 and [numerical evidence](../../../../crates/mesh-specialize/KNOWLEDGE/findings/resident-model.md).
 This establishes execution feasibility, not competitive performance or useful
 language quality. Serving integration and long-context qualification remain open.
+The [decode profile](../../../../crates/mesh-specialize/KNOWLEDGE/findings/model-profile.md)
+attributes 83.39% of summed short-prefix kernel-event time to FP8 projections.
+I would make that the next bounded optimization experiment before expanding
+serving integration. Performance parity remains unproven.
 The original assessment below records the initial snapshot; its service and
 implementation observations are historical.
 

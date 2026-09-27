@@ -214,3 +214,32 @@ pause, and the next optimization decision. These workers implement the specified
 interfaces without changing kernels or expanding the design. The next change
 must be selected from measured full-model attribution rather than assumed from
 an isolated arithmetic probe.
+
+## Bounded experiment checkpoint, September 27
+
+The requested initial implementation and Carrack trial are complete. The plan,
+bounded worker deliverables, Ninfer baseline, pushed branch and clean remote
+fast-forwards are recorded. The Rust prototype executes all 64 layers, with
+independent one/two-token hidden/logit checks, state equivalence and three clean
+sanitizer runs. Actual model prefill, decode, sampled memory and exercised context
+are in `KNOWLEDGE/findings/model-timing-20260927.md`. This closes the initial
+experiment; it does not close issue 1393 or the later S3 through S6 exit gates.
+
+The final diagnostic at source `55ee5ae56b21a09661d8b79199c73a9f2f999539`
+captures 1,476 launches with exact control/profile state and output equivalence.
+FP8 projections account for 83.39% of summed event time. The next optimization
+target is decode-sized FP8 projection, with the existing arithmetic as its control.
+The report and limits are in `KNOWLEDGE/findings/model-profile.md`.
+
+The current prototype measures 19.2 tokens/s prefill at 128 synthetic raw tokens
+and 1.55 tokens/s decode. Persistent weight/state payload is about 20.31 GiB for
+135 positions. Allocation samples are not a peak-memory result. Full-model
+numerical evidence covers one/two-token fixtures, and execution through 135
+positions does not prove usable long-context quality. Matching Ninfer needs a
+shared text corpus, tokenizer/chat support, verified weight identity, a matched
+non-speculative control and further optimization. ABI integration, graph replay,
+FP8 KV, MTP, prefix reuse and concurrent serving remain future work.
+
+Ninfer was restored after the final profile at 07:45:48 EDT, PID 3197048 and
+HTTP 200. ComfyUI PID 448118 remained unchanged. The original Carrack branch is
+retained. Do not treat this checkpoint as a production runtime or parity claim.

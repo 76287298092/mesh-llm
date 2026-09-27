@@ -1,0 +1,551 @@
+{
+  "all_passed": true,
+  "allocation_bytes": {
+    "persistent_total": 21800729600,
+    "state_arena": 154140672,
+    "weight_arena": 21646588928
+  },
+  "artifact_path": "/data/ai/models/mesh-specialize/qwen3.8-27b-f0b7c9e7-raw-v1.mspec",
+  "completed": true,
+  "control_cursor_past": 3,
+  "control_state_sha256": "4323adcf8dd25d7aa0261b4221232d42b8353d48560d295e57837c47bb8d9e2d",
+  "decode_input_token": 271,
+  "device": {
+    "driver_version": 13040,
+    "major": 12,
+    "minor": 0,
+    "name": "NVIDIA GeForce RTX 5090",
+    "ordinal": 0,
+    "total_bytes": 33731248128,
+    "uuid": "GPU-80ded6bd-1a89-2628-3d94-902187dbab1d"
+  },
+  "exact_output_and_state": true,
+  "exact_prefill_logits": true,
+  "harness_elapsed_seconds": 23.765070641,
+  "identity": {
+    "model_id": "qwen3.8-27b:text:nvfp4-fp8:upstream-raw-v1",
+    "weights_id": "sha256:f49713878a072f8c9043060dc0e2f3b28421301e49471bee0c13c7570e59e81e"
+  },
+  "kernel_profile": {
+    "groups": [
+      {
+        "block": [
+          32,
+          1,
+          1
+        ],
+        "count": 72,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          640,
+          1,
+          1
+        ],
+        "kernel": "fp8_linear_wide",
+        "max_gpu_ms": 5.339935779571533,
+        "min_gpu_ms": 1.8591680526733398,
+        "total_gpu_ms": 162.78118407726288
+      },
+      {
+        "block": [
+          32,
+          1,
+          1
+        ],
+        "count": 48,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          1280,
+          1,
+          1
+        ],
+        "kernel": "fp8_linear_wide",
+        "max_gpu_ms": 2.240351915359497,
+        "min_gpu_ms": 1.9123200178146362,
+        "total_gpu_ms": 106.9983674287796
+      },
+      {
+        "block": [
+          32,
+          1,
+          1
+        ],
+        "count": 48,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          768,
+          1,
+          1
+        ],
+        "kernel": "fp8_linear_wide",
+        "max_gpu_ms": 1.5931520462036133,
+        "min_gpu_ms": 1.5295039415359497,
+        "total_gpu_ms": 75.72185587882996
+      },
+      {
+        "block": [
+          32,
+          1,
+          1
+        ],
+        "count": 96,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          6,
+          1,
+          1
+        ],
+        "kernel": "bf16_linear",
+        "max_gpu_ms": 0.7759360074996948,
+        "min_gpu_ms": 0.5119040012359619,
+        "total_gpu_ms": 71.35724830627441
+      },
+      {
+        "block": [
+          32,
+          1,
+          1
+        ],
+        "count": 16,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          2176,
+          1,
+          1
+        ],
+        "kernel": "fp8_linear_wide",
+        "max_gpu_ms": 3.649280071258545,
+        "min_gpu_ms": 3.169919967651367,
+        "total_gpu_ms": 56.13302397727966
+      },
+      {
+        "block": [
+          32,
+          1,
+          1
+        ],
+        "count": 32,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          128,
+          1,
+          1
+        ],
+        "kernel": "fp8_linear_wide",
+        "max_gpu_ms": 1.3842240571975708,
+        "min_gpu_ms": 1.375872015953064,
+        "total_gpu_ms": 44.179264068603516
+      },
+      {
+        "block": [
+          32,
+          1,
+          1
+        ],
+        "count": 1,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          31040,
+          1,
+          1
+        ],
+        "kernel": "fp8_linear_wide",
+        "max_gpu_ms": 43.854496002197266,
+        "min_gpu_ms": 43.854496002197266,
+        "total_gpu_ms": 43.854496002197266
+      },
+      {
+        "block": [
+          32,
+          1,
+          1
+        ],
+        "count": 16,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          1536,
+          1,
+          1
+        ],
+        "kernel": "fp8_linear_wide",
+        "max_gpu_ms": 2.66428804397583,
+        "min_gpu_ms": 2.021120071411133,
+        "total_gpu_ms": 38.66147208213806
+      },
+      {
+        "block": [
+          32,
+          1,
+          1
+        ],
+        "count": 56,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          640,
+          1,
+          1
+        ],
+        "kernel": "nvfp4_linear",
+        "max_gpu_ms": 0.24556800723075867,
+        "min_gpu_ms": 0.24320000410079956,
+        "total_gpu_ms": 13.670208156108856
+      },
+      {
+        "block": [
+          32,
+          1,
+          1
+        ],
+        "count": 112,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          2176,
+          1,
+          1
+        ],
+        "kernel": "nvfp4_linear",
+        "max_gpu_ms": 0.11420799791812897,
+        "min_gpu_ms": 0.09177599847316742,
+        "total_gpu_ms": 10.678431987762451
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 233,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "kernel": "fp8_quantize_bf16",
+        "max_gpu_ms": 0.02828799933195114,
+        "min_gpu_ms": 0.009631999768316746,
+        "total_gpu_ms": 2.583871990442276
+      },
+      {
+        "block": [
+          128,
+          1,
+          1
+        ],
+        "count": 48,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          48,
+          1,
+          1
+        ],
+        "kernel": "gdn_recurrent",
+        "max_gpu_ms": 0.05347200110554695,
+        "min_gpu_ms": 0.050783999264240265,
+        "total_gpu_ms": 2.47206399589777
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 64,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "kernel": "residual_norm_bf16",
+        "max_gpu_ms": 0.01894400082528591,
+        "min_gpu_ms": 0.01587199978530407,
+        "total_gpu_ms": 1.0659200083464384
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 66,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "kernel": "embedding_norm_bf16",
+        "max_gpu_ms": 0.018848000094294548,
+        "min_gpu_ms": 0.008448000065982342,
+        "total_gpu_ms": 0.8481279956176877
+      },
+      {
+        "block": [
+          32,
+          1,
+          1
+        ],
+        "count": 112,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          320,
+          1,
+          1
+        ],
+        "kernel": "nvfp4_quantize_bf16",
+        "max_gpu_ms": 0.004255999810993671,
+        "min_gpu_ms": 0.002208000048995018,
+        "total_gpu_ms": 0.40851200092583895
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 64,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          68,
+          1,
+          1
+        ],
+        "kernel": "mlp_silu_product",
+        "max_gpu_ms": 0.007424000184983015,
+        "min_gpu_ms": 0.0055680000223219395,
+        "total_gpu_ms": 0.3840959994122386
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 16,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          24,
+          1,
+          1
+        ],
+        "kernel": "causal_attention_bf16",
+        "max_gpu_ms": 0.021056000143289566,
+        "min_gpu_ms": 0.01897599920630455,
+        "total_gpu_ms": 0.32735999673604965
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 48,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          40,
+          1,
+          1
+        ],
+        "kernel": "causal_conv4_bf16",
+        "max_gpu_ms": 0.006527999881654978,
+        "min_gpu_ms": 0.00559999980032444,
+        "total_gpu_ms": 0.28367999847978354
+      },
+      {
+        "block": [
+          32,
+          1,
+          1
+        ],
+        "count": 56,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          1088,
+          1,
+          1
+        ],
+        "kernel": "nvfp4_quantize_bf16",
+        "max_gpu_ms": 0.005216000135987997,
+        "min_gpu_ms": 0.003488000016659498,
+        "total_gpu_ms": 0.22460800083354115
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 48,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          48,
+          1,
+          1
+        ],
+        "kernel": "gdn_gated_rms_norm",
+        "max_gpu_ms": 0.0058559998869895935,
+        "min_gpu_ms": 0.0038079998921602964,
+        "total_gpu_ms": 0.21257599932141602
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 64,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          20,
+          1,
+          1
+        ],
+        "kernel": "residual_add_bf16",
+        "max_gpu_ms": 0.004095999989658594,
+        "min_gpu_ms": 0.0019199999514967203,
+        "total_gpu_ms": 0.1838400021661073
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 48,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          16,
+          1,
+          1
+        ],
+        "kernel": "gdn_qk_norm",
+        "max_gpu_ms": 0.004255999810993671,
+        "min_gpu_ms": 0.002176000038161874,
+        "total_gpu_ms": 0.1644480002578348
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 48,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "kernel": "gdn_gates",
+        "max_gpu_ms": 0.004095999989658594,
+        "min_gpu_ms": 0.0019199999514967203,
+        "total_gpu_ms": 0.15574400196783245
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 16,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          4,
+          1,
+          1
+        ],
+        "kernel": "attention_qk_prepare",
+        "max_gpu_ms": 0.004575999919325113,
+        "min_gpu_ms": 0.0038399999029934406,
+        "total_gpu_ms": 0.06876799929887056
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 16,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          24,
+          1,
+          1
+        ],
+        "kernel": "attention_qk_prepare",
+        "max_gpu_ms": 0.005280000157654285,
+        "min_gpu_ms": 0.0037120000924915075,
+        "total_gpu_ms": 0.06691199983470142
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 16,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          24,
+          1,
+          1
+        ],
+        "kernel": "attention_gate_bf16",
+        "max_gpu_ms": 0.003616000059992075,
+        "min_gpu_ms": 0.0021120000164955854,
+        "total_gpu_ms": 0.040256000589579344
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 16,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          4,
+          1,
+          1
+        ],
+        "kernel": "attention_kv_append",
+        "max_gpu_ms": 0.0038079998921602964,
+        "min_gpu_ms": 0.001567999948747456,
+        "total_gpu_ms": 0.03766400017775595
+      }
+    ],
+    "launch_count": 1476,
+    "scope": "per-launch synchronized CUDA events; instrumentation changes wall time; excludes host allocation/copies",
+    "throughput_claim": false,
+    "total_gpu_ms": 633.5639999555424
+  },
+  "kind": "resident-model-single-decode-kernel-profile",
+  "memory_after_free": {
+    "free_bytes": 32219725824,
+    "total_bytes": 33731248128
+  },
+  "memory_before": {
+    "free_bytes": 32219725824,
+    "total_bytes": 33731248128
+  },
+  "memory_released": true,
+  "prefix_token_ids": [
+    248044,
+    271
+  ],
+  "profiled_cursor_past": 3,
+  "profiled_decode_wall_seconds": 0.647777296,
+  "profiled_state_sha256": "4323adcf8dd25d7aa0261b4221232d42b8353d48560d295e57837c47bb8d9e2d",
+  "ptx_sha256": "fa04eb2e19c22bcd47fc657c9adb6d8e079349719d31f7bbb213fe85a8a70ab6",
+  "resulting_past": 3,
+  "schema_version": 1,
+  "scope": "One profiled full-decoder token after the supplied prefix; event instrumentation is not model throughput or an independent quality check.",
+  "unprofiled_decode_wall_seconds": 0.643165858,
+  "warmup": {
+    "input_token": 248044,
+    "output_token": 271,
+    "past": 1,
+    "timed": false
+  }
+}
