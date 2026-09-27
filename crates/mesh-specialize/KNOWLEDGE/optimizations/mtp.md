@@ -102,3 +102,9 @@ five-row verification remains about 204 ms across two rounds. Revert that dispat
 The next candidate transposes the exact integer MMA operands: 16 output channels
 by eight input rows, with transposed stores and unchanged final scale order. This
 halves the padding of small verification batches without changing arithmetic.
+
+The transposed verification candidate initially selects four-to-fifteen rows only;
+one-to-three-row dispatch stays at the qualified baseline. Every MTP trial now
+runs the complete independent FP8 probe across all four variants, so the reduced
+sanitizer workload still exercises the new tile, including every finite code pair
+and M/N/K tails, even when its target verification batch contains only two rows.

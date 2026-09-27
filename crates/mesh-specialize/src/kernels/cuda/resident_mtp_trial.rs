@@ -32,6 +32,11 @@ pub(in crate::kernels) fn run(
     let info = ctx.info();
     ensure!((info.major, info.minor) == (12, 0), "MTP requires SM120");
     let module = Module::load(&ctx, ptx)?;
+    let fp8_probe = super::fp8_exact_trial::run(&ctx, &module)?;
+    ensure!(
+        fp8_probe["all_passed"] == true,
+        "MTP projection probe failed: {fp8_probe}"
+    );
     let before = ctx.memory()?;
     let weights = ResidentWeights::load(&ctx, artifact, objects)?;
     let target = Model::new(&weights, config)?;
@@ -81,7 +86,7 @@ pub(in crate::kernels) fn run(
     let after = ctx.memory()?;
     Ok(
         json!({"schema_version":1,"kind":"resident-greedy-mtp-qualification","all_passed":true,
-        "device":info,"head":head,"prompt_token_ids":request.tokens,"output_tokens":request.output_tokens,
+        "device":info,"fp8_probe":fp8_probe,"head":head,"prompt_token_ids":request.tokens,"output_tokens":request.output_tokens,
         "depth":request.depth,"control":control.report(),"verification_profile":verification_profile,"forced_rejection":forced_report,"trials":trials,
         "memory":{"before_free_bytes":before.0,"after_release_free_bytes":after.0,"arena_memory_release_observed":after.0>=before.0},
         "scope":"bounded greedy single sequence; no stochastic or serving qualification"}),

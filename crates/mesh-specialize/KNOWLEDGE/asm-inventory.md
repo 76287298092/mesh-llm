@@ -104,3 +104,11 @@ pass. The dedicated-decode record contains hashes and retained timings.
   digit-pair products per K32. Finite-code/tail/max-width independent probes cover
   the new tile. Exact full-model/512-token partition and all sanitizer checks pass; see
   [larger prefill](optimizations/larger-prefill.md).
+
+The MTP verification candidate adds `kernels/nvptx/fp8_verify_exact.rs`: the same
+nine exact signed INT8 MMA digit products as the 16x8 prefill tile, with weights in
+operand A and activations in operand B. Its tile covers eight input rows and 16
+output channels; stores transpose the accumulator mapping back to row-major
+output. Independent FP8 fixtures cover every finite code pair, signed M/N/K tails,
+maximum K and cancellation. GPU qualification and resource results are pending in
+[the MTP continuation](optimizations/mtp.md).

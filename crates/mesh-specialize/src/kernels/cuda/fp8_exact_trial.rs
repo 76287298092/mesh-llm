@@ -76,7 +76,7 @@ pub(super) fn run(ctx: &Context, module: &Module<'_>) -> Result<Value> {
             &sw,
             k,
         )?;
-        for tile_rows in [1, 4, 16] {
+        for tile_rows in [1, 4, 8, 16] {
             let (actual, unrounded) = execute(ctx, module, [m, n, k, tile_rows], &a, &w, &sa, &sw)?;
             let bf16_differences = actual
                 .iter()
@@ -93,7 +93,7 @@ pub(super) fn run(ctx: &Context, module: &Module<'_>) -> Result<Value> {
         }
     }
     Ok(
-        json!({"all_passed":cases.iter().all(|c|c["all_passed"]==true),"cases":cases,"resources":module.function("fp8_linear_exact")?.resources()?,"tiled_resources":module.function("fp8_linear_exact4")?.resources()?,"prefill_resources":module.function("fp8_prefill_exact")?.resources()?}),
+        json!({"all_passed":cases.iter().all(|c|c["all_passed"]==true),"cases":cases,"resources":module.function("fp8_linear_exact")?.resources()?,"tiled_resources":module.function("fp8_linear_exact4")?.resources()?,"prefill_resources":module.function("fp8_prefill_exact")?.resources()?,"verification_resources":module.function("fp8_verify_exact")?.resources()?}),
     )
 }
 
@@ -150,6 +150,8 @@ fn execute(
         module
             .function(if tile_rows == 16 {
                 "fp8_prefill_exact"
+            } else if tile_rows == 8 {
+                "fp8_verify_exact"
             } else if tile_rows == 4 {
                 "fp8_linear_exact4"
             } else {
@@ -157,11 +159,17 @@ fn execute(
             })?
             .launch(
                 [
-                    u32::try_from(n.div_ceil(if tile_rows == 16 { 8 } else { 4 }))?,
+                    u32::try_from(n.div_ceil(if tile_rows == 16 {
+                        8
+                    } else if tile_rows == 8 {
+                        16
+                    } else {
+                        4
+                    }))?,
                     u32::try_from(m.div_ceil(tile_rows))?,
                     1,
                 ],
-                [if tile_rows == 16 { 32 } else { 128 }, 1, 1],
+                [if tile_rows >= 8 { 32 } else { 128 }, 1, 1],
                 0,
                 &mut args,
             )?;
