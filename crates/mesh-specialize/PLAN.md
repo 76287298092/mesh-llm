@@ -256,14 +256,15 @@ FP8 projections account for 83.39% of summed event time. The next optimization
 target is decode-sized FP8 projection, with the existing arithmetic as its control.
 The report and limits are in `KNOWLEDGE/findings/model-profile.md`.
 
-The current prototype measures 19.2 tokens/s prefill at 128 synthetic raw tokens
+The initial prototype measured 19.2 tokens/s prefill at 128 synthetic raw tokens
 and 1.55 tokens/s decode. Persistent weight/state payload is about 20.31 GiB for
 135 positions. Allocation samples are not a peak-memory result. Full-model
 numerical evidence covers one/two-token fixtures, and execution through 135
 positions does not prove usable long-context quality. Matching Ninfer needs a
 shared text corpus, tokenizer/chat support, verified weight identity, a matched
 non-speculative control and further optimization. ABI integration, graph replay,
-FP8 KV, MTP, prefix reuse and concurrent serving remain future work.
+FP8 KV, prefix reuse and concurrent serving remain future work. MTP is now a
+bounded standalone prototype; see the continuation below.
 
 Ninfer was restored after the final profile at 07:45:48 EDT, PID 3197048 and
 HTTP 200. ComfyUI PID 448118 remained unchanged. The original Carrack branch is
@@ -279,3 +280,20 @@ owns one kernel. Read-only workers compare Ninfer projection and execution paths
 Record retained changes against the same short and 128-token workload, with
 unchanged weights, outputs and context. Preserve old PTX as a control. Performance
 parity still requires matched text and non-speculative controls.
+
+## Dedicated decode, larger prefill and MTP continuation
+
+The qualified exact NVFP4 single-row kernel raises median short decode to 25.26
+tokens/s (22.37 after 128 inputs). The exact FP8 prefill tile raises median
+prefill to 259.38 tokens/s at 128 inputs and 296.58 at 512 inputs. Independent
+arithmetic/model checks, state partition checks and all three CUDA sanitizers
+pass; see `KNOWLEDGE/optimizations/dedicated-decode.md` and `larger-prefill.md`.
+
+Resident greedy MTP now executes the checkpoint's 15 BF16 tensors, forks target
+state for verification and replays accepted inputs after rejection. Independent
+head fixtures, exact whole/token partition and exact target-only output/state
+comparison pass, including forced rejection. Text benchmarks show substantial
+acceptance-dependent gains and regressions; fixed depth four is not a safe
+default. Verification-kernel tuning and sanitizer completion are recorded in
+`KNOWLEDGE/optimizations/mtp.md`. This does not implement frontend/ABI serving,
+adaptive speculation, sampling or EOS policy, or establish parity with Ninfer.

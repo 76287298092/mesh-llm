@@ -1,0 +1,297 @@
+{
+  "all_passed": true,
+  "control": {
+    "decode_seconds": 0.274997286,
+    "decode_tokens_per_second": 25.454796670247866,
+    "past": 9,
+    "prefill_seconds": 0.05550958,
+    "state_sha256": "341154d83c301d4b303c27244884380cad1e856dd78a400add443dd63c664b5f",
+    "tokens": [
+      271,
+      271,
+      271,
+      271,
+      271,
+      271,
+      271,
+      271
+    ]
+  },
+  "depth": 4,
+  "device": {
+    "driver_version": 13040,
+    "major": 12,
+    "minor": 0,
+    "name": "NVIDIA GeForce RTX 5090",
+    "ordinal": 0,
+    "total_bytes": 33731248128,
+    "uuid": "GPU-80ded6bd-1a89-2628-3d94-902187dbab1d"
+  },
+  "forced_rejection": {
+    "accepted": 4,
+    "accepted_fraction": 0.4,
+    "all_passed": true,
+    "decode_seconds": 0.4189743,
+    "decode_tokens_per_second": 16.707468691993757,
+    "drafted": 10,
+    "prefill_seconds": 0.061318537,
+    "replay_rows": 4,
+    "rounds": 3,
+    "speedup_over_control": 0.6563583637468933,
+    "target_past": 9,
+    "target_state_sha256": "341154d83c301d4b303c27244884380cad1e856dd78a400add443dd63c664b5f",
+    "tokens": [
+      271,
+      271,
+      271,
+      271,
+      271,
+      271,
+      271,
+      271
+    ],
+    "total_generation_seconds": 0.48029283700000003,
+    "total_generation_speedup": 0.6881361547351162,
+    "verify_rows": 13
+  },
+  "harness_elapsed_seconds": 22.246458753,
+  "head": {
+    "all_passed": true,
+    "cache": {
+      "all_passed": true,
+      "regions": [
+        {
+          "aggregate": {
+            "cosine_similarity": 1.0,
+            "elements": 2048,
+            "exact_f32_elements": 2048,
+            "max_abs_error": 0.0,
+            "normalized_l2": 0.0,
+            "passed": true,
+            "rms_error": 0.0,
+            "scope": "single-layer engineering error budget; not model/logit parity",
+            "tolerance": {
+              "cosine_min": 0.9999,
+              "normalized_l2_max": 0.01
+            }
+          },
+          "all_passed": true,
+          "bf16_differences": 0,
+          "partition_width": 1024,
+          "partitions": [
+            {
+              "cosine_similarity": 1.0,
+              "elements": 1024,
+              "exact_f32_elements": 1024,
+              "max_abs_error": 0.0,
+              "normalized_l2": 0.0,
+              "passed": true,
+              "rms_error": 0.0,
+              "scope": "single-layer engineering error budget; not model/logit parity",
+              "tolerance": {
+                "cosine_min": 0.9999,
+                "normalized_l2_max": 0.01
+              }
+            },
+            {
+              "cosine_similarity": 1.0,
+              "elements": 1024,
+              "exact_f32_elements": 1024,
+              "max_abs_error": 0.0,
+              "normalized_l2": 0.0,
+              "passed": true,
+              "rms_error": 0.0,
+              "scope": "single-layer engineering error budget; not model/logit parity",
+              "tolerance": {
+                "cosine_min": 0.9999,
+                "normalized_l2_max": 0.01
+              }
+            }
+          ]
+        },
+        {
+          "aggregate": {
+            "cosine_similarity": 0.9999999999999999,
+            "elements": 2048,
+            "exact_f32_elements": 2048,
+            "max_abs_error": 0.0,
+            "normalized_l2": 0.0,
+            "passed": true,
+            "rms_error": 0.0,
+            "scope": "single-layer engineering error budget; not model/logit parity",
+            "tolerance": {
+              "cosine_min": 0.9999,
+              "normalized_l2_max": 0.01
+            }
+          },
+          "all_passed": true,
+          "bf16_differences": 0,
+          "partition_width": 1024,
+          "partitions": [
+            {
+              "cosine_similarity": 0.9999999999999999,
+              "elements": 1024,
+              "exact_f32_elements": 1024,
+              "max_abs_error": 0.0,
+              "normalized_l2": 0.0,
+              "passed": true,
+              "rms_error": 0.0,
+              "scope": "single-layer engineering error budget; not model/logit parity",
+              "tolerance": {
+                "cosine_min": 0.9999,
+                "normalized_l2_max": 0.01
+              }
+            },
+            {
+              "cosine_similarity": 1.0,
+              "elements": 1024,
+              "exact_f32_elements": 1024,
+              "max_abs_error": 0.0,
+              "normalized_l2": 0.0,
+              "passed": true,
+              "rms_error": 0.0,
+              "scope": "single-layer engineering error budget; not model/logit parity",
+              "tolerance": {
+                "cosine_min": 0.9999,
+                "normalized_l2_max": 0.01
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "greedy_matches_reference": true,
+    "hidden": {
+      "aggregate": {
+        "cosine_similarity": 0.9999995996824088,
+        "elements": 10240,
+        "exact_f32_elements": 9806,
+        "max_abs_error": 0.125,
+        "normalized_l2": 0.0008960891111917516,
+        "passed": true,
+        "rms_error": 0.0016826085850670572,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 434,
+      "partition_width": 5120,
+      "partitions": [
+        {
+          "cosine_similarity": 1.0,
+          "elements": 5120,
+          "exact_f32_elements": 5120,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0,
+          "passed": true,
+          "rms_error": 0.0,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        },
+        {
+          "cosine_similarity": 0.9999990859025464,
+          "elements": 5120,
+          "exact_f32_elements": 4686,
+          "max_abs_error": 0.125,
+          "normalized_l2": 0.0013566464711065559,
+          "passed": true,
+          "rms_error": 0.002379567881167236,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    "logits": {
+      "aggregate": {
+        "cosine_similarity": 0.9999965814691091,
+        "elements": 248320,
+        "exact_f32_elements": 154161,
+        "max_abs_error": 0.0625,
+        "normalized_l2": 0.002622981653086006,
+        "passed": true,
+        "rms_error": 0.006738386167647822,
+        "scope": "single-layer engineering error budget; not model/logit parity",
+        "tolerance": {
+          "cosine_min": 0.9999,
+          "normalized_l2_max": 0.01
+        }
+      },
+      "all_passed": true,
+      "bf16_differences": 94159,
+      "partition_width": 248320,
+      "partitions": [
+        {
+          "cosine_similarity": 0.9999965814691091,
+          "elements": 248320,
+          "exact_f32_elements": 154161,
+          "max_abs_error": 0.0625,
+          "normalized_l2": 0.002622981653086006,
+          "passed": true,
+          "rms_error": 0.006738386167647822,
+          "scope": "single-layer engineering error budget; not model/logit parity",
+          "tolerance": {
+            "cosine_min": 0.9999,
+            "normalized_l2_max": 0.01
+          }
+        }
+      ]
+    },
+    "whole_token_partition_bit_exact": true
+  },
+  "identity": {
+    "model_id": "qwen3.8-27b:text:nvfp4-fp8:upstream-raw-v1",
+    "weights_id": "sha256:f49713878a072f8c9043060dc0e2f3b28421301e49471bee0c13c7570e59e81e"
+  },
+  "kind": "resident-greedy-mtp-qualification",
+  "memory": {
+    "after_release_free_bytes": 32219725824,
+    "arena_memory_release_observed": true,
+    "before_free_bytes": 32219725824
+  },
+  "output_tokens": 8,
+  "prompt_token_ids": [
+    248044,
+    271
+  ],
+  "ptx_sha256": "eec97149de8153eee85a9bb6d5422091aeeddacdc6896c07fa49d4e0ea36a0d7",
+  "schema_version": 1,
+  "scope": "bounded greedy single sequence; no stochastic or serving qualification",
+  "trials": [
+    {
+      "accepted": 5,
+      "accepted_fraction": 0.625,
+      "all_passed": true,
+      "decode_seconds": 0.299712106,
+      "decode_tokens_per_second": 23.355746597703334,
+      "drafted": 8,
+      "prefill_seconds": 0.06129328,
+      "replay_rows": 2,
+      "rounds": 2,
+      "speedup_over_control": 0.9175381324103072,
+      "target_past": 9,
+      "target_state_sha256": "341154d83c301d4b303c27244884380cad1e856dd78a400add443dd63c664b5f",
+      "tokens": [
+        271,
+        271,
+        271,
+        271,
+        271,
+        271,
+        271,
+        271
+      ],
+      "total_generation_seconds": 0.361005386,
+      "total_generation_speedup": 0.9155178255429132,
+      "verify_rows": 10
+    }
+  ]
+}

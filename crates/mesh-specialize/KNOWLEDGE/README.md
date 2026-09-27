@@ -5,7 +5,8 @@ Start with [the implementation plan](../PLAN.md) and the
 
 | Entry | Status |
 | --- | --- |
-| [Resident MTP continuation](optimizations/mtp.md) | Independent head, exact partition and target-output/state checks pass; text performance and full sanitizers in progress |
+| [Ninfer feature parity](findings/ninfer-feature-parity.md) | Parent source assessment of ten performance mechanisms, honest measurement gaps and one owner per feature |
+| [Resident MTP continuation](optimizations/mtp.md) | Independent head, exact target output/state, forced accept/reject and all sanitizers pass; text timing is acceptance-dependent, final set contended |
 | [Larger prefill continuation](optimizations/larger-prefill.md) | Exact tensor-core prefill retained: 259.38 at 128 inputs / 296.58 at 512; partition and sanitizer checks pass |
 | [Dedicated decode continuation](optimizations/dedicated-decode.md) | Exact grouped-dot decode retained: 25.26 short / 22.37 after 128 inputs; independent checks and all sanitizers pass |
 | [Performance iteration](optimizations/decode-projections.md) | Matched medians: 20.07 short decode, 18.15 after128 inputs, 136.83 prefill tokens/s; exact checks, sanitizers and memory-release checks pass |

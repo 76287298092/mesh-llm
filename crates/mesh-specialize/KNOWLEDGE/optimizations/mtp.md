@@ -1,7 +1,9 @@
 # Resident MTP continuation
 
-Status: implementation in progress after dedicated decode and larger prefill
-qualification. Retaining MTP tensors does not count as implemented speculation.
+Status: resident greedy MTP executes and preserves target-only outputs/state.
+The retained small-batch dispatch uses the transposed FP8 tile only for wide
+projections. Final qualification results appear below; this is not frontend/ABI
+serving support.
 
 The target path needs a captured raw final hidden row, all-row verification logits,
 and independent device-state copies. Cursor copies must reject poisoned sessions;
@@ -45,12 +47,14 @@ end-to-end timing. First scope is greedy, single sequence, bounded draft depth.
 Real-text fixtures use the pinned tokenizer and chat template with thinking off,
 not synthetic ID repetition alone. No serving or stochastic-sampling claim follows.
 
+## Experiment history
+
 Initial implementation uses `qwen-mtp-reference` to compose a CPU MTP fixture from
 an identity-matched target reference, and `qwen-mtp-check` to validate the resident
 head, whole/token MTP partitioning, forced rejection and target-only equivalence.
 Qualification requires 3–128 outputs so at least one draft can be rejected.
 The runtime loop itself permits two outputs. Host checks: 213 macOS library tests,
-Clippy and no-console check pass; Linux/GPU qualification still pending.
+Clippy and no-console check passed before the first Linux/GPU trial.
 No new PTX instructions are introduced in this implementation step.
 
 First GPU run at `8b8659da985732492a206d8ffd51f2a26cb6f368` passes the
@@ -60,7 +64,7 @@ rejection replay. The independent CPU/GPU head is not bit exact: 434 hidden valu
 and 94,159 logits differ, with maximum absolute differences 0.125 / 0.0625.
 Five of eight drafts were accepted on the synthetic eight-output fixture;
 23.36 tokens/s is slower than its 25.45 target-only control. Full text/sanitizer
-qualification is in progress. Added phase wall attribution and separate head /
+qualification followed. Added phase wall attribution and separate head /
 verification event captures to select the next change from measured costs.
 
 The initial eight-output/depth-four memcheck completed with zero errors. Racecheck
@@ -72,13 +76,13 @@ forced rejection and replay within the bound. Full-depth text comparisons remain
 separate. Instrumented memory snapshots retained 2 MiB after release; uninstrumented
 runs returned to their initial free-memory value. No transient peak is measured.
 
-The next isolated candidate selects the exact 16x8 FP8 tensor-core tile for all
+The first isolated verification candidate selected the exact 16x8 FP8 tensor-core tile for all
 multirow work, including two-to-five-row verification, while single-row decode
 keeps its dedicated path. Source `65ab2242c` measured 204 ms verification out of
 300 ms total synthetic MTP decode; the separate five-row capture spent 90.38 ms
 on kernels, dominated by `fp8_linear_exact4`. MTP-head kernels took only 5.21 ms
 for the two-row oracle. Existing FP8 fixtures already exercise the larger tile's
-partial rows; the candidate still needs full-model and MTP regression evidence.
+partial rows; full-model and MTP regression evidence followed.
 
 Uninstrumented real-text baseline at `65ab2242c` (32 outputs, three samples):
 
@@ -124,3 +128,51 @@ fall from 6.52 to 4.44 ms and the vocabulary head from 5.57 to 2.41 ms, while
 narrow projections regress. The wider matrices launch enough channel tiles to
 make this shape useful; keep the old four-row kernel for narrower matrices.
 This is a measured dispatch hypothesis, pending end-to-end qualification.
+
+Retained-dispatch sanitizer checkpoint `47cc3f558`: memcheck reports zero errors,
+racecheck zero hazards/errors/warnings, and synccheck zero errors. All three use
+three outputs/depth one, check forced rejection/replay, and independently probe
+every FP8 kernel variant. Full target and MTP state/output checks pass. The
+subsequent text timing set is contended: transient additional MeshLLM processes
+were observed on GPU0, and counting/Python runs show changing free memory. Keep
+`mtp-phases` as the uncontended baseline; do not attribute those global-memory
+changes to a runtime leak. `mtp-final-qualified/outcome.json` records this limit.
+
+Source `9d72c0fc2` also adds an explicit successful-draft trial: force the known
+second target token with depth one, require a positive all-accepted round, and
+compare the full output, target state and cursor. Zero-proposal rounds do not
+count as evidence for the all-accepted commit branch. This trial is separate
+from timing samples.
+
+## Retained MTP checkpoint
+
+Source `9d72c0fc2657330337db765e2038a7f7c28d3aea`, PTX SHA256
+`f8121b9833464424de66c8fa6e7a576020c80909493d45939af946aa141789ab`.
+Memcheck: zero errors. Racecheck: zero hazards/errors/warnings. Synccheck: zero
+errors. Each instrumented run exercises forced successful acceptance and forced
+rejection, exact target tokens/state/cursor, independent head and FP8 probes.
+The independent CPU/GPU head remains tolerance-qualified rather than bit exact;
+GPU whole/token partitions and target-only/speculative state remain bit exact.
+
+The final timing set is explicitly **contended**: other MeshLLM processes appear
+in `mtp-hybrid-qualified/process-samples.log`. The user authorized continuing
+with that label. Median decode tokens/s over three samples:
+
+| Prompt | MTP depth 1 | MTP depth 4 | Depth-4 target-only control |
+| --- | ---: | ---: | ---: |
+| Counting | 30.569 | 32.110 | 24.386 |
+| Python | 30.344 | 39.714 | 24.348 |
+| Explanation | 25.488 | 13.263 | 24.240 |
+
+The synthetic MTP median is 24.138 tokens/s; median verification wall time is
+194.13 ms over two rounds. The separate initial hybrid profile reported 85.24 ms
+of verification kernels versus 90.38 ms before wide-only dispatch. Do not turn
+this into a clean percentage gain across the contended set. Depth-four prose
+remains a clear regression; fixed depth four is not a general default.
+
+Ninfer restored at 15:32:57 EDT, PID 3509273, HTTP 200. ComfyUI PID 448118
+remained unchanged. Source/command/hash/service evidence is retained under
+`evidence/iterate-20260927/mtp-hybrid-qualified/`. These bounded greedy trials
+do not qualify stochastic sampling, EOS handling, frontend/ABI integration or
+Ninfer parity. The next architectural work is tracked in
+[the feature comparison](../findings/ninfer-feature-parity.md).
