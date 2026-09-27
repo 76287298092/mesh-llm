@@ -1,8 +1,7 @@
 # Pinned Qwen checkpoint intake
 
-Status: source files located and independently hashed; Rust importer implementation
-and its real-file trial are in progress. This is not model execution or a kernel
-layout qualification.
+Status: pinned Rust import and full artifact readback passed on Carrack. This is
+not model execution or a kernel layout qualification.
 
 The input is `unsloth/Qwen3.8-27B-NVFP4` at revision
 `f0b7c9e722f5565102fff8481c99e4d86ae099c7`. Carrack already holds the source files
@@ -70,8 +69,7 @@ The committed [evidence directory](../evidence/checkpoint-intake-20260927/)
 contains upstream identities, full-file hashes, config and compact JSON copies of
 the tensor headers. Those JSON copies omit padding; reported `header_sha256`
 values refer to the original padded source headers, not the compact copies.
-Tests, exact code revision, output identity and measured conversion resources will
-be appended after the importer runs. Ninfer remains active during this CPU work.
+Ninfer remained active during this CPU work.
 
 ## Local implementation validation
 
@@ -82,3 +80,53 @@ mapping, checksum rejection, source mutation and no-clobber behavior. Clippy for
 denied; changed Rust files pass rustfmt and the repository no-console check passes.
 A missing-input CLI trial exits 1, saves `all_passed: false` and creates no artifact.
 These checks qualify the importer implementation, not model execution.
+
+## Carrack real-file trial
+
+Code revision `963d5a33ef4f32a40c3819a7e30614bf7e83472a` passed 85 Linux library
+tests, 17 validator tests and Clippy for both crates across all targets/features
+with warnings denied. The `just with-lld cargo build -p xtask` build succeeded;
+the linker reported its existing mold-to-lld fallback. GitHub returned no Actions
+runs for this branch; this is local and Carrack validation, not a CI-green claim.
+
+The real import completed in 58.635 seconds and passed full `.mspec` readback.
+It produced `/data/ai/models/mesh-specialize/qwen3.8-27b-f0b7c9e7-raw-v1.mspec`:
+
+- 22,516,627,200 bytes; 1,635 text/MTP tensors, six assets and one recipe.
+- Model ID: `qwen3.8-27b:text:nvfp4-fp8:upstream-raw-v1`.
+- Weights ID: `sha256:f49713878a072f8c9043060dc0e2f3b28421301e49471bee0c13c7570e59e81e`.
+- `model_artifact_verified: true`; `model_executable: false`.
+
+The command ran in a systemd user scope with `MemoryMax=8G`, `MemorySwapMax=0`
+and a 600-second timeout. Cgroup memory peaked at its 8 GiB limit, including file
+cache; this is not process RSS or model GPU memory. A single observation near
+readback showed 11,208 KiB process RSS; process peak RSS was not measured. The
+shell reported 44.594 user CPU seconds and 10.482 system CPU seconds. These are
+debug-build conversion resources, not model throughput or optimized import speed.
+
+The first launch failed before import because `/usr/bin/time` was absent. Its
+`import.log` is retained; the successful retry uses shell timing and systemd
+accounting in `import-retry.log` and `import-resources.txt`. Reproduce the core
+operation after building through `just`, using fresh output/report paths:
+
+```sh
+target/debug/xtask specialize checkpoint-import \
+  --input-directory /data/ai/models/src/Qwen3.8-27B-NVFP4-unsloth \
+  --output /data/ai/models/mesh-specialize/FRESH-NAME.mspec \
+  --report target/specialize/FRESH-REPORT.json
+```
+
+Ninfer user service `ninfer-qwen38.service` stayed active with PID 2697705 and
+30,046 MiB GPU allocation. ComfyUI PID 448118 remained at 498 MiB. Before/after
+service and GPU-process evidence is saved beside the import report.
+
+Read-only review found the source ranges, physical dtypes, pins and identity
+mapping consistent. One intentional failure behavior needs care: if final
+readback fails after publication, the failed report is authoritative and the
+artifact stays at its final path for diagnosis. Do not treat existence as
+success; inspect `all_passed`. A retry requires a fresh output path. The importer
+does not automatically delete failed evidence.
+
+The next model gate is a compiled tensor inventory and executable schedule,
+followed by independent layer/state/logit validation. Import success closes only
+pinned source intake; H03/H04, full inference and competitive serving remain open.

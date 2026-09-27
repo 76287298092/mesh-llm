@@ -16,7 +16,7 @@ Start with [the implementation plan](../PLAN.md) and the
 | [Model identity selection](findings/model-identity-selection.md) | Exact policy and legacy fallback; resident discovery/startup pending |
 | [Selected CUDA device admission](findings/selected-device-admission.md) | Occupied/free 5090 and wrong-GPU 3080 trials pass; startup integration pending |
 | [Mspec format](findings/mspec-format.md) | Reader/writer and content identity pass macOS/Linux tests and low-descriptor checks |
-| [Pinned checkpoint intake](findings/checkpoint-intake.md) | Existing upstream files match pinned hashes; Rust import in progress |
+| [Pinned checkpoint intake](findings/checkpoint-intake.md) | Real Carrack import/readback passes: 1,635 tensors, 22.52 GB; model execution pending |
 | [Prebuilt core target mismatch](dead-ends/prebuilt-core-target-mismatch.md) | Resolved by rebuilding core; emitted PTX executed |
 | [Racecheck timing repetitions](dead-ends/racecheck-timing-repetitions.md) | Failed with host OOM; bounded check-only recovery passed |
 
