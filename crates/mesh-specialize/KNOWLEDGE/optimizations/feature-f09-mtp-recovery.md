@@ -1,8 +1,12 @@
 # F09: compact GDN recurrence replay
 
-Status: bounded source and CPU reference are authored. Parent integration,
-registration, compilation, device checks, and MTP qualification remain pending.
-This entry makes no model-equivalence or performance claim.
+Status: the primitive is device-qualified and integrated behind an experimental
+compact-recovery selector. Full-model normal checks pass all four forced rejection
+positions and all-accepted commits with exact target tokens and state. Full-model
+memory, race, and synchronization checks also pass. Repeated text timings are
+in progress.
+Full-forward recovery remains the default. Earlier pending statements below
+record the original worker delivery; parent results follow.
 
 ## Contract
 
@@ -117,3 +121,31 @@ The qualification harness now forces the first round to accept all configured dr
 A host admission guard now enforces the record kernel contract before launch: at most five rows, at most 64 key heads, and a power-of-two head width. This does not change arithmetic for the qualified Qwen geometry.
 
 The report retains `forced_rejection` for the first-position case and adds `forced_rejections` for complete position coverage, preserving existing result readers.
+
+
+## Full-model compact recovery qualification
+
+Source `74916ccd7ea593da898acfe2ffa2a79f616e66be`, unchanged F09 PTX
+`089e027984eb7937fef47f5de3c01e92f08108d832eda1937ffae68eddbfd782`.
+Evidence: `../evidence/iterate-20260927/compact-recovery-1/`.
+Normal full-forward and compact runs use eight output tokens at depth four.
+Each forces an all-accepted first round and rejection after exactly 0, 1, 2,
+and 3 accepted draft tokens. Every run agrees with ordinary greedy target
+output and the complete target state hash. Sanitized compact runs use six
+output tokens at depth four and exercise the same four rejection positions and
+all-accepted boundary; all pass. Memcheck and synccheck report zero errors;
+racecheck reports zero hazards/errors/warnings. These are raw-token recovery
+checks, not semantic-quality evidence or a matched Ninfer comparison.
+
+On the one unsanitized short sample, full-forward recovery took 55.91 ms total
+versus 3.14 ms for compact recovery; decode was 23.40 versus 28.41 tokens/s.
+This is one shared-GPU sample, not a stable performance estimate. Repeated
+natural-language trials remain necessary. Verification still forks the full
+state. Ninfer remained inactive and ComfyUI stayed resident.
+
+Host checks at this integration: 259 macOS library tests; 329 Linux library
+and 26 Linux validation tests; Clippy on both hosts, PTX compilation and
+no-console-print pass. Saved copied test logs normalize trailing blank lines;
+original logs remain in the ignored working output directory. Subsequent source
+changes only add the recording geometry guard and preserve the legacy JSON
+field; they do not alter the valid tested Qwen arithmetic or recovery path.

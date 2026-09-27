@@ -1,7 +1,7 @@
 # F10 bounded prefix checkpoint policy
 
-Status: generic cache policy implemented in the issue-1393 worktree; engine
-registration, runtime use, and session-equivalence qualification remain pending.
+Status: generic cache policy is registered and host ownership/identity tests pass.
+Resident runtime integration and GPU suffix-equivalence qualification remain pending.
 This change does not promote prefix reuse as a runtime default and does not claim
 any performance gain.
 

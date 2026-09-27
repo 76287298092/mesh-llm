@@ -1,8 +1,11 @@
 # F02 native FP8 shared-tile prefill
 
-Status: first Rust candidate written; not compiled, assembled, launched, compared
-on GPU, sanitized, or benchmarked. The exact integer-decomposition kernel remains
-the default and its existing evidence is unchanged.
+Status: original and shorter-K64 native candidates are integrated experimentally
+and measured on real weights. Operator checks and sanitizers pass, but strict
+model partition equivalence fails and natural-language distribution changes are
+mixed. Both candidates remain experimental; exact integer arithmetic is the
+default. Later sections contain current evidence; initial candidate notes below
+are retained as experiment history.
 
 ## Candidate contract
 

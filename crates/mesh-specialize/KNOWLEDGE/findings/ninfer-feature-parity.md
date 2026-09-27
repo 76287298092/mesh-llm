@@ -45,8 +45,8 @@ user's direction and cannot establish clean speedup percentages.
 | **F06. FP8 KV storage and cache-aware kernels.** Row-scaled E4M3 cache codec, FP16 represented scales, paging-aware addressing and FP8 cache attention routes. | Persistent BF16 K/V only. Capacity allocation is not long-context qualification. FP8 would roughly halve payload bytes before scale metadata; that is not a proven 2× speedup. | **Unmeasured.** No FP8 KV equivalent or same-context comparison. |
 | **F07. Planned reusable workspace.** Program construction allocates a persistent scratch arena; per-operation views reuse planned storage. | Model weights and state are persistent, but projections and intermediate operators allocate/free temporary CUDA buffers repeatedly. | **Unmeasured.** Need allocator-call counts and matched wall-time ablation. |
 | **F08. CUDA graph execution and GPU-resident control.** Prepared decode profiles replay graphs; stream-ordered work and device-side token/control operations avoid repeated host dispatch. | Launches use the default stream, wrappers synchronize frequently, and logits/control return to the host. No graph capture/replay. Workspace stability is a prerequisite. | **Unmeasured.** Kernel event totals alone do not measure host-submission savings. |
-| **F09. Efficient MTP verification and recurrent-state recovery.** Batched target verification, device acceptance/hidden selection and compact GDN replay records; graph-aware MTP rounds. | Working greedy MTP, independent head checks and exact target output/state preservation. It forks full state, downloads logits, and reruns accepted target inputs after rejection. Depth-four low-acceptance prose regresses to about 13 tokens/s. | **Unmeasured.** Our depth/acceptance results are not a matched Ninfer MTP ablation. |
-| **F10. Prefix and continuation reuse.** Prefix checkpoints include recurrent state and KV ownership; warm requests avoid recomputing the common prefix. | Session forks exist for MTP, but no identity-bound reusable prompt checkpoint cache. Every standalone request prefills again. | **Unmeasured.** Ninfer reused 42,830/42,837 tokens in one warm case; that reuse fraction is not our speed parity. |
+| **F09. Efficient MTP verification and recurrent-state recovery.** Batched target verification, device acceptance/hidden selection and compact GDN replay records; graph-aware MTP rounds. | Working greedy MTP plus experimental compact GDN/convolution recovery and accepted-KV preservation. All four rejection positions and all-accepted commits match exact target output/state; full-model sanitizers pass. Full-forward replay remains the default. Both paths still fork verification state and download logits; repeated compact-recovery timings are pending. | **Unmeasured.** Our depth/acceptance results are not a matched Ninfer MTP ablation. |
+| **F10. Prefix and continuation reuse.** Prefix checkpoints include recurrent state and KV ownership; warm requests avoid recomputing the common prefix. | A bounded identity-bound checkpoint ownership policy passes host tests. Resident checkpoints and GPU suffix equivalence are not integrated; every standalone request still prefills again. | **Unmeasured.** Ninfer reused 42,830/42,837 tokens in one warm case; that reuse fraction is not our speed parity. |
 
 Concurrency/batching and serving policy are additional product capabilities, but
 the existing comparison is serial. Do not attribute its single-request speed gap
@@ -128,14 +128,14 @@ exist, keep the percentage column unmeasured.
 | F06 | `feature_fp8_kv` | Codec delivered; CPU tests and PTX compilation pass; GPU/cache integration pending |
 | F07 | `feature_workspace` | Reusable layout and lease checks pass on GPU; operator integration pending |
 | F08 | `feature_graphs` | Driver graph API passes Linux checks, fixed-shape replay and leak/memory check; model capture pending |
-| F09 | `feature_mtp_recovery` | Dedicated resumed worker delivered bounded source; parent integration and qualification pending |
-| F10 | `feature_prefix_cache` | Dedicated resumed worker delivered bounded source; parent integration and qualification pending |
+| F09 | `feature_mtp_recovery` | Compact recovery integrated experimentally; exact model boundary checks and all sanitizers pass; repeated timings pending |
+| F10 | `feature_prefix_cache` | Generic policy registered and host-tested; resident integration and suffix qualification pending |
 
 A delivered primitive is not an integrated or performance-qualified feature.
 Only the parent promotes candidates after independent tests, GPU qualification
 and appropriately labeled measurements. Existing defaults remain the control.
 
-Allocation limit: eight distinct feature owners have run. The native agent tool repeatedly rejected F09 and F10 with `agent thread limit reached`, including after all three current workers completed. No worker was reassigned to another feature. F09/F10 remain unimplemented queued assignments, not claimed dispatched work.
+Historical allocation limit in the replaced conversation: eight distinct feature owners had run. The native agent tool repeatedly rejected F09 and F10 with `agent thread limit reached`, including after all three current workers completed. No worker was reassigned to another feature. At that checkpoint F09/F10 were queued; the resumed assignments below supersede this historical status.
 
 Resumed conversation dispatched fresh dedicated F09 and F10 workers using
 GPT-6-Luna max, and the format investigation using GPT-6-Astra low. F09 owns
