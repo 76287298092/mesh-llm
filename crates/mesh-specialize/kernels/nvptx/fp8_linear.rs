@@ -69,6 +69,52 @@ fn fp32_multiply_rn(left: f32, right: f32) -> f32 {
 }
 
 #[inline(always)]
+fn fp32_to_fp64_rn(value: f32) -> f64 {
+    let converted: f64;
+    // SAFETY: This scalar conversion has no memory or stack effects.
+    unsafe {
+        asm!(
+            "cvt.rn.f64.f32 {converted}, {value};",
+            converted = out(reg64) converted,
+            value = in(reg32) value,
+            options(nomem, nostack),
+        )
+    };
+    converted
+}
+
+#[inline(always)]
+fn fp64_add_rn(left: f64, right: f64) -> f64 {
+    let sum: f64;
+    // SAFETY: This scalar FP64 operation has no memory or stack effects.
+    unsafe {
+        asm!(
+            "add.rn.f64 {sum}, {left}, {right};",
+            sum = out(reg64) sum,
+            left = in(reg64) left,
+            right = in(reg64) right,
+            options(nomem, nostack),
+        )
+    };
+    sum
+}
+
+#[inline(always)]
+fn fp64_to_fp32_rn(value: f64) -> f32 {
+    let converted: f32;
+    // SAFETY: This scalar conversion has no memory or stack effects.
+    unsafe {
+        asm!(
+            "cvt.rn.f32.f64 {converted}, {value};",
+            converted = out(reg32) converted,
+            value = in(reg64) value,
+            options(nomem, nostack),
+        )
+    };
+    converted
+}
+
+#[inline(always)]
 fn mma_e4m3(
     a0: u32,
     a1: u32,
@@ -181,6 +227,55 @@ pub unsafe extern "ptx-kernel" fn fp8_linear(
     n: u32,
     k: u32,
 ) {
+    // SAFETY: The public launch contract is passed unchanged to the shared kernel body.
+    unsafe { fp8_linear_impl::<false>(a, w, sa, sw, out, unrounded, m, n, k) };
+}
+
+/// Compute the FP8 linear layer with an experimental FP64 tile-total accumulator.
+///
+/// Each K=32 warp-MMA tile still accumulates and rounds in FP32. The four rounded
+/// tile results are then added to FP64 running totals using round-to-nearest-even;
+/// each total is rounded to FP32 before the existing row/channel scaling and BF16
+/// output boundary. This reduces drift between FP32 tile accumulation and the
+/// independent FP64-dot reference, but is not an exact FP64 dot product because
+/// the MMA instructions round each tile in FP32.
+///
+/// # Safety
+/// Use the same launch geometry, dimensions, extents, alignment, disjointness, and
+/// lifetime requirements documented for [`fp8_linear`].
+#[unsafe(no_mangle)]
+pub unsafe extern "ptx-kernel" fn fp8_linear_wide(
+    a: *const u8,
+    w: *const u8,
+    sa: *const f32,
+    sw: *const u16,
+    out: *mut u16,
+    unrounded: *mut f32,
+    m: u32,
+    n: u32,
+    k: u32,
+) {
+    // SAFETY: The public launch contract is passed unchanged to the shared kernel body.
+    unsafe { fp8_linear_impl::<true>(a, w, sa, sw, out, unrounded, m, n, k) };
+}
+
+/// Shared layout and output implementation for the regular and wide profiles.
+///
+/// # Safety
+/// The caller must uphold the pointer, extent, alignment, disjointness, launch,
+/// and lifetime requirements documented on the exported kernels.
+#[inline(always)]
+unsafe fn fp8_linear_impl<const WIDE: bool>(
+    a: *const u8,
+    w: *const u8,
+    sa: *const f32,
+    sw: *const u16,
+    out: *mut u16,
+    unrounded: *mut f32,
+    m: u32,
+    n: u32,
+    k: u32,
+) {
     let (lane, tile_n, tile_m) = warp_and_tile();
     let lane_group = (lane >> 2) as usize;
     let thread_in_group = (lane & 3) as usize;
@@ -190,6 +285,7 @@ pub unsafe extern "ptx-kernel" fn fp8_linear(
     let n_usize = n as usize;
     let k_usize = k as usize;
     let mut accumulators = (0.0_f32, 0.0_f32, 0.0_f32, 0.0_f32);
+    let mut wide_totals = (0.0_f64, 0.0_f64, 0.0_f64, 0.0_f64);
 
     for k_tile in 0..k.div_ceil(32) {
         let k_start = k_tile as usize * 32 + thread_in_group * 4;
@@ -211,9 +307,41 @@ pub unsafe extern "ptx-kernel" fn fp8_linear(
                 load_e4m3x4(w, b_row, n_usize, k_usize, k_start + 16),
             )
         };
-        accumulators = mma_e4m3(a0, a1, a2, a3, b0, b1, accumulators);
+        let tile_accumulators = mma_e4m3(
+            a0,
+            a1,
+            a2,
+            a3,
+            b0,
+            b1,
+            if WIDE {
+                (0.0_f32, 0.0_f32, 0.0_f32, 0.0_f32)
+            } else {
+                accumulators
+            },
+        );
+        if WIDE {
+            wide_totals = (
+                fp64_add_rn(wide_totals.0, fp32_to_fp64_rn(tile_accumulators.0)),
+                fp64_add_rn(wide_totals.1, fp32_to_fp64_rn(tile_accumulators.1)),
+                fp64_add_rn(wide_totals.2, fp32_to_fp64_rn(tile_accumulators.2)),
+                fp64_add_rn(wide_totals.3, fp32_to_fp64_rn(tile_accumulators.3)),
+            );
+        } else {
+            accumulators = tile_accumulators;
+        }
     }
 
+    let accumulators = if WIDE {
+        (
+            fp64_to_fp32_rn(wide_totals.0),
+            fp64_to_fp32_rn(wide_totals.1),
+            fp64_to_fp32_rn(wide_totals.2),
+            fp64_to_fp32_rn(wide_totals.3),
+        )
+    } else {
+        accumulators
+    };
     let lane_column_start = column_start + 2 * thread_in_group;
     // SAFETY: The per-tile output mapping assigns each lane four distinct in-range
     // coordinates when they pass the helper's dimension guards.

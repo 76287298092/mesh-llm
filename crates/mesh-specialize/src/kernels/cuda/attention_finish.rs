@@ -145,7 +145,7 @@ fn output_projection<'a>(
     let weight_scales = upload(context, &p.scales)?;
     let output = projections::run_linear(
         context,
-        &module.function("fp8_linear")?,
+        &module.function("fp8_linear_wide")?,
         &[&codes, &weights, &scales, &weight_scales],
         [rows, p.channels, width],
     )?;
@@ -229,4 +229,48 @@ fn upload<'a>(context: &'a Context, bytes: &[u8]) -> Result<Buffer<'a>> {
     let buffer = Buffer::new(context, bytes.len())?;
     buffer.upload(bytes)?;
     Ok(buffer)
+}
+
+pub(super) fn projection_fixtures(context: &Context, module: &Module<'_>) -> Result<Vec<Value>> {
+    let mut reports = Vec::new();
+    for [rows, channels, width] in [[1, 1, 1], [3, 9, 35]] {
+        let input: Vec<_> = (0..rows * width)
+            .map(|i| crate::entry_reference::round_bf16(((i * 11 % 29) as f32 - 14.0) / 8.0))
+            .collect();
+        let quantized = projection_reference::quantize(&input, rows, width)?;
+        let weights: Vec<_> = (0..channels * width)
+            .map(|i| ((i * 17 % 127) as u8) | if i % 3 == 0 { 128 } else { 0 })
+            .collect();
+        let scales = vec![crate::entry_reference::round_bf16(1.0 / 256.0); channels];
+        let expected = projection_reference::linear(&quantized, &weights, &scales, width)?;
+        let input_device = upload(context, &quantized.codes)?;
+        let weight_device = upload(context, &weights)?;
+        let input_scales = upload(
+            context,
+            &quantized
+                .scales
+                .iter()
+                .flat_map(|v| v.to_le_bytes())
+                .collect::<Vec<_>>(),
+        )?;
+        let weight_scales = upload(
+            context,
+            &scales
+                .iter()
+                .flat_map(|v| v.to_le_bytes())
+                .collect::<Vec<_>>(),
+        )?;
+        for kernel in ["fp8_linear", "fp8_linear_wide"] {
+            let output = projections::run_linear(
+                context,
+                &module.function(kernel)?,
+                &[&input_device, &weight_device, &input_scales, &weight_scales],
+                [rows, channels, width],
+            )?;
+            let (words, unrounded) = output.read(rows * channels)?;
+            let comparison = projections::compare(&words, &unrounded, &expected)?;
+            reports.push(json!({"all_passed":comparison["passed"]==true,"kernel":kernel,"shape_mnk":[rows,channels,width],"comparison":comparison}));
+        }
+    }
+    Ok(reports)
 }

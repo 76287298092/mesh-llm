@@ -30,6 +30,7 @@ pub(in crate::kernels) fn run(ptx: &str, device: i32, input: &AttentionInput) ->
     let fixtures = attention_prepare::fixtures(&context, &module)?;
     let core_fixtures = attention_core::fixtures(&context, &module)?;
     let gate_fixtures = attention_gate::fixtures(&context, &module)?;
+    let projection_fixtures = attention_finish::projection_fixtures(&context, &module)?;
     let table = upload(&context, &input.entry.table)?;
     let norm = upload(&context, &input.entry.weight)?;
     let mut cases = Vec::new();
@@ -42,8 +43,8 @@ pub(in crate::kernels) fn run(ptx: &str, device: i32, input: &AttentionInput) ->
     drop(norm);
     let after = context.memory()?;
     Ok(
-        json!({"schema_version":3,"kind":"qwen-full-attention-layer-trial","all_passed":fixtures.iter().chain(&core_fixtures).chain(&gate_fixtures).chain(&cases).all(|v|v["all_passed"]==true),
-        "device":info,"cases":cases,"gate_fixtures":gate_fixtures,"gate_resources":module.function("attention_gate_bf16")?.resources()?,"fixtures":fixtures,"causal_attention_fixtures":core_fixtures,"causal_attention_resources":module.function("causal_attention_bf16")?.resources()?,"kv_append_resources":module.function("attention_kv_append")?.resources()?,"prepare_resources":module.function("attention_qk_prepare")?.resources()?,
+        json!({"schema_version":3,"kind":"qwen-full-attention-layer-trial","all_passed":fixtures.iter().chain(&core_fixtures).chain(&gate_fixtures).chain(&projection_fixtures).chain(&cases).all(|v|v["all_passed"]==true),
+        "device":info,"cases":cases,"projection_fixtures":projection_fixtures,"projection_resources":module.function("fp8_linear_wide")?.resources()?,"projection_profile":"FP32 MMA per K32 tile, FP64 sum of tile results, FP32 scale products and BF16 output","gate_fixtures":gate_fixtures,"gate_resources":module.function("attention_gate_bf16")?.resources()?,"fixtures":fixtures,"causal_attention_fixtures":core_fixtures,"causal_attention_resources":module.function("causal_attention_bf16")?.resources()?,"kv_append_resources":module.function("attention_kv_append")?.resources()?,"prepare_resources":module.function("attention_qk_prepare")?.resources()?,
         "memory_before":{"free_bytes":before.0,"total_bytes":before.1},"memory_after":{"free_bytes":after.0,"total_bytes":after.1},
         "causal_attention_core_executed":true,"full_attention_executed":true,"full_model_executed":false,"timing_collected":false,
         "input_scope":"embedding rows used as synthetic hidden input to layer 3; layers 0..2 are not executed",
@@ -241,7 +242,7 @@ fn run_case(
         let scales = upload(context, &p.scales)?;
         let result = projections::run_linear(
             context,
-            &module.function("fp8_linear")?,
+            &module.function("fp8_linear_wide")?,
             &[&entry.codes, &weights, &entry.scales, &scales],
             [tokens.len(), p.channels, input.entry.width],
         )?;

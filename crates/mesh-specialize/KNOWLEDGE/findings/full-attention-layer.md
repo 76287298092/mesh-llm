@@ -57,3 +57,28 @@ comparisons pass. Ninfer restarted successfully and health returned HTTP 200.
 this numerical failure. The next diagnostic trial records independently derived
 scalar intermediate stages against actual GPU intermediates, without replacing
 inputs or changing any arithmetic or tolerance.
+
+The unchanged-arithmetic diagnostic source `348bc6590` reproduces the failure.
+For 17 tokens, accumulated error is 0.000103819 after attention gating,
+0.000787763 after output projection, 0.001021758 after post-attention norm,
+0.007671315 after MLP activation and 0.021388754 at the MLP down branch.
+Final hidden aggregate remains 0.013459719. The trace retains every stage and
+per-token metrics. Tiny initial Q/K/V BF16 differences grow across subsequent
+quantization boundaries. All individual components still pass against actual
+inputs. The diagnostic fixture initially used an incorrect expected Q width of
+64 rather than 32; the fixed host tests pass and the failed log is retained.
+
+The next controlled experiment changes only attention FP8 projections to a new
+wide tile-accumulation entrypoint: reset each K32 tensor-core MMA accumulator,
+sum tile results in FP64, round once to FP32, then preserve the original FP32
+row/channel scaling and BF16 rounding. The independent scalar reference and all
+budgets stay unchanged. Per-tile MMA still rounds in FP32, so this is not a claim
+of exact f64 dot products. Existing `fp8_linear` keeps its original arithmetic.
+Extra FP64 work has unmeasured performance cost; this is a correctness experiment,
+not a throughput optimization or a qualified model-serving path.
+
+The wide-entrypoint trial also compares original/wide projection kernels on
+1x1x1 and 3x9x35 signed fixtures, covering row/channel/K tails against the same
+independent reference. Gate edge fixtures cover 1/257/513 elements, negative-zero
+attention values, saturated gates and a subnormal sigmoid. These run in every
+normal and sanitizer invocation.
