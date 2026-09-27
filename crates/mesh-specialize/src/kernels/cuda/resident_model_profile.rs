@@ -458,6 +458,27 @@ fn state_hash(session: &Session<'_>) -> Result<String> {
     Ok(hex::encode(hash.finalize()))
 }
 
+
+fn logit_drift(actual: &[u16], expected: &[u16]) -> Value {
+    let mut error = 0.0_f64;
+    let mut left_norm = 0.0_f64;
+    let mut right_norm = 0.0_f64;
+    let mut dot = 0.0_f64;
+    let mut max_error = 0.0_f64;
+    let mut finite = actual.len() == expected.len();
+    for (&a, &b) in actual.iter().zip(expected) {
+        let a = f64::from(f32::from_bits(u32::from(a) << 16));
+        let b = f64::from(f32::from_bits(u32::from(b) << 16));
+        finite &= a.is_finite() && b.is_finite();
+        error += (a - b).powi(2);
+        left_norm += a * a;
+        right_norm += b * b;
+        dot += a * b;
+        max_error = max_error.max((a - b).abs());
+    }
+    json!({"finite":finite,"normalized_l2":(error/right_norm.max(1e-30)).sqrt(),"cosine":dot/(left_norm*right_norm).sqrt().max(1e-30),"max_abs_error":max_error,"diagnostic_only":true})
+}
+
 #[cfg(test)]
 mod tests {
     use super::{MAX_CAPACITY, MAX_PREFIX_TOKENS, validate_kernel_profile, validate_request};
@@ -490,24 +511,4 @@ mod tests {
         );
         assert!(validate_kernel_profile(&json!({"launch_count": 1, "total_gpu_ms": 0.1})).is_err());
     }
-}
-
-fn logit_drift(actual: &[u16], expected: &[u16]) -> Value {
-    let mut error = 0.0_f64;
-    let mut left_norm = 0.0_f64;
-    let mut right_norm = 0.0_f64;
-    let mut dot = 0.0_f64;
-    let mut max_error = 0.0_f64;
-    let mut finite = actual.len() == expected.len();
-    for (&a, &b) in actual.iter().zip(expected) {
-        let a = f64::from(f32::from_bits(u32::from(a) << 16));
-        let b = f64::from(f32::from_bits(u32::from(b) << 16));
-        finite &= a.is_finite() && b.is_finite();
-        error += (a - b).powi(2);
-        left_norm += a * a;
-        right_norm += b * b;
-        dot += a * b;
-        max_error = max_error.max((a - b).abs());
-    }
-    json!({"finite":finite,"normalized_l2":(error/right_norm.max(1e-30)).sqrt(),"cosine":dot/(left_norm*right_norm).sqrt().max(1e-30),"max_abs_error":max_error,"diagnostic_only":true})
 }

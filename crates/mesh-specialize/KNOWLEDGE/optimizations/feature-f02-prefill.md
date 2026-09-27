@@ -92,3 +92,5 @@ Parent GPU check, 2026-09-27: eleven synthetic F01/F02 cases passed on Carrack R
 ## Full-model ablation integration
 
 The process-fixed internal selector `MESH_SPECIALIZE_FP8_PROFILE=native-prefill` selects the native 32x64x64 kernel for FP8 projections with at least 16 rows. Smaller shapes retain exact A8 kernels; NVFP4 remains unchanged. The default `exact` profile is unchanged, and invalid names fail closed. Model bench/profile/check reports label the arithmetic profile. Native accumulation can change BF16 rounding and recurrent state; strict legacy partition checks remain strict. Additional final-logit drift metrics are diagnostic only, not a relaxed qualification gate. Next evidence is matched exact/native full-model prefill and per-kernel profiles, with process-contention sampling. No promotion or throughput claim yet.
+
+Initial Linux Clippy caught diagnostic helper placement after the test module; moved it before tests. No GPU trial had started.
