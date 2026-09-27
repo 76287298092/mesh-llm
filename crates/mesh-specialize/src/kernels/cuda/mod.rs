@@ -7,6 +7,7 @@ mod attention_gate;
 mod attention_prepare;
 
 mod bf16_trial;
+mod fp8_exact_trial;
 mod causal_conv4;
 mod driver;
 pub(super) mod embedding_norm;

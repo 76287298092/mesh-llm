@@ -60,6 +60,12 @@ pub(in crate::kernels) fn run(
             .with_context(|| format!("load model kernel {name}"))?;
     }
     let before = context.memory()?;
+    let fp8_exact_probe = super::fp8_exact_trial::run(&context, &module)?;
+    if fp8_exact_probe["all_passed"] != true {
+        return Ok(
+            json!({"all_passed":false,"full_model_executed":false,"fp8_exact_probe":fp8_exact_probe}),
+        );
+    }
     let activation_probe = super::silu_trial::run(&context, &module)?;
     if activation_probe["all_passed"] != true {
         return Ok(
@@ -161,7 +167,7 @@ pub(in crate::kernels) fn run(
     context.synchronize()?;
     let after = context.memory()?;
     Ok(
-        json!({"schema_version":1,"kind":"qwen-resident-full-model-correctness","device":info,"tokens":reference.tokens,"layers":layers,"logits":logits,"activation_probe":activation_probe,"bf16_probe":bf16_probe,
+        json!({"schema_version":1,"kind":"qwen-resident-full-model-correctness","device":info,"tokens":reference.tokens,"layers":layers,"logits":logits,"activation_probe":activation_probe,"bf16_probe":bf16_probe,"fp8_exact_probe":fp8_exact_probe,
         "selected_token":output.token,"reference_token":expected_token,"greedy_token_exact":output.token==expected_token,
         "whole_vs_token_logits_and_state_bit_exact":partition_exact,"prefix_committed_correctly":prefix_correct,"failed_session_reuse_rejected":poison_rejected,
         "all_passed":layers.iter().all(|r|r["all_passed"]==true)&&logits["all_passed"]==true&&output.token==expected_token&&partition_exact&&prefix_correct&&poison_rejected&&after.0>=before.0,

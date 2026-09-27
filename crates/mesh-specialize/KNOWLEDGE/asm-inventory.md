@@ -41,3 +41,9 @@ failed attempts in a findings/dead-ends entry before promoting these rows.
 | `kernels/nvptx/attention_gate.rs` | CTA/thread coordinates, rounded FP32 multiply/add/divide and non-FTZ approximate exp2 | SM120a | Independent f64 stable sigmoid with explicit BF16 activation/product boundaries in `reference/attention_gate.rs` | 110,592 real gates and signed/subnormal fixtures pass; all sanitizers clean; see [full attention layer](findings/full-attention-layer.md) |
 | `kernels/nvptx/fp8_linear.rs:fp8_linear_wide` | Existing E4M3 MMA/layout with explicit FP32/FP64 conversions and FP64 sums between K32 tiles | SM120a | Unchanged logical f64 projection and independent whole attention-layer oracle | Refined projections pass fixed complete-layer budgets and cancellation/tail fixtures; all sanitizers clean; performance cost unmeasured; see [full attention layer](findings/full-attention-layer.md) |
 | `kernels/nvptx/fp8_linear_rounding.rs` | FP64-to-FP32 RNE conversion and rounded FP32 scale multiplies after exact scalar FP64 recomputation of BF16-ambiguous projections | SM120a | Unchanged logical f64 reference; cancellation/midpoint fixture and whole-layer gates | Cancellation fixture and fixed complete-layer budgets pass; all sanitizers clean; see [full attention layer](findings/full-attention-layer.md) |
+
+## Exact FP8 decode
+
+| Source | Instructions | Reference | Status |
+| --- | --- | --- | --- |
+| `kernels/nvptx/fp8_linear_exact.rs` | Thread/CTA coordinates, wide signed integer product and sum, paired-word warp shuffle, rounded i64-to-FP32 conversion and scale products | Independent decoded FP64 dots; all finite code pairs, tails, width32768 and cancellation | Qualification pending; see [decode projections](optimizations/decode-projections.md) |

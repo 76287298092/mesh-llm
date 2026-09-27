@@ -243,3 +243,14 @@ FP8 KV, MTP, prefix reuse and concurrent serving remain future work.
 Ninfer was restored after the final profile at 07:45:48 EDT, PID 3197048 and
 HTTP 200. ComfyUI PID 448118 remained unchanged. The original Carrack branch is
 retained. Do not treat this checkpoint as a production runtime or parity claim.
+
+## Performance iteration requested September 27
+
+Inspect pinned Ninfer source for missed optimizations, then improve measured
+bottlenecks without loosening correctness gates. The first bounded change targets
+single-row FP8 projections with exact integer accumulation. Parent owns design,
+independent fixtures, integration, builds and protected Carrack trials; the worker
+owns one kernel. Read-only workers compare Ninfer projection and execution paths.
+Record retained changes against the same short and 128-token workload, with
+unchanged weights, outputs and context. Preserve old PTX as a control. Performance
+parity still requires matched text and non-speculative controls.

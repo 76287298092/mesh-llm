@@ -73,7 +73,12 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
         let weight_pointer = self.owner.pointer(&self.weight_name)?;
         let scale_pointer = self.owner.pointer(&self.scale_name)?;
         let quantize = module.function("fp8_quantize_bf16")?;
-        let linear = module.function("fp8_linear_wide")?;
+        let exact = rows == 1;
+        let linear = module.function(if exact {
+            "fp8_linear_exact"
+        } else {
+            "fp8_linear_wide"
+        })?;
         let codes = Buffer::new(context, extents.code_bytes)?;
         let row_scales = Buffer::new(context, extents.row_scale_bytes)?;
         let output = Buffer::new(context, extents.output_bytes)?;
@@ -102,8 +107,8 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
                 .map(|dimension| (dimension as *mut u32).cast()),
         );
         let grid = [
-            u32::try_from(self.channels.div_ceil(8))?,
-            u32::try_from(rows.div_ceil(16))?,
+            u32::try_from(self.channels.div_ceil(if exact { 4 } else { 8 }))?,
+            u32::try_from(rows.div_ceil(if exact { 1 } else { 16 }))?,
             1,
         ];
         if let Err(error) =
@@ -117,8 +122,15 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
         }
         // SAFETY: Metadata and run extents validate the row-major inputs, resident weights,
         // temporary FP8/scales, BF16/FP32 outputs, and u32 dimensions. All buffers live through
-        // the synchronization below; the linear kernel uses the declared 8x16 warp tiles.
-        if let Err(error) = unsafe { linear.launch(grid, [32, 1, 1], 0, &mut arguments) } {
+        // the synchronization below; the selected kernel uses either four warp-owned columns or 8x16 MMA tiles.
+        if let Err(error) = unsafe {
+            linear.launch(
+                grid,
+                [if exact { 128 } else { 32 }, 1, 1],
+                0,
+                &mut arguments,
+            )
+        } {
             return Err(synchronize_after_failed_launch(
                 context,
                 "wide FP8 projection",

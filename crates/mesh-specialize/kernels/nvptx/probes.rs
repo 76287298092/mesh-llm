@@ -12,6 +12,7 @@ mod causal_attention;
 mod causal_conv4;
 mod embedding_norm;
 mod fp8_linear;
+mod fp8_linear_exact;
 mod fp8_linear_rounding;
 mod fp8_quantize;
 mod gated_rms_norm;
