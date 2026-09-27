@@ -172,7 +172,7 @@ that control's rates directly to MTP4 as an isolated speedup across different in
 | Fresh NInfer baseline | Complete for deployed serial profile | `KNOWLEDGE/findings/ninfer-baseline-20260926.md` |
 | Rust instruction gate | NVFP4 and 29 remaining probe cases pass; sanitizer checks clean | `KNOWLEDGE/findings/instruction-qualification.md` and prior NVFP4 evidence |
 | Representative GEMM/RMSNorm | 14 cases / 1,489,305 outputs pass; independent cuBLAS reference passes; profiling pending | `KNOWLEDGE/findings/representative-kernels.md` and `cuda-library-reference.md` |
-| Upstream push and carrack branch synchronization | Complete through resident GDN trial | `45a0dd676`; original carrack branch retained |
+| Upstream push and carrack branch synchronization | Complete through resident attention trial | `f7be962cc`; original carrack branch retained |
 | First carrack Rust GPU trial | Complete | 32 cases, 4,096 exact output matches; Ninfer restored |
 | A01/A02 container, identity, reader and object assembly | 65 macOS / 68 Linux library tests pass; 17 Linux validator tests pass; low-descriptor checks pass | `KNOWLEDGE/findings/mspec-format.md` |
 | A03 pinned upstream import | Real-file import/readback passes; 82 macOS / 85 Linux library tests and 17 Linux validator tests pass | `KNOWLEDGE/findings/checkpoint-intake.md`; 22.52 GB artifact in 58.6 seconds |
@@ -192,7 +192,7 @@ that control's rates directly to MTP4 as an isolated speedup across different in
 | H03 discovery and H04 ABI | Pending | No executable specialized model yet |
 | Persistent text weights and compiled state layout | Allocation/transfer gate passes | `KNOWLEDGE/findings/persistent-residency.md`; all 1,620 hashes and 128 zeroed regions pass, first resident entry exact, sanitizers clean; decoder execution pending |
 | Full model performance/context trial | Pending | None |
-| Reference-free resident decoder connection | GDN layer-zero path qualified; full attention and full schedule pending | `KNOWLEDGE/findings/resident-decoder.md`; independent whole-block comparison, exact whole/chunk/token state and all three sanitizers pass |
+| Reference-free resident decoder connection | GDN layer zero and full-attention layer three qualified; full schedule pending | `KNOWLEDGE/findings/resident-decoder.md`; independent whole-block comparisons, exact whole/chunk/token state and all three sanitizers pass |
 | Resident final-eight-layer FP8 MLP | Branch execution qualified for layers 56/63, one/17 tokens | `KNOWLEDGE/findings/resident-fp8-mlp.md`; independent scalar comparisons and three sanitizers pass; full schedule pending |
 
 Validation belongs to the parent: serial focused Rust tests/check/Clippy, formatting,

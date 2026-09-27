@@ -1,0 +1,286 @@
+Note: mold is unavailable or failed the active target/toolchain link probe.
+Falling back to lld or the platform linker for this build.
+
+
+   Compiling mesh-specialize v0.76.1 (/home/ndizazzo/dev/mesh/mesh-llm/crates/mesh-specialize)
+warning: linker stderr: Note: mold is unavailable or failed the active target/toolchain link probe.
+         Falling back to lld or the platform linker for this build.
+  |
+  = note: `#[warn(linker_messages)]` on by default
+
+warning: `mesh-specialize` (bin "mesh-specialize-validate" test) generated 1 warning
+warning: `mesh-specialize` (lib test) generated 1 warning (1 duplicate)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.94s
+     Running unittests src/lib.rs (target/debug/deps/mesh_specialize-c71379a0fcf9014c)
+
+running 236 tests
+test artifact::header::tests::rejects_wrong_magic_reserved_bytes_and_version ... ok
+test artifact::header::tests::rejects_misaligned_or_incorrect_payload_offsets ... ok
+test artifact::header::tests::rejects_zero_and_oversized_directories ... ok
+test artifact::header::tests::requires_at_least_one_payload_byte ... ok
+test artifact::header::tests::roundtrip_uses_specified_hand_checked_byte_offsets ... ok
+test artifact::identity::tests::digest_is_deterministic_and_has_canonical_prefix_and_length ... ok
+test artifact::identity::tests::adjacent_strings_are_length_prefixed ... ok
+test artifact::identity::tests::weights_identity_and_payload_offsets_are_excluded ... ok
+test artifact::reader::tests::rejects_sparse_artifacts_over_the_size_limit_before_reading ... ok
+test artifact::reader::tests::rejects_directory_checksum_tampering ... ok
+test artifact::reader::tests::rejects_fake_declared_weights_identity_even_with_recomputed_header_checksum ... ok
+test artifact::schema::tests::dtype_tags_match_the_wire_schema ... ok
+test artifact::schema::tests::align_up_handles_boundaries_and_overflow ... ok
+test artifact::reader::tests::rechecks_object_digest_before_copying_from_retained_file ... ok
+test artifact::identity::tests::every_directory_and_object_binding_field_changes_the_digest ... ok
+test artifact::reader::tests::opens_verified_artifact_for_exact_identity_and_copies_objects ... ok
+test artifact::schema::tests::non_tensor_objects_require_raw_u8_vector_layout ... ok
+test artifact::reader::tests::rejects_file_growth_after_verification_before_copy ... ok
+test artifact::reader::tests::rejects_missing_objects ... ok
+test artifact::reader::tests::rejects_object_checksum_tampering_during_open ... ok
+test artifact::schema::tests::source_and_object_text_are_bounded_and_revisions_are_lower_hex ... ok
+test artifact::schema::tests::valid_multi_object_directory_accepts_odd_u4_and_opaque_tensor_layout ... ok
+test artifact::schema::tests::validation_rejects_bad_digests_and_recipe_mismatch_or_count ... ok
+test artifact::schema::tests::directory_rejects_unknown_fields_at_every_metadata_level ... ok
+test artifact::reader::tests::rejects_nonzero_directory_padding_and_object_gap ... ok
+test artifact::reader::tests::rejects_truncated_and_trailing_files ... ok
+test artifact::schema::tests::validation_rejects_overlap_gaps_and_trailing_payload_bytes ... ok
+test artifact::schema::tests::validation_rejects_unsorted_and_duplicate_names ... ok
+test artifact::schema::tests::validation_rejects_schema_versions_shapes_and_overflow ... ok
+test artifact::writer::tests::malformed_shapes_duplicate_names_and_missing_recipe_leave_no_output ... ok
+test artifact::reader::tests::rejects_wrong_model_and_weights_identities ... ok
+test attention_gate_reference::tests::extreme_gates_saturate_stably ... ok
+test attention_gate_reference::tests::negative_ninety_retains_a_bf16_subnormal_sigmoid ... ok
+test artifact::writer::tests::rejects_oversized_sparse_sources_before_hashing ... ok
+test attention_gate_reference::tests::sigmoid_midpoint_rounds_to_bf16_before_attention_product ... ok
+test attention_gate_reference::tests::rejects_empty_mismatched_and_nonfinite_bf16_inputs ... ok
+test attention_gate_reference::tests::signed_attention_zero_is_preserved_through_a_zero_gate ... ok
+test attention_gate_reference::tests::zero_gate_has_half_sigmoid ... ok
+test attention_prepare_reference::tests::hand_computed_norm_uses_f64_and_zero_centered_weight ... ok
+test attention_prepare_reference::tests::q_gate_is_extracted_per_head_without_reordering ... ok
+test artifact::writer::tests::refuses_to_replace_an_existing_output ... ok
+test attention_prepare_reference::tests::rejects_invalid_shapes_extents_and_nonfinite_values ... ok
+test attention_prepare_reference::tests::rotary_products_round_before_their_sum ... ok
+test attention_prepare_reference::tests::split_half_rope_rotates_signs_and_preserves_pass_through ... ok
+test artifact::writer::tests::range_stream_rejects_whole_file_length_change_after_hashing ... ok
+test attention_prepare_reference::tests::text_tables_anchor_first_frequency_and_keep_high_positions_finite ... ok
+test causal_attention_reference::tests::append_preserves_prefix_and_poisoned_tail_and_run_ignores_tail ... ok
+test causal_attention_reference::tests::each_query_row_ignores_later_chunk_rows ... ok
+test causal_attention_reference::tests::extreme_finite_logits_use_stable_softmax ... ok
+test artifact::writer::tests::expected_slice_digest_must_be_valid_and_match_before_output ... ok
+test causal_attention_reference::tests::grouped_query_heads_map_to_their_kv_head ... ok
+test artifact::writer::tests::imports_only_the_selected_source_range ... ok
+test causal_attention_reference::tests::zero_query_gives_hand_computed_uniform_mean_and_bounds ... ok
+test causal_attention_reference::tests::rejects_invalid_shape_inputs_and_initialized_cache_values_only ... ok
+test artifact::writer::tests::identity_and_bytes_are_deterministic_across_source_order ... ok
+test artifact::writer::tests::rejects_same_size_and_length_mutations_between_passes ... ok
+test causal_attention_reference::tests::zero_result_preserves_nonnegative_rounding_for_signed_values ... ok
+test artifact::writer::tests::writes_a_verified_artifact_and_copies_source_objects ... ok
+test artifact::writer::tests::source_range_can_end_at_file_boundary_but_rejects_out_of_bounds_and_overflow ... ok
+test causal_conv4_reference::tests::extreme_finite_silu_stays_finite_after_bf16_rounding ... ok
+test causal_conv4_reference::tests::hand_computed_multichannel_convolution_uses_history_and_forward_tap_order ... ok
+test causal_conv4_reference::tests::full_sequence_chunked_and_tokenwise_runs_have_identical_outputs_and_state ... ok
+test causal_conv4_reference::tests::rejects_invalid_dimensions_extents_nonfinite_values_and_overflow ... ok
+test causal_conv4_reference::tests::short_sequences_preserve_prior_rows_and_reset_state_is_independent ... ok
+test checkpoint::qwen3_8_recipe::tests::auxiliary_sources_cover_six_pinned_files_with_raw_layouts ... ok
+test checkpoint::qwen3_8_recipe::tests::source_pins_match_the_intake_hashes_and_sizes ... ok
+test checkpoint::qwen3_8_recipe::tests::recipe_bytes_are_deterministic_and_record_pins_and_scope ... ok
+test checkpoint::safetensors::tests::rejects_duplicate_tensor_and_metadata_keys ... ok
+test checkpoint::safetensors::tests::rejects_header_without_object_prefix_and_oversized_header ... ok
+test engine::layout::tests::aligns_regions_and_final_size_after_sorting_names ... ok
+test engine::layout::tests::input_order_does_not_change_the_layout ... ok
+test engine::layout::tests::lookup_uses_canonical_names_and_reports_missing_regions ... ok
+test checkpoint::safetensors::tests::rejects_invalid_expected_digest_and_whole_file_digest ... ok
+test engine::layout::tests::rejects_invalid_entries_and_overflow ... ok
+test checkpoint::safetensors::tests::verifies_mixed_scalar_and_empty_tensors_with_independent_hashes ... ok
+test checkpoint::safetensors::tests::rejects_malformed_headers_dtypes_shapes_and_offsets ... ok
+test engine::rope::tests::partitioned_positions_match_and_bounds_reject_overflow ... ok
+test engine::rope::tests::zero_and_unit_position_have_known_values ... ok
+test engine::rope::tests::agrees_with_independent_reference_at_high_positions ... ok
+test entry_reference::tests::conversion_handles_ties_sign_and_special_values ... ok
+test entry_reference::tests::lookup_and_zero_centered_norm_follow_hand_computed_rows ... ok
+test entry_reference::tests::rejects_invalid_dimensions_tokens_and_nonfinite_values ... ok
+test fp8_mlp_reference::tests::rejects_invalid_shapes_extents_and_nonfinite_values ... ok
+test fp8_mlp_reference::tests::unit_input_and_unit_weights_follow_explicit_fp8_quantization ... ok
+test gated_norm_reference::tests::rejects_invalid_shapes_extents_inputs_epsilon_and_overflow ... ok
+test gated_norm_reference::tests::rms_norm_precedes_gate_and_gamma_uses_bf16_rounded_norm ... ok
+test fp8_mlp_reference::tests::zero_gate_produces_zero_activation_and_down_output ... ok
+test gated_norm_reference::tests::silu_is_stable_for_extremes_and_rejects_nonfinite_input ... ok
+test gated_norm_reference::tests::width_one_zero_gate_keeps_direct_signed_gamma_result ... ok
+test artifact::writer::tests::streams_objects_larger_than_the_copy_buffer ... ok
+test gdn_prepare_reference::tests::normalizes_q_and_k_independently_and_maps_value_head_gates ... ok
+test gdn_prepare_reference::tests::zero_vectors_and_neutral_gate_have_expected_values ... ok
+test gdn_prepare_reference::tests::rejects_invalid_shapes_extents_nonfinite_values_and_overflow ... ok
+test gdn_prepare_reference::tests::gate_threshold_extremes_and_f64_underflow_remain_bounded ... ok
+test gdn_recurrent_reference::tests::asymmetric_width_two_state_uses_value_head_division_mapping ... ok
+test gated_norm_reference::tests::zero_group_and_width_256_groups_are_independent ... ok
+test gdn_recurrent_reference::tests::beta_zero_decay_one_preserves_and_beta_one_decay_zero_overwrites ... ok
+test gdn_recurrent_reference::tests::rejects_bad_shapes_extents_domains_nonfinite_values_and_overflow ... ok
+test gdn_recurrent_reference::tests::width_one_two_token_recurrence_matches_hand_calculation ... ok
+test gdn_recurrent_reference::tests::whole_and_chunked_sequences_match_for_both_reductions ... ok
+test kernels::cuda::attention_gate::tests::comparison_rejects_wrong_activation_boundary ... ok
+test kernels::cuda::driver::tests::cuda_uuid_uses_lowercase_gpu_uuid_format ... ok
+test kernels::cuda::causal_conv4::tests::comparison_rejects_wrong_silu_rounding_nonfinite_and_convolution ... ok
+test kernels::cuda::driver::tests::device_pointer_offset_is_checked ... ok
+test kernels::cuda::driver::tests::empty_transfer_is_allowed_at_end_but_not_beyond_it ... ok
+test kernels::cuda::driver::tests::jit_log_buffers_are_bounded_cleaned_and_labeled ... ok
+test kernels::cuda::driver::tests::transfer_range_accepts_exact_end_and_rejects_overrun ... ok
+test kernels::cuda::driver::tests::transfer_range_rejects_usize_overflow ... ok
+test kernels::cuda::embedding_norm::tests::comparison_detects_corrupt_residual_rounding_and_numerics ... ok
+test kernels::cuda::gdn_output::tests::comparison_rejects_wrong_intermediate_rounding ... ok
+test kernels::cuda::gdn_prepare::tests::compare_rejects_nonfinite_and_bad_values ... ok
+test kernels::cuda::mlp_activation::tests::comparison_rejects_wrong_activation_boundary ... ok
+test artifact::reader::tests::streams_large_objects_through_copy_interface ... ok
+test kernels::cuda::residency_entry::tests::accepts_first_and_last_vocabulary_tokens ... ok
+test kernels::cuda::gdn_recurrent::tests::exact_comparison_rejects_nonfinite_changed_bits_and_extent ... ok
+test kernels::cuda::residency_entry::tests::rejects_invalid_width_token_count_and_epsilon ... ok
+test kernels::cuda::residency_entry::tests::rejects_mismatched_reference_extents ... ok
+test kernels::cuda::residency_entry::tests::rejects_out_of_range_tokens_and_table_metadata_mismatches ... ok
+test kernels::cuda::residency_entry::tests::rejects_overflowing_table_shape_product ... ok
+test kernels::cuda::resident_activation::tests::validates_small_and_maximum_exact_extents ... ok
+test kernels::cuda::projections::tests::projection_comparison_rejects_wrong_rounding_large_error_and_nonfinite_output ... ok
+test kernels::cuda::resident_attention_core::tests::extent_products_use_checked_arithmetic ... ok
+test kernels::cuda::resident_attention_core::tests::rejects_cache_overrun_and_prefix_overflow ... ok
+test kernels::cuda::resident_attention_core::tests::rejects_invalid_heads_dimensions_and_capacity ... ok
+test checkpoint::safetensors::tests::streams_payloads_larger_than_the_hash_buffer ... ok
+test kernels::cuda::resident_activation::tests::rejects_invalid_counts_and_input_extents ... ok
+test kernels::cuda::resident_attention_gate::tests::rejects_mismatched_empty_odd_and_overflowing_extents ... ok
+test kernels::cuda::resident_attention_gate::tests::validates_small_and_maximum_padded_element_extents ... ok
+test kernels::cuda::resident_attention_prepare::tests::computes_q_and_k_resident_extents ... ok
+test kernels::cuda::resident_attention_prepare::tests::rejects_invalid_dimensions_and_buffer_extents ... ok
+test kernels::cuda::resident_bf16::tests::rejects_invalid_rows_lengths_and_overflowing_extents ... ok
+test kernels::cuda::resident_bf16::tests::validates_dimension_and_exact_run_extents ... ok
+test kernels::cuda::resident_attention_core::tests::validates_exact_chunk_buffer_lengths ... ok
+test kernels::cuda::resident_embedding::tests::rejects_invalid_embedding_dimensions_and_epsilon ... ok
+test kernels::cuda::resident_attention_core::tests::validates_gqa_bounds_extents_and_launches ... ok
+test kernels::cuda::resident_embedding::tests::serializes_token_ids_in_little_endian_order ... ok
+test kernels::cuda::resident_embedding::tests::validates_first_and_last_tokens_and_rejects_out_of_range_ids ... ok
+test kernels::cuda::resident_embedding::tests::validates_minimum_and_maximum_embedding_shapes ... ok
+test kernels::cuda::resident_fp8::tests::checks_input_extent_and_checked_output_sizes ... ok
+test kernels::cuda::resident_fp8::tests::validates_dimension_bounds_and_products ... ok
+test kernels::cuda::resident_fp8::tests::validates_fp8_and_scale_metadata ... ok
+test kernels::cuda::resident_gdn_core::tests::checks_exact_input_lengths_and_extent_overflow ... ok
+test kernels::cuda::resident_gdn_core::tests::rejects_invalid_rows_heads_width_and_qkv_extent ... ok
+test kernels::cuda::resident_gdn_core::tests::validates_supported_shape_and_checked_extents ... ok
+test kernels::cuda::resident_norm::tests::rejects_invalid_norm_shapes_and_input_byte_lengths ... ok
+test kernels::cuda::resident_norm::tests::validates_norm_input_at_minimum_and_maximum_extents ... ok
+test kernels::cuda::resident_norm::tests::validates_residual_add_even_extents_and_count_bounds ... ok
+test kernels::cuda::resident_nvfp4::tests::checks_reciprocal_global_scale_profile ... ok
+test kernels::cuda::resident_nvfp4::tests::validates_nvfp4_projection_dimensions ... ok
+test kernels::cuda::resident_nvfp4::tests::validates_runtime_extents_and_launch_grids ... ok
+test kernels::cuda::resident_state::tests::canonical_layout_recomputation_rejects_forged_offsets_and_sizes ... ok
+test kernels::cuda::resident_weights::tests::sink_range_accepts_exact_end_and_rejects_overrun ... ok
+test kernels::cuda::resident_weights::tests::sink_range_rejects_position_overflow ... ok
+test kernels::cuda::residual_norm::tests::comparison_rejects_residual_and_rounding_corruption ... ok
+test kernels::gemm_fixtures::tests::dense_inputs_reject_invalid_dimensions_and_sizes ... ok
+test kernels::gemm_fixtures::tests::edge_tiles_zero_pad_data_and_keep_positive_scale_codes ... ok
+test kernels::memory_fixtures::tests::transpose_selects_columns_and_x2_zeroes_unused_words ... ok
+test kernels::nvfp4_layout::tests::packed_tile_fields_are_available_to_the_parent_module ... ok
+test kernels::nvfp4_layout::tests::unpack_output_rejects_wrong_length_and_nonfinite_values ... ok
+test kernels::nvfp4_layout::tests::packs_handpicked_a_and_b_lane_words ... ok
+test kernels::nvfp4_layout::tests::rejects_bad_lengths_nibbles_scales_and_selectors ... ok
+test kernels::nvfp4_layout::tests::unpack_output_covers_row_major_tile_positions ... ok
+test kernels::ordinary_fixtures::tests::float_encodings_and_packed_words_match_hand_worked_values ... ok
+test kernels::nvfp4_layout::tests::every_selector_places_selected_scales_and_leaves_poison_elsewhere ... ok
+test layer_comparison_reference::tests::exact_signed_values_and_zero_vectors_report_bitwise_matches ... ok
+test layer_comparison_reference::tests::near_l2_budget_angle_stays_above_cosine_floor ... ok
+test layer_comparison_reference::tests::half_percent_scaling_passes_but_two_percent_scaling_fails_l2_gate ... ok
+test layer_comparison_reference::tests::rejects_invalid_partition_width_and_extent ... ok
+test layer_comparison_reference::tests::rejects_mismatched_empty_and_nonfinite_vectors ... ok
+test layer_comparison_reference::tests::orthogonal_and_single_element_corruption_fail ... ok
+test mlp_activation_reference::tests::boundary_and_extreme_gates_keep_stable_fp64_silu_results ... ok
+test layer_comparison_reference::tests::zero_reference_is_explicit_and_zero_actual_has_unit_relative_error ... ok
+test mlp_activation_reference::tests::positive_and_negative_gates_round_silu_before_signed_up_multiply ... ok
+test mlp_activation_reference::tests::rejects_bad_extents_nonfinite_bf16_and_fp32_or_bf16_overflow ... ok
+test mlp_activation_reference::tests::zero_signed_zero_and_signed_up_values_keep_ieee_signs ... ok
+test nvfp4_linear_reference::tests::reciprocal_global_product_scales_the_dot_in_the_declared_direction ... ok
+test nvfp4_linear_reference::tests::rejects_bad_dimensions_extents_and_scale_codes ... ok
+test nvfp4_linear_reference::tests::rejects_invalid_global_scales_and_output_overflow ... ok
+test nvfp4_linear_reference::tests::signed_packing_and_nonuniform_group_scales_match_hand_computed_dots ... ok
+test nvfp4_linear_reference::tests::rectangular_m_n_tails_and_k80_keep_logical_row_order ... ok
+test nvfp4_linear_reference::tests::zero_scales_and_negative_zero_payloads_are_valid ... ok
+test nvfp4_quantize_reference::tests::e4m3_scale_encoder_uses_even_code_at_fp8_midpoints ... ok
+test nvfp4_quantize_reference::tests::hand_computed_fp4_midpoints_anchor_scale_and_preserve_negative_zero ... ok
+test nvfp4_quantize_reference::tests::rejects_bad_dimensions_extent_values_scales_and_small_global_overflow ... ok
+test nvfp4_quantize_reference::tests::scale_saturation_clamps_to_fp4_six_and_local_overflow_is_rejected ... ok
+test nvfp4_quantize_reference::tests::zero_groups_use_fallback_and_rows_keep_group_order ... ok
+test packages::qwen3_8_27b::schedule::tests::compiled_layers_follow_fixed_attention_and_mlp_patterns ... ok
+test packages::qwen3_8_27b::schedule::tests::context_capacity_is_bounded ... ok
+test checkpoint::qwen3_8_recipe::tests::tensor_sources_preserve_exact_ranges_digests_and_supported_dtypes ... ok
+test checkpoint::qwen3_8_recipe::tests::rejects_mismatched_file_pins_and_tensor_counts ... ok
+test projection_reference::tests::bf16_projection_preserves_fractional_inputs_and_rejects_invalid_data ... ok
+test checkpoint::qwen3_8_recipe::tests::rejects_unsupported_dtype_and_malformed_shape ... ok
+test projection_reference::tests::independent_row_scales_and_zero_row ... ok
+test kernels::gemm_fixtures::tests::fixture_schema_and_packed_word_counts_are_exact ... ok
+test projection_reference::tests::logical_matrix_product_and_scale_order ... ok
+test qwen_gdn_layer_reference::tests::missing_options_invalid_indices_and_channel_links_are_rejected ... ok
+test qwen_attention_layer_reference::tests::invalid_links_positions_tokens_and_bf16_extents_are_rejected ... ok
+test reference::tests::matmul_matches_nonsymmetric_hand_worked_product ... ok
+test packages::qwen3_8_27b::schedule::tests::state_regions_are_unique_aligned_and_exact_for_supported_capacities ... ok
+test reference::tests::dot_uses_finite_inputs_and_rejects_invalid_shapes_or_results ... ok
+test reference::tests::matmul_rejects_invalid_dimensions_shapes_inputs_and_results ... ok
+test reference::tests::rms_norm_matches_hand_worked_epsilon_case ... ok
+test reference::tests::rms_norm_rejects_invalid_shapes_values_and_epsilon ... ok
+test reference::tests::ue4m3_decodes_subnormal_normal_and_maximum_boundaries ... ok
+test resident_entry_reference::tests::copies_out_of_order_and_repeated_rows_across_stream_chunks ... ok
+test resident_entry_reference::tests::rejects_stream_offset_overflow ... ok
+test resident_entry_reference::tests::rejects_stream_overrun_and_unfinished_object ... ok
+test resident_entry_reference::tests::repeated_rows_each_receive_every_piece_when_a_row_spans_chunks ... ok
+test qwen_gdn_layer_reference::tests::zero_weight_attention_and_mlp_preserve_nonzero_embedding_residual ... ok
+test resident_entry_reference::tests::requires_every_declared_object_byte_before_finishing ... ok
+test residual_add_reference::tests::independent_add_checks_rounding_signed_zero_and_overflow ... ok
+test qwen_attention_layer_reference::tests::captures_the_fifteen_bf16_layer_stages_with_row_widths ... ok
+test residual_norm_reference::tests::cancellation_and_signed_zero_are_preserved ... ok
+test residual_norm_reference::tests::rejects_invalid_dimensions_extents_inputs_epsilon_and_overflow ... ok
+test residual_norm_reference::tests::width_one_and_zero_centered_weight_minus_one_produce_zero ... ok
+test residual_norm_reference::tests::width_one_residual_add_tie_rounds_before_normalization ... ok
+test residual_norm_reference::tests::shared_zero_centered_weights_cover_negative_one_and_multiple_rows ... ok
+test reference::tests::e2m1_decodes_every_four_bit_code ... ok
+test projection_reference::tests::fp8_values_ties_saturation_and_signed_zero ... ok
+test kernels::ordinary_fixtures::tests::fixtures_have_expected_shapes_ones_and_signed_outputs ... ok
+test kernels::fixtures::tests::logical_reference_has_known_ones_and_signed_nonuniform_cases ... ok
+test qwen_attention_layer_reference::tests::zero_branches_preserve_nonzero_embedding_residual_for_one_and_two_rows ... ok
+test kernels::ordinary_fixtures::tests::signed_int8_cases_pack_both_extreme_signs ... ok
+test kernels::gemm_fixtures::tests::dense_inputs_match_independent_logical_values_and_fixture_product ... ok
+test checkpoint::qwen3_8_recipe::tests::rejects_unexpected_namespaces_and_wrong_visual_count ... ok
+test kernels::gemm_fixtures::tests::small_fixture_expected_values_match_independent_dense_reference ... ok
+test engine::layout::tests::rejects_more_than_the_region_limit ... ok
+test layer_comparison_reference::tests::one_bad_partition_fails_when_the_aggregate_passes ... ok
+test packages::qwen3_8_27b::inventory::tests::captured_headers_match_compiled_inventory ... ok
+test kernels::rms_norm_fixtures::tests::zero_input_has_exactly_zero_output ... ok
+test packages::qwen3_8_27b::inventory::tests::rejects_missing_extra_and_duplicate_tensors ... ok
+test packages::qwen3_8_27b::inventory::tests::rejects_wrong_model_weights_repository_and_revision ... ok
+test kernels::rms_norm_fixtures::tests::fixtures_cover_width_boundaries_and_finite_signed_values ... ok
+test artifact::writer::tests::many_objects_do_not_require_one_descriptor_per_source ... ok
+test kernels::rms_norm_fixtures::tests::width_one_matches_the_hand_worked_rms_norm ... ok
+test packages::qwen3_8_27b::inventory::tests::rejects_wrong_tensor_shape_dtype_layout_kind_and_length ... ok
+
+test result: ok. 236 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+     Running unittests validation/main.rs (target/debug/deps/mesh_specialize_validate-0aaa1bb4b2781090)
+
+running 20 tests
+test driver::tests::cuda_uuid_uses_lowercase_gpu_uuid_format ... ok
+test driver::tests::jit_log_buffers_are_bounded_cleaned_and_labeled ... ok
+test driver::tests::device_pointer_offset_is_checked ... ok
+test driver::tests::empty_transfer_is_allowed_at_end_but_not_beyond_it ... ok
+test gemm_fixtures::tests::dense_inputs_reject_invalid_dimensions_and_sizes ... ok
+test gemm_fixtures::tests::edge_tiles_zero_pad_data_and_keep_positive_scale_codes ... ok
+test nvfp4_layout::tests::packed_tile_fields_are_available_to_the_parent_module ... ok
+test nvfp4_layout::tests::unpack_output_rejects_wrong_length_and_nonfinite_values ... ok
+test driver::tests::transfer_range_accepts_exact_end_and_rejects_overrun ... ok
+test nvfp4_layout::tests::rejects_bad_lengths_nibbles_scales_and_selectors ... ok
+test driver::tests::transfer_range_rejects_usize_overflow ... ok
+test nvfp4_layout::tests::unpack_output_covers_row_major_tile_positions ... ok
+test nvfp4_layout::tests::packs_handpicked_a_and_b_lane_words ... ok
+test nvfp4_layout::tests::every_selector_places_selected_scales_and_leaves_poison_elsewhere ... ok
+test gemm_fixtures::tests::fixture_schema_and_packed_word_counts_are_exact ... ok
+test gemm_fixtures::tests::dense_inputs_match_independent_logical_values_and_fixture_product ... ok
+test gemm_fixtures::tests::small_fixture_expected_values_match_independent_dense_reference ... ok
+test rms_norm_fixtures::tests::zero_input_has_exactly_zero_output ... ok
+test rms_norm_fixtures::tests::width_one_matches_the_hand_worked_rms_norm ... ok
+test rms_norm_fixtures::tests::fixtures_cover_width_boundaries_and_finite_signed_values ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+   Doc-tests mesh_specialize
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

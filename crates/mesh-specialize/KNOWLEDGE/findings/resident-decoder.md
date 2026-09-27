@@ -1,8 +1,9 @@
 # Connecting persistent decoder execution
 
-Status: resident layer-zero GDN execution passes independent comparisons and all
-three sanitizers for one/17 tokens. Whole/chunk/token execution is bit-exact across
-partitions, including persistent history and recurrent state. Full decoder pending.
+Status: resident layer-zero GDN and layer-three full-attention execution pass
+independent comparisons and all three sanitizers for one/17 tokens. Whole/chunk/token
+execution is bit-exact across partitions, including their persistent states. Full
+64-layer decoder and logits remain pending.
 
 The next stage separates GPU operation execution from the old component-check
 harnesses. Weight views bind exact dtype, row-major layout, shape and byte extent.
@@ -108,7 +109,7 @@ Remaining: reference-free full-attention composition with persistent K/V, ordere
 64-layer execution, final norm/logits, independent model-level correctness, then
 actual model prefill/decode, memory peaks and usable-context comparison to Ninfer.
 
-## Resident attention connection (qualification pending)
+## Resident attention connection
 
 The next extraction binds resident Q/K norm weights and uses compact BF16 text
 RoPE tables generated from a named CPU profile in `engine::rope`. It preserves
@@ -123,14 +124,63 @@ on execution failure the session must be discarded because updates are not atomi
 The block connects Q/K preparation, causal attention, sigmoid gating, output
 projection, post-attention norm, MLP and final residual using existing kernels.
 
-`qwen-resident-attention-check` will compare one/17-token layer-three execution
+`qwen-resident-attention-check` compares one/17-token layer-three execution
 against the independent whole-block reference, using embedding rows as synthetic
 hidden input. It checks whole/chunk/token output/cache equivalence, exact initialized
 K/V and the zero unused tail at every append boundary, plus capacity rejection
 without cache mutation. Capacity is 20 in this bounded check, not a context claim.
-Local/Linux checks and all three Carrack sanitizers remain pending for this change.
+Local/Linux checks and all three Carrack sanitizers pass for this change.
 
 Initial attention Linux tests caught an incorrect expected value in the maximum
 RoPE-table extent test: 2,048 rows * 128 frequencies * 2 bytes is 524,288 bytes,
 not 262,144. The implementation's checked extent was correct; fix the test literal
 and preserve the failure log. macOS passed 184 tests, Clippy and no-console checks.
+
+### Attention Carrack qualification, 2026-09-27
+
+Implementation `c223ca6d6ed28ebc9ce14faafe0656eca31a5b4e`; qualified source after
+the test correction `f7be962cc47de3bdc79ddb2a25903b24e1197ed7`. Release xtask
+SHA256 `ddc4ea03e9fb928951026a84140b43975d84e9d61827b1f7df7da74cad2c1627`;
+PTX SHA256 remains `ee13b6bf3d34ee2ccceeaf4b9420c32ddc0fee2c97fc7f7d529f86ba06c306b9`.
+Same RTX5090, UUID, driver and Rust/CUDA toolchains as the GDN trial above.
+Pretrial idle sample: P8, 195 MHz graphics, 405 MHz memory, 15.55 W, 600 W limit.
+
+| Tokens | Hidden BF16 differences | Aggregate normalized L2 | Worst-token normalized L2 | Minimum token cosine |
+| --- | ---: | ---: | ---: | ---: |
+| 1 | 0 / 5,120 | 0 | 0 | 1 |
+| 17 | 36 / 87,040 | 0.00005846831697711169 | 0.0002702340166089252 | 0.999999963491221 |
+
+All independent hidden comparisons meet the unchanged 1% normalized-L2 / 0.9999
+cosine gate. Whole batches, one-token calls, `[1,16]` and `[2,1,14]` partitions
+produce exact hidden/K/V bits. At every append boundary, initialized K/V matches
+the independent reference exactly and the remaining capacity stays zero. A request
+past capacity fails without changing the cache. These comparisons use synthetic
+embedding rows at layer three; they do not execute layers zero through two.
+
+Normal, memcheck, racecheck and synccheck all pass; memcheck/synccheck report zero
+errors and racecheck reports zero hazards, errors or warnings. Harness durations
+are 48.527225358 / 57.321930152 / 58.061282476 / 48.767133331 seconds. They include
+the independent CPU reference and full weight load, not model throughput. Corrected
+Linux validation passes 236 library tests, 20 validator tests, Clippy with warnings
+denied and the release build. The failed test log remains with the evidence.
+
+Resident weight arena is 21,646,588,928 bytes; the full compiled state layout at
+capacity 20 is 155,254,784 bytes. CUDA free memory before weights and after release
+is 32,221,822,976 bytes; at the post-sequence checkpoint, with state/weights and
+the capacity-rejection dummy buffer live, it is 10,415,636,480 bytes. These are
+checkpoints, not peak memory or usable-context measurements.
+
+[Attention evidence](../evidence/qwen-resident-attention-20260927/) contains all
+reports, tests, sanitizer logs, exact script and service restoration records.
+Working copies and PTX remain under `target/specialize/qwen-resident-attention-20260927/`
+on both hosts. Every invocation has a 240-second / 8-GiB host-memory bound and
+no swap. Ninfer stopped at 06:10:41 EDT, active at 06:14:14, engine ready at
+06:14:20 and health HTTP 200. Ninfer PID 3107994 uses 30,046 MiB; ComfyUI PID
+448118 remains unchanged at 498 MiB. Carrack's original branch is preserved.
+
+Next integration: compose the fixed 64-layer schedule, select the final hidden
+row on-device, apply final norm and FP8 vocabulary projection, and run independent
+model/logit comparisons before throughput/context claims. The session cursor must
+commit only after an entire step succeeds and reject reuse following a partial
+device-state update. Draft cursor and last-row head wrappers are not yet wired or
+qualified as part of model execution.
