@@ -147,9 +147,9 @@ that control's rates directly to MTP4 as an isolated speedup across different in
 | Fresh NInfer baseline | Complete for deployed serial profile | `KNOWLEDGE/findings/ninfer-baseline-20260926.md` |
 | Rust instruction gate | NVFP4 and 29 remaining probe cases pass; sanitizer checks clean | `KNOWLEDGE/findings/instruction-qualification.md` and prior NVFP4 evidence |
 | Representative GEMM/RMSNorm | 14 cases / 1,489,305 outputs pass; independent cuBLAS reference passes; profiling pending | `KNOWLEDGE/findings/representative-kernels.md` and `cuda-library-reference.md` |
-| Upstream push and carrack branch synchronization | Complete through selected-device admission | `f279bdc7c`; original carrack branch retained |
+| Upstream push and carrack branch synchronization | Complete through container reader/writer validation | `889a3a787`; original carrack branch retained |
 | First carrack Rust GPU trial | Complete | 32 cases, 4,096 exact output matches; Ninfer restored |
-| A01/A02 container, identity, reader and object assembly | Implemented; cross-platform checks in progress | `KNOWLEDGE/findings/mspec-format.md` |
+| A01/A02 container, identity, reader and object assembly | 65 macOS / 68 Linux library tests pass; 17 Linux validator tests pass; low-descriptor checks pass | `KNOWLEDGE/findings/mspec-format.md` |
 | Pinned upstream conversion, H03 discovery and H04 ABI | Pending | No loadable specialized model yet |
 | Full model performance/context trial | Pending | None |
 

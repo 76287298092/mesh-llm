@@ -1,6 +1,6 @@
 # Internal `.mspec` placement format, version 1
 
-Status: container reader and writer pass local tests; Linux checks pending. No model conversion,
+Status: container reader and writer pass macOS and Linux tests. No model conversion,
 compiled Qwen package or real specialized inference is qualified by this format.
 
 The fixed 64-byte header is little-endian:
@@ -96,7 +96,7 @@ are `MACOSX_DEPLOYMENT_TARGET=26.0 just with-lld cargo test -p mesh-specialize
 --all-targets --all-features -- -D warnings`. Raw local logs are under
 `target/specialize/mspec-local-*` and `target/specialize/mspec-console-check.log`.
 No GPU timing, memory-capacity or model correctness claim follows from container
-tests. Linux validation will record its exact source revision separately.
+tests.
 
 Review found that the first writer retained one descriptor per object, which
 could exhaust process limits for a full checkpoint. It now holds one source open
@@ -109,6 +109,23 @@ Carrack initially passed 66 library and 17 validator tests at `21dd509e3`, plus
 all-target/all-feature Clippy. That revision predates the descriptor-limit fix;
 its raw evidence is preserved in `target/specialize/mspec-20260927/`. Ninfer's
 PID 2697705 and ComfyUI's PID 448118 were unchanged throughout these CPU checks.
+
+Final Linux validation at source `889a3a7879a388c6f8d612fad7afe19aef94f5cd`,
+completed September 27 at 00:36:37 EDT: 68 library tests and 17 validator tests
+pass, plus all-target/all-feature Clippy with warnings denied. Rust is 1.98.1,
+LLVM 22.1.8 on `x86_64-unknown-linux-gnu`. Cargo commands ran serially in temporary
+8 GiB user scopes with no swap and 180-second timeouts. The 1,025-object test also
+passes under a 64-descriptor limit on Linux. A bounded diff review found no new
+integrity issue after the descriptor fix.
+
+[Recorded evidence](../evidence/mspec-20260927/) includes the exact source,
+toolchain, test and Clippy logs, descriptor-limit check and service/process state.
+The same raw Linux logs remain on both hosts under
+`target/specialize/mspec-bounded-20260927/`. Ninfer is the **user** service
+`ninfer-qwen38.service`; it remained active as PID 2697705 with 30,046 MiB allocated.
+ComfyUI PID 448118 remained at 498 MiB. No service stop or GPU kernel trial was
+needed. No Actions run was returned for the source push; this is focused local
+and Carrack evidence, not a full product build or CI qualification.
 
 Integration findings: the first compile failed because workspace `sha2` 0.11
 digest arrays do not implement `LowerHex`; explicit `hex::encode` resolves that
