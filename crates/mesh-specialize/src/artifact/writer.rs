@@ -37,8 +37,8 @@ pub struct WrittenArtifact {
     pub bytes: u64,
 }
 
-struct RetainedSource {
-    file: File,
+struct SourceFile {
+    path: PathBuf,
     length: u64,
 }
 
@@ -54,9 +54,9 @@ pub fn write_artifact(
     source: SourceCheckpoint,
     sources: &[ObjectSource],
 ) -> Result<WrittenArtifact> {
-    let (mut retained, mut directory, payload_len) = open_sources(model_id, source, sources)?;
+    let (inputs, mut directory, payload_len) = open_sources(model_id, source, sources)?;
     let preflight = validate_for_write(&directory, payload_len)?;
-    hash_sources(&mut retained, &mut directory)?;
+    hash_sources(&inputs, &mut directory)?;
     directory.identity.weights_id = super::weights_identity(&directory, payload_len)?;
     directory.validate(payload_len)?;
 
@@ -83,7 +83,7 @@ pub fn write_artifact(
         &mut temporary,
         &header,
         &directory_bytes,
-        &mut retained,
+        &inputs,
         &directory,
         payload_len,
     )?;
@@ -110,7 +110,7 @@ fn open_sources(
     model_id: &str,
     source: SourceCheckpoint,
     sources: &[ObjectSource],
-) -> Result<(Vec<RetainedSource>, Directory, u64)> {
+) -> Result<(Vec<SourceFile>, Directory, u64)> {
     ensure!(
         (1..=MAX_OBJECTS).contains(&sources.len()),
         "artifact must contain between 1 and {MAX_OBJECTS} source objects"
@@ -139,7 +139,7 @@ fn open_sources(
     };
     identity.validate()?;
     let mut objects = Vec::with_capacity(ordered.len());
-    let mut retained = Vec::with_capacity(ordered.len());
+    let mut inputs = Vec::with_capacity(ordered.len());
     let mut previous_end = 0_u64;
     for item in ordered {
         let file = File::open(&item.path).with_context(|| "open artifact source object")?;
@@ -160,7 +160,10 @@ fn open_sources(
             length,
             sha256: "0".repeat(64),
         });
-        retained.push(RetainedSource { file, length });
+        inputs.push(SourceFile {
+            path: item.path.clone(),
+            length,
+        });
     }
 
     let directory = Directory {
@@ -171,7 +174,7 @@ fn open_sources(
         objects,
     };
     directory.validate(previous_end)?;
-    Ok((retained, directory, previous_end))
+    Ok((inputs, directory, previous_end))
 }
 
 fn validate_for_write(directory: &Directory, payload_len: u64) -> Result<Preflight> {
@@ -218,9 +221,9 @@ impl Write for CountingWriter {
     }
 }
 
-fn hash_sources(sources: &mut [RetainedSource], directory: &mut Directory) -> Result<()> {
-    for (source, object) in sources.iter_mut().zip(&mut directory.objects) {
-        object.sha256 = stream_source(&mut source.file, source.length, &mut io::sink())?;
+fn hash_sources(sources: &[SourceFile], directory: &mut Directory) -> Result<()> {
+    for (source, object) in sources.iter().zip(&mut directory.objects) {
+        object.sha256 = stream_source(&mut open_source(source)?, source.length, &mut io::sink())?;
         if object.kind == ObjectKind::Recipe {
             directory.recipe_sha256.clone_from(&object.sha256);
         }
@@ -248,6 +251,15 @@ fn stream_source(file: &mut File, expected_len: u64, output: &mut impl Write) ->
     Ok(hex::encode(digest.finalize()))
 }
 
+fn open_source(source: &SourceFile) -> Result<File> {
+    let file = File::open(&source.path).context("reopen artifact source object")?;
+    ensure!(
+        file.metadata()?.is_file(),
+        "artifact source must be a regular file"
+    );
+    Ok(file)
+}
+
 fn verify_source_length(file: &File, expected_len: u64) -> Result<()> {
     ensure!(
         file.metadata()
@@ -263,7 +275,7 @@ fn write_artifact_contents(
     output: &mut NamedTempFile,
     header: &Header,
     directory_bytes: &[u8],
-    sources: &mut [RetainedSource],
+    sources: &[SourceFile],
     directory: &Directory,
     payload_len: u64,
 ) -> Result<()> {
@@ -276,9 +288,9 @@ fn write_artifact_contents(
     write_zero_bytes(writer, header.payload_offset - directory_end)?;
 
     let mut previous_end = 0_u64;
-    for (source, object) in sources.iter_mut().zip(&directory.objects) {
+    for (source, object) in sources.iter().zip(&directory.objects) {
         write_zero_bytes(writer, object.offset - previous_end)?;
-        let digest = stream_source(&mut source.file, source.length, writer)?;
+        let digest = stream_source(&mut open_source(source)?, source.length, writer)?;
         ensure!(
             digest == object.sha256,
             "artifact source bytes changed between hashing and assembly"

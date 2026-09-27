@@ -167,6 +167,50 @@ fn rejects_same_size_and_length_mutations_between_passes() {
             .write_all(b"extra")
             .unwrap();
     });
+
+    let replaced = tempfile::tempdir().unwrap();
+    assert_mutation_rejected(replaced.path(), "replaced.mspec", |path| {
+        fs::remove_file(path).unwrap();
+        fs::write(path, [9, 8, 7]).unwrap();
+    });
+}
+
+#[test]
+fn many_objects_do_not_require_one_descriptor_per_source() {
+    let temporary = tempfile::tempdir().unwrap();
+    let fixture = fixture_sources(temporary.path(), &[42]);
+    let mut sources: Vec<_> = (0..1024)
+        .map(|index| {
+            let mut source = fixture[0].clone();
+            source.name = format!("tensor-{index:04}");
+            source
+        })
+        .collect();
+    sources.push(fixture[1].clone());
+    let output = temporary.path().join("many.mspec");
+    let written = write_artifact(&output, "fixture:model", source_checkpoint(), &sources).unwrap();
+    let artifact =
+        VerifiedArtifact::open_for_identity(&output, &written.directory.identity).unwrap();
+    assert_eq!(artifact.directory().objects.len(), 1025);
+}
+
+#[test]
+fn rejects_oversized_sparse_sources_before_hashing() {
+    let temporary = tempfile::tempdir().unwrap();
+    let mut sources = fixture_sources(temporary.path(), &[42]);
+    let size = crate::artifact::reader::MAX_ARTIFACT_BYTES;
+    fs::File::options()
+        .write(true)
+        .open(&sources[0].path)
+        .unwrap()
+        .set_len(size)
+        .unwrap();
+    sources[0].shape = vec![size];
+    let output = temporary.path().join("oversized.mspec");
+    let error =
+        write_artifact(&output, "fixture:model", source_checkpoint(), &sources).unwrap_err();
+    assert!(error.to_string().contains("prototype size limit"));
+    assert!(!output.exists());
 }
 
 fn assert_mutation_rejected(
@@ -175,10 +219,10 @@ fn assert_mutation_rejected(
     mutate_source: impl FnOnce(&Path),
 ) {
     let sources = fixture_sources(directory, &[1, 2, 3]);
-    let (mut retained, mut inventory, payload_len) =
+    let (inputs, mut inventory, payload_len) =
         open_sources("fixture:model", source_checkpoint(), &sources).unwrap();
     validate_for_write(&inventory, payload_len).unwrap();
-    hash_sources(&mut retained, &mut inventory).unwrap();
+    hash_sources(&inputs, &mut inventory).unwrap();
     inventory.identity.weights_id =
         crate::artifact::weights_identity(&inventory, payload_len).unwrap();
     let directory_bytes = serde_json::to_vec(&inventory).unwrap();
@@ -192,7 +236,7 @@ fn assert_mutation_rejected(
             &mut temporary,
             &header,
             &directory_bytes,
-            &mut retained,
+            &inputs,
             &inventory,
             payload_len,
         )

@@ -83,12 +83,13 @@ before ABI startup.
 
 The writer accepts explicit local object files and metadata, validates the whole
 directory before hashing large inputs, derives checksums and identity, then copies
-from retained file descriptors into a temporary file while rechecking hashes.
+one source at a time into a temporary file while rechecking lengths and hashes.
+It reopens each source for assembly and rejects changed or replaced content.
 It publishes the completed file without replacing an existing destination. This
 is container assembly, not Safetensors conversion or Qwen graph construction.
 
-Local validation on September 27, 2026: 63 `mesh-specialize` tests pass with all
-features, including 37 artifact checks. All-target/all-feature Clippy with warnings
+Local validation on September 27, 2026: 65 `mesh-specialize` tests pass with all
+features, including 39 artifact checks. All-target/all-feature Clippy with warnings
 denied, focused rustfmt and repository no-console-print checks pass. The commands
 are `MACOSX_DEPLOYMENT_TARGET=26.0 just with-lld cargo test -p mesh-specialize
 --all-features` and the corresponding `cargo clippy -p mesh-specialize
@@ -96,6 +97,18 @@ are `MACOSX_DEPLOYMENT_TARGET=26.0 just with-lld cargo test -p mesh-specialize
 `target/specialize/mspec-local-*` and `target/specialize/mspec-console-check.log`.
 No GPU timing, memory-capacity or model correctness claim follows from container
 tests. Linux validation will record its exact source revision separately.
+
+Review found that the first writer retained one descriptor per object, which
+could exhaust process limits for a full checkpoint. It now holds one source open
+at a time. A 1,025-object round trip passes in a separate test process with
+`ulimit -n 64`; in-place changes, changed lengths and pathname replacement between
+passes all reject. An oversized sparse source rejects before hashing. The raw
+descriptor-limit test is `target/specialize/mspec-local-low-fd.log`.
+
+Carrack initially passed 66 library and 17 validator tests at `21dd509e3`, plus
+all-target/all-feature Clippy. That revision predates the descriptor-limit fix;
+its raw evidence is preserved in `target/specialize/mspec-20260927/`. Ninfer's
+PID 2697705 and ComfyUI's PID 448118 were unchanged throughout these CPU checks.
 
 Integration findings: the first compile failed because workspace `sha2` 0.11
 digest arrays do not implement `LowerHex`; explicit `hex::encode` resolves that
