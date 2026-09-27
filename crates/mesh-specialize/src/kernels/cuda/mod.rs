@@ -241,3 +241,5 @@ mod residual_add;
 mod resident_mtp;
 pub(super) mod resident_mtp_trial;
 mod resident_speculation;
+
+pub(super) mod feature_projection_trial;

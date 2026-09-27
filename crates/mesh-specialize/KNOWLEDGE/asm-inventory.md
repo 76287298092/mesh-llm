@@ -117,3 +117,14 @@ F01 experimental `fp8_a16_decode.rs` adds packed global loads, FP32 FMA and
 warp-shuffle reduction for BF16 activations/E4M3 weights. Independent host oracle
 and ABI are in `optimizations/feature-f01-decode.md`; resident dispatch stays
 unchanged pending GPU and model qualification.
+
+F02 experimental `fp8_native_prefill.rs` adds native SM120a FP8 MMA, shared
+loads/stores and `cp.async` staging with explicit waits/barriers. The independent
+FP64 oracle and 32x64x64 launch contract are in `optimizations/feature-f02-prefill.md`.
+This first tile uses one shared buffer; double-buffer overlap is not implemented.
+No resident dispatch change or throughput claim follows from PTX compilation.
+
+F03 experimental `fp8_swiglu_exact.rs` shares activation decoding across exact
+gate/up dots and preserves every BF16 epilogue boundary. Coordinate reads and
+existing exact integer arithmetic PTX are covered by the independent composed
+reference in `optimizations/feature-f03-fusion.md`. GPU qualification is pending.

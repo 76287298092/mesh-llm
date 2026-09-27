@@ -121,8 +121,8 @@ exist, keep the percentage column unmeasured.
 | Feature | Dedicated subagent | First bounded implementation status |
 | --- | --- | --- |
 | F01 | `feature_decode_gemv` | A16 FP8 kernel and independent oracle delivered; parent validation underway |
-| F02 | `feature_native_prefill` | Native FP8 shared-memory tile in progress |
-| F03 | `feature_fusion` | Queued for next available worker slot |
+| F02 | `feature_native_prefill` | Native FP8 shared-memory tile delivered; CPU tests and PTX compilation pass |
+| F03 | `feature_fusion` | Exact FP8 gate/up and SwiGLU fusion delivered; CPU tests and PTX compilation pass |
 | F04 | `feature_chunked_gdn` | Chunked recurrence operator and oracle in progress |
 | F05 | `feature_tiled_attention` | FP32 online-softmax candidate in progress |
 | F06 | `feature_fp8_kv` | Queued; BF16 attention remains control |

@@ -15,6 +15,8 @@ mod causal_conv4;
 mod embedding_norm;
 mod fp8_linear;
 mod fp8_a16_decode;
+mod fp8_native_prefill;
+mod fp8_swiglu_exact;
 mod fp8_linear_exact;
 mod fp8_linear_exact4;
 mod fp8_prefill_exact;

@@ -73,3 +73,9 @@ pub mod mtp_reference;
 
 #[path = "../reference/fp8_a16_decode.rs"]
 pub mod fp8_a16_decode_reference;
+
+#[path = "../reference/fp8_native_prefill.rs"]
+pub mod fp8_native_prefill_reference;
+
+#[path = "../reference/fp8_swiglu_exact.rs"]
+pub mod fp8_swiglu_exact_reference;

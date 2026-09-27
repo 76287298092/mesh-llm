@@ -455,3 +455,14 @@ pub mod silu;
 
 #[path = "../kernels/nvptx/exponential.rs"]
 pub mod exponential;
+
+/// Check experimental projection kernels against independent synthetic references.
+pub fn feature_projection_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::feature_projection_trial::run(ptx, device);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device);
+        anyhow::bail!("Feature projection qualification requires Linux")
+    }
+}

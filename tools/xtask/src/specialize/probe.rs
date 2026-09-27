@@ -61,3 +61,7 @@ fn run_probe<E: std::fmt::Display>(
     }
     Ok(())
 }
+
+pub(super) fn feature_projection(args: &[String]) -> DynResult<()> {
+    run_probe(args, mesh_specialize::kernels::feature_projection_trial)
+}
