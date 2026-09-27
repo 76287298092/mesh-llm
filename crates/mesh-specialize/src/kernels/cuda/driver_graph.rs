@@ -137,9 +137,7 @@ pub(in super::super) fn ensure_driver_operation_allowed(operation: &str) -> Resu
 ///
 /// The parent driver module should call this at the start of `Function::launch`; the
 /// stream launch method below never touches the launch profiler or default stream.
-pub(in super::super) fn ensure_default_stream_launch_allowed(
-    _context: &Context,
-) -> Result<()> {
+pub(in super::super) fn ensure_default_stream_launch_allowed(_context: &Context) -> Result<()> {
     ensure_driver_operation_allowed("launch on the default stream")
 }
 
@@ -247,12 +245,11 @@ impl<'ctx> Stream<'ctx> {
 
 impl Drop for Stream<'_> {
     fn drop(&mut self) {
-        if self.capturing.get() {
-            if let Err(error) =
+        if self.capturing.get()
+            && let Err(error) =
                 abort_capture_inner(self.context, self.api, self.raw, &self.capturing)
-            {
-                tracing::warn!(error = %error, "failed to abort CUDA capture before destroying stream");
-            }
+        {
+            tracing::warn!(error = %error, "failed to abort CUDA capture before destroying stream");
         }
         match self.context.activate() {
             Ok(_current_context) => {
