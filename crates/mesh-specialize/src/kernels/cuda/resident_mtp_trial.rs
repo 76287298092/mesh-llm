@@ -314,7 +314,7 @@ fn compare_run(run: &resident_speculation::Run<'_>, control: &Control) -> Result
         && hash == control.state
         && run.target_session.cursor.past() == control.past;
     Ok(
-        json!({"all_passed":exact,"tokens":run.tokens,"target_state_sha256":hash,"target_past":run.target_session.cursor.past(),
+        json!({"recovery_profile":if run.compact_recovery {"compact"} else {"full-forward"},"all_passed":exact,"tokens":run.tokens,"target_state_sha256":hash,"target_past":run.target_session.cursor.past(),
         "rounds":run.rounds,"all_accepted_rounds":run.all_accepted_rounds,"drafted":run.drafted,"accepted":run.accepted,"verify_rows":run.verify_rows,"replay_rows":run.replay_rows,
         "prefill_seconds":run.prefill_seconds,"decode_seconds":run.decode_seconds,"phase_seconds":run.phase_seconds,
         "decode_tokens_per_second":(run.tokens.len()-1) as f64/run.decode_seconds,

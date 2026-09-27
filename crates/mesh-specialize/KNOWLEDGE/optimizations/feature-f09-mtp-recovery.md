@@ -101,3 +101,13 @@ verified hidden rows and the existing draft teacher-forcing boundary. Keep the
 full-forward replay path as an explicit control during qualification. This first
 integration can retain verification forking; removing that copy needs separate
 ownership and failure-recovery proof.
+
+
+Parent model integration is now authored behind `MESH_SPECIALIZE_MTP_RECOVERY=compact`.
+Absent or `full-forward` retains the previous control. Invalid values fail closed.
+Verification records exact GDN operands/deltas and raw projected QKV. On rejection,
+a cursor transaction applies compact recurrence/history recovery and copies only
+accepted attention KV rows into the untouched base session. All-accepted rounds
+retain the existing verification-session commit. Reports label the recovery mode.
+Source integration is not yet qualified; Linux build and real-model comparisons
+are required before any performance or correctness claim.

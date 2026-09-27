@@ -19,6 +19,7 @@ pub(super) struct Input<'a, 'ctx> {
     pub(super) a: &'a Buffer<'ctx>,
     pub(super) b: &'a Buffer<'ctx>,
     pub(super) z: &'a Buffer<'ctx>,
+    pub(super) record: bool,
 }
 
 pub(super) struct GdnCore<'w, 'ctx> {
@@ -83,7 +84,11 @@ impl<'w, 'ctx> GdnCore<'w, 'ctx> {
         state: &mut ResidentState<'_>,
         state_name: &str,
         rows: usize,
-    ) -> Result<Buffer<'a>> {
+    ) -> Result<super::resident_recovery::CoreOutput<'a>> {
+        ensure!(
+            !input.record || rows <= 5,
+            "GDN recording supports at most five rows"
+        );
         let extents = run_extents(
             rows,
             self.key_heads,
@@ -97,11 +102,20 @@ impl<'w, 'ctx> GdnCore<'w, 'ctx> {
         let (q, k) = prepare_qk(context, module, input.qkv, self, &extents)?;
         let (beta, decay) = prepare_gates(context, module, input.a, input.b, self, &extents)?;
         let prepared = Prepared { q, k, beta, decay };
-        let recurrent = run_recurrent(context, module, &input, &prepared, state, self, &extents)?;
-        drop(prepared);
+        let (recurrent, delta) =
+            run_recurrent(context, module, &input, &prepared, state, self, &extents)?;
         let output = run_gated_norm(context, module, &recurrent, input.z, self, &extents)?;
         drop(recurrent);
-        Ok(output)
+        let record = delta.map(|delta| super::resident_recovery::Recurrence {
+            k: prepared.k,
+            decay: prepared.decay,
+            delta,
+            rows,
+            key_heads: self.key_heads,
+            value_heads: self.value_heads,
+            width: self.width,
+        });
+        Ok(super::resident_recovery::CoreOutput { output, record })
     }
 }
 
@@ -267,6 +281,7 @@ fn prepare_qk<'a>(
             grid: [u32::try_from(blocks)?, 1, 1],
             block: [256, 1, 1],
             trailing_f32: None,
+            trailing_u64: None,
         },
     )?;
     Ok((q, k))
@@ -310,6 +325,7 @@ fn prepare_gates<'a>(
             grid: [u32::try_from(extents.gate_elements.div_ceil(256))?, 1, 1],
             block: [256, 1, 1],
             trailing_f32: None,
+            trailing_u64: None,
         },
     )?;
     drop(g);
@@ -324,7 +340,12 @@ fn run_recurrent<'a>(
     state: u64,
     core: &GdnCore<'_, '_>,
     extents: &RunExtents,
-) -> Result<Buffer<'a>> {
+) -> Result<(Buffer<'a>, Option<Buffer<'a>>)> {
+    let delta = input
+        .record
+        .then(|| Buffer::new(context, extents.fp32_output_bytes))
+        .transpose()?;
+    let mut delta_pointer = delta.as_ref().map(Buffer::pointer);
     let output = Buffer::new(context, extents.bf16_output_bytes)?;
     let unrounded = Buffer::new(context, extents.fp32_output_bytes)?;
     let mut pointers = [
@@ -349,14 +370,19 @@ fn run_recurrent<'a>(
         &mut pointers,
         &mut dimensions,
         LaunchConfig {
-            name: "gdn_recurrent",
+            name: if input.record {
+                "gdn_recurrent_record"
+            } else {
+                "gdn_recurrent"
+            },
             grid: [u32::try_from(core.value_heads)?, 1, 1],
             block: [u32::try_from(core.width)?, 1, 1],
             trailing_f32: None,
+            trailing_u64: delta_pointer.as_mut(),
         },
     )?;
     drop(unrounded);
-    Ok(output)
+    Ok((output, delta))
 }
 
 fn run_gated_norm<'a>(
@@ -395,6 +421,7 @@ fn run_gated_norm<'a>(
             grid: [u32::try_from(groups)?, 1, 1],
             block: [256, 1, 1],
             trailing_f32: Some(&mut epsilon),
+            trailing_u64: None,
         },
     )?;
     drop((normalized, weighted, silu, unrounded));
@@ -406,6 +433,7 @@ struct LaunchConfig<'a> {
     grid: [u32; 3],
     block: [u32; 3],
     trailing_f32: Option<&'a mut f32>,
+    trailing_u64: Option<&'a mut u64>,
 }
 
 fn launch_and_sync(
@@ -427,6 +455,9 @@ fn launch_and_sync(
     );
     if let Some(value) = config.trailing_f32.take() {
         arguments.push((value as *mut f32).cast());
+    }
+    if let Some(value) = config.trailing_u64.take() {
+        arguments.push((value as *mut u64).cast());
     }
     // SAFETY: Each stage supplies the exact kernel-specific pointer/dimension order. Extents,
     // buffer contexts, and row/head bounds are validated; every stage synchronizes before any

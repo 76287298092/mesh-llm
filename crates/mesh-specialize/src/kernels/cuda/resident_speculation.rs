@@ -25,6 +25,7 @@ pub(super) struct Request<'a> {
 }
 
 pub(super) struct Run<'ctx> {
+    pub(super) compact_recovery: bool,
     pub(super) tokens: Vec<u32>,
     pub(super) target_session: Session<'ctx>,
     pub(super) rounds: usize,
@@ -52,6 +53,7 @@ struct Engines<'m, 'ctx, 'tw, 'dw> {
     target: &'m TargetModel<'tw, 'ctx>,
     draft: &'m DraftModel<'dw, 'ctx>,
     config: &'m DecoderConfig,
+    compact_recovery: bool,
 }
 
 struct BaseState<'ctx> {
@@ -84,6 +86,7 @@ pub(super) fn run<'ctx>(
     config: &DecoderConfig,
     request: &Request<'_>,
 ) -> Result<Run<'ctx>> {
+    let compact_recovery = compact_recovery_enabled()?;
     let expected_final_past = validate_request(config, request)?;
     let vocab = u32::try_from(config.vocabulary).context("decoder vocabulary does not fit u32")?;
     ensure!(
@@ -95,6 +98,7 @@ pub(super) fn run<'ctx>(
     }
 
     let engines = Engines {
+        compact_recovery,
         context,
         module,
         target,
@@ -166,6 +170,7 @@ pub(super) fn run<'ctx>(
     );
 
     Ok(Run {
+        compact_recovery,
         tokens: output_tokens,
         target_session: state.target,
         rounds,
@@ -322,14 +327,23 @@ impl<'m, 'ctx, 'tw, 'dw> Engines<'m, 'ctx, 'tw, 'dw> {
 
         let verification_start = Instant::now();
         let mut verification_session = state.target.fork(self.context)?;
-        let verified = self.target.forward_detailed(
-            self.context,
-            self.module,
-            &verify_inputs,
-            &mut verification_session,
-            LogitsSelection::All,
-            None,
-        )?;
+        let verified = if self.compact_recovery {
+            self.target.forward_recorded(
+                self.context,
+                self.module,
+                &verify_inputs,
+                &mut verification_session,
+            )?
+        } else {
+            self.target.forward_detailed(
+                self.context,
+                self.module,
+                &verify_inputs,
+                &mut verification_session,
+                LogitsSelection::All,
+                None,
+            )?
+        };
         let verification_seconds = verification_start.elapsed().as_secs_f64();
         let verify_past = base_past
             .checked_add(verify_inputs.len())
@@ -347,6 +361,24 @@ impl<'m, 'ctx, 'tw, 'dw> Engines<'m, 'ctx, 'tw, 'dw> {
         let (replay_rows, replay_seconds) = if accepted == proposals.len() {
             state.target = verification_session;
             (0, 0.0)
+        } else if self.compact_recovery {
+            let replay_start = Instant::now();
+            let past = super::resident_recovery::recover(
+                self.context,
+                self.module,
+                &mut state.target,
+                super::resident_recovery::Recovery {
+                    config: self.config,
+                    records: &verified.recovery,
+                    verified: &verification_session,
+                    rows: accepted + 1,
+                },
+            )?;
+            ensure!(
+                past == base_past + accepted + 1,
+                "compact recovery cursor differs"
+            );
+            (accepted + 1, replay_start.elapsed().as_secs_f64())
         } else {
             drop(verification_session);
             let mut replay_inputs = Vec::with_capacity(accepted + 1);
@@ -435,6 +467,14 @@ impl<'m, 'ctx, 'tw, 'dw> Engines<'m, 'ctx, 'tw, 'dw> {
                 teacher: teacher_seconds,
             },
         })
+    }
+}
+
+pub(super) fn compact_recovery_enabled() -> Result<bool> {
+    match std::env::var("MESH_SPECIALIZE_MTP_RECOVERY").as_deref() {
+        Err(std::env::VarError::NotPresent) | Ok("full-forward") => Ok(false),
+        Ok("compact") => Ok(true),
+        _ => anyhow::bail!("MESH_SPECIALIZE_MTP_RECOVERY must be full-forward or compact"),
     }
 }
 

@@ -72,6 +72,43 @@ impl<'ctx> ResidentState<'ctx> {
         )
     }
 
+    pub(super) fn copy_state_range(
+        &mut self,
+        name: &str,
+        source: &ResidentState<'_>,
+        offset: usize,
+        bytes: usize,
+    ) -> Result<()> {
+        ensure!(self.layout == source.layout, "state copy layouts differ");
+        let start = self.region_range(name, offset, bytes)?;
+        self.arena.copy_from_at(start, &source.arena, start, bytes)
+    }
+
+    pub(super) fn copy_region_to(
+        &self,
+        name: &str,
+        offset: usize,
+        destination: &Buffer<'_>,
+        destination_offset: usize,
+        bytes: usize,
+    ) -> Result<()> {
+        let start = self.region_range(name, offset, bytes)?;
+        destination.copy_from_at(destination_offset, &self.arena, start, bytes)
+    }
+
+    fn region_range(&self, name: &str, offset: usize, bytes: usize) -> Result<usize> {
+        let region = self.layout.region(name)?;
+        ensure!(
+            offset
+                .checked_add(bytes)
+                .is_some_and(|end| end <= region.length as usize),
+            "state copy exceeds region {name}"
+        );
+        usize::try_from(region.offset)?
+            .checked_add(offset)
+            .context("state region offset overflow")
+    }
+
     pub(super) fn read_region(&self, name: &str, bytes: &mut [u8]) -> Result<()> {
         self.pointer(name, bytes.len())?;
         self.arena

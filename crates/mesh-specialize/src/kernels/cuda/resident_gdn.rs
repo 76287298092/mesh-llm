@@ -132,8 +132,41 @@ impl<'w, 'ctx> Layer<'w, 'ctx> {
         hidden: &Buffer<'_>,
         state: &mut ResidentState<'_>,
         rows: usize,
-        mut observer: Option<&mut StageObserver<'_>>,
+        observer: Option<&mut StageObserver<'_>>,
     ) -> Result<Buffer<'a>> {
+        Ok(self
+            .execute(ctx, module, hidden, state, (rows, false), observer)?
+            .0)
+    }
+
+    pub(super) fn forward_recorded<'a>(
+        &self,
+        ctx: &'a Context,
+        module: &Module<'_>,
+        hidden: &Buffer<'_>,
+        state: &mut ResidentState<'_>,
+        rows: usize,
+    ) -> Result<(Buffer<'a>, super::resident_recovery::LayerRecord<'a>)> {
+        let (hidden, record) = self.execute(ctx, module, hidden, state, (rows, true), None)?;
+        Ok((
+            hidden,
+            record.ok_or_else(|| anyhow::anyhow!("missing GDN record"))?,
+        ))
+    }
+
+    fn execute<'a>(
+        &self,
+        ctx: &'a Context,
+        module: &Module<'_>,
+        hidden: &Buffer<'_>,
+        state: &mut ResidentState<'_>,
+        step: (usize, bool),
+        mut observer: Option<&mut StageObserver<'_>>,
+    ) -> Result<(
+        Buffer<'a>,
+        Option<super::resident_recovery::LayerRecord<'a>>,
+    )> {
+        let (rows, record) = step;
         let normalized = self.norm.run(ctx, module, hidden, rows)?;
         observe(&mut observer, "normalized", &normalized)?;
         let qkv = self.qkv.run(ctx, module, &normalized, rows)?;
@@ -156,11 +189,14 @@ impl<'w, 'ctx> Layer<'w, 'ctx> {
                 a: &a.values,
                 b: &b.values,
                 z: &z.values,
+                record,
             },
             state,
             &self.recurrent,
             rows,
         )?;
+        let recovery = gated.record;
+        let gated = gated.output;
         observe(&mut observer, "gated", &gated)?;
         let branch = self.out.run(ctx, module, &gated, rows)?;
         observe(&mut observer, "out", &branch.values)?;
@@ -176,7 +212,13 @@ impl<'w, 'ctx> Layer<'w, 'ctx> {
         observe(&mut observer, "mlp_down", &mlp.down.values)?;
         let output = residual_add(ctx, module, &post.residual, &mlp.down.values)?;
         observe(&mut observer, "hidden", &output)?;
-        Ok(output)
+        let record = recovery.map(|recurrence| super::resident_recovery::LayerRecord {
+            recurrence,
+            projected_qkv: qkv.values,
+            history_name: self.history.clone(),
+            recurrent_name: self.recurrent.clone(),
+        });
+        Ok((output, record))
     }
 }
 

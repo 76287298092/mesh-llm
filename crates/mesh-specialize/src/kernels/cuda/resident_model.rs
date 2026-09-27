@@ -40,6 +40,7 @@ pub(super) enum LogitsSelection {
     All,
 }
 pub(super) struct DetailedOutput<'ctx> {
+    pub recovery: Vec<super::resident_recovery::LayerRecord<'ctx>>,
     pub hidden: Buffer<'ctx>,
     pub logits: Vec<u16>,
     pub tokens: Vec<u32>,
@@ -153,8 +154,43 @@ impl<'w, 'ctx> Model<'w, 'ctx> {
         tokens: &[u32],
         session: &mut Session<'_>,
         selection: LogitsSelection,
+        observer: Option<&mut Observer<'_>>,
+    ) -> Result<DetailedOutput<'a>> {
+        self.execute(ctx, module, tokens, session, (selection, false), observer)
+    }
+
+    pub(super) fn forward_recorded<'a>(
+        &self,
+        ctx: &'a Context,
+        module: &Module<'_>,
+        tokens: &[u32],
+        session: &mut Session<'_>,
+    ) -> Result<DetailedOutput<'a>> {
+        ensure!(
+            (1..=5).contains(&tokens.len()),
+            "verification recording requires 1..=5 rows"
+        );
+        self.execute(
+            ctx,
+            module,
+            tokens,
+            session,
+            (LogitsSelection::All, true),
+            None,
+        )
+    }
+
+    fn execute<'a>(
+        &self,
+        ctx: &'a Context,
+        module: &Module<'_>,
+        tokens: &[u32],
+        session: &mut Session<'_>,
+        options: (LogitsSelection, bool),
         mut observer: Option<&mut Observer<'_>>,
     ) -> Result<DetailedOutput<'a>> {
+        let (selection, record) = options;
+        let mut recovery = Vec::new();
         ensure!(
             tokens.iter().all(|&id| (id as usize) < self.vocabulary),
             "decoder token is outside vocabulary"
@@ -171,7 +207,25 @@ impl<'w, 'ctx> Model<'w, 'ctx> {
         for (index, block) in self.blocks.iter().enumerate() {
             hidden = match block {
                 Block::Gdn(layer) => {
-                    layer.forward(ctx, module, &hidden, &mut session.state, transaction.rows())?
+                    if record {
+                        let (next, layer_record) = layer.forward_recorded(
+                            ctx,
+                            module,
+                            &hidden,
+                            &mut session.state,
+                            transaction.rows(),
+                        )?;
+                        recovery.push(layer_record);
+                        next
+                    } else {
+                        layer.forward(
+                            ctx,
+                            module,
+                            &hidden,
+                            &mut session.state,
+                            transaction.rows(),
+                        )?
+                    }
                 }
                 Block::Attention(layer) => layer.forward(
                     ctx,
@@ -223,6 +277,7 @@ impl<'w, 'ctx> Model<'w, 'ctx> {
         };
         let past = transaction.commit();
         Ok(DetailedOutput {
+            recovery,
             hidden,
             logits,
             tokens: selected_tokens,
