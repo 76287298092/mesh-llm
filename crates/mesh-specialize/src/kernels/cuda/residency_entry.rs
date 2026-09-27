@@ -224,6 +224,18 @@ mod tests {
         let mut wrong_byte_length = baseline;
         wrong_byte_length[0].length = 10;
         assert!(validate(&wrong_byte_length, &input()).is_err());
+
+        let mut wrong_norm_dtype = objects();
+        wrong_norm_dtype[1].dtype = DType::F32;
+        assert!(validate(&wrong_norm_dtype, &input()).is_err());
+
+        let mut wrong_norm_shape = objects();
+        wrong_norm_shape[1].shape = vec![1, 2];
+        assert!(validate(&wrong_norm_shape, &input()).is_err());
+
+        let mut wrong_norm_byte_length = objects();
+        wrong_norm_byte_length[1].length = 2;
+        assert!(validate(&wrong_norm_byte_length, &input()).is_err());
     }
 
     #[test]
