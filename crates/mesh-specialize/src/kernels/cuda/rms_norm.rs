@@ -11,13 +11,13 @@ const WARMUP_LAUNCHES: usize = 10;
 const TIMING_BATCHES: usize = 5;
 const LAUNCHES_PER_BATCH: usize = 100;
 
-pub(super) fn cases(context: &Context, module: &Module<'_>) -> Result<Vec<Value>> {
+pub(super) fn cases(context: &Context, module: &Module<'_>, measure: bool) -> Result<Vec<Value>> {
     let function = module.function("rms_norm_f32")?;
     let resources = function.resources()?;
     let fixtures = super::super::rms_norm_fixtures::fixtures().map_err(anyhow::Error::msg)?;
     fixtures
         .iter()
-        .map(|fixture| run_fixture(context, &function, fixture, resources))
+        .map(|fixture| run_fixture(context, &function, fixture, resources, measure))
         .collect()
 }
 
@@ -26,6 +26,7 @@ fn run_fixture(
     function: &Function<'_, '_>,
     fixture: &super::super::rms_norm_fixtures::Fixture,
     resources: driver::FunctionResources,
+    measure: bool,
 ) -> Result<Value> {
     let input_words: Vec<_> = fixture.input.iter().map(|value| value.to_bits()).collect();
     let weight_words: Vec<_> = fixture.weight.iter().map(|value| value.to_bits()).collect();
@@ -39,8 +40,11 @@ fn run_fixture(
     context.synchronize()?;
     let actual = download_f32(&output, fixture.expected.len())?;
     let (max_abs_error, mismatches) = compare(&actual, &fixture.expected)?;
-    let (event_ms, event_us_per_launch) =
-        time_launches(context, function, &input, &weight, &output, fixture)?;
+    let (event_ms, event_us_per_launch) = if measure {
+        time_launches(context, function, &input, &weight, &output, fixture)?
+    } else {
+        (Vec::new(), Vec::new())
+    };
     let payload_bytes = (input_words.len() + weight_words.len() + output_words.len()) * 4;
     let samples: Vec<_> = actual
         .iter()
@@ -73,8 +77,9 @@ fn run_fixture(
         "free_bytes_with_allocations": free_bytes_with_allocations,
         "event_ms": event_ms,
         "event_us_per_launch": event_us_per_launch,
-        "warmup_launches": WARMUP_LAUNCHES,
-        "launches_per_batch": LAUNCHES_PER_BATCH,
+        "timing_collected": measure,
+        "warmup_launches": if measure { WARMUP_LAUNCHES } else { 0 },
+        "launches_per_batch": if measure { LAUNCHES_PER_BATCH } else { 0 },
         "timing_note": "Data remains resident on the device. Event batches include host submission and default-stream gaps; uploads are excluded. This is not a tokens-per-second measurement."
     }))
 }

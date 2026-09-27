@@ -18,13 +18,17 @@ pub(super) fn workloads(args: &[String]) -> DynResult<()> {
     run_probe(args, mesh_specialize::kernels::workload_probe)
 }
 
+pub(super) fn workload_check(args: &[String]) -> DynResult<()> {
+    run_probe(args, mesh_specialize::kernels::workload_check)
+}
+
 fn run_probe<E: std::fmt::Display>(
     args: &[String],
     probe: fn(&str, i32) -> Result<serde_json::Value, E>,
 ) -> DynResult<()> {
     let [ptx_flag, ptx_path, device_flag, device, output_flag, output] = args else {
         return Err(
-            "usage: xtask specialize <nvfp4-probe|instruction-probe|workload-probe> --ptx PATH --device ORDINAL --output NEW_FILE"
+            "usage: xtask specialize <nvfp4-probe|instruction-probe|workload-probe|workload-check> --ptx PATH --device ORDINAL --output NEW_FILE"
                 .into(),
         );
     };

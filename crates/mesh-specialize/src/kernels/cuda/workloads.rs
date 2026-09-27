@@ -5,7 +5,7 @@ use super::{
 use anyhow::{Result, ensure};
 use serde_json::{Value, json};
 
-pub(in crate::kernels) fn run(ptx: &str, device: i32) -> Result<Value> {
+pub(in crate::kernels) fn run(ptx: &str, device: i32, measure: bool) -> Result<Value> {
     ensure!(
         ptx.contains(".target sm_120a"),
         "workloads must target sm_120a"
@@ -18,13 +18,13 @@ pub(in crate::kernels) fn run(ptx: &str, device: i32) -> Result<Value> {
     );
     let before = context.memory()?;
     let module = Module::load(&context, ptx)?;
-    let mut cases = rms_norm::cases(&context, &module)?;
-    cases.extend(gemm::cases(&context, &module)?);
+    let mut cases = rms_norm::cases(&context, &module, measure)?;
+    cases.extend(gemm::cases(&context, &module, measure)?);
     context.synchronize()?;
     let after = context.memory()?;
     Ok(
         json!({"schema_version":1,"kind":"rust-representative-kernel-trial",
-        "device":info,"jit_log":module.jit_log(),
+        "device":info,"jit_log":module.jit_log(),"timing_collected":measure,
         "memory_before_module":{"free_bytes":before.0,"total_bytes":before.1},
         "memory_after_cases":{"free_bytes":after.0,"total_bytes":after.1},
         "all_passed":cases.iter().all(|c|c["passed"]==true),"cases":cases,

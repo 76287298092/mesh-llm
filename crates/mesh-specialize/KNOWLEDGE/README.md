@@ -13,6 +13,7 @@ Start with [the implementation plan](../PLAN.md) and the
 | [Remaining instruction qualification](findings/instruction-qualification.md) | 29 GPU cases pass; three sanitizer tools clean |
 | [Representative kernels](findings/representative-kernels.md) | GEMM/RMSNorm workloads integrated; execution pending |
 | [Prebuilt core target mismatch](dead-ends/prebuilt-core-target-mismatch.md) | Resolved by rebuilding core; emitted PTX executed |
+| [Racecheck timing repetitions](dead-ends/racecheck-timing-repetitions.md) | Failed with host OOM; check-only recovery pending |
 
 New entries belong in `findings/`, `pitfalls/`, `optimizations/`, `dead-ends/`,
 or `ah-ha/` according to their subject. Each entry records status, exact model and

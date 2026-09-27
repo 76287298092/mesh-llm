@@ -7,16 +7,21 @@ use anyhow::{Result, ensure};
 use serde_json::{Value, json};
 use std::ffi::c_void;
 
-pub(super) fn cases(context: &Context, module: &Module<'_>) -> Result<Vec<Value>> {
+pub(super) fn cases(context: &Context, module: &Module<'_>, measure: bool) -> Result<Vec<Value>> {
     let function = module.function("nvfp4_gemm_packed")?;
     crate::kernels::gemm_fixtures::fixtures()
         .map_err(anyhow::Error::msg)?
         .iter()
-        .map(|case| run_case(context, &function, case))
+        .map(|case| run_case(context, &function, case, measure))
         .collect()
 }
 
-fn run_case(context: &Context, function: &Function<'_, '_>, case: &Fixture) -> Result<Value> {
+fn run_case(
+    context: &Context,
+    function: &Function<'_, '_>,
+    case: &Fixture,
+    measure: bool,
+) -> Result<Value> {
     let a = upload_words(context, &case.a)?;
     let b = upload_words(context, &case.b)?;
     let sa = upload_words(context, &case.scale_a)?;
@@ -41,7 +46,11 @@ fn run_case(context: &Context, function: &Function<'_, '_>, case: &Fixture) -> R
     context.synchronize()?;
     let actual = unpack(&output, case)?;
     let comparison = compare(&actual, case)?;
-    let timing = timings(context, function, case, &mut args)?;
+    let timing = if measure {
+        Some(timings(context, function, case, &mut args)?)
+    } else {
+        None
+    };
     Ok(json!({"kernel":"nvfp4_gemm_packed", "fixture":case.name,
         "m":case.m,"n":case.n,"k":case.k,"grid":[case.n_tiles,case.m_tiles,1],
         "padded_dimensions":[case.m_tiles*16,case.n_tiles*8,case.k_tiles*64],

@@ -19,7 +19,18 @@ mod rms_norm_fixtures;
 /// These are kernel workloads, not model prefill/decode measurements.
 pub fn workload_probe(ptx: &str, device: i32) -> anyhow::Result<serde_json::Value> {
     #[cfg(target_os = "linux")]
-    return cuda::workloads::run(ptx, device);
+    return cuda::workloads::run(ptx, device, true);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device);
+        anyhow::bail!("CUDA workload trials require Linux")
+    }
+}
+
+/// Check each representative workload once, for bounded sanitizer execution.
+pub fn workload_check(ptx: &str, device: i32) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::workloads::run(ptx, device, false);
     #[cfg(not(target_os = "linux"))]
     {
         let _ = (ptx, device);
