@@ -11,7 +11,15 @@ pub(super) struct Input<'a, 'ctx> {
     pub(super) branch: &'a Buffer<'ctx>,
     pub(super) branch_words: &'a [u16],
 }
-pub(super) fn check(context: &Context, module: &Module<'_>, input: Input<'_, '_>) -> Result<Value> {
+pub(super) struct CheckedResidual {
+    pub(super) words: Vec<u16>,
+    pub(super) report: Value,
+}
+pub(super) fn check(
+    context: &Context,
+    module: &Module<'_>,
+    input: Input<'_, '_>,
+) -> Result<CheckedResidual> {
     let expected = residual_add_reference::run(input.residual_words, input.branch_words)?;
     let output = upload(context, &vec![0xa5; expected.len() * 2])?;
     let mut pointers = [
@@ -45,9 +53,11 @@ pub(super) fn check(context: &Context, module: &Module<'_>, input: Input<'_, '_>
         .map(|b| u16::from_le_bytes(*b))
         .collect();
     ensure!(actual == expected, "final residual BF16 mismatch");
-    Ok(
-        json!({"all_passed":true,"elements":expected.len(),"bf16_exact":true,"device_inputs_resident":true}),
-    )
+    let report = json!({"all_passed":true,"elements":expected.len(),"bf16_exact":true,"device_inputs_resident":true});
+    Ok(CheckedResidual {
+        words: actual,
+        report,
+    })
 }
 pub(super) fn fixtures(context: &Context, module: &Module<'_>) -> Result<Vec<Value>> {
     let mut reports = Vec::new();
@@ -72,16 +82,19 @@ pub(super) fn fixtures(context: &Context, module: &Module<'_>) -> Result<Vec<Val
                 .flat_map(|v| v.to_le_bytes())
                 .collect::<Vec<_>>(),
         )?;
-        reports.push(check(
-            context,
-            module,
-            Input {
-                residual: &ld,
-                residual_words: &left,
-                branch: &rd,
-                branch_words: &right,
-            },
-        )?);
+        reports.push(
+            check(
+                context,
+                module,
+                Input {
+                    residual: &ld,
+                    residual_words: &left,
+                    branch: &rd,
+                    branch_words: &right,
+                },
+            )?
+            .report,
+        );
     }
     Ok(reports)
 }

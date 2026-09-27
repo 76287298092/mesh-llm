@@ -35,3 +35,8 @@ pub mod mlp_activation_reference;
 
 #[path = "../reference/residual_add.rs"]
 pub mod residual_add_reference;
+
+#[path = "../reference/layer_comparison.rs"]
+pub mod layer_comparison_reference;
+#[path = "../reference/qwen_gdn_layer.rs"]
+pub mod qwen_gdn_layer_reference;

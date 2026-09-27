@@ -22,13 +22,17 @@ pub(super) fn validate(weights: &Nvfp4Mlp, width: usize) -> Result<()> {
     );
     Ok(())
 }
+pub(super) struct CheckedMlp {
+    pub(super) words: Vec<u16>,
+    pub(super) report: Value,
+}
 pub(super) fn check(
     context: &Context,
     module: &Module<'_>,
     input: &CheckedNorm<'_>,
     weights: &Nvfp4Mlp,
     shape: [usize; 2],
-) -> Result<Value> {
+) -> Result<CheckedMlp> {
     validate(weights, shape[1])?;
     let gate = nvfp4_linear::check(
         context,
@@ -74,9 +78,11 @@ pub(super) fn check(
             branch_words: &down.words,
         },
     )?;
-    Ok(
-        json!({"all_passed":true,"gate":gate.report,"up":up.report,"activation":activated.report,"down":down.report,"residual":residual,
-        "device_intermediates_resident":true,"full_layer_reference_compared":false,
-        "scope":"layer-zero GPU component chain complete; each component uses actual preceding device outputs for its scalar comparison; independent full-layer/logit comparison pending"}),
-    )
+    let report = json!({"all_passed":true,"gate":gate.report,"up":up.report,"activation":activated.report,"down":down.report,"residual":residual.report,
+        "device_intermediates_resident":true,"component_checks_only":true,
+        "scope":"layer-zero GPU component chain complete; each component uses actual preceding device outputs for its scalar comparison; independent full-layer/logit comparison is reported separately by the layer harness"});
+    Ok(CheckedMlp {
+        words: residual.words,
+        report,
+    })
 }

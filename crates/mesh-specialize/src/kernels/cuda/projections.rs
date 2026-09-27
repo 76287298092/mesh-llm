@@ -45,7 +45,7 @@ pub(in crate::kernels) fn run(ptx: &str, device: i32, input: &ProjectionInput) -
     let cases = run_input(&context, &module, input)?;
     let after = context.memory()?;
     Ok(
-        json!({"schema_version":8,"kind":"qwen-layer-zero-components-trial","device":info,
+        json!({"schema_version":9,"kind":"qwen-layer-zero-reference-trial","device":info,
         "all_passed":cases.iter().chain(&fixture_cases).all(|c|c["passed"]==true),
         "cases":cases,"fixture_cases":fixture_cases,"quantization_fixtures":quantization_fixtures,
         "convolution_fixtures":convolution_fixtures,
@@ -496,9 +496,21 @@ fn check_gdn(
     } else {
         None
     };
+    let whole_layer = if let Some(mlp) = &mlp_report {
+        Some(compare_layer(
+            input,
+            tokens,
+            &mlp.words,
+            &convolution.history,
+            &recurrent.state,
+        )?)
+    } else {
+        None
+    };
+    let passed = whole_layer.as_ref().is_none_or(|r| r["all_passed"] == true);
     Ok(
-        json!({"operation":"layer_zero_components","tokens":tokens,"passed":true,
-        "preparation":prepared.report,"recurrence":recurrent.report,"output":output.map(|v|v.report),"post_attention":post_attention.map(|v|v.report),"mlp":mlp_report}),
+        json!({"operation":"layer_zero_components","tokens":tokens,"passed":passed,
+        "preparation":prepared.report,"recurrence":recurrent.report,"output":output.map(|v|v.report),"post_attention":post_attention.map(|v|v.report),"mlp":mlp_report.map(|v|v.report),"whole_layer_reference":whole_layer}),
     )
 }
 
@@ -726,4 +738,65 @@ mod tests {
         assert!(compare(&[0x7fc0], &[f32::NAN], &reference).is_err());
         assert!(compare(&[], &[1.0], &reference).is_err());
     }
+}
+
+fn compare_layer(
+    input: &ProjectionInput,
+    tokens: &[u32],
+    output: &[u16],
+    history: &[u16],
+    state: &[f32],
+) -> Result<Value> {
+    let expected = crate::qwen_gdn_layer_reference::run(input, tokens)?;
+    let gdn = input
+        .gdn
+        .as_ref()
+        .ok_or_else(|| anyhow::anyhow!("missing GDN comparison shape"))?;
+    let decode = |words: &[u16]| {
+        words
+            .iter()
+            .copied()
+            .map(entry_reference::bf16_to_f32)
+            .collect::<Vec<_>>()
+    };
+    let mut hidden = crate::layer_comparison_reference::compare_partitioned(
+        &decode(output),
+        &decode(&expected.output),
+        input.entry.width,
+    )?;
+    hidden["bf16_bit_differences"] = json!(
+        output
+            .iter()
+            .zip(&expected.output)
+            .filter(|(a, b)| a != b)
+            .count()
+    );
+    let history_width = (2 * gdn.key_heads + gdn.value_heads) * gdn.width;
+    let mut history_report = crate::layer_comparison_reference::compare_partitioned(
+        &decode(history),
+        &decode(&expected.convolution_history),
+        history_width,
+    )?;
+    history_report["bf16_bit_differences"] = json!(
+        history
+            .iter()
+            .zip(&expected.convolution_history)
+            .filter(|(a, b)| a != b)
+            .count()
+    );
+    let recurrent = crate::layer_comparison_reference::compare_partitioned(
+        state,
+        &expected.recurrent_state,
+        gdn.width * gdn.width,
+    )?;
+    let passed = hidden["all_passed"] == true
+        && history_report["all_passed"] == true
+        && recurrent["all_passed"] == true;
+    Ok(
+        json!({"all_passed":passed,"hidden":hidden,"convolution_history":history_report,"recurrent_state":recurrent,
+        "full_layer_reference_compared":true,
+        "reference_inputs":"artifact weights, original tokens and zero initial states only; no device outputs",
+        "reference_profile":"independent scalar operation chain, f64 dot/norm/exp oracles and ordered-FP32 recurrence; chosen FP32 activation quantization profile",
+        "full_model_or_logits_compared":false}),
+    )
 }

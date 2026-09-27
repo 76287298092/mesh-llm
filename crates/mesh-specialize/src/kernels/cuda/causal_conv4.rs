@@ -11,6 +11,7 @@ use std::ffi::c_void;
 pub(super) struct CheckedConvolution<'a> {
     pub(super) output: Buffer<'a>,
     pub(super) words: Vec<u16>,
+    pub(super) history: Vec<u16>,
     pub(super) report: Value,
 }
 
@@ -99,6 +100,7 @@ fn check_history<'a>(
     Ok(CheckedConvolution {
         output: whole.device,
         words: whole.output,
+        history: whole.history,
         report,
     })
 }

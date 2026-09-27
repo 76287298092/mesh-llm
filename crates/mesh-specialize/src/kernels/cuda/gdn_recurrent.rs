@@ -17,6 +17,7 @@ pub(super) struct Input<'a, 'ctx> {
 pub(super) struct CheckedRecurrent<'a> {
     pub(super) output: Buffer<'a>,
     pub(super) words: Vec<u16>,
+    pub(super) state: Vec<f32>,
     pub(super) report: Value,
 }
 
@@ -94,6 +95,7 @@ fn check_state<'a>(
     Ok(CheckedRecurrent {
         output: whole.device,
         words: whole.output,
+        state: whole.state,
         report,
     })
 }
