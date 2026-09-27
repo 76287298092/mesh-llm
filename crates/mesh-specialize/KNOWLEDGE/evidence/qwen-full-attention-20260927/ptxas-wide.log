@@ -1,0 +1,7 @@
+ptxas --gpu-name sm_120a --maxrregcount 64 --verbose "target/specialize/qwen-full-attention-20260927/probes-wide.ptx" --output-file target/specialize/probes.cubin
+ptxas target/specialize/qwen-full-attention-20260927/probes-wide.ptx, line 2337; error   : Illegal rounding modifier for instruction 'cvt'
+ptxas target/specialize/qwen-full-attention-20260927/probes-wide.ptx, line 2343; error   : Illegal rounding modifier for instruction 'cvt'
+ptxas target/specialize/qwen-full-attention-20260927/probes-wide.ptx, line 2349; error   : Illegal rounding modifier for instruction 'cvt'
+ptxas target/specialize/qwen-full-attention-20260927/probes-wide.ptx, line 2355; error   : Illegal rounding modifier for instruction 'cvt'
+ptxas fatal   : Ptx assembly aborted due to errors
+error: recipe `specialize-sass` failed on line 20 with exit code 255

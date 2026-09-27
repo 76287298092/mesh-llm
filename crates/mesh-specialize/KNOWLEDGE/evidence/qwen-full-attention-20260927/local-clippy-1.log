@@ -1,0 +1,18 @@
+    Checking mesh-specialize v0.76.1 (/Users/ndizazzo/.codex/worktrees/issue-1393-feasibility/mesh-llm/crates/mesh-specialize)
+error: float has excessive precision
+   --> crates/mesh-specialize/src/../reference/attention_gate.rs:153:37
+    |
+153 |         assert_eq!(result.sigmoid, [0.501953125]);
+    |                                     ^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#excessive_precision
+    = note: `-D clippy::excessive-precision` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::excessive_precision)]`
+help: consider changing the type or truncating it to
+    |
+153 -         assert_eq!(result.sigmoid, [0.501953125]);
+153 +         assert_eq!(result.sigmoid, [0.501_953_1]);
+    |
+
+error: could not compile `mesh-specialize` (lib test) due to 1 previous error
+error: recipe `with-lld` failed with exit code 101

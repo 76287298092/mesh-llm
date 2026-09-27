@@ -1,6 +1,6 @@
 # Complete full-attention decoder layer
 
-Status: implementation criteria before measurements. This completes layer 3's
+Status: complete layer-3 numerical trial and all three sanitizers pass. This completes layer 3's
 synthetic-input component chain with sigmoid output gating, FP8 output projection,
 first residual/post-attention norm, NVFP4 MLP and final residual. It also adds an
 independent whole-layer CPU comparison, starting only from original tokens,
@@ -107,3 +107,92 @@ The original entrypoint, reference and tolerance remain unchanged. The cost of
 extra MMA and scalar fallback is unmeasured and needs later performance work.
 A 35-wide cancellation fixture places a residual just above a BF16 midpoint;
 refined output must match scalar BF16 exactly on this and both tail fixtures.
+
+## Complete-layer numerical qualification
+
+Source `8d5528f046d6535346e7dffc1c48ede01fa1671b` passes the unchanged complete-layer
+numerical gates on RTX5090 UUID `GPU-80ded6bd-1a89-2628-3d94-902187dbab1d`, SM120,
+driver 615.71.09/API 13040. Model identity, raw-v1 artifact and checkpoint revision
+are unchanged from the prior attention trials. Host Rust is 1.98.1/LLVM 22.1.8;
+NVPTX uses nightly-2026-09-25 with rebuilt core, and offline CUDA tools are 13.4.92.
+
+Release xtask SHA-256:
+`b75fc59b4044c05c945b43bda050aff6babf0a24074309d43431d7cd0a7cd4b0`.
+PTX SHA-256:
+`ee13b6bf3d34ee2ccceeaf4b9420c32ddc0fee2c97fc7f7d529f86ba06c306b9`.
+
+| Projection profile | One-token hidden L2 | 17-token aggregate L2 | Worst token L2 | Fixed gate |
+| --- | ---: | ---: | ---: | --- |
+| Original running FP32 MMA | 0.000131464 | 0.013459719 | 0.034889559 | Fail |
+| FP64 sum between MMA tiles | 0 | 0.003044232 | 0.014019502 | Fail |
+| Tile sums plus ambiguous-output refinement | 0 | 0.0000584683 | 0.0002702340 | Pass |
+
+The one-token case has 5,120 bit-exact final hidden values. The 17-token case has
+87,040 values, 36 BF16 differences, aggregate cosine 0.9999999982907376 and worst
+token cosine 0.999999963491221. Both initialized K and V caches are bit-exact
+against their independently derived scalar counterparts, 18,432 values each
+across the two cases. All per-token/head and aggregate budgets pass.
+
+The resident chain covers 258,048 Q/K/V projection outputs, 110,592 sigmoid gate
+values, 92,160 output-projection values, post-attention residual/norm, 718,848 NVFP4
+MLP matrix outputs, SiLU product and the final residual. Q/K/V projections now
+match independent BF16 results exactly. Local output-projection BF16 results also
+match exactly, with maximum FP32 reference error 4.76837158203125e-7. Whole-chain
+output projection retains 140 BF16 differences in the 17-token case because the
+upstream attention/norm/gate path is approximate. The independent trace keeps that
+distinction visible. The MLP down outputs are bit-exact against the full scalar
+chain; remaining final hidden differences come from the residual branch.
+
+Three gate fixtures cover 771 values, including 60 negative-zero attention inputs.
+Their intermediate/product rounding and scalar BF16 outputs are exact, including
+the sigmoid subnormal near -90. Real sigmoid maximum FP32 error is
+5.960464477539063e-8; one 17-token gate BF16 boundary differs from the f64 sigmoid
+reference and remains within the original component bound. Six matrix fixture
+runs cover 58 outputs across original/refined entrypoints. The cancellation case
+has one BF16 error with the original entrypoint and none with refinement; refined
+fixtures match scalar BF16 exactly, including row/channel/K tails.
+
+Driver JIT reports 46 registers for refined FP8 and 20 for the sigmoid gate, with
+zero local/shared bytes. Offline assembly reports 50/20 registers, zero shared
+memory, stack, spills and barriers for these kernels. The compiler allocation
+difference is recorded rather than presented as agreement. Host tests pass:
+165 on macOS, 177 library plus 17 validator tests on Linux. Focused Clippy,
+formatting, no-console, PTX compilation and offline assembly pass. GPU clocks and
+power were not controlled for this correctness experiment.
+
+The full-layer trial still feeds synthetic embedding rows into layer 3. It does
+not run layers 0..2, all 64 layers, final norm/logits, tokenizer/sampling or serving
+ABI. Core/cache partition equivalence is retained, but whole decoder prefill/decode
+partition parity still needs a resident scheduler. KV is BF16, unlike Ninfer's
+FP8 baseline. Refinement frequency and performance cost are unmeasured. The next
+execution work is model scheduling with persistent per-layer state and independent
+logit checks; full-model prefill/decode, peak memory and usable context stay open.
+
+Durable rule: component bounds alone cannot qualify a quantized layer. Small
+upstream rounding changes can cross later FP8/NVFP4 boundaries and exceed the
+whole-layer budget. Preserve independent original-input traces and per-token
+checks, and improve arithmetic before considering any accuracy-budget change.
+
+Normal, memcheck, racecheck and synccheck all pass the complete layer and fixtures.
+The sanitizers report zero errors, hazards or warnings. Elapsed harness times are
+69.130711567, 68.680204111, 73.553326073 and 67.049201162 seconds. Each invocation
+used an 8 GiB user scope, no swap and a 240-second timeout. These CPU-reference
+harness times are not model inference rates. Driver free bytes before/after
+temporary allocations are 32,221,822,976, not a model peak-memory measurement.
+Model prefill/decode/context fields remain null.
+
+Ninfer restarted on 2026-09-27 at 04:55:15 EDT, PID 3047200, with engine ready at
+04:55:21 and fresh `/health` HTTP 200. Its sampled allocation is 30,046 MiB.
+ComfyUI PID 448118 remains at 498 MiB. The original Carrack branch, Ninfer source
+and configuration, and model assets are preserved.
+
+Committed reports and logs are under
+[`evidence/qwen-full-attention-20260927`](../evidence/qwen-full-attention-20260927/).
+The raw directory `target/specialize/qwen-full-attention-20260927/` on both hosts
+also retains PTX/cubin artifacts; the failed original and wide-only numerical
+trials and failed assembler/local-test logs are preserved. `refined.json` and
+`refined-{memcheck,racecheck,synccheck}.json` are the qualified reports.
+The `qwen-attention-check` command now emits schema 3. Use a fresh output file and
+an appropriately bounded service window to reproduce; saved outputs are never
+overwritten. All model scheduling, full-model/logit and serving/performance gates
+remain open in the work ledger.
