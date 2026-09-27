@@ -1,11 +1,12 @@
-//! Chained resident embedding, dynamic FP8 quantization and FP8 tensor-core linear checks.
+//! Resident embedding/norm feeding FP8 QKV/Z and BF16 A/B tensor-core projections.
 use super::{
     driver::{Buffer, Context, Function, Module},
     embedding_norm,
 };
 use crate::{
-    entry_reference, fp8_reference,
-    kernels::{EmbeddingNormInput, Fp8Projection, ProjectionInput},
+    entry_reference,
+    kernels::{Bf16Projection, EmbeddingNormInput, Fp8Projection, ProjectionInput},
+    projection_reference,
 };
 use anyhow::{Result, ensure};
 use serde_json::{Value, json};
@@ -31,15 +32,16 @@ pub(in crate::kernels) fn run(ptx: &str, device: i32, input: &ProjectionInput) -
     let cases = run_input(&context, &module, input)?;
     let after = context.memory()?;
     Ok(
-        json!({"schema_version":1,"kind":"qwen-fp8-projection-trial","device":info,
+        json!({"schema_version":2,"kind":"qwen-projection-trial","device":info,
         "all_passed":cases.iter().chain(&fixture_cases).all(|c|c["passed"]==true),
         "cases":cases,"fixture_cases":fixture_cases,"quantization_fixtures":quantization_fixtures,
         "memory_before":{"free_bytes":before.0,"total_bytes":before.1},
         "memory_after":{"free_bytes":after.0,"total_bytes":after.1},
         "quantize_resources":module.function("fp8_quantize_bf16")?.resources()?,
         "linear_resources":module.function("fp8_linear")?.resources()?,
+        "bf16_linear_resources":module.function("bf16_linear")?.resources()?,
         "activation_profile":"E4M3FN dynamic token scale in FP32; amax/448, zero scale replaced with 1; RNE finite saturation",
-        "gpu_chain":"embedding/norm -> FP8 quantization -> FP8 MMA; no host replacement of intermediate device data",
+        "gpu_chain":"embedding/norm -> FP8 quantization -> FP8 QKV/Z MMA; same normalized BF16 -> BF16 A/B MMA; no host replacement of intermediate device data",
         "timing_collected":false,"full_model_executed":false}),
     )
 }
@@ -47,7 +49,9 @@ pub(in crate::kernels) fn run(ptx: &str, device: i32, input: &ProjectionInput) -
 fn validate(input: &ProjectionInput) -> Result<()> {
     let entry = &input.entry;
     ensure!(
-        (1..=16).contains(&entry.batches.len()) && (1..=8).contains(&input.projections.len()),
+        (1..=16).contains(&entry.batches.len())
+            && (1..=8).contains(&input.projections.len())
+            && (1..=8).contains(&input.bf16_projections.len()),
         "invalid trial case count"
     );
     for tokens in &entry.batches {
@@ -78,6 +82,24 @@ fn validate(input: &ProjectionInput) -> Result<()> {
                 scale.is_finite() && scale > 0.0
             }),
             "invalid projection scale"
+        );
+    }
+    for p in &input.bf16_projections {
+        ensure!(
+            (1..=262144).contains(&p.channels),
+            "invalid BF16 projection channels"
+        );
+        ensure!(
+            p.weights.len() == p.channels * entry.width * 2,
+            "BF16 projection extent mismatch"
+        );
+        ensure!(
+            p.weights
+                .as_chunks::<2>()
+                .0
+                .iter()
+                .all(|b| { entry_reference::bf16_to_f32(u16::from_le_bytes(*b)).is_finite() }),
+            "nonfinite checkpoint BF16 weight"
         );
     }
     Ok(())
@@ -122,6 +144,11 @@ fn run_input(
         .iter()
         .map(|p| Ok((upload(context, &p.weights)?, upload(context, &p.scales)?)))
         .collect::<Result<_>>()?;
+    let bf16_projections: Vec<_> = input
+        .bf16_projections
+        .iter()
+        .map(|p| upload(context, &p.weights))
+        .collect::<Result<_>>()?;
     let mut cases = Vec::new();
     for tokens in &input.entry.batches {
         let expected = entry_reference::embedding_norm(
@@ -155,7 +182,7 @@ fn run_input(
             "chained normalized BF16 differs from scalar reference"
         );
         let expected_quant =
-            fp8_reference::quantize(&expected.normalized, tokens.len(), input.entry.width)?;
+            projection_reference::quantize(&expected.normalized, tokens.len(), input.entry.width)?;
         let codes = upload(context, &vec![127; count])?;
         let scales = upload(context, &vec![0xff; tokens.len() * 4])?;
         quantize(
@@ -182,7 +209,7 @@ fn run_input(
             let actual = run_linear(
                 context,
                 &module.function("fp8_linear")?,
-                [&codes, w, &scales, sw],
+                &[&codes, w, &scales, sw],
                 shape,
             )?;
             let weight_scales: Vec<_> = projection
@@ -192,7 +219,7 @@ fn run_input(
                 .iter()
                 .map(|b| u16::from_le_bytes(*b))
                 .collect();
-            let reference = fp8_reference::linear(
+            let reference = projection_reference::linear(
                 &expected_quant,
                 &projection.weights,
                 &weight_scales,
@@ -200,10 +227,41 @@ fn run_input(
             )?;
             let mut report = compare(&actual.0, &actual.1, &reference)?;
             report["projection"] = json!(projection.name);
+            report["weight_format"] = json!("E4M3FN with BF16 per-channel scale");
             report["shape_mnk"] = json!(shape);
             report["tokens"] = json!(tokens);
             report["activation_codes_exact"] = json!(true);
             report["activation_scales_exact"] = json!(true);
+            report["free_device_bytes_with_allocations"] = json!(context.memory()?.0);
+            cases.push(report);
+        }
+        for (projection, w) in input.bf16_projections.iter().zip(&bf16_projections) {
+            let shape = [tokens.len(), projection.channels, input.entry.width];
+            let actual = run_linear(
+                context,
+                &module.function("bf16_linear")?,
+                &[&normalized, w],
+                shape,
+            )?;
+            let weights: Vec<_> = projection
+                .weights
+                .as_chunks::<2>()
+                .0
+                .iter()
+                .map(|b| u16::from_le_bytes(*b))
+                .collect();
+            let reference = projection_reference::linear_bf16(
+                &expected.normalized,
+                &weights,
+                tokens.len(),
+                input.entry.width,
+            )?;
+            let mut report = compare(&actual.0, &actual.1, &reference)?;
+            report["projection"] = json!(projection.name);
+            report["weight_format"] = json!("BF16");
+            report["activation_format"] = json!("resident normalized BF16, no quantization");
+            report["shape_mnk"] = json!(shape);
+            report["tokens"] = json!(tokens);
             report["free_device_bytes_with_allocations"] = json!(context.memory()?.0);
             cases.push(report);
         }
@@ -234,30 +292,24 @@ fn quantize(
 fn run_linear(
     context: &Context,
     function: &Function<'_, '_>,
-    buffers: [&Buffer<'_>; 4],
+    buffers: &[&Buffer<'_>],
     shape: [usize; 3],
 ) -> Result<(Vec<u16>, Vec<f32>)> {
     let [m, n, k] = shape;
     let count = m * n;
     let output = upload(context, &vec![0xa5; count * 2])?;
     let unrounded = upload(context, &vec![0xff; count * 4])?;
-    let mut pointers = [
-        buffers[0].pointer(),
-        buffers[1].pointer(),
-        buffers[2].pointer(),
-        buffers[3].pointer(),
-        output.pointer(),
-        unrounded.pointer(),
-    ];
+    let mut pointers: Vec<_> = buffers.iter().map(|b| b.pointer()).collect();
+    pointers.extend([output.pointer(), unrounded.pointer()]);
     let mut dimensions = [u32::try_from(m)?, u32::try_from(n)?, u32::try_from(k)?];
     let mut args: Vec<*mut c_void> = pointers
         .iter_mut()
         .map(|p| (p as *mut u64).cast())
         .collect();
     args.extend(dimensions.iter_mut().map(|p| (p as *mut u32).cast()));
-    // SAFETY: Six pointers and three dimensions match fp8_linear's ABI. Every
-    // tensor has validated dimensions, tail loads/stores are masked by the kernel,
-    // and allocations stay alive through synchronization and download.
+    // SAFETY: Callers supply four input pointers for fp8_linear or two for
+    // bf16_linear, followed here by BF16/FP32 outputs and three u32 dimensions.
+    // Validated extents, masked tails and allocation lifetimes cover every access.
     unsafe {
         function.launch(
             [
@@ -277,7 +329,7 @@ fn run_linear(
 fn compare(
     bf16: &[u16],
     actual: &[f32],
-    reference: &fp8_reference::LinearReference,
+    reference: &projection_reference::LinearReference,
 ) -> Result<Value> {
     ensure!(
         actual.len() == reference.unrounded.len() && bf16.len() == actual.len(),
@@ -314,7 +366,7 @@ fn fixture() -> Result<ProjectionInput> {
         .collect();
     let weight = vec![0; width * 2];
     let weights = (0..channels * width)
-        .map(|i| fp8_reference::encode((i * 7 % 15) as f32 - 7.0))
+        .map(|i| projection_reference::encode((i * 7 % 15) as f32 - 7.0))
         .collect::<Result<_>>()?;
     let scales = (0..channels)
         .flat_map(|i| entry_reference::round_bf16(0.25 * (i % 4 + 1) as f32).to_le_bytes())
@@ -333,18 +385,27 @@ fn fixture() -> Result<ProjectionInput> {
             scales,
             channels,
         }],
+        bf16_projections: vec![Bf16Projection {
+            name: "signed-bf16-tail-fixture".into(),
+            weights: (0..channels * width)
+                .flat_map(|i| {
+                    entry_reference::round_bf16(((i * 11 % 43) as f32 - 21.0) / 16.0).to_le_bytes()
+                })
+                .collect(),
+            channels,
+        }],
     })
 }
 
 fn quantization_fixtures(context: &Context, module: &Module<'_>) -> Result<Value> {
     let mut levels = Vec::new();
     for code in 0..=126 {
-        let value = fp8_reference::decode(code);
+        let value = projection_reference::decode(code);
         for sign in [1.0, -1.0] {
             levels.push(entry_reference::round_bf16(value * sign));
             if code < 126 {
                 levels.push(entry_reference::round_bf16(
-                    (value + fp8_reference::decode(code + 1)) * 0.5 * sign,
+                    (value + projection_reference::decode(code + 1)) * 0.5 * sign,
                 ));
             }
         }
@@ -353,7 +414,7 @@ fn quantization_fixtures(context: &Context, module: &Module<'_>) -> Result<Value
     let mut input = levels;
     input.extend(vec![0; width]);
     input.extend((0..width).map(|i| if i % 2 == 0 { 1_u16 } else { 0x8001 }));
-    let expected = fp8_reference::quantize(&input, 3, width)?;
+    let expected = projection_reference::quantize(&input, 3, width)?;
     let bytes: Vec<_> = input.iter().flat_map(|v| v.to_le_bytes()).collect();
     let input = upload(context, &bytes)?;
     let codes = upload(context, &vec![127; expected.codes.len()])?;
@@ -387,7 +448,7 @@ mod tests {
     use super::*;
     #[test]
     fn projection_comparison_rejects_wrong_rounding_large_error_and_nonfinite_output() {
-        let reference = fp8_reference::LinearReference {
+        let reference = projection_reference::LinearReference {
             unrounded: vec![1.0],
             normalized: vec![0x3f80],
             absolute_sums: vec![2.0],

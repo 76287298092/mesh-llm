@@ -8,8 +8,8 @@ pub mod packages;
 #[path = "../reference/embedding_norm.rs"]
 pub mod entry_reference;
 
-#[path = "../reference/fp8_linear.rs"]
-pub mod fp8_reference;
+#[path = "../reference/projections.rs"]
+pub mod projection_reference;
 
 #[path = "../reference/arithmetic.rs"]
 pub mod reference;

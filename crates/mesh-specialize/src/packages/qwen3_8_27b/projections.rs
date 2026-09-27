@@ -1,7 +1,7 @@
-//! First FP8 input projections from resident embedding/norm GPU output.
+//! Layer-zero FP8 QKV/Z and BF16 A/B projections from resident normalized activations.
 use crate::{
     artifact::reader::VerifiedArtifact,
-    kernels::{EmbeddingNormInput, Fp8Projection, ProjectionInput},
+    kernels::{Bf16Projection, EmbeddingNormInput, Fp8Projection, ProjectionInput},
 };
 use anyhow::Result;
 use serde_json::{Value, json};
@@ -42,7 +42,24 @@ pub fn trial(path: &Path, ptx: &str, device: i32) -> Result<Value> {
             channels,
         });
     }
-    let input = ProjectionInput { entry, projections };
+    let mut bf16_projections = Vec::new();
+    for name in ["in_proj_a", "in_proj_b"] {
+        let mut weights = Vec::with_capacity(48 * 5120 * 2);
+        artifact.copy_object(
+            &format!("tensors/model.language_model.layers.0.linear_attn.{name}.weight"),
+            &mut weights,
+        )?;
+        bf16_projections.push(Bf16Projection {
+            name: name.into(),
+            weights,
+            channels: 48,
+        });
+    }
+    let input = ProjectionInput {
+        entry,
+        projections,
+        bf16_projections,
+    };
     let mut report = crate::kernels::projection_check(ptx, device, &input)?;
     report["identity"] = json!(identity);
     report["compiled_inventory"] = json!(inventory);

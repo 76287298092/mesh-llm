@@ -18,7 +18,7 @@ Start with [the implementation plan](../PLAN.md) and the
 | [Mspec format](findings/mspec-format.md) | Reader/writer and content identity pass macOS/Linux tests and low-descriptor checks |
 | [Pinned checkpoint intake](findings/checkpoint-intake.md) | Real Carrack import/readback passes: 1,635 tensors, 22.52 GB; model execution pending |
 | [Qwen entry operation](findings/qwen-entry.md) | All 1,635 tensor metadata entries match; 696,320 real-weight embedding/norm values pass on GPU; sanitizers clean |
-| [Qwen FP8 projections](findings/qwen-projections.md) | Resident embedding/norm to dynamic FP8 to QKV/Z projection chain under validation |
+| [Qwen projections](findings/qwen-projections.md) | Resident FP8 QKV/Z chain passes 294,912 real outputs and sanitizers; BF16 A/B under validation |
 | [Prebuilt core target mismatch](dead-ends/prebuilt-core-target-mismatch.md) | Resolved by rebuilding core; emitted PTX executed |
 | [Racecheck timing repetitions](dead-ends/racecheck-timing-repetitions.md) | Failed with host OOM; bounded check-only recovery passed |
 

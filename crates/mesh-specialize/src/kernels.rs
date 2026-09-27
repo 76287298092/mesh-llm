@@ -19,6 +19,13 @@ pub struct Fp8Projection {
 pub struct ProjectionInput {
     pub entry: EmbeddingNormInput,
     pub projections: Vec<Fp8Projection>,
+    pub bf16_projections: Vec<Bf16Projection>,
+}
+
+pub struct Bf16Projection {
+    pub name: String,
+    pub weights: Vec<u8>,
+    pub channels: usize,
 }
 
 pub fn projection_check(

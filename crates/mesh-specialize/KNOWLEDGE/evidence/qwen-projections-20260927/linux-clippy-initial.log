@@ -1,0 +1,19 @@
+Note: mold is unavailable or failed the active target/toolchain link probe.
+Falling back to lld or the platform linker for this build.
+
+
+    Checking mesh-specialize v0.76.1 (/home/ndizazzo/dev/mesh/mesh-llm/crates/mesh-specialize)
+error: useless use of `vec!`
+   --> crates/mesh-specialize/src/kernels/cuda/projections.rs:360:34
+    |
+360 |     let scales = upload(context, &vec![0xff; 12])?;
+    |                                  ^^^^^^^^^^^^^^^ help: you can use a slice directly: `&[0xff; 12]`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#useless_vec
+    = note: `-D clippy::useless-vec` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::useless_vec)]`
+
+error: could not compile `mesh-specialize` (lib) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `mesh-specialize` (lib test) due to 1 previous error
+error: recipe `with-lld` failed with exit code 101

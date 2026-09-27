@@ -1,4 +1,4 @@
-//! Independent logical FP8 quantization and dense projection arithmetic.
+//! Independent logical FP8/BF16 quantization and dense projection arithmetic.
 use crate::entry_reference::{bf16_to_f32, round_bf16};
 use anyhow::{Result, ensure};
 
@@ -11,6 +11,60 @@ pub struct LinearReference {
     pub unrounded: Vec<f32>,
     pub normalized: Vec<u16>,
     pub absolute_sums: Vec<f64>,
+}
+
+/// Logical BF16 X[m,k] times W[n,k]^T, with no activation quantization or scales.
+pub fn linear_bf16(
+    input: &[u16],
+    weights: &[u16],
+    rows: usize,
+    width: usize,
+) -> Result<LinearReference> {
+    ensure!(
+        (1..=2048).contains(&rows) && (1..=32768).contains(&width),
+        "invalid BF16 projection dimensions"
+    );
+    ensure!(input.len() == rows * width, "BF16 input extent mismatch");
+    ensure!(
+        !weights.is_empty() && weights.len().is_multiple_of(width),
+        "BF16 weight extent mismatch"
+    );
+    let channels = weights.len() / width;
+    ensure!((1..=262144).contains(&channels), "invalid BF16 channels");
+    ensure!(
+        input
+            .iter()
+            .chain(weights)
+            .all(|&v| bf16_to_f32(v).is_finite()),
+        "nonfinite BF16 projection input"
+    );
+    let count = rows * channels;
+    let mut output = LinearReference {
+        unrounded: Vec::with_capacity(count),
+        normalized: Vec::with_capacity(count),
+        absolute_sums: Vec::with_capacity(count),
+    };
+    for row in input.chunks_exact(width) {
+        for weight in weights.chunks_exact(width) {
+            let mut sum = 0.0_f64;
+            let mut absolute = 0.0_f64;
+            for (&a, &b) in row.iter().zip(weight) {
+                let product = f64::from(bf16_to_f32(a)) * f64::from(bf16_to_f32(b));
+                sum += product;
+                absolute += product.abs();
+            }
+            let value = sum as f32;
+            let rounded = round_bf16(value);
+            ensure!(
+                value.is_finite() && bf16_to_f32(rounded).is_finite(),
+                "BF16 projection overflow"
+            );
+            output.unrounded.push(value);
+            output.normalized.push(rounded);
+            output.absolute_sums.push(absolute);
+        }
+    }
+    Ok(output)
 }
 
 /// E4M3FN, including subnormals and its two NaN bit patterns.
@@ -150,6 +204,29 @@ pub fn linear(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn bf16_projection_preserves_fractional_inputs_and_rejects_invalid_data() {
+        let input = [1.5, -2.0, 0.25, 3.0].map(round_bf16);
+        let weights = [2.0, -0.5, 1.25, 2.0, -1.0, 1.0].map(round_bf16);
+        let result = linear_bf16(&input, &weights, 2, 2).unwrap();
+        assert_eq!(result.unrounded, [4.0, -2.125, -3.5, -1.0, 6.3125, 2.75]);
+        assert_eq!(result.absolute_sums, [4.0, 5.875, 3.5, 2.0, 6.3125, 3.25]);
+        assert_eq!(
+            result.normalized,
+            result
+                .unrounded
+                .iter()
+                .map(|&x| round_bf16(x))
+                .collect::<Vec<_>>()
+        );
+        assert!(linear_bf16(&input, &weights, 0, 2).is_err());
+        assert!(linear_bf16(&input, &weights, 2, 0).is_err());
+        assert!(linear_bf16(&input[..3], &weights, 2, 2).is_err());
+        assert!(linear_bf16(&input, &weights[..5], 2, 2).is_err());
+        assert!(linear_bf16(&[0x7fc0], &[0x3f80], 1, 1).is_err());
+        assert!(linear_bf16(&[0x3f80], &[0x7f80], 1, 1).is_err());
+        assert!(linear_bf16(&[0x7f7f], &[0x7f7f], 1, 1).is_err());
+    }
     #[test]
     fn fp8_values_ties_saturation_and_signed_zero() {
         assert_eq!(decode(1), 1.0 / 512.0);

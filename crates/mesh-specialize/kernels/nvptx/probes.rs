@@ -3,6 +3,7 @@
 
 use core::arch::asm;
 
+mod bf16_linear;
 mod embedding_norm;
 mod fp8_linear;
 mod fp8_quantize;
