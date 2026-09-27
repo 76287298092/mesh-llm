@@ -1,0 +1,22 @@
+Note: mold is unavailable or failed the active target/toolchain link probe.
+Falling back to lld or the platform linker for this build.
+
+
+   Compiling mesh-specialize v0.76.1 (/home/ndizazzo/dev/mesh/mesh-llm/crates/mesh-specialize)
+error[E0599]: no method named `allocate` found for reference `&'a driver::Context` in the current scope
+   --> crates/mesh-specialize/src/kernels/cuda/attention.rs:267:26
+    |
+267 |     let buffer = context.allocate(bytes.len())?;
+    |                          ^^^^^^^^ method not found in `&'a driver::Context`
+
+error[E0599]: no method named `allocate` found for reference `&'a driver::Context` in the current scope
+   --> crates/mesh-specialize/src/kernels/cuda/attention_prepare.rs:186:26
+    |
+186 |     let buffer = context.allocate(bytes.len())?;
+    |                          ^^^^^^^^ method not found in `&'a driver::Context`
+
+For more information about this error, try `rustc --explain E0599`.
+error: could not compile `mesh-specialize` (lib) due to 2 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `mesh-specialize` (lib test) due to 2 previous errors
+error: recipe `with-lld` failed with exit code 101

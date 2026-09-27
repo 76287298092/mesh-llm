@@ -1,6 +1,6 @@
 # Full-attention Q/K preparation
 
-Status: implementation criteria, before measurements. This advances Q02 with
+Status: real-weight preparation and all three CUDA sanitizers pass. This advances Q02 with
 layer-3 Q/K/V projections, per-head Q/gate split, zero-centered Q/K RMSNorm and
 partial text RoPE. Attention scores, softmax, KV cache, sigmoid output gate and
 output projection remain separate tasks. Layers 0..2 are not run: embedding rows
@@ -48,3 +48,66 @@ first Linux compile caught a parent integration mistake: the new wrappers used
 a nonexistent `Context::allocate` method instead of the existing `Buffer::new`.
 Both allocation helpers now use the established RAII API. Preserve the initial
 failed Linux test/build log. No GPU trial ran at the failed revision.
+
+## Carrack qualification
+
+Source `295cb5e8c95155f476e61659920cae3c0f3a70d2` passes real-weight input
+preparation on RTX5090 UUID `GPU-80ded6bd-1a89-2628-3d94-902187dbab1d`,
+SM120, driver 615.71.09/API 13040. The host uses Rust 1.98.1/LLVM 22.1.8;
+Rust device PTX uses nightly-2026-09-25 with rebuilt NVPTX core. CUDA 13.4.92
+ptxas and the driver JIT report 32 registers and 1,024 bytes shared memory for
+`attention_qk_prepare`; offline assembly has zero stack/spills and one barrier.
+
+Release xtask SHA-256:
+`4165b33adc569d9a2cc39894cb0b0cf63ed9bfc24ad8b8a7c5513b8f7cdaa66c`.
+PTX SHA-256:
+`817564d59ea188ab9af4cbc0fb5170dec6a750e91b9041650c5bd5c36d101b2f`.
+Mac passes 149 library tests and Clippy; Linux passes 160 library and 17 validator
+tests plus Clippy. Formatting, no-console and PTX compilation pass. Read-only
+cross-checks cover kernel/reference layout and arithmetic and resident-buffer
+integration. The initial Linux compile failure remains in evidence.
+
+The one- and 17-token cases validate 258,048 real Q/gate, K and V projection
+outputs. The largest FP32 projection error is 0.000057220458984375, within the
+existing absolute-product-sum bound. There are 34 BF16 scalar-reference
+projection differences (26 Q/gate, six K and two V in the 17-token case), with
+exact rounding from each device FP32 diagnostic. These are reported component
+differences, not hidden by replacing the resident projection input.
+
+Q/K preparation checks 129,024 real values. Norm FP32 maximum absolute error is
+0.000000476837158203125. One 17-token Q value differs from the independent BF16
+norm/rotation reference; all other prepared values match. The worst per-head
+normalized L2 is 0.0001990355183777659 and the minimum cosine is
+0.9999999802228831, passing the fixed 0.01/0.9999 gates. Every rotary output
+matches the scalar BF16 operator sequence from the actual GPU norm exactly.
+All 110,592 Q gate words copy exactly; K gate buffers remain untouched.
+
+Five additional fixtures check 10,566 prepared values, including width 8, real
+width 256, strided tail width 258, width 1024, multiple heads, zero input, weight
+-1 and positions 0/1/131071/131072/262143. Their prepared BF16 values match the
+independent reference exactly. The reference unit tests separately prove
+midpoint product rounding differs from single final rounding, quarter-turn
+pair/sign layout, and the first two frequency anchors.
+
+Normal, memcheck, racecheck and synccheck reports all pass. Memcheck and
+synccheck report zero errors; racecheck reports zero hazards/errors/warnings.
+Each run uses a user scope with 8 GiB RAM, zero swap and a 240-second timeout.
+Elapsed times are 12.284807581, 12.297463947, 12.617530541 and 12.209262198 seconds,
+respectively. These include artifact verification, uploads and CPU references;
+they are not inference throughput. Driver free memory before/after temporary
+allocations is 32,221,822,976 bytes, not a measured full-model peak. Model prefill,
+decode and usable context fields remain null.
+
+Ninfer restarted at 03:58:35 EDT on 2026-09-27, PID 3006534, and reported engine
+ready at 03:58:40. Fresh health returns HTTP 200 and GPU sampling shows its
+30,046 MiB allocation. ComfyUI PID 448118 remains at 498 MiB. No original model
+assets, Ninfer source or service configuration changed.
+
+Evidence: `KNOWLEDGE/evidence/qwen-attention-prepare-20260927/`. Raw files/PTX
+remain under `target/specialize/qwen-attention-prepare-20260927/` on both hosts.
+Reproduce by building with `just specialize-ptx` and `just specialize-tools-build`,
+then running `target/release/xtask specialize qwen-attention-check --artifact
+PATH --ptx PATH --device 0 --output NEW_FILE`. The schema is 1 and preserves
+failed numerical reports before returning failure. Next: causal attention and
+KV state/chunk equivalence, then gate/output projection and full attention-layer
+qualification before the full model schedule and serving ABI.
