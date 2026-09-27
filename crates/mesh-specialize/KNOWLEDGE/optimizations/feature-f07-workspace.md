@@ -86,3 +86,18 @@ cache; this still costs one allocation and a device copy per MLP. Stage-level
 diagnostics retain the original detailed path. Exact arithmetic and split-K off
 are required. Host tests and Clippy passed; Linux compilation and whole-model
 output/state equivalence and throughput remain pending. No default promotion.
+
+
+Whole-model paired trial `model-workspace-1`, source `3d72188a4`, passed both
+natural-language prompts with 32 generated tokens and three repetitions per
+mode. Median ordinary decode: Python 24.1571 -> 25.5566 tokens/s (+5.79%);
+prose 24.2897 -> 25.5994 (+5.39%). Generated token sequences, all four exported
+logit hashes (whole/token prefill and teacher-forced decode), and complete
+state hashes matched across workspace off/on. Both modes passed strict partition
+and profiled/control equivalence. These are short shared-GPU, fixed off/on-order
+measurements with ComfyUI resident, not matched Ninfer rates. Ninfer remained
+inactive. Evidence includes commands, reports, logit manifests and comparison
+script; binary logit exports remain in ignored working output. Mac260tests,
+Clippy on both hosts and Linux release tools build passed. Whole-model MTP forced
+rejection and sanitizer qualification is running separately in
+`model-workspace-check-1`; it is not yet claimed passed. The default remains off.
