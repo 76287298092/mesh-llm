@@ -62,3 +62,20 @@ Five of eight drafts were accepted on the synthetic eight-output fixture;
 23.36 tokens/s is slower than its 25.45 target-only control. Full text/sanitizer
 qualification is in progress. Added phase wall attribution and separate head /
 verification event captures to select the next change from measured costs.
+
+The initial eight-output/depth-four memcheck completed with zero errors. Racecheck
+exceeded its 300-second bound and has no terminal result; preserve that incomplete
+run under `evidence/iterate-20260927/mtp-qualified/` despite the original directory
+name. Ninfer was restored at 14:49:53 EDT, PID 3329921, HTTP 200; ComfyUI unchanged.
+Subsequent sanitizer runs use three outputs/depth one to exercise target verification,
+forced rejection and replay within the bound. Full-depth text comparisons remain
+separate. Instrumented memory snapshots retained 2 MiB after release; uninstrumented
+runs returned to their initial free-memory value. No transient peak is measured.
+
+The next isolated candidate selects the exact 16x8 FP8 tensor-core tile for all
+multirow work, including two-to-five-row verification, while single-row decode
+keeps its dedicated path. Source `65ab2242c` measured 204 ms verification out of
+300 ms total synthetic MTP decode; the separate five-row capture spent 90.38 ms
+on kernels, dominated by `fp8_linear_exact4`. MTP-head kernels took only 5.21 ms
+for the two-row oracle. Existing FP8 fixtures already exercise the larger tile's
+partial rows; the candidate still needs full-model and MTP regression evidence.
