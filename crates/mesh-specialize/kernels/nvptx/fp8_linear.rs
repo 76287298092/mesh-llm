@@ -167,11 +167,12 @@ fn encode_bf16_rne(value: f32) -> u16 {
 /// Store one scaled matrix result when its row and column are in range.
 ///
 /// # Safety
+/// `a` and `w` must cover m/ n rows of `width` E4M3 values.
 /// `sa`, `sw`, `out`, and `unrounded` must point to valid allocations covering the
 /// declared dimensions, remain live, and be disjoint. The output index arithmetic
 /// must fit `usize`.
 #[inline(always)]
-unsafe fn store_scaled_output(
+unsafe fn store_scaled_output<const WIDE: bool>(
     sa: *const f32,
     sw: *const u16,
     out: *mut u16,
@@ -181,6 +182,10 @@ unsafe fn store_scaled_output(
     m: usize,
     n: usize,
     accumulator: f32,
+    absolute_sum: f64,
+    a: *const u8,
+    w: *const u8,
+    width: usize,
 ) {
     if row >= m || column >= n {
         return;
@@ -189,6 +194,22 @@ unsafe fn store_scaled_output(
     // SAFETY: The caller provides scales for every in-range row and output column.
     let (row_scale, column_scale) = unsafe { (*sa.add(row), decode_bf16(*sw.add(column))) };
     let scaled = fp32_multiply_rn(fp32_multiply_rn(accumulator, row_scale), column_scale);
+    // SAFETY: In-range output coordinates address valid rows of the input matrices.
+    // This scalar path has no warp collective and is safe after the uniform MMA loop.
+    let scaled = if WIDE {
+        unsafe {
+            crate::fp8_linear_rounding::refine(
+                a,
+                w,
+                [row, column, width],
+                scaled,
+                absolute_sum,
+                [row_scale, column_scale],
+            )
+        }
+    } else {
+        scaled
+    };
     let index = row * n + column;
     // SAFETY: The caller provides disjoint output allocations covering m * n elements.
     unsafe {
@@ -238,11 +259,13 @@ pub unsafe extern "ptx-kernel" fn fp8_linear(
 /// each total is rounded to FP32 before the existing row/channel scaling and BF16
 /// output boundary. This reduces drift between FP32 tile accumulation and the
 /// independent FP64-dot reference, but is not an exact FP64 dot product because
-/// the MMA instructions round each tile in FP32.
+/// the MMA instructions round each tile in FP32. A positive-product MMA bounds
+/// BF16 rounding uncertainty; ambiguous outputs are recomputed by an exact scalar
+/// FP64 dot before the same FP32 scale products. Its performance cost is unmeasured.
 ///
 /// # Safety
 /// Use the same launch geometry, dimensions, extents, alignment, disjointness, and
-/// lifetime requirements documented for [`fp8_linear`].
+/// lifetime requirements documented for [`fp8_linear`], with `k <= 32768`.
 #[unsafe(no_mangle)]
 pub unsafe extern "ptx-kernel" fn fp8_linear_wide(
     a: *const u8,
@@ -286,6 +309,7 @@ unsafe fn fp8_linear_impl<const WIDE: bool>(
     let k_usize = k as usize;
     let mut accumulators = (0.0_f32, 0.0_f32, 0.0_f32, 0.0_f32);
     let mut wide_totals = (0.0_f64, 0.0_f64, 0.0_f64, 0.0_f64);
+    let mut absolute_totals = (0.0_f64, 0.0_f64, 0.0_f64, 0.0_f64);
 
     for k_tile in 0..k.div_ceil(32) {
         let k_start = k_tile as usize * 32 + thread_in_group * 4;
@@ -321,6 +345,23 @@ unsafe fn fp8_linear_impl<const WIDE: bool>(
             },
         );
         if WIDE {
+            // Clearing each packed sign bit supplies a positive-product dot and
+            // a conservative rounding interval for the final BF16 conversion.
+            let positive = mma_e4m3(
+                a0 & 0x7f7f7f7f,
+                a1 & 0x7f7f7f7f,
+                a2 & 0x7f7f7f7f,
+                a3 & 0x7f7f7f7f,
+                b0 & 0x7f7f7f7f,
+                b1 & 0x7f7f7f7f,
+                (0.0, 0.0, 0.0, 0.0),
+            );
+            absolute_totals = (
+                fp64_add_rn(absolute_totals.0, fp32_to_fp64_exact(positive.0)),
+                fp64_add_rn(absolute_totals.1, fp32_to_fp64_exact(positive.1)),
+                fp64_add_rn(absolute_totals.2, fp32_to_fp64_exact(positive.2)),
+                fp64_add_rn(absolute_totals.3, fp32_to_fp64_exact(positive.3)),
+            );
             wide_totals = (
                 fp64_add_rn(wide_totals.0, fp32_to_fp64_exact(tile_accumulators.0)),
                 fp64_add_rn(wide_totals.1, fp32_to_fp64_exact(tile_accumulators.1)),
@@ -346,7 +387,7 @@ unsafe fn fp8_linear_impl<const WIDE: bool>(
     // SAFETY: The per-tile output mapping assigns each lane four distinct in-range
     // coordinates when they pass the helper's dimension guards.
     unsafe {
-        store_scaled_output(
+        store_scaled_output::<WIDE>(
             sa,
             sw,
             out,
@@ -356,8 +397,12 @@ unsafe fn fp8_linear_impl<const WIDE: bool>(
             m_usize,
             n_usize,
             accumulators.0,
+            absolute_totals.0,
+            a,
+            w,
+            k_usize,
         );
-        store_scaled_output(
+        store_scaled_output::<WIDE>(
             sa,
             sw,
             out,
@@ -367,8 +412,12 @@ unsafe fn fp8_linear_impl<const WIDE: bool>(
             m_usize,
             n_usize,
             accumulators.1,
+            absolute_totals.1,
+            a,
+            w,
+            k_usize,
         );
-        store_scaled_output(
+        store_scaled_output::<WIDE>(
             sa,
             sw,
             out,
@@ -378,8 +427,12 @@ unsafe fn fp8_linear_impl<const WIDE: bool>(
             m_usize,
             n_usize,
             accumulators.2,
+            absolute_totals.2,
+            a,
+            w,
+            k_usize,
         );
-        store_scaled_output(
+        store_scaled_output::<WIDE>(
             sa,
             sw,
             out,
@@ -389,6 +442,10 @@ unsafe fn fp8_linear_impl<const WIDE: bool>(
             m_usize,
             n_usize,
             accumulators.3,
+            absolute_totals.3,
+            a,
+            w,
+            k_usize,
         );
     }
 }

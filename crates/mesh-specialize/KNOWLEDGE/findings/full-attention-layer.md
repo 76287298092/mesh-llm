@@ -87,3 +87,23 @@ Offline CUDA assembly rejected the first wide PTX before Ninfer was stopped.
 FP32-to-FP64 widening is exact and PTX rejects a rounding modifier on that
 conversion. It now uses `cvt.f64.f32`; narrowing retains `cvt.rn.f32.f64`.
 The rejected PTX and assembler log remain as `probes-wide.ptx`/`ptxas-wide.log`.
+
+Wide accumulation source `f01e2ba6b` reduces the 17-token aggregate L2 error to
+0.003044232 and makes the one-token layer bit-exact. Token 12 still fails with
+L2 0.014019502. Only two projected Q BF16 values now differ; K/V projections
+are exact. The failing token has one Q projection difference. This remains a
+failed whole-layer trial. The unchanged reference and fixed per-token gates
+caught it despite an aggregate pass.
+
+The next refinement targets BF16-ambiguous FP8 outputs. A second positive-product
+MMA per tile estimates sum(abs(products)), accumulated in FP64. Before measuring,
+the interval radius is fixed at 16e-6*absolute_sum*sx*sw + 1e-6*abs(scaled_output),
+conservative for K32 FP32 reductions and final FP32 scale operations. If both
+interval endpoints round to the same BF16 code, the original wide result stays.
+Otherwise the kernel independently decodes the raw FP8 row/column and sums their
+products in FP64, then applies the original FP32 scale order. For K<=32768, every
+E4M3 product is a multiple of 2^-18 and the absolute sum fits FP64's significand.
+The original entrypoint, reference and tolerance remain unchanged. The cost of
+extra MMA and scalar fallback is unmeasured and needs later performance work.
+A 35-wide cancellation fixture places a residual just above a BF16 midpoint;
+refined output must match scalar BF16 exactly on this and both tail fixtures.

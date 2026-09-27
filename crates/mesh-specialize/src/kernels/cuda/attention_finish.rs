@@ -233,15 +233,39 @@ fn upload<'a>(context: &'a Context, bytes: &[u8]) -> Result<Buffer<'a>> {
 
 pub(super) fn projection_fixtures(context: &Context, module: &Module<'_>) -> Result<Vec<Value>> {
     let mut reports = Vec::new();
-    for [rows, channels, width] in [[1, 1, 1], [3, 9, 35]] {
-        let input: Vec<_> = (0..rows * width)
+    for [rows, channels, width] in [[1, 1, 1], [3, 9, 35], [1, 1, 35]] {
+        let mut input: Vec<_> = (0..rows * width)
             .map(|i| crate::entry_reference::round_bf16(((i * 11 % 29) as f32 - 14.0) / 8.0))
             .collect();
+        let cancellation = rows == 1 && width == 35;
+        if cancellation {
+            input.fill(0);
+            for (index, value) in [
+                (0, 448.0),
+                (1, 1.0),
+                (2, 0.0625),
+                (3, 1.0 / 512.0),
+                (31, 448.0),
+            ] {
+                input[index] = crate::entry_reference::round_bf16(value);
+            }
+        }
         let quantized = projection_reference::quantize(&input, rows, width)?;
-        let weights: Vec<_> = (0..channels * width)
+
+        let mut weights: Vec<_> = (0..channels * width)
             .map(|i| ((i * 17 % 127) as u8) | if i % 3 == 0 { 128 } else { 0 })
             .collect();
-        let scales = vec![crate::entry_reference::round_bf16(1.0 / 256.0); channels];
+        if cancellation {
+            weights.fill(0);
+            for (index, code) in [(0, 0x7e), (1, 0x38), (2, 0x18), (3, 0x01), (31, 0xfe)] {
+                weights[index] = code;
+            }
+        }
+        let scales =
+            vec![
+                crate::entry_reference::round_bf16(if cancellation { 1.0 } else { 1.0 / 256.0 });
+                channels
+            ];
         let expected = projection_reference::linear(&quantized, &weights, &scales, width)?;
         let input_device = upload(context, &quantized.codes)?;
         let weight_device = upload(context, &weights)?;
@@ -269,7 +293,12 @@ pub(super) fn projection_fixtures(context: &Context, module: &Module<'_>) -> Res
             )?;
             let (words, unrounded) = output.read(rows * channels)?;
             let comparison = projections::compare(&words, &unrounded, &expected)?;
-            reports.push(json!({"all_passed":comparison["passed"]==true,"kernel":kernel,"shape_mnk":[rows,channels,width],"comparison":comparison}));
+            let exact_bf16 = words == expected.normalized;
+            ensure!(
+                kernel != "fp8_linear_wide" || exact_bf16,
+                "refined FP8 fixture BF16 mismatch"
+            );
+            reports.push(json!({"all_passed":comparison["passed"]==true,"kernel":kernel,"cancellation_fixture":cancellation,"bf16_reference_exact":exact_bf16,"shape_mnk":[rows,channels,width],"comparison":comparison}));
         }
     }
     Ok(reports)
