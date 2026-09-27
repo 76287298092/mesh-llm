@@ -244,3 +244,23 @@ channels<16384; absent or `off` retains the control. Arithmetic profile is
 unchanged and reports label scheduling separately. Synthetic qualification
 includes all existing exact variants plus all four split counts. No numerical
 budget is relaxed. PTX compiles; GPU/model correctness and speed remain pending.
+
+Split-K standalone qualification at `a06b71bfa`: all 48 cases match the independent
+FP64 logical oracle exactly in raw FP32 and BF16, including 2/4/8/16 splits.
+Memcheck, racecheck and synccheck report zero errors/hazards. Split kernel uses
+62 registers, 112 local bytes, zero static shared bytes; reduction uses 40 registers
+and no local/shared bytes. PTX SHA256
+`e18df0fb02524af65d00e3b313183da18ce549fce93a65a6a22011ccfc3c6136`.
+Evidence: `../evidence/iterate-20260927/splitk-check-1/`. Full-model timings and
+state checks remain pending; default dispatch is unchanged.
+
+The first model screening sweep (`splitk-sweep-1`, same source/PTX) uses the
+Python prompt, eight output tokens, depth four, full-forward recovery and one
+repetition. Shared-GPU decode rates: control 37.5184, split2 39.9430,
+split4 42.9491, split8 42.6278, split16 43.2127 tokens/s. All variants retain
+identical generated tokens and full target-state hashes across profiles, plus
+all-accepted and each of four forced-rejection gates. This is screening evidence,
+not a stable performance or quality claim. Four-way is selected for the next
+32-output, three-repetition Python/prose comparison because its screening result
+is within 0.7% of sixteen-way with one-quarter the partial storage. No default
+change. Ninfer remained inactive and ComfyUI PID448118 remained resident.

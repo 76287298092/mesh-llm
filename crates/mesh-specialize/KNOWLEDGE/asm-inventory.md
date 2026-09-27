@@ -178,3 +178,10 @@ and BF16 through `fp8_exact_trial`: all finite code pairs, tails, cancellation,
 maximum K and empty split ranges at 2/4/8/16 splits. The full absolute dot bound
 is below 2^51 for K<=32768, so partial ordering cannot overflow i64 or introduce
 floating reassociation. PTX compilation passes; GPU/model qualification pending.
+
+Split-K follow-up: `evidence/iterate-20260927/splitk-check-1` qualifies all 48
+independent raw-FP32/BF16 cases under normal execution and memcheck/racecheck/
+synccheck, with zero errors/hazards. `splitk-sweep-1` additionally verifies full
+model output/state and forced acceptance/rejection for each 2/4/8/16-way split.
+Source `a06b71bfa`; PTX SHA256
+`e18df0fb02524af65d00e3b313183da18ce549fce93a65a6a22011ccfc3c6136`.
