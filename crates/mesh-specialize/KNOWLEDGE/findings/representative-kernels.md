@@ -36,6 +36,10 @@ numerical case once, with no timing repetitions. The subsequent
 Nsight Compute/System executables were not found in carrack's PATH or the checked
 `/opt/cuda/nsight*`, `/usr/local/cuda/nsight*`, `/opt/nvidia` locations; profiler
 usability remains unqualified. System ptxas, nvdisasm and compute-sanitizer work.
+Follow-up inspection found CUPTI `libcupti.so.2026.3.1` installed and NVIDIA's
+`RmProfilingAdminOnly` set to `1`. This is not a successful profiler trial;
+counter access and activity tracing still need separate verification. No system
+profiling permission was changed.
 
 ## Measured trial
 

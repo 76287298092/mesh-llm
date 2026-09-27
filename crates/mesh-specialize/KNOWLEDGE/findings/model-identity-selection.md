@@ -32,6 +32,13 @@ passed with warnings denied. Commands used `just with-lld cargo test -p ...` and
 `just with-lld cargo clippy -p mesh-llm-native-runtime --all-targets -- -D warnings`.
 These focused checks are not a product build or a live specialized startup test.
 
+Carrack repeated all 129 tests successfully at `924716167`. Clippy for both
+native-runtime and the Linux validation executable passed with warnings denied;
+the release validation binary rebuilt successfully. Logs are retained on both
+hosts under `target/specialize/identity-20260927/`. Ninfer remained active throughout
+these CPU-side checks. A separate bounded code review found no identity-policy
+bypass in the reviewed paths. The repository no-console-print check also passed.
+
 The resolver is still over 1,000 lines. New model policy and its tests are extracted
 into the owning `model_identity` and `model_selection` modules; the existing
 backend policy and test suite remain in place. This avoids mixing artifact
