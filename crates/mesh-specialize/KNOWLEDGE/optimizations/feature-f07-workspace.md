@@ -121,3 +121,13 @@ eight output tokens, fixed off/on order, shared GPU with ComfyUI; these retained
 raw-token fixtures are performance/partition evidence, not semantic quality.
 Ninfer remained inactive. The 5% short decode gain and this smaller 512-token
 gain do not explain most of the Ninfer gap or qualify long-context serving.
+
+Prioritization from `workspace-prefill-1/profile-512-on.json`: grouped diagnostic
+prefill events sum to1565.78ms: exact FP8 tiles725.60, causal attention244.85,
+GDN recurrence238.02, NVFP4 linear196.12. The single subsequent decode's grouped
+events sum to52.39ms, including causal attention22.05, exact FP8 linear9.98,
+NVFP4 decode8.33. Instrumentation synchronizes launches; these totals are not
+uninstrumented wall-time attribution. They identify the current serial causal
+attention as a material longer-context bottleneck. After the running GPU-selection
+ablation, prioritize resident F05 tiled-attention integration and same-input
+numerical/model-quality checks; whole-round graph work remains open.
