@@ -112,3 +112,8 @@ output channels; stores transpose the accumulator mapping back to row-major
 output. Independent FP8 fixtures cover every finite code pair, signed M/N/K tails,
 maximum K and cancellation. GPU qualification and resource results are pending in
 [the MTP continuation](optimizations/mtp.md).
+
+F01 experimental `fp8_a16_decode.rs` adds packed global loads, FP32 FMA and
+warp-shuffle reduction for BF16 activations/E4M3 weights. Independent host oracle
+and ABI are in `optimizations/feature-f01-decode.md`; resident dispatch stays
+unchanged pending GPU and model qualification.

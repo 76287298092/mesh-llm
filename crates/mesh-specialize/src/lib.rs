@@ -70,3 +70,6 @@ pub mod qwen_attention_layer_reference;
 
 #[path = "../reference/mtp.rs"]
 pub mod mtp_reference;
+
+#[path = "../reference/fp8_a16_decode.rs"]
+pub mod fp8_a16_decode_reference;

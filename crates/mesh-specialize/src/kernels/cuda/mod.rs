@@ -7,11 +7,10 @@ mod attention_gate;
 mod attention_prepare;
 
 mod bf16_trial;
-mod fp8_exact_trial;
-mod nvfp4_exact_trial;
 mod causal_conv4;
 mod driver;
 pub(super) mod embedding_norm;
+mod fp8_exact_trial;
 pub(super) mod fp8_mlp_trial;
 mod gdn_output;
 mod gdn_prepare;
@@ -19,6 +18,7 @@ mod gdn_recurrent;
 mod gemm;
 pub(super) mod instructions;
 mod launch_profile;
+mod nvfp4_exact_trial;
 pub(super) mod projections;
 pub(super) mod residency;
 mod residency_entry;
@@ -38,15 +38,20 @@ pub(super) mod resident_gdn_trial;
 mod resident_head;
 mod resident_layer_diagnostic;
 mod resident_mlp;
-mod resident_projection;
 mod resident_model;
 pub(super) mod resident_model_bench;
 pub(super) mod resident_model_profile;
 pub(super) mod resident_model_trial;
 mod resident_norm;
 mod resident_nvfp4;
+mod resident_projection;
 mod resident_state;
 mod resident_weights;
+#[allow(
+    dead_code,
+    reason = "Experimental workspace awaiting operator integration and GPU qualification"
+)]
+mod resident_workspace;
 mod residual_norm;
 mod rms_norm;
 mod silu_trial;
@@ -234,5 +239,5 @@ mod mlp_activation;
 mod residual_add;
 
 mod resident_mtp;
-mod resident_speculation;
 pub(super) mod resident_mtp_trial;
+mod resident_speculation;

@@ -70,9 +70,24 @@ All Ninfer paths below are relative to the pinned source tree linked above:
 - F10: `src/models/qwen3_5/program/prefill.cpp`, `src/core/paged_kv_cache.cpp`; our session cursor/fork is not a prefix cache.
 
 Hardware instruction contracts: [NVIDIA PTX ISA](https://docs.nvidia.com/cuda/parallel-thread-execution/index.html).
-The SM120 native FP8 route uses `mma.sync.aligned.kind::f8f6f4.m16n8k32...e4m3.e4m3`;
+The SM120 native FP8 route uses `mma.sync.aligned.m16n8k32.row.col.kind::f8f6f4...e4m3.e4m3`;
 do not substitute SM100-only tensor-memory instructions merely because both GPUs
 are called Blackwell. Async-copy completion and CTA barriers must be explicit.
+
+## Measured priorities within our runtime
+
+These percentages are shares of **our measured GPU event time**, not Ninfer
+parity. The qualified 512-input profile totals 1,563.93 ms: FP8 projections
+725.04 ms (46.4%), causal attention 243.78 ms (15.6%), GDN recurrence 238.44 ms
+(15.2%), and NVFP4 projections 195.95 ms (12.5%). Together those paths explain
+89.7% of our prefill kernel time. Fixing submission overhead alone cannot remove
+that work. Source: `evidence/iterate-20260927/prefill-qualified/profile-long.json`.
+
+The qualified short-decode profile totals 30.32 ms: FP8 projections 32.6%,
+NVFP4 projections 27.2%, BF16 projections 8.9%, FP8 input quantization 8.6%,
+and GDN recurrence 8.2%. Source:
+`evidence/iterate-20260927/exact-qualified/profile.json`. Event instrumentation
+changes scheduling; these are attribution measurements, not throughput samples.
 
 ## Implementation assignments and qualification strategy
 
@@ -100,3 +115,22 @@ If a Ninfer-equivalent path changes arithmetic, report performance and quality
 separately. Store Ninfer timings from its own tooling outside our runtime—never
 import its source or parser into the bespoke engine. Until these measurements
 exist, keep the percentage column unmeasured.
+
+## Feature owner ledger
+
+| Feature | Dedicated subagent | First bounded implementation status |
+| --- | --- | --- |
+| F01 | `feature_decode_gemv` | A16 FP8 kernel and independent oracle delivered; parent validation underway |
+| F02 | `feature_native_prefill` | Native FP8 shared-memory tile in progress |
+| F03 | `feature_fusion` | Queued for next available worker slot |
+| F04 | `feature_chunked_gdn` | Chunked recurrence operator and oracle in progress |
+| F05 | `feature_tiled_attention` | FP32 online-softmax candidate in progress |
+| F06 | `feature_fp8_kv` | Queued; BF16 attention remains control |
+| F07 | `feature_workspace` | Reusable layout/lease primitive delivered; parent validation underway |
+| F08 | `feature_graphs` | Queued; depends on stable workspace ownership |
+| F09 | `feature_mtp_recovery` | Queued; compact replay primitive has separate ownership |
+| F10 | `feature_prefix_cache` | Queued; identity-bound checkpoint policy first |
+
+A delivered primitive is not an integrated or performance-qualified feature.
+Only the parent promotes candidates after independent tests, GPU qualification
+and appropriately labeled measurements. Existing defaults remain the control.
