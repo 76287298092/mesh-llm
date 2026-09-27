@@ -57,3 +57,13 @@ K16/K80 independent fixtures and full-model tests qualify this load-only change.
 `nvfp4_linear_warp4` shares the existing instructions and arithmetic, with a
 thread-coordinate read to select four independent N tiles per CTA. Qualified
 results are recorded in the decode projection optimization entry.
+
+
+## Attention reduction and scalar broadcast
+
+`attention_reduction.rs` uses paired `shfl.sync.down.b32` with full-warp clamp
+0x1f after the first three exact-order shared reduction levels. It preserves the
+old FP64 addition tree and reduces CTA barriers. Causal attention evaluates its
+unchanged online softmax scalars on thread zero and broadcasts alpha, beta and
+normalizer through disjoint shared slots. Full-model equivalence and sanitizer
+qualification are required; status is recorded with the performance iterations.

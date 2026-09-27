@@ -22,7 +22,7 @@ profiled wall duration does not isolate ordinary host overhead. Events can also
 include GPU idle gaps while the CPU enqueues work. No inference-rate
 claim is derived from the instrumented run.
 
-`qwen-model-profile` uses a prefix of 1..17 tokens and profiles one subsequent
+`qwen-model-profile` uses a prefix of 1..128 tokens and profiles one subsequent
 model-selected decode token. It compares with an independent session using the
 same prefix and decode input without profiling. Prefill logits, decode logits,
 selected token, cursor and every persistent-state byte must match exactly. The
@@ -91,3 +91,6 @@ PID 3197048, HTTP 200, 30,046 MiB process memory. ComfyUI remains PID 448118 at
 `target/specialize/qwen-profile-20260927/` on both hosts; a sanitized committed
 mirror, wrapper, complete report and derived totals are in
 [the evidence directory](../evidence/qwen-profile-20260927/README.md).
+
+The later performance iteration expands the bounded prefix limit to128 tokens
+to attribute context-dependent costs. The original result above still used two.

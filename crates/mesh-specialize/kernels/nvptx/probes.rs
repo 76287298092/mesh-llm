@@ -5,6 +5,7 @@ use core::arch::asm;
 
 mod exponential;
 mod attention_gate;
+mod attention_reduction;
 mod attention_prepare;
 mod bf16_linear;
 mod bf16_linear_decode;

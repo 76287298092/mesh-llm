@@ -73,3 +73,22 @@ Logical N tiles are CTA.x*4+warp; K order and arithmetic are unchanged. The orig
 one-warp entrypoint remains compiled as a control. This tests scheduling geometry,
 not a numerical or quantization change. Compare the same two/128-token cases
 before retaining it; higher thread count alone does not establish a speedup.
+
+Third trial source `b8214880c102d90d0a9851953912d73bda50c52e`, PTX SHA256
+`28ee5779ee2d37d4875ab9dca3a9c230550b4531b28a98588aebd9f183de8f73`.
+The exact FP8 path for prefill plus aligned NVFP4 loads passes signed/tail fixtures
+and all exact full-model gates. The 128-input prefill rises to 112.517-112.667
+tokens/s across three samples. Decode reaches 19.982-19.992 at the short prefix
+and 15.680-15.688 at the 128-token prefix. Output IDs are unchanged. NVFP4 summed
+event time drops to 18.633 ms. Ninfer restored 09:25:27 EDT, PID3224976, HTTP200;
+ComfyUI448118 unchanged. Raw directory: `word-round/` under the experiment root.
+
+
+The attention candidate preserves the original FP64 reduction addition tree while
+replacing its final five CTA-wide barriers with warp shuffles. Only thread zero
+now computes the identical score/online-softmax scalars, which it publishes in
+shared slots1..3 before a CTA barrier. Shared slot0 remains the reduction result
+until every thread has consumed it. The end-of-token barrier protects reuse.
+The old implementation performed the same exponentials on all256 threads.
+Qualification must preserve full-model logits/state and benchmark output IDs;
+all three sanitizers cover the changed synchronization.

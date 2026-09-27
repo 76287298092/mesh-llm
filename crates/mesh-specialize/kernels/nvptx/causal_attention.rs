@@ -41,7 +41,7 @@ fn attention_partials_base() -> u32 {
 }
 
 #[inline(always)]
-fn store_partial(base: u32, index: u32, value: f64) {
+pub(super) fn store_partial(base: u32, index: u32, value: f64) {
     // SAFETY: Callers use indices 0..256 in the CTA's 2048-byte shared array.
     let address = base + index * 8;
     unsafe {
@@ -55,7 +55,7 @@ fn store_partial(base: u32, index: u32, value: f64) {
 }
 
 #[inline(always)]
-fn load_partial(base: u32, index: u32) -> f64 {
+pub(super) fn load_partial(base: u32, index: u32) -> f64 {
     let value: f64;
     // SAFETY: Callers use indices 0..256 in the CTA's 2048-byte shared array.
     let address = base + index * 8;
@@ -71,13 +71,13 @@ fn load_partial(base: u32, index: u32) -> f64 {
 }
 
 #[inline(always)]
-fn block_barrier() {
+pub(super) fn block_barrier() {
     // SAFETY: All 256 threads reach every reduction and iteration barrier uniformly.
     unsafe { asm!("bar.sync 0;", options(nostack)) };
 }
 
 #[inline(always)]
-fn add_rn(left: f64, right: f64) -> f64 {
+pub(super) fn add_rn(left: f64, right: f64) -> f64 {
     let sum: f64;
     // SAFETY: This scalar FP64 operation has no memory or stack effects.
     unsafe {
@@ -245,24 +245,6 @@ pub unsafe extern "ptx-kernel" fn attention_kv_append(
     }
 }
 
-#[inline(always)]
-fn reduce_dot(shared: u32, thread: u32, partial: f64) -> f64 {
-    store_partial(shared, thread, partial);
-    block_barrier();
-
-    let mut stride = BLOCK_THREADS / 2;
-    while stride > 0 {
-        if thread < stride {
-            let left = load_partial(shared, thread);
-            let right = load_partial(shared, thread + stride);
-            store_partial(shared, thread, add_rn(left, right));
-        }
-        block_barrier();
-        stride /= 2;
-    }
-    load_partial(shared, 0)
-}
-
 /// Apply causal online softmax attention for one BF16 query row per CTA.
 ///
 /// `q` and `output` use compact `[rows, query_heads, width]` layout. The persistent
@@ -358,16 +340,28 @@ pub unsafe extern "ptx-kernel" fn causal_attention_bf16(
             0.0_f64
         };
         let partial = multiply_rn(query_value, key_value);
-        let dot = reduce_dot(shared, thread, partial);
-        let score = multiply_rn(dot, scale);
-        let next_maximum = if score > maximum { score } else { maximum };
-        let alpha = if normalizer == 0.0 {
-            0.0_f64
-        } else {
-            super::exponential::exp_nonpositive(subtract_rn(maximum, next_maximum))
-        };
-        let beta = super::exponential::exp_nonpositive(subtract_rn(score, next_maximum));
-        let next_normalizer = add_rn(multiply_rn(normalizer, alpha), beta);
+        let dot = super::attention_reduction::reduce_dot(shared, thread, partial);
+        if thread == 0 {
+            let score = multiply_rn(dot, scale);
+            let next_maximum = if score > maximum { score } else { maximum };
+            let alpha = if normalizer == 0.0 {
+                0.0_f64
+            } else {
+                super::exponential::exp_nonpositive(subtract_rn(maximum, next_maximum))
+            };
+            let beta = super::exponential::exp_nonpositive(subtract_rn(score, next_maximum));
+            normalizer = add_rn(multiply_rn(normalizer, alpha), beta);
+            maximum = next_maximum;
+            // Only slot zero is still being consumed as the dot by other threads.
+            // These disjoint scalar slots are published at the barrier below.
+            store_partial(shared, 1, alpha);
+            store_partial(shared, 2, beta);
+            store_partial(shared, 3, normalizer);
+        }
+        block_barrier();
+        let alpha = load_partial(shared, 1);
+        let beta = load_partial(shared, 2);
+        normalizer = load_partial(shared, 3);
         let value = if thread < width {
             // SAFETY: Active channels address the same in-range token and KV head in the V cache.
             unsafe { decode_bf16(*cache_v.add(cache_row + thread_index)) }
@@ -375,8 +369,6 @@ pub unsafe extern "ptx-kernel" fn causal_attention_bf16(
             0.0_f64
         };
         accumulator = add_rn(multiply_rn(accumulator, alpha), multiply_rn(beta, value));
-        maximum = next_maximum;
-        normalizer = next_normalizer;
 
         // SAFETY: Prevents faster lanes from overwriting shared score partials before every
         // lane has consumed shared[0] and completed the online update for this token.

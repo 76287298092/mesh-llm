@@ -15,8 +15,8 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::time::Instant;
 
-const MAX_PREFIX_TOKENS: usize = 17;
-const MAX_CAPACITY: usize = 18;
+const MAX_PREFIX_TOKENS: usize = 128;
+const MAX_CAPACITY: usize = 129;
 const MEMORY_RESERVE_BYTES: u64 = 1024 * 1024 * 1024;
 const REQUIRED_KERNELS: [&str; 18] = [
     "embedding_norm_bf16",
