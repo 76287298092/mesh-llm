@@ -155,7 +155,7 @@ that control's rates directly to MTP4 as an isolated speedup across different in
 | Fresh NInfer baseline | Complete for deployed serial profile | `KNOWLEDGE/findings/ninfer-baseline-20260926.md` |
 | Rust instruction gate | NVFP4 and 29 remaining probe cases pass; sanitizer checks clean | `KNOWLEDGE/findings/instruction-qualification.md` and prior NVFP4 evidence |
 | Representative GEMM/RMSNorm | 14 cases / 1,489,305 outputs pass; independent cuBLAS reference passes; profiling pending | `KNOWLEDGE/findings/representative-kernels.md` and `cuda-library-reference.md` |
-| Upstream push and carrack branch synchronization | Complete through GDN output GPU trial | `73bc627ef`; original carrack branch retained |
+| Upstream push and carrack branch synchronization | Complete through post-attention GPU trial | `8b56c16ca`; original carrack branch retained |
 | First carrack Rust GPU trial | Complete | 32 cases, 4,096 exact output matches; Ninfer restored |
 | A01/A02 container, identity, reader and object assembly | 65 macOS / 68 Linux library tests pass; 17 Linux validator tests pass; low-descriptor checks pass | `KNOWLEDGE/findings/mspec-format.md` |
 | A03 pinned upstream import | Real-file import/readback passes; 82 macOS / 85 Linux library tests and 17 Linux validator tests pass | `KNOWLEDGE/findings/checkpoint-intake.md`; 22.52 GB artifact in 58.6 seconds |
@@ -166,6 +166,7 @@ that control's rates directly to MTP4 as an isolated speedup across different in
 | Q03 GDN preparation | Partial: 73,728 normalized Q/K values and 2,592 gate values pass; all three sanitizers clean | `KNOWLEDGE/findings/gdn-preparation.md`; complete layer pending; recurrent evidence recorded separately |
 | Q03 GDN recurrence | Partial: 110,592 real outputs and FP32 state match scalar exactly; whole/chunk/token paths and sanitizers pass | `KNOWLEDGE/findings/gdn-recurrence.md`; complete layer pending |
 | Q03 GDN output | Partial: 110,592 gated-norm and 92,160 projection values pass component bounds; sanitizers clean | `KNOWLEDGE/findings/gdn-output.md`; layer-zero attention chain connected, full-layer/logit parity pending |
+| Q01/Q02 post-attention input | Partial: 92,160 residual/norm values and both MLP input quantizations pass; sanitizers clean | `KNOWLEDGE/findings/post-attention.md`; MLP matrix products and full layer remain pending |
 | H03 discovery and H04 ABI | Pending | No executable specialized model yet |
 | Full model performance/context trial | Pending | None |
 

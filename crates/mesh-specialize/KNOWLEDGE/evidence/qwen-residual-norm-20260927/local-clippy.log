@@ -1,0 +1,36 @@
+    Checking serde_json v1.0.151
+    Checking sha2 v0.11.0
+    Checking tempfile v3.27.0
+    Checking serde v1.0.229
+    Checking safetensors v0.8.0
+    Checking mesh-llm-native-runtime v0.76.1 (/Users/ndizazzo/.codex/worktrees/issue-1393-feasibility/mesh-llm/crates/mesh-llm-native-runtime)
+    Checking mesh-specialize v0.76.1 (/Users/ndizazzo/.codex/worktrees/issue-1393-feasibility/mesh-llm/crates/mesh-specialize)
+error: the loop variable `feature` is used to index `weight`
+  --> crates/mesh-specialize/src/../reference/residual_norm.rs:44:24
+   |
+44 |         for feature in 0..width {
+   |                        ^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#needless_range_loop
+   = note: `-D clippy::needless-range-loop` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_range_loop)]`
+help: consider using an iterator and enumerate()
+   |
+44 -         for feature in 0..width {
+44 +         for (feature, <item>) in weight.iter().enumerate().take(width) {
+   |
+
+error: using `chunks_exact` with a constant chunk size
+  --> crates/mesh-specialize/src/../reference/nvfp4_quantize.rs:60:23
+   |
+60 |     for pair in codes.chunks_exact(2) {
+   |                       ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<2>().0`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#chunks_exact_to_as_chunks
+   = note: `-D clippy::chunks-exact-to-as-chunks` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::chunks_exact_to_as_chunks)]`
+
+error: could not compile `mesh-specialize` (lib) due to 2 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `mesh-specialize` (lib test) due to 2 previous errors
+error: recipe `with-lld` failed with exit code 101
