@@ -21,7 +21,7 @@ Start with [the implementation plan](../PLAN.md) and the
 | [Qwen projections](findings/qwen-projections.md) | Resident FP8 QKV/Z and BF16 A/B pass 296,640 real outputs and all three sanitizers |
 | [Causal convolution](findings/causal-convolution.md) | 184,320 real outputs pass; whole/chunk/token state exactly agrees; all three sanitizers clean |
 | [GDN normalization and gates](findings/gdn-preparation.md) | 73,728 real Q/K and 2,592 gate values pass; all three sanitizers clean |
-| [GDN recurrence](findings/gdn-recurrence.md) | Resident FP32 matrix update and exact chunk-state checks under validation |
+| [GDN recurrence](findings/gdn-recurrence.md) | 110,592 real outputs and recurrent state match scalar exactly; partition equivalence and sanitizers pass |
 | [Prebuilt core target mismatch](dead-ends/prebuilt-core-target-mismatch.md) | Resolved by rebuilding core; emitted PTX executed |
 | [Racecheck timing repetitions](dead-ends/racecheck-timing-repetitions.md) | Failed with host OOM; bounded check-only recovery passed |
 

@@ -104,6 +104,7 @@ The [evidence directory](../evidence/qwen-gdn-prepare-20260927/) contains the
 reports, service records and test summaries. Raw build logs and exact PTX remain
 under `target/specialize/qwen-gdn-prepare-20260927/` on both hosts.
 
-Next, retain prepared device buffers into the recurrent matrix update. That
-operation, gated output normalization, output projection, full-attention layers,
-MLP execution, model scheduling and serving are still required.
+The subsequent [recurrent update trial](gdn-recurrence.md) now retains these
+prepared buffers and qualifies the matrix update. Gated output normalization,
+output projection, full-attention layers, MLP execution, model scheduling and
+serving are still required.
