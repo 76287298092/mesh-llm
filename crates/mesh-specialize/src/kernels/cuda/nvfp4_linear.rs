@@ -103,9 +103,9 @@ pub(super) fn check<'a>(
     // Independent logical reference validates shapes/domains and finite outputs.
     // A full warp executes every MMA, including tails; all buffers survive sync.
     unsafe {
-        module.function("nvfp4_linear_warp4")?.launch(
-            [dimensions[1].div_ceil(32), dimensions[0].div_ceil(16), 1],
-            [128, 1, 1],
+        module.function("nvfp4_linear")?.launch(
+            [dimensions[1].div_ceil(8), dimensions[0].div_ceil(16), 1],
+            [32, 1, 1],
             0,
             &mut args,
         )?;

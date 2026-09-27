@@ -28,7 +28,7 @@ const REQUIRED_KERNELS: [&str; 18] = [
     "gdn_gated_rms_norm",
     "residual_norm_bf16",
     "nvfp4_quantize_bf16",
-    "nvfp4_linear_warp4",
+    "nvfp4_linear",
     "mlp_silu_product",
     "residual_add_bf16",
     "attention_qk_prepare",

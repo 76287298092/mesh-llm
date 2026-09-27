@@ -92,3 +92,12 @@ until every thread has consumed it. The end-of-token barrier protects reuse.
 The old implementation performed the same exponentials on all256 threads.
 Qualification must preserve full-model logits/state and benchmark output IDs;
 all three sanitizers cover the changed synchronization.
+
+
+The four-warp NVFP4 candidate at `a39676071fe5b69bcd5fae75be75eaaa4dd88f67`
+passed exact checks but did not improve performance materially. Short decode
+20.06-20.13, 128-prefix decode15.65-15.66, and prefill112.42-112.62 tokens/s
+are effectively unchanged from the one-warp control. NVFP4 event totals are also
+unchanged. The candidate dispatch and entrypoint are removed; the source commit,
+PTX and `warp4-round/` evidence retain the experiment. Keep the simpler original
+geometry. Ninfer restored09:29:45 EDT, PID3228133, HTTP200; ComfyUI unchanged.

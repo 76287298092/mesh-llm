@@ -67,3 +67,6 @@ old FP64 addition tree and reduces CTA barriers. Causal attention evaluates its
 unchanged online softmax scalars on thread zero and broadcasts alpha, beta and
 normalizer through disjoint shared slots. Full-model equivalence and sanitizer
 qualification are required; status is recorded with the performance iterations.
+
+The `nvfp4_linear_warp4` experiment was rejected after unchanged timings. Its
+entrypoint is removed; the candidate commit and raw evidence preserve the trial.
