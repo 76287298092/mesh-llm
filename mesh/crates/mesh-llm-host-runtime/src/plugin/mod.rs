@@ -38,7 +38,7 @@ use crate::runtime_data::{
 };
 use anyhow::{Context, Result, anyhow, bail};
 pub use mesh_llm_plugin::proto;
-use rmcp::model::ServerInfo;
+use rmcp::model::ServerConfig;
 use rmcp::model::{
     CompleteRequestParams, CompleteResult, GetPromptRequestParams, GetPromptResult,
     ReadResourceRequestParams, ReadResourceResult,
@@ -1130,7 +1130,7 @@ impl PluginManager {
         false
     }
 
-    pub async fn list_server_infos(&self) -> Vec<(String, ServerInfo)> {
+    pub async fn list_server_infos(&self) -> Vec<(String, ServerConfig)> {
         let mut infos = Vec::new();
         for (name, plugin) in &self.inner.plugins {
             if let Ok(info) = plugin.server_info().await {

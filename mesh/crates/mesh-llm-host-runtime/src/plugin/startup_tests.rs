@@ -143,7 +143,7 @@ async fn required_plugin_failure_rolls_back_plugins_loaded_earlier() {
                         plugin_id: "first".into(),
                         plugin_protocol_version: PROTOCOL_VERSION,
                         plugin_version: "v1.0.0".into(),
-                        server_info_json: serde_json::to_string(&ServerInfo::default())
+                        server_info_json: serde_json::to_string(&ServerConfig::default())
                             .expect("server info"),
                         capabilities: Vec::new(),
                         manifest: None,

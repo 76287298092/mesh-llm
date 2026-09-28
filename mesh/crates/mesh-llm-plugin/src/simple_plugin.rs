@@ -8,7 +8,7 @@ use rmcp::model::{
     CallToolResult, CancelTaskParams, CompleteRequestParams, CompleteResult,
     GetPromptRequestParams, GetPromptResult, GetTaskParams, GetTaskResult, ListPromptsResult,
     ListResourceTemplatesResult, ListResourcesResult, ListToolsResult, PaginatedRequestParams,
-    ReadResourceRequestParams, ReadResourceResult, ServerInfo, SetLevelRequestParams,
+    ReadResourceRequestParams, ReadResourceResult, ServerConfig, SetLevelRequestParams,
     SubscribeRequestParams, UnsubscribeRequestParams, UpdateTaskParams,
 };
 use std::sync::Arc;
@@ -301,7 +301,7 @@ impl Plugin for SimplePlugin {
         self.metadata.plugin_version.clone()
     }
 
-    fn server_info(&self) -> ServerInfo {
+    fn server_info(&self) -> ServerConfig {
         self.metadata.server_info.clone()
     }
 

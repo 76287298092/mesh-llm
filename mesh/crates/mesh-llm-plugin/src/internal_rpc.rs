@@ -1,5 +1,5 @@
 use anyhow::Result;
-use rmcp::model::{CallToolResult, ListToolsResult, ServerInfo};
+use rmcp::model::{CallToolResult, ListToolsResult, ServerConfig};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
@@ -94,7 +94,7 @@ impl Plugin for InternalRpcPlugin {
         self.plugin.plugin_version()
     }
 
-    fn server_info(&self) -> ServerInfo {
+    fn server_info(&self) -> ServerConfig {
         self.plugin.server_info()
     }
 

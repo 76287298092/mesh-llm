@@ -4,7 +4,7 @@ use rmcp::model::{
     GetTaskResult, Implementation, ListPromptsResult, ListResourceTemplatesResult,
     ListResourcesResult, ListToolsResult, Prompt, PromptArgument, ReadResourceRequestParams,
     ReadResourceResult, Resource, ResourceContents, ResourceTemplate, ServerCapabilities,
-    ServerInfo, Task, TaskStatus, Tool, UpdateTaskParams,
+    ServerConfig, Task, TaskStatus, Tool, UpdateTaskParams,
 };
 use schemars::JsonSchema;
 use serde::de::DeserializeOwned;
@@ -153,15 +153,14 @@ pub fn get_task_result(task: DetailedTask) -> GetTaskResult {
     GetTaskResult::new(task)
 }
 
-#[allow(deprecated)]
 pub fn plugin_server_info_full(
     implementation_name: impl Into<String>,
     implementation_version: impl Into<String>,
     title: impl Into<String>,
     description: impl Into<String>,
     instructions: Option<impl Into<String>>,
-) -> ServerInfo {
-    let info = ServerInfo::new(
+) -> ServerConfig {
+    let info = ServerConfig::new(
         ServerCapabilities::builder()
             .enable_tools()
             .enable_tool_list_changed()
@@ -191,8 +190,8 @@ pub fn plugin_server_info(
     title: impl Into<String>,
     description: impl Into<String>,
     instructions: Option<impl Into<String>>,
-) -> ServerInfo {
-    let info = ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
+) -> ServerConfig {
+    let info = ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
         .with_server_info(
             Implementation::new(implementation_name, implementation_version)
                 .with_title(title)

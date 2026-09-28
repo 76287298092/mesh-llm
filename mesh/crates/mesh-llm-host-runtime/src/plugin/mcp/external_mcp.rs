@@ -269,7 +269,7 @@ use rmcp::model::{
     GetPromptResponse, GetPromptResult, Implementation, ListPromptsResult,
     ListResourceTemplatesResult, ListResourcesResult, ListToolsResult, PaginatedRequestParams,
     Prompt, PromptMessage, ReadResourceRequestParams, ReadResourceResponse, ReadResourceResult,
-    Resource, ResourceContents, ResourceTemplate, Role, ServerCapabilities, ServerInfo, Tool,
+    Resource, ResourceContents, ResourceTemplate, Role, ServerCapabilities, ServerConfig, Tool,
 };
 #[cfg(test)]
 use rmcp::service::RequestContext;
@@ -290,8 +290,8 @@ struct FakeExternalMcpServer;
 
 #[cfg(test)]
 impl ServerHandler for FakeExternalMcpServer {
-    fn get_info(&self) -> ServerInfo {
-        ServerInfo::new(
+    fn get_info(&self) -> ServerConfig {
+        ServerConfig::new(
             ServerCapabilities::builder()
                 .enable_tools()
                 .enable_prompts()

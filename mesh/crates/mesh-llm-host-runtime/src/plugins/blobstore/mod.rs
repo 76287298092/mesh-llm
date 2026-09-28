@@ -5,7 +5,7 @@ use mesh_llm_plugin::{
     PluginRuntime, capability, json_response, json_schema_operation, parse_rpc_params,
 };
 use rand::RngExt;
-use rmcp::model::{Implementation, ServerCapabilities, ServerInfo};
+use rmcp::model::{Implementation, ServerCapabilities, ServerConfig};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -535,8 +535,8 @@ impl BlobStore {
     }
 }
 
-fn blobstore_server_info() -> ServerInfo {
-    ServerInfo::new(ServerCapabilities::builder().build())
+fn blobstore_server_info() -> ServerConfig {
+    ServerConfig::new(ServerCapabilities::builder().build())
         .with_server_info(
             Implementation::new("mesh-blobstore", crate::VERSION)
                 .with_title("Mesh Blobstore Plugin")

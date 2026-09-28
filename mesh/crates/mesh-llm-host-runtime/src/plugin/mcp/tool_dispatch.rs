@@ -12,7 +12,7 @@ use rmcp::{
         GetPromptRequestParams, GetPromptResponse, GetTaskParams, GetTaskResult, Implementation,
         ListPromptsResult, ListResourceTemplatesResult, ListResourcesResult, ListToolsResult,
         PaginatedRequestParams, ReadResourceRequestParams, ReadResourceResponse,
-        ReadResourceResult, ServerCapabilities, ServerInfo, SetLevelRequestParams,
+        ReadResourceResult, ServerCapabilities, ServerConfig, SetLevelRequestParams,
         SubscribeRequestParams, UnsubscribeRequestParams, UpdateTaskParams,
     },
     service::{NotificationContext, RequestContext},
@@ -350,7 +350,7 @@ impl ServerHandler for PluginMcpServer {
         &self,
         request: rmcp::model::InitializeRequestParams,
         context: RequestContext<RoleServer>,
-    ) -> Result<ServerInfo, ErrorData> {
+    ) -> Result<ServerConfig, ErrorData> {
         if context.peer.peer_info().is_none() {
             context.peer.set_peer_info(request);
         }
@@ -875,8 +875,8 @@ impl ServerHandler for PluginMcpServer {
     }
 
     #[allow(deprecated)]
-    fn get_info(&self) -> ServerInfo {
-        ServerInfo::new(
+    fn get_info(&self) -> ServerConfig {
+        ServerConfig::new(
             ServerCapabilities::builder()
                 .enable_completions()
                 .enable_prompts()

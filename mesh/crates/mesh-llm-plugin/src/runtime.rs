@@ -8,7 +8,7 @@ use rmcp::model::{
     CallToolResult, CancelTaskParams, CompleteRequestParams, CompleteResult, EmptyResult,
     GetPromptRequestParams, GetPromptResult, GetTaskParams, GetTaskResult, ListPromptsResult,
     ListResourceTemplatesResult, ListResourcesResult, ListToolsResult, PaginatedRequestParams,
-    ReadResourceRequestParams, ReadResourceResult, ServerInfo, SetLevelRequestParams,
+    ReadResourceRequestParams, ReadResourceResult, ServerConfig, SetLevelRequestParams,
     SubscribeRequestParams, TaskAckResult, UnsubscribeRequestParams, UpdateTaskParams,
 };
 use serde::de::DeserializeOwned;
@@ -90,7 +90,7 @@ impl From<proto::InitializeRequest> for PluginInitializeRequest {
 pub struct PluginMetadata {
     pub(super) plugin_id: String,
     pub(super) plugin_version: String,
-    pub(super) server_info: ServerInfo,
+    pub(super) server_info: ServerConfig,
     pub(super) capabilities: Vec<String>,
     pub(super) manifest: Option<proto::PluginManifest>,
     pub(super) startup_policy: PluginStartupPolicy,
@@ -100,7 +100,7 @@ impl PluginMetadata {
     pub fn new(
         plugin_id: impl Into<String>,
         plugin_version: impl Into<String>,
-        server_info: ServerInfo,
+        server_info: ServerConfig,
     ) -> Self {
         Self {
             plugin_id: plugin_id.into(),
@@ -224,7 +224,7 @@ pub(super) type StreamErrorHandler = Arc<
 pub trait Plugin: Send {
     fn plugin_id(&self) -> &str;
     fn plugin_version(&self) -> String;
-    fn server_info(&self) -> ServerInfo;
+    fn server_info(&self) -> ServerConfig;
 
     fn capabilities(&self) -> Vec<String> {
         Vec::new()

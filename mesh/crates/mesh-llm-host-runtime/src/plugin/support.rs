@@ -1,6 +1,6 @@
 use super::{ToolSummary, proto};
 use anyhow::{Context, Result, anyhow};
-use rmcp::model::ServerInfo;
+use rmcp::model::ServerConfig;
 use serde::Serialize;
 
 pub(crate) fn serialize_params<T: Serialize>(params: T) -> Result<String> {
@@ -42,7 +42,7 @@ pub(crate) fn plugin_error(
     }
 }
 
-pub(crate) fn summarize_capabilities(server_info: &ServerInfo, extra: &[String]) -> Vec<String> {
+pub(crate) fn summarize_capabilities(server_info: &ServerConfig, extra: &[String]) -> Vec<String> {
     let mut capabilities = extra.to_vec();
     let caps = &server_info.capabilities;
     if caps.tools.is_some() {
@@ -100,11 +100,11 @@ pub(crate) fn format_tool_names_for_log(tools: &[ToolSummary]) -> String {
 #[cfg(test)]
 mod tests {
     use super::summarize_capabilities;
-    use rmcp::model::{ServerCapabilities, ServerInfo};
+    use rmcp::model::{ServerCapabilities, ServerConfig};
 
     #[test]
     fn task_capability_is_detected_from_rmcp_extension() {
-        let server_info = ServerInfo::new(ServerCapabilities::builder().enable_tasks().build());
+        let server_info = ServerConfig::new(ServerCapabilities::builder().enable_tasks().build());
 
         let capabilities = summarize_capabilities(&server_info, &[]);
 
