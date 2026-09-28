@@ -7,6 +7,7 @@ mod attention_gate;
 mod attention_online;
 mod attention_prepare;
 mod attention_reduction;
+mod attention_warp_fp64;
 mod bf16_ab_decode_fp32;
 mod bf16_ab_decode_fp64;
 mod bf16_linear;

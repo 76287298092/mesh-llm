@@ -72,6 +72,14 @@ thread-coordinate read to select four independent N tiles per CTA. Qualified
 results are recorded in the decode projection optimization entry.
 
 
+## Exact-order FP64 warp attention
+
+| Source symbol | Instructions / reused sites | Reference | Status |
+| --- | --- | --- | --- |
+| `attention_warp_fp64.rs:coordinates` | Reads `%ctaid.x`, `%tid.x`, `%ntid.x`; fixed grid96/block32 admission | `attention_warp_plan` geometry tests and exact source geometry checks | Unqualified; [contract](findings/attention-warp-fp64.md) |
+| `attention_warp_fp64.rs:warp_dot` | Paired-word `shfl.sync.down.b32` offsets16/8/4/2/1, `add.rn.f64`, paired-word `shfl.sync.idx.b32` lane-zero broadcast, register moves/loop predicates; no shared memory or barriers | Separate host 256-slot tree and lane-stripe simulators, existing logical FP64 oracle, strict GPU control-bit comparison | Unqualified; no device measurements |
+| `attention_warp_fp64.rs:local_tree/attend` | Reuses only existing rounded FP64 arithmetic, exact BF16 decode, FP64-to-FP32 and BF16 RNE helpers in `causal_attention.rs`; unchanged Rust exponential | Same strict control and independent oracle gates, ascending-key recurrence and signed/wide-exponent fixtures | Unqualified; larger rows and graph path retain baseline |
+
 ## Attention reduction and scalar broadcast
 
 `attention_reduction.rs` uses paired `shfl.sync.down.b32` with full-warp clamp

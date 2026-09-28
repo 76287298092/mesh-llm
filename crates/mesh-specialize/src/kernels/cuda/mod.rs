@@ -296,5 +296,6 @@ mod resident_score;
 
 mod attention_v2_launch;
 pub(super) mod attention_v2_trial;
+pub(super) mod attention_warp_trial;
 
 mod resident_attention_split;

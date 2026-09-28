@@ -354,3 +354,8 @@ The worker ran direct edition-2024 rustfmt only, with child traversal disabled,
 and no Cargo, Git, SSH, GPU, or delegation. All touched source files stay below
 1,000 lines. The large profile JSON is built first, then A/B metadata is added;
 no crate recursion limit was raised.
+
+
+## September 28 measured follow-up
+
+Paired FP64 isolated model medians at56d426cb0:106-input26.472→28.208tok/s;512-input18.166→18.961tok/s,256outputs,four samples/profile inbalancedorder. Both modelchecks match savedbaseline logits/tokens/allstatebits.10componentcases pass;46regs,32shared,0local. Model sanitizerqualification pending, defaultunchanged.

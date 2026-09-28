@@ -46,6 +46,7 @@ pub(crate) fn run(args: &[String]) -> DynResult<()> {
         [command, rest @ ..] if command == "baseline-plan" => fixtures::run(rest),
         [command, rest @ ..] if command == "nvfp4-probe" => probe::run(rest),
         [command, rest @ ..] if command == "attention-v2-check" => probe::attention_v2(rest),
+        [command, rest @ ..] if command == "attention-warp-check" => probe::attention_warp(rest),
         [command, rest @ ..] if command == "feature-attention-check" => {
             probe::feature_attention(rest)
         }

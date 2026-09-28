@@ -305,3 +305,8 @@ Same-input incremental decode scoring is being added because ordinary512-row
 scoring only exercises this profile's unchanged prefill fallback. No default
 change or quality promotion. Evidence: evidence/reassess-20260928/decode-attention-check-1
 and decode-attention-model-1. Both services restored after the trials.
+
+
+## September 28 measured follow-up
+
+Incremental same-input decode smoke at4e75df069:1024targets,context128/stride64,forward_rows1. Full-logit determinism passes. NLL improves0.535%, buttop1agreement92.1875% andChinese/English-long-formmeanKL fail fixedgates. Profile remainsunpromoted; do not infer semantic degradation from agreementalone. Evidence decode-next-1/decode-quality.json.

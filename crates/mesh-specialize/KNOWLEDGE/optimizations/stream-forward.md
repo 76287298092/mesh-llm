@@ -280,3 +280,8 @@ attention at positions0/1/7/16/32. These are host contracts, not device qualific
 Parent still needs serial check/Clippy/tests, Just PTX generation, graph equivalence
 on real weights (including direct Ninfer source formats), all three sanitizers,
 matched timings, and allocation/resource-release evidence. No speedup is claimed.
+
+
+## September 28 measured follow-up
+
+Graph result at4e75df069: wholemodelcapture/replay matches eagerstream logits/state; setup-inclusive rates26.478→26.635 and18.165→18.213tok/s (106/512inputs), onlyabout0.6%/0.3%. Not a majorremainingbottleneck. Memcheck passes; graphracecheck reaches16GiB cgroupOOM, retained as incomplete. No graphdefaultpromotion.

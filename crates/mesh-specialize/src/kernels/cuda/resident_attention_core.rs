@@ -68,13 +68,17 @@ pub(super) fn run<'a>(
     let value_state = state.pointer(&value_state_name, extents.cache_bytes)?;
     let append = module.function("attention_kv_append")?;
     let profile = crate::kernels::attention_profile::current()?;
+    let warp = profile.uses_warp(shape.rows);
+    if warp {
+        crate::kernels::attention_warp_plan::validate(extents.attention_dimensions)?;
+    }
     // Admit geometry and prepare every allocation/handle before mutating KV state.
     // Keep this owner, raw output and BF16 output alive through the final drain.
     let split = profile
         .uses_split(shape.rows)
         .then(|| super::resident_attention_split::Prepared::new(context, module, shape))
         .transpose()?;
-    let attention = module.function(profile.kernel())?;
+    let attention = module.function(profile.kernel_for_rows(shape.rows))?;
     let output = Buffer::new(context, extents.output_bytes)?;
     let unrounded = Buffer::new(context, extents.unrounded_bytes)?;
 
@@ -93,7 +97,16 @@ pub(super) fn run<'a>(
         ],
         dimensions: extents.attention_dimensions,
         scale: extents.scale,
-        grid: extents.attention_grid,
+        grid: if warp {
+            crate::kernels::attention_warp_plan::GRID
+        } else {
+            extents.attention_grid
+        },
+        block: if warp {
+            crate::kernels::attention_warp_plan::BLOCK
+        } else {
+            [THREADS, 1, 1]
+        },
     };
     if let Err(error) = launch_append(&append, append_launch) {
         return Err(synchronize_after_failed_launch(
@@ -246,6 +259,7 @@ struct AttentionLaunch {
     dimensions: [u32; 6],
     scale: f32,
     grid: [u32; 3],
+    block: [u32; 3],
 }
 
 fn launch_attention(function: &Function<'_, '_>, launch: AttentionLaunch) -> Result<()> {
@@ -264,7 +278,8 @@ fn launch_attention(function: &Function<'_, '_>, launch: AttentionLaunch) -> Res
     arguments.push((&mut scale as *mut f32).cast());
     // SAFETY: Checked query/cache/output extents match the five-pointer/six-u32/scale ABI. The
     // output allocations and resident cache live until the synchronization after this launch.
-    unsafe { function.launch(launch.grid, [THREADS, 1, 1], 0, &mut arguments) }
+    // Warp geometry is admitted before KV mutation; other profiles keep the control geometry.
+    unsafe { function.launch(launch.grid, launch.block, 0, &mut arguments) }
 }
 
 fn synchronize_after_failed_launch(

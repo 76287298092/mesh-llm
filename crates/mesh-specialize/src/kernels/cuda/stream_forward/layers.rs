@@ -176,6 +176,21 @@ pub(super) fn attention(
         shapes.kv_heads,
         shapes.attention_width,
     );
+    let warp = k.causal_attention_warp.as_ref().filter(|_| rows == 1);
+    if warp.is_some() {
+        anyhow::ensure!(
+            e.position.is_none(),
+            "warp-fp64 attention has no qualified graph position variant"
+        );
+        crate::kernels::attention_warp_plan::validate([
+            to_u32(rows)?,
+            to_u32(qh)?,
+            to_u32(kvh)?,
+            to_u32(aw)?,
+            to_u32(step.past)?,
+            to_u32(step.capacity)?,
+        ])?;
+    }
     let cache_bytes = step.capacity * kvh * aw * 2;
     let key_state = state.pointer(&w.key_state, cache_bytes)?;
     let value_state = state.pointer(&w.value_state, cache_bytes)?;
@@ -233,7 +248,7 @@ pub(super) fn attention(
             step,
         )?;
     } else {
-        // SplitDecode changes only M<=8: every larger chunk stays exact FP64.
+        // SplitDecode changes M<=8; WarpFp64 changes only M=1. Other rows keep baseline.
         let scale = 1.0_f32 / (aw as f32).sqrt();
         let attend = Args::new()
             .ptrs(&[a.q_prepared[0], key_state, value_state])
@@ -245,12 +260,20 @@ pub(super) fn attention(
         let attend = past_argument(attend, e.position.map(|p| p.past), past)
             .u32(capacity)
             .f32(scale);
-        e.launch(
-            e.position.map_or(&k.causal_attention, |p| &p.attention),
-            [to_u32(rows * qh)?, 1, 1],
-            [256, 1, 1],
-            attend,
-        )?;
+        let (function, grid, block) = if let Some(warp) = warp {
+            (
+                warp,
+                crate::kernels::attention_warp_plan::GRID,
+                crate::kernels::attention_warp_plan::BLOCK,
+            )
+        } else {
+            (
+                e.position.map_or(&k.causal_attention, |p| &p.attention),
+                [to_u32(rows * qh)?, 1, 1],
+                [256, 1, 1],
+            )
+        };
+        e.launch(function, grid, block, attend)?;
     }
     let count = to_u32(rows * shapes.query_width())?;
     let gate = Args::new()

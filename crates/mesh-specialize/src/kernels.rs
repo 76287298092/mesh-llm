@@ -706,6 +706,18 @@ pub fn bf16_ab_decode_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json
 }
 
 pub mod attention_v2_plan;
+pub mod attention_warp_plan;
+
+/// Qualify exact-order warp attention against unchanged control bits and FP64 oracle.
+pub fn attention_warp_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::attention_warp_trial::run(ptx, device);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device);
+        anyhow::bail!("Warp FP64 attention qualification requires Linux")
+    }
+}
 
 /// Qualify the standalone BF16 split-attention candidate; no resident dispatch change.
 pub fn attention_v2_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json::Value> {

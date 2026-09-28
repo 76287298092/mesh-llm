@@ -93,7 +93,7 @@ pub(super) fn add_rn(left: f64, right: f64) -> f64 {
 }
 
 #[inline(always)]
-fn multiply_rn(left: f64, right: f64) -> f64 {
+pub(super) fn multiply_rn(left: f64, right: f64) -> f64 {
     let product: f64;
     // SAFETY: This scalar FP64 operation has no memory or stack effects.
     unsafe {
@@ -109,7 +109,7 @@ fn multiply_rn(left: f64, right: f64) -> f64 {
 }
 
 #[inline(always)]
-fn subtract_rn(left: f64, right: f64) -> f64 {
+pub(super) fn subtract_rn(left: f64, right: f64) -> f64 {
     let difference: f64;
     // SAFETY: This scalar FP64 operation has no memory or stack effects.
     unsafe {
@@ -125,7 +125,7 @@ fn subtract_rn(left: f64, right: f64) -> f64 {
 }
 
 #[inline(always)]
-fn divide_rn(numerator: f64, denominator: f64) -> f64 {
+pub(super) fn divide_rn(numerator: f64, denominator: f64) -> f64 {
     let quotient: f64;
     // SAFETY: This scalar FP64 operation has no memory or stack effects.
     unsafe {
@@ -141,7 +141,7 @@ fn divide_rn(numerator: f64, denominator: f64) -> f64 {
 }
 
 #[inline(always)]
-fn fp32_to_fp64_exact(value: f32) -> f64 {
+pub(super) fn fp32_to_fp64_exact(value: f32) -> f64 {
     let converted: f64;
     // SAFETY: This scalar conversion has no memory or stack effects.
     unsafe {
@@ -156,7 +156,7 @@ fn fp32_to_fp64_exact(value: f32) -> f64 {
 }
 
 #[inline(always)]
-fn fp64_to_fp32_rn(value: f64) -> f32 {
+pub(super) fn fp64_to_fp32_rn(value: f64) -> f32 {
     let converted: f32;
     // SAFETY: This scalar conversion has no memory or stack effects.
     unsafe {
@@ -171,12 +171,12 @@ fn fp64_to_fp32_rn(value: f64) -> f32 {
 }
 
 #[inline(always)]
-fn decode_bf16(bits: u16) -> f64 {
+pub(super) fn decode_bf16(bits: u16) -> f64 {
     fp32_to_fp64_exact(f32::from_bits((bits as u32) << 16))
 }
 
 #[inline(always)]
-fn encode_bf16_rn(value: f32) -> u16 {
+pub(super) fn encode_bf16_rn(value: f32) -> u16 {
     let rounded: u16;
     // SAFETY: Converts one scalar FP32 value to BF16 using round-to-nearest-even.
     unsafe {

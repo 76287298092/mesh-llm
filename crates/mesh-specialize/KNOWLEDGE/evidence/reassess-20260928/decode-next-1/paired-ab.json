@@ -1,0 +1,2710 @@
+{
+  "all_passed": true,
+  "baseline_resources": {
+    "local_bytes": 0,
+    "max_threads_per_block": 1024,
+    "registers": 37,
+    "static_shared_bytes": 0
+  },
+  "cases": [
+    {
+      "all_passed": true,
+      "fp32": {
+        "all_passed": true,
+        "baseline": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 1,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 1,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "baseline_deterministic": true,
+        "baseline_two_launch_timing": {
+          "batch_event_ms": [
+            0.02396799996495247,
+            0.02473600022494793,
+            0.02287999913096428
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 32,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            2.396799996495247,
+            2.473600022494793,
+            2.287999913096428
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 1,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 1,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "candidate_requires_exact": true,
+        "candidate_symbol": "bf16_ab_decode_fp32",
+        "candidate_timing": {
+          "batch_event_ms": [
+            0.01196799986064434,
+            0.011359999887645245,
+            0.011392000131309032
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 32,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            1.196799986064434,
+            1.1359999887645245,
+            1.1392000131309032
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate_vs_control": [
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": true,
+            "projection": "A",
+            "raw_bit_mismatches": 0
+          },
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": true,
+            "projection": "B",
+            "raw_bit_mismatches": 0
+          }
+        ],
+        "completed": true,
+        "deterministic": true,
+        "exact_fixture": true,
+        "guard_bytes_each_side": 16,
+        "guards_intact": true,
+        "name": "exact-small-dyadics",
+        "poisoned_before_launch": true,
+        "repoisoned_before_repeats": true,
+        "shape": [
+          1,
+          1,
+          8
+        ],
+        "two_distinct_matrices": true
+      },
+      "fp64": {
+        "all_passed": true,
+        "baseline": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 1,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 1,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "baseline_deterministic": true,
+        "baseline_two_launch_timing": {
+          "batch_event_ms": [
+            0.024639999493956566,
+            0.02489599958062172,
+            0.022911999374628067
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 32,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            2.4639999493956566,
+            2.489599958062172,
+            2.2911999374628067
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 1,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 1,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "candidate_requires_exact": true,
+        "candidate_symbol": "bf16_ab_decode_fp64",
+        "candidate_timing": {
+          "batch_event_ms": [
+            0.01603199914097786,
+            0.017664000391960144,
+            0.017696000635623932
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 32,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            1.603199914097786,
+            1.7664000391960144,
+            1.7696000635623932
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate_vs_control": [
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": true,
+            "projection": "A",
+            "raw_bit_mismatches": 0
+          },
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": true,
+            "projection": "B",
+            "raw_bit_mismatches": 0
+          }
+        ],
+        "completed": true,
+        "deterministic": true,
+        "exact_fixture": true,
+        "guard_bytes_each_side": 16,
+        "guards_intact": true,
+        "name": "exact-small-dyadics",
+        "poisoned_before_launch": true,
+        "repoisoned_before_repeats": true,
+        "shape": [
+          1,
+          1,
+          8
+        ],
+        "two_distinct_matrices": true
+      }
+    },
+    {
+      "all_passed": true,
+      "fp32": {
+        "all_passed": true,
+        "baseline": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 3,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 3,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "baseline_deterministic": true,
+        "baseline_two_launch_timing": {
+          "batch_event_ms": [
+            0.025696000084280968,
+            0.024927999824285507,
+            0.026815999299287796
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 288,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            2.5696000084280968,
+            2.4927999824285507,
+            2.6815999299287796
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 3,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 3,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "candidate_requires_exact": true,
+        "candidate_symbol": "bf16_ab_decode_fp32",
+        "candidate_timing": {
+          "batch_event_ms": [
+            0.01152000017464161,
+            0.01152000017464161,
+            0.01664000004529953
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 288,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            1.152000017464161,
+            1.152000017464161,
+            1.664000004529953
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate_vs_control": [
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": true,
+            "projection": "A",
+            "raw_bit_mismatches": 0
+          },
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": true,
+            "projection": "B",
+            "raw_bit_mismatches": 0
+          }
+        ],
+        "completed": true,
+        "deterministic": true,
+        "exact_fixture": true,
+        "guard_bytes_each_side": 16,
+        "guards_intact": true,
+        "name": "exact-small-dyadics",
+        "poisoned_before_launch": true,
+        "repoisoned_before_repeats": true,
+        "shape": [
+          1,
+          3,
+          24
+        ],
+        "two_distinct_matrices": true
+      },
+      "fp64": {
+        "all_passed": true,
+        "baseline": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 3,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 3,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "baseline_deterministic": true,
+        "baseline_two_launch_timing": {
+          "batch_event_ms": [
+            0.027583999559283257,
+            0.025855999439954758,
+            0.02707199938595295
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 288,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            2.7583999559283257,
+            2.5855999439954758,
+            2.707199938595295
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 3,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 3,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "candidate_requires_exact": true,
+        "candidate_symbol": "bf16_ab_decode_fp64",
+        "candidate_timing": {
+          "batch_event_ms": [
+            0.017535999417304993,
+            0.01775999926030636,
+            0.017664000391960144
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 288,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            1.7535999417304993,
+            1.7759999260306358,
+            1.7664000391960144
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate_vs_control": [
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": true,
+            "projection": "A",
+            "raw_bit_mismatches": 0
+          },
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": true,
+            "projection": "B",
+            "raw_bit_mismatches": 0
+          }
+        ],
+        "completed": true,
+        "deterministic": true,
+        "exact_fixture": true,
+        "guard_bytes_each_side": 16,
+        "guards_intact": true,
+        "name": "exact-small-dyadics",
+        "poisoned_before_launch": true,
+        "repoisoned_before_repeats": true,
+        "shape": [
+          1,
+          3,
+          24
+        ],
+        "two_distinct_matrices": true
+      }
+    },
+    {
+      "all_passed": true,
+      "fp32": {
+        "all_passed": true,
+        "baseline": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "baseline_deterministic": true,
+        "baseline_two_launch_timing": {
+          "batch_event_ms": [
+            0.10652799904346466,
+            0.10684800148010254,
+            0.10675200074911118
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 196608,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            10.652799904346466,
+            10.684800148010254,
+            10.675200074911118
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "candidate_requires_exact": true,
+        "candidate_symbol": "bf16_ab_decode_fp32",
+        "candidate_timing": {
+          "batch_event_ms": [
+            0.018400000408291817,
+            0.015647999942302704,
+            0.01462399959564209
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 196608,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            1.8400000408291817,
+            1.5647999942302704,
+            1.462399959564209
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate_vs_control": [
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": true,
+            "projection": "A",
+            "raw_bit_mismatches": 0
+          },
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": true,
+            "projection": "B",
+            "raw_bit_mismatches": 0
+          }
+        ],
+        "completed": true,
+        "deterministic": true,
+        "exact_fixture": true,
+        "guard_bytes_each_side": 16,
+        "guards_intact": true,
+        "name": "exact-small-dyadics",
+        "poisoned_before_launch": true,
+        "repoisoned_before_repeats": true,
+        "shape": [
+          1,
+          48,
+          1024
+        ],
+        "two_distinct_matrices": true
+      },
+      "fp64": {
+        "all_passed": true,
+        "baseline": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "baseline_deterministic": true,
+        "baseline_two_launch_timing": {
+          "batch_event_ms": [
+            0.10623999685049057,
+            0.10793600231409073,
+            0.10633599758148193
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 196608,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            10.623999685049057,
+            10.793600231409073,
+            10.633599758148193
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "candidate_requires_exact": true,
+        "candidate_symbol": "bf16_ab_decode_fp64",
+        "candidate_timing": {
+          "batch_event_ms": [
+            0.02425600029528141,
+            0.023840000852942467,
+            0.023711999878287315
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 196608,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            2.425600029528141,
+            2.3840000852942467,
+            2.3711999878287315
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate_vs_control": [
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": true,
+            "projection": "A",
+            "raw_bit_mismatches": 0
+          },
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": true,
+            "projection": "B",
+            "raw_bit_mismatches": 0
+          }
+        ],
+        "completed": true,
+        "deterministic": true,
+        "exact_fixture": true,
+        "guard_bytes_each_side": 16,
+        "guards_intact": true,
+        "name": "exact-small-dyadics",
+        "poisoned_before_launch": true,
+        "repoisoned_before_repeats": true,
+        "shape": [
+          1,
+          48,
+          1024
+        ],
+        "two_distinct_matrices": true
+      }
+    },
+    {
+      "all_passed": true,
+      "fp32": {
+        "all_passed": true,
+        "baseline": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "baseline_deterministic": true,
+        "baseline_two_launch_timing": {
+          "batch_event_ms": [
+            0.10704000294208527,
+            0.10684800148010254,
+            0.10691200196743011
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 198144,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            10.704000294208527,
+            10.684800148010254,
+            10.691200196743011
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "candidate_requires_exact": true,
+        "candidate_symbol": "bf16_ab_decode_fp32",
+        "candidate_timing": {
+          "batch_event_ms": [
+            0.014720000326633453,
+            0.01651199907064438,
+            0.016575999557971954
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 198144,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            1.4720000326633453,
+            1.6511999070644379,
+            1.6575999557971954
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate_vs_control": [
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": true,
+            "projection": "A",
+            "raw_bit_mismatches": 0
+          },
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": true,
+            "projection": "B",
+            "raw_bit_mismatches": 0
+          }
+        ],
+        "completed": true,
+        "deterministic": true,
+        "exact_fixture": true,
+        "guard_bytes_each_side": 16,
+        "guards_intact": true,
+        "name": "exact-small-dyadics",
+        "poisoned_before_launch": true,
+        "repoisoned_before_repeats": true,
+        "shape": [
+          1,
+          48,
+          1032
+        ],
+        "two_distinct_matrices": true
+      },
+      "fp64": {
+        "all_passed": true,
+        "baseline": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "baseline_deterministic": true,
+        "baseline_two_launch_timing": {
+          "batch_event_ms": [
+            0.10710400342941284,
+            0.10831999778747559,
+            0.10688000172376633
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 198144,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            10.710400342941284,
+            10.831999778747559,
+            10.688000172376633
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "candidate_requires_exact": true,
+        "candidate_symbol": "bf16_ab_decode_fp64",
+        "candidate_timing": {
+          "batch_event_ms": [
+            0.028095999732613564,
+            0.027936000376939774,
+            0.028031999245285988
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 198144,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            2.8095999732613564,
+            2.7936000376939774,
+            2.803199924528599
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate_vs_control": [
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": true,
+            "projection": "A",
+            "raw_bit_mismatches": 0
+          },
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": true,
+            "projection": "B",
+            "raw_bit_mismatches": 0
+          }
+        ],
+        "completed": true,
+        "deterministic": true,
+        "exact_fixture": true,
+        "guard_bytes_each_side": 16,
+        "guards_intact": true,
+        "name": "exact-small-dyadics",
+        "poisoned_before_launch": true,
+        "repoisoned_before_repeats": true,
+        "shape": [
+          1,
+          48,
+          1032
+        ],
+        "two_distinct_matrices": true
+      }
+    },
+    {
+      "all_passed": true,
+      "fp32": {
+        "all_passed": true,
+        "baseline": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "baseline_deterministic": true,
+        "baseline_two_launch_timing": {
+          "batch_event_ms": [
+            0.378464013338089,
+            0.3803200125694275,
+            0.3803200125694275
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 983040,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            37.8464013338089,
+            38.03200125694275,
+            38.03200125694275
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "candidate_requires_exact": true,
+        "candidate_symbol": "bf16_ab_decode_fp32",
+        "candidate_timing": {
+          "batch_event_ms": [
+            0.020864000543951988,
+            0.021663999184966087,
+            0.019840000197291374
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 983040,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            2.086400054395199,
+            2.1663999184966087,
+            1.9840000197291374
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate_vs_control": [
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": true,
+            "projection": "A",
+            "raw_bit_mismatches": 0
+          },
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": true,
+            "projection": "B",
+            "raw_bit_mismatches": 0
+          }
+        ],
+        "completed": true,
+        "deterministic": true,
+        "exact_fixture": true,
+        "guard_bytes_each_side": 16,
+        "guards_intact": true,
+        "name": "exact-small-dyadics",
+        "poisoned_before_launch": true,
+        "repoisoned_before_repeats": true,
+        "shape": [
+          1,
+          48,
+          5120
+        ],
+        "two_distinct_matrices": true
+      },
+      "fp64": {
+        "all_passed": true,
+        "baseline": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "baseline_deterministic": true,
+        "baseline_two_launch_timing": {
+          "batch_event_ms": [
+            0.378495991230011,
+            0.3782080113887787,
+            0.3792639970779419
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 983040,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            37.8495991230011,
+            37.82080113887787,
+            37.92639970779419
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "candidate_requires_exact": true,
+        "candidate_symbol": "bf16_ab_decode_fp64",
+        "candidate_timing": {
+          "batch_event_ms": [
+            0.05023999884724617,
+            0.04940799996256828,
+            0.04944000020623207
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 983040,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            5.023999884724617,
+            4.940799996256828,
+            4.944000020623207
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate_vs_control": [
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": true,
+            "projection": "A",
+            "raw_bit_mismatches": 0
+          },
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": true,
+            "projection": "B",
+            "raw_bit_mismatches": 0
+          }
+        ],
+        "completed": true,
+        "deterministic": true,
+        "exact_fixture": true,
+        "guard_bytes_each_side": 16,
+        "guards_intact": true,
+        "name": "exact-small-dyadics",
+        "poisoned_before_launch": true,
+        "repoisoned_before_repeats": true,
+        "shape": [
+          1,
+          48,
+          5120
+        ],
+        "two_distinct_matrices": true
+      }
+    },
+    {
+      "all_passed": true,
+      "fp32": {
+        "all_passed": true,
+        "baseline": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "baseline_deterministic": true,
+        "baseline_two_launch_timing": {
+          "batch_event_ms": [
+            0.37785598635673523,
+            0.38019201159477234,
+            0.3782399892807007
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 983040,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            37.78559863567352,
+            38.019201159477234,
+            37.82399892807007
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "gamma(2*ceil(K/1024)+14)*sum_abs_products + 1e-37; BF16 adds endpoint half-ULPs",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.001777441335364973,
+            "mismatches": 0,
+            "raw_bit_mismatches": 29,
+            "raw_max_abs": 3.814697265625e-6,
+            "requires_exact": false,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "gamma(2*ceil(K/1024)+14)*sum_abs_products + 1e-37; BF16 adds endpoint half-ULPs",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0017882607091368227,
+            "mismatches": 0,
+            "raw_bit_mismatches": 34,
+            "raw_max_abs": 3.814697265625e-6,
+            "requires_exact": false,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "candidate_requires_exact": false,
+        "candidate_symbol": "bf16_ab_decode_fp32",
+        "candidate_timing": {
+          "batch_event_ms": [
+            0.020096000283956528,
+            0.019711999222636223,
+            0.019872000440955162
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 983040,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            2.0096000283956528,
+            1.9711999222636223,
+            1.9872000440955162
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate_vs_control": [
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": false,
+            "projection": "A",
+            "raw_bit_mismatches": 29
+          },
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": false,
+            "projection": "B",
+            "raw_bit_mismatches": 34
+          }
+        ],
+        "completed": true,
+        "deterministic": true,
+        "exact_fixture": false,
+        "guard_bytes_each_side": 16,
+        "guards_intact": true,
+        "name": "seeded-signed-cancellation",
+        "poisoned_before_launch": true,
+        "repoisoned_before_repeats": true,
+        "shape": [
+          1,
+          48,
+          5120
+        ],
+        "two_distinct_matrices": true
+      },
+      "fp64": {
+        "all_passed": true,
+        "baseline": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "baseline_deterministic": true,
+        "baseline_two_launch_timing": {
+          "batch_event_ms": [
+            0.37910398840904236,
+            0.3802880048751831,
+            0.3803200125694275
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 983040,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            37.910398840904236,
+            38.02880048751831,
+            38.03200125694275
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "candidate_requires_exact": true,
+        "candidate_symbol": "bf16_ab_decode_fp64",
+        "candidate_timing": {
+          "batch_event_ms": [
+            0.050016000866889954,
+            0.04940799996256828,
+            0.04950400069355965
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 983040,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            5.001600086688995,
+            4.940799996256828,
+            4.950400069355965
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate_vs_control": [
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": true,
+            "projection": "A",
+            "raw_bit_mismatches": 0
+          },
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": true,
+            "projection": "B",
+            "raw_bit_mismatches": 0
+          }
+        ],
+        "completed": true,
+        "deterministic": true,
+        "exact_fixture": false,
+        "guard_bytes_each_side": 16,
+        "guards_intact": true,
+        "name": "seeded-signed-cancellation",
+        "poisoned_before_launch": true,
+        "repoisoned_before_repeats": true,
+        "shape": [
+          1,
+          48,
+          5120
+        ],
+        "two_distinct_matrices": true
+      }
+    },
+    {
+      "all_passed": true,
+      "fp32": {
+        "all_passed": true,
+        "baseline": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "baseline_deterministic": true,
+        "baseline_two_launch_timing": {
+          "batch_event_ms": [
+            0.3784320056438446,
+            0.3803519904613495,
+            0.37811198830604553
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 983040,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            37.84320056438446,
+            38.03519904613495,
+            37.81119883060455
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "gamma(2*ceil(K/1024)+14)*sum_abs_products + 1e-37; BF16 adds endpoint half-ULPs",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.001794142123291346,
+            "mismatches": 0,
+            "raw_bit_mismatches": 27,
+            "raw_max_abs": 4.291534423828125e-6,
+            "requires_exact": false,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "gamma(2*ceil(K/1024)+14)*sum_abs_products + 1e-37; BF16 adds endpoint half-ULPs",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.001815993453474882,
+            "mismatches": 0,
+            "raw_bit_mismatches": 29,
+            "raw_max_abs": 3.814697265625e-6,
+            "requires_exact": false,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "candidate_requires_exact": false,
+        "candidate_symbol": "bf16_ab_decode_fp32",
+        "candidate_timing": {
+          "batch_event_ms": [
+            0.019807999953627586,
+            0.0197759997099638,
+            0.020735999569296837
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 983040,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            1.9807999953627586,
+            1.9775999709963799,
+            2.0735999569296837
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate_vs_control": [
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": false,
+            "projection": "A",
+            "raw_bit_mismatches": 27
+          },
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": false,
+            "projection": "B",
+            "raw_bit_mismatches": 29
+          }
+        ],
+        "completed": true,
+        "deterministic": true,
+        "exact_fixture": false,
+        "guard_bytes_each_side": 16,
+        "guards_intact": true,
+        "name": "seeded-signed-cancellation",
+        "poisoned_before_launch": true,
+        "repoisoned_before_repeats": true,
+        "shape": [
+          1,
+          48,
+          5120
+        ],
+        "two_distinct_matrices": true
+      },
+      "fp64": {
+        "all_passed": true,
+        "baseline": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "baseline_deterministic": true,
+        "baseline_two_launch_timing": {
+          "batch_event_ms": [
+            0.3806400001049042,
+            0.3782399892807007,
+            0.3802559971809387
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 983040,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            38.06400001049042,
+            37.82399892807007,
+            38.02559971809387
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "candidate_requires_exact": true,
+        "candidate_symbol": "bf16_ab_decode_fp64",
+        "candidate_timing": {
+          "batch_event_ms": [
+            0.048576001077890396,
+            0.049375999718904495,
+            0.049536000937223434
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 983040,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            4.85760010778904,
+            4.9375999718904495,
+            4.9536000937223434
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate_vs_control": [
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": true,
+            "projection": "A",
+            "raw_bit_mismatches": 0
+          },
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": true,
+            "projection": "B",
+            "raw_bit_mismatches": 0
+          }
+        ],
+        "completed": true,
+        "deterministic": true,
+        "exact_fixture": false,
+        "guard_bytes_each_side": 16,
+        "guards_intact": true,
+        "name": "seeded-signed-cancellation",
+        "poisoned_before_launch": true,
+        "repoisoned_before_repeats": true,
+        "shape": [
+          1,
+          48,
+          5120
+        ],
+        "two_distinct_matrices": true
+      }
+    },
+    {
+      "all_passed": true,
+      "fp32": {
+        "all_passed": true,
+        "baseline": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "baseline_deterministic": true,
+        "baseline_two_launch_timing": {
+          "batch_event_ms": [
+            2.142911911010742,
+            2.143615961074829,
+            2.144416093826294
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 6291456,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            214.29119110107422,
+            214.3615961074829,
+            214.4416093826294
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "gamma(2*ceil(K/1024)+14)*sum_abs_products + 1e-37; BF16 adds endpoint half-ULPs",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.03699813378856905,
+            "mismatches": 0,
+            "raw_bit_mismatches": 27,
+            "raw_max_abs": 7.62939453125e-6,
+            "requires_exact": false,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "gamma(2*ceil(K/1024)+14)*sum_abs_products + 1e-37; BF16 adds endpoint half-ULPs",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0370462711376719,
+            "mismatches": 0,
+            "raw_bit_mismatches": 33,
+            "raw_max_abs": 0.0000152587890625,
+            "requires_exact": false,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "candidate_requires_exact": false,
+        "candidate_symbol": "bf16_ab_decode_fp32",
+        "candidate_timing": {
+          "batch_event_ms": [
+            0.050464000552892685,
+            0.048767998814582825,
+            0.048895999789237976
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 6291456,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            5.0464000552892685,
+            4.8767998814582825,
+            4.889599978923798
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate_vs_control": [
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": false,
+            "projection": "A",
+            "raw_bit_mismatches": 27
+          },
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": false,
+            "projection": "B",
+            "raw_bit_mismatches": 33
+          }
+        ],
+        "completed": true,
+        "deterministic": true,
+        "exact_fixture": false,
+        "guard_bytes_each_side": 16,
+        "guards_intact": true,
+        "name": "seeded-signed-cancellation",
+        "poisoned_before_launch": true,
+        "repoisoned_before_repeats": true,
+        "shape": [
+          1,
+          48,
+          32768
+        ],
+        "two_distinct_matrices": true
+      },
+      "fp64": {
+        "all_passed": true,
+        "baseline": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "baseline_deterministic": true,
+        "baseline_two_launch_timing": {
+          "batch_event_ms": [
+            2.142688035964966,
+            2.1454720497131348,
+            2.1456000804901123
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 6291456,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            214.26880359649658,
+            214.54720497131348,
+            214.56000804901123
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "candidate_requires_exact": true,
+        "candidate_symbol": "bf16_ab_decode_fp64",
+        "candidate_timing": {
+          "batch_event_ms": [
+            0.21292799711227417,
+            0.21212799847126007,
+            0.212351992726326
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 6291456,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            21.292799711227417,
+            21.212799847126007,
+            21.2351992726326
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate_vs_control": [
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": true,
+            "projection": "A",
+            "raw_bit_mismatches": 0
+          },
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": true,
+            "projection": "B",
+            "raw_bit_mismatches": 0
+          }
+        ],
+        "completed": true,
+        "deterministic": true,
+        "exact_fixture": false,
+        "guard_bytes_each_side": 16,
+        "guards_intact": true,
+        "name": "seeded-signed-cancellation",
+        "poisoned_before_launch": true,
+        "repoisoned_before_repeats": true,
+        "shape": [
+          1,
+          48,
+          32768
+        ],
+        "two_distinct_matrices": true
+      }
+    },
+    {
+      "all_passed": true,
+      "fp32": {
+        "all_passed": true,
+        "baseline": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "baseline_deterministic": true,
+        "baseline_two_launch_timing": {
+          "batch_event_ms": [
+            0.37968000769615173,
+            0.3803200125694275,
+            0.3797760009765625
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 983040,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            37.96800076961517,
+            38.03200125694275,
+            37.97760009765625
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 48,
+            "bf16_max_abs": 1.875,
+            "budget": "gamma(2*ceil(K/1024)+14)*sum_abs_products + 1e-37; BF16 adds endpoint half-ULPs",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 3840.005495854133,
+            "mismatches": 0,
+            "raw_bit_mismatches": 48,
+            "raw_max_abs": 1.875,
+            "requires_exact": false,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 48,
+            "bf16_max_abs": 1.875,
+            "budget": "gamma(2*ceil(K/1024)+14)*sum_abs_products + 1e-37; BF16 adds endpoint half-ULPs",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 3840.005495854133,
+            "mismatches": 0,
+            "raw_bit_mismatches": 48,
+            "raw_max_abs": 1.875,
+            "requires_exact": false,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "candidate_requires_exact": false,
+        "candidate_symbol": "bf16_ab_decode_fp32",
+        "candidate_timing": {
+          "batch_event_ms": [
+            0.020255999639630318,
+            0.01958400011062622,
+            0.020864000543951988
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 983040,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            2.0255999639630318,
+            1.958400011062622,
+            2.086400054395199
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate_vs_control": [
+          {
+            "bf16_bit_mismatches": 48,
+            "bit_identical": false,
+            "projection": "A",
+            "raw_bit_mismatches": 48
+          },
+          {
+            "bf16_bit_mismatches": 48,
+            "bit_identical": false,
+            "projection": "B",
+            "raw_bit_mismatches": 48
+          }
+        ],
+        "completed": true,
+        "deterministic": true,
+        "exact_fixture": false,
+        "guard_bytes_each_side": 16,
+        "guards_intact": true,
+        "name": "large-cancellation-small-residue",
+        "poisoned_before_launch": true,
+        "repoisoned_before_repeats": true,
+        "shape": [
+          1,
+          48,
+          5120
+        ],
+        "two_distinct_matrices": true
+      },
+      "fp64": {
+        "all_passed": true,
+        "baseline": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "baseline_deterministic": true,
+        "baseline_two_launch_timing": {
+          "batch_event_ms": [
+            0.3800640106201172,
+            0.38233599066734314,
+            0.381087988615036
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 983040,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            38.00640106201172,
+            38.233599066734314,
+            38.1087988615036
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "candidate_requires_exact": true,
+        "candidate_symbol": "bf16_ab_decode_fp64",
+        "candidate_timing": {
+          "batch_event_ms": [
+            0.04944000020623207,
+            0.050144001841545105,
+            0.04950400069355965
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 983040,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            4.944000020623207,
+            5.0144001841545105,
+            4.950400069355965
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate_vs_control": [
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": true,
+            "projection": "A",
+            "raw_bit_mismatches": 0
+          },
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": true,
+            "projection": "B",
+            "raw_bit_mismatches": 0
+          }
+        ],
+        "completed": true,
+        "deterministic": true,
+        "exact_fixture": false,
+        "guard_bytes_each_side": 16,
+        "guards_intact": true,
+        "name": "large-cancellation-small-residue",
+        "poisoned_before_launch": true,
+        "repoisoned_before_repeats": true,
+        "shape": [
+          1,
+          48,
+          5120
+        ],
+        "two_distinct_matrices": true
+      }
+    },
+    {
+      "all_passed": true,
+      "fp32": {
+        "all_passed": true,
+        "baseline": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "baseline_deterministic": true,
+        "baseline_two_launch_timing": {
+          "batch_event_ms": [
+            0.3789440095424652,
+            0.38016000390052795,
+            0.37615999579429626
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 983040,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            37.89440095424652,
+            38.016000390052795,
+            37.61599957942963
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "gamma(2*ceil(K/1024)+14)*sum_abs_products + 1e-37; BF16 adds endpoint half-ULPs",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 1.5674578327157147,
+            "mismatches": 0,
+            "raw_bit_mismatches": 16,
+            "raw_max_abs": 0.03125,
+            "requires_exact": false,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "gamma(2*ceil(K/1024)+14)*sum_abs_products + 1e-37; BF16 adds endpoint half-ULPs",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 1.753550986373426,
+            "mismatches": 0,
+            "raw_bit_mismatches": 17,
+            "raw_max_abs": 0.03125,
+            "requires_exact": false,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "candidate_requires_exact": false,
+        "candidate_symbol": "bf16_ab_decode_fp32",
+        "candidate_timing": {
+          "batch_event_ms": [
+            0.01974399946630001,
+            0.01961600035429001,
+            0.02070399932563305
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 983040,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            1.974399946630001,
+            1.9616000354290009,
+            2.070399932563305
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate_vs_control": [
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": false,
+            "projection": "A",
+            "raw_bit_mismatches": 16
+          },
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": false,
+            "projection": "B",
+            "raw_bit_mismatches": 17
+          }
+        ],
+        "completed": true,
+        "deterministic": true,
+        "exact_fixture": false,
+        "guard_bytes_each_side": 16,
+        "guards_intact": true,
+        "name": "bounded-magnitude-range",
+        "poisoned_before_launch": true,
+        "repoisoned_before_repeats": true,
+        "shape": [
+          1,
+          48,
+          5120
+        ],
+        "two_distinct_matrices": true
+      },
+      "fp64": {
+        "all_passed": true,
+        "baseline": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "baseline_deterministic": true,
+        "baseline_two_launch_timing": {
+          "batch_event_ms": [
+            0.3808000087738037,
+            0.3790079951286316,
+            0.37827199697494507
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 983040,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            38.08000087738037,
+            37.90079951286316,
+            37.82719969749451
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate": [
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          },
+          {
+            "all_passed": true,
+            "bf16_bit_mismatches": 0,
+            "bf16_max_abs": 0.0,
+            "budget": "raw FP32 and BF16 bit identity; no tolerance",
+            "elements": 48,
+            "failure_samples": [],
+            "finite": true,
+            "largest_raw_budget": 0.0,
+            "mismatches": 0,
+            "raw_bit_mismatches": 0,
+            "raw_max_abs": 0.0,
+            "requires_exact": true,
+            "stored_rne_mismatches": 0
+          }
+        ],
+        "candidate_requires_exact": true,
+        "candidate_symbol": "bf16_ab_decode_fp64",
+        "candidate_timing": {
+          "batch_event_ms": [
+            0.04995200037956238,
+            0.04918399825692177,
+            0.049375999718904495
+          ],
+          "batches": 3,
+          "logical_weight_bytes_per_pair": 983040,
+          "note": "warm-cache event batches include host submission gaps; not DRAM bandwidth; fixed FP32/control then FP64/control order",
+          "pair_event_us": [
+            4.995200037956238,
+            4.918399825692177,
+            4.9375999718904495
+          ],
+          "pairs_per_batch": 10,
+          "warmup_pairs": 3
+        },
+        "candidate_vs_control": [
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": true,
+            "projection": "A",
+            "raw_bit_mismatches": 0
+          },
+          {
+            "bf16_bit_mismatches": 0,
+            "bit_identical": true,
+            "projection": "B",
+            "raw_bit_mismatches": 0
+          }
+        ],
+        "completed": true,
+        "deterministic": true,
+        "exact_fixture": false,
+        "guard_bytes_each_side": 16,
+        "guards_intact": true,
+        "name": "bounded-magnitude-range",
+        "poisoned_before_launch": true,
+        "repoisoned_before_repeats": true,
+        "shape": [
+          1,
+          48,
+          5120
+        ],
+        "two_distinct_matrices": true
+      }
+    }
+  ],
+  "device": {
+    "driver_version": 13040,
+    "major": 12,
+    "minor": 0,
+    "name": "NVIDIA GeForce RTX 5090",
+    "ordinal": 0,
+    "total_bytes": 33731248128,
+    "uuid": "GPU-80ded6bd-1a89-2628-3d94-902187dbab1d"
+  },
+  "fp32_all_passed": true,
+  "fp32_resources": {
+    "local_bytes": 0,
+    "max_threads_per_block": 1024,
+    "registers": 39,
+    "static_shared_bytes": 16
+  },
+  "fp64_all_passed": true,
+  "fp64_resources": {
+    "local_bytes": 0,
+    "max_threads_per_block": 1024,
+    "registers": 46,
+    "static_shared_bytes": 32
+  },
+  "jit_log": "",
+  "kind": "bf16-ab-decode-synthetic-trial",
+  "ptx_path": "/home/ndizazzo/dev/mesh/mesh-llm/target/specialize/reassess-20260927/ptx/decode-4e75df069.ptx",
+  "ptx_sha256": "7e3fbae5ba5a202f95f7d4e62d91b21e3f556c436316a5092571324a2c1b97f2",
+  "schema_version": 2,
+  "scope": "synthetic M1 A/B arithmetic, completion, output guards, determinism and warm-cache timing only; no model or bandwidth claim"
+}

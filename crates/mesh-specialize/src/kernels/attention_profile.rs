@@ -9,6 +9,8 @@ pub enum Profile {
     OnlineAudit,
     /// FP32 split-sequence attention for M=1..8; exact FP64 attention for larger chunks.
     SplitDecode,
+    /// Exact-order FP64 warp schedule for M=1; unchanged baseline for larger chunks.
+    WarpFp64,
 }
 impl Profile {
     pub fn name(self) -> &'static str {
@@ -17,20 +19,33 @@ impl Profile {
             Self::Online => "bf16-online-fp32-v1",
             Self::OnlineAudit => "bf16-online-audit-exact-output-v1",
             Self::SplitDecode => "bf16-split-decode-fp32-exact-prefill-v1",
+            Self::WarpFp64 => "bf16-warp-fp64-exact-order-v1",
         }
     }
-    /// Single-kernel path. Callers must first handle `uses_split(rows)` separately.
+    /// Fallback kernel. Callers handle `uses_split(rows)` and M=1 warp dispatch separately.
     pub fn kernel(self) -> &'static str {
         match self {
             Self::Online => "attention_online_bf16",
-            Self::Exact | Self::OnlineAudit | Self::SplitDecode => "causal_attention_bf16",
+            Self::Exact | Self::OnlineAudit | Self::SplitDecode | Self::WarpFp64 => {
+                "causal_attention_bf16"
+            }
+        }
+    }
+    pub fn uses_warp(self, rows: usize) -> bool {
+        self == Self::WarpFp64 && rows == 1
+    }
+    pub fn kernel_for_rows(self, rows: usize) -> &'static str {
+        if self.uses_warp(rows) {
+            super::attention_warp_plan::KERNEL
+        } else {
+            self.kernel()
         }
     }
     pub fn uses_split(self, rows: usize) -> bool {
         self == Self::SplitDecode && (1..=8).contains(&rows)
     }
     pub fn supports_stream(self) -> bool {
-        matches!(self, Self::Exact | Self::SplitDecode)
+        matches!(self, Self::Exact | Self::SplitDecode | Self::WarpFp64)
     }
     pub fn is_audit(self) -> bool {
         self == Self::OnlineAudit
@@ -42,8 +57,9 @@ fn parse(value: Option<&str>) -> Result<Profile> {
         Some("online") => Ok(Profile::Online),
         Some("online-audit") => Ok(Profile::OnlineAudit),
         Some("split-decode") => Ok(Profile::SplitDecode),
+        Some("warp-fp64") => Ok(Profile::WarpFp64),
         _ => bail!(
-            "MESH_SPECIALIZE_ATTENTION_PROFILE must be exact, online, online-audit, or split-decode"
+            "MESH_SPECIALIZE_ATTENTION_PROFILE must be exact, online, online-audit, split-decode, or warp-fp64"
         ),
     }
 }
@@ -101,7 +117,32 @@ mod tests {
     }
 
     #[test]
-    fn stream_admits_only_exact_or_split_decode() {
+    fn warp_is_explicit_single_row_only_with_unchanged_fallbacks() {
+        let profile = parse(Some("warp-fp64")).unwrap();
+        assert_eq!(profile.name(), "bf16-warp-fp64-exact-order-v1");
+        assert!(profile.uses_warp(1));
+        assert_eq!(profile.kernel_for_rows(1), "causal_attention_warp_fp64");
+        for rows in [0, 2, 5, 8, 128, 512, 2048] {
+            assert!(!profile.uses_warp(rows));
+            assert!(!profile.uses_split(rows));
+            assert_eq!(profile.kernel_for_rows(rows), "causal_attention_bf16");
+        }
+        for control in [
+            Profile::Exact,
+            Profile::Online,
+            Profile::OnlineAudit,
+            Profile::SplitDecode,
+        ] {
+            assert!(!control.uses_warp(1));
+            assert_eq!(control.kernel_for_rows(1), control.kernel());
+        }
+        assert_eq!(parse(None).unwrap(), Profile::Exact);
+        assert!(!profile.is_audit());
+    }
+
+    #[test]
+    fn stream_admits_exact_split_decode_or_warp() {
+        assert!(Profile::WarpFp64.supports_stream());
         assert!(Profile::Exact.supports_stream());
         assert!(Profile::SplitDecode.supports_stream());
         assert!(!Profile::Online.supports_stream());

@@ -34,6 +34,7 @@ pub(super) struct Functions<'m, 'ctx> {
     pub(super) attention_qk_prepare: Function<'m, 'ctx>,
     pub(super) attention_kv_append: Function<'m, 'ctx>,
     pub(super) causal_attention: Function<'m, 'ctx>,
+    pub(super) causal_attention_warp: Option<Function<'m, 'ctx>>,
     pub(super) attention_gate: Function<'m, 'ctx>,
     pub(super) mlp_silu_product: Function<'m, 'ctx>,
     pub(super) greedy_tiles: Function<'m, 'ctx>,
@@ -107,7 +108,12 @@ impl<'m, 'ctx> Functions<'m, 'ctx> {
         let fp8_linear_exact_vector16 = (fp8_decode_schedule == Schedule::Vector16)
             .then(|| get(fp8_decode_schedule::VECTOR16_KERNEL))
             .transpose()?;
+        let causal_attention_warp = crate::kernels::attention_profile::current()?
+            .uses_warp(1)
+            .then(|| get(crate::kernels::attention_warp_plan::KERNEL))
+            .transpose()?;
         Ok(Self {
+            causal_attention_warp,
             fp8_linear_exact_vector16,
             fp8_decode_schedule,
             fp8_decode_decisions: Decisions::default(),

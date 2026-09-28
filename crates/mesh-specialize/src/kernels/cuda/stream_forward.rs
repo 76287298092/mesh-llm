@@ -162,6 +162,7 @@ impl<'m, 'w, 'ctx> StreamForward<'m, 'w, 'ctx> {
             "arena_bytes": self.arena_bytes,
             "arena_peak_live_bytes": self.peak_live_bytes,
             "attention_profile": self.attention_profile.name(),
+            "attention_warp_fp64_handle_resolved": self.kernels.causal_attention_warp.is_some(),
             "fp8_decode_schedule": self.kernels.fp8_decode_report(),
             "attention_workspace_bytes": self.split_attention.as_ref().map_or(0, SplitAttention::workspace_bytes),
             "split_attention": self.split_attention.as_ref().map(SplitAttention::report),
@@ -425,7 +426,7 @@ fn ensure_supported_profiles() -> Result<attention_profile::Profile> {
     let attention = attention_profile::current()?;
     ensure!(
         attention.supports_stream(),
-        "stream execution requires MESH_SPECIALIZE_ATTENTION_PROFILE=exact or split-decode (found {})",
+        "stream execution requires MESH_SPECIALIZE_ATTENTION_PROFILE=exact, split-decode, or warp-fp64 (found {})",
         attention.name()
     );
     ensure!(

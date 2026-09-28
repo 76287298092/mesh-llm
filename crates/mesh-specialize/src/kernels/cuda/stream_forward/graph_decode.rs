@@ -251,7 +251,12 @@ mod tests {
     #[test]
     fn rejects_nonexact_attention_without_reinterpreting_source_dtypes() {
         assert!(ensure_exact(Profile::Exact).is_ok());
-        for profile in [Profile::SplitDecode, Profile::Online, Profile::OnlineAudit] {
+        for profile in [
+            Profile::SplitDecode,
+            Profile::Online,
+            Profile::OnlineAudit,
+            Profile::WarpFp64,
+        ] {
             assert!(ensure_exact(profile).is_err());
         }
     }

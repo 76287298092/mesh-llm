@@ -120,3 +120,8 @@ Git, SSH, GPU, service changes, or NInfer compute source import was performed.
 Parent should pin the integrated source/PTX in the resulting evidence and run
 memcheck/racecheck/synccheck plus exact model logits/state/token and MTP recovery
 checks before interpreting any timing. A component pass alone is not promotion.
+
+
+## September 28 measured follow-up
+
+Whole-model isolated medians at56d426cb0:106-input26.472→27.678tok/s;512-input18.166→18.733tok/s,256outputs,four samples/profile inbalancedorder. Both modelchecks match savedbaseline logits/tokens/allstatebits.63operatorcasesincludinghead pass;40regs,0shared,0local. Sanitizersstillpending; defaultunchanged.
