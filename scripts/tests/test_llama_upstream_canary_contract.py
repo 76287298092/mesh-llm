@@ -309,6 +309,34 @@ class LlamaUpstreamCanaryWorkflowTests(unittest.TestCase):
         self.assertIn('glm-5.3-flash', worker)
         self.assertNotIn('CANARY_REPAIR_TOKEN', worker)
 
+    def test_infrastructure_failures_get_one_targeted_same_candidate_retry(self) -> None:
+        workflow = yaml.safe_load(PASS_WORKFLOW.read_text())
+        jobs = workflow['jobs']
+        aggregate = jobs['aggregate']
+        retry = jobs['retry_family']
+        reconcile = jobs['reconcile']
+        self.assertEqual(retry['needs'], ['build', 'aggregate'])
+        self.assertIn("state == 'infrastructure_retryable'", retry['if'])
+        self.assertEqual(retry['strategy']['matrix'],
+                         '${{ fromJSON(needs.aggregate.outputs.retry_matrix) }}')
+        self.assertEqual(retry['strategy']['max-parallel'], 8)
+        retry_commands = '\n'.join(step.get('run', '') for step in retry['steps'])
+        self.assertIn('llama-canary-family-evidence.py certify', retry_commands)
+        self.assertIn('llama-canary-family-evidence.py receipt', retry_commands)
+        self.assertNotIn('llama-canary-agent-repair.sh', retry_commands)
+        self.assertFalse(any(step.get('uses') == './.github/actions/setup-canary-runner'
+                             for step in retry['steps']))
+        self.assertEqual(reconcile['needs'], ['build', 'aggregate', 'retry_family'])
+        reconcile_commands = '\n'.join(step.get('run', '') for step in reconcile['steps'])
+        self.assertIn('llama-canary-family-evidence.py reconcile', reconcile_commands)
+        self.assertIn('--previous-feedback', reconcile_commands)
+        upload = next(step for step in aggregate['steps']
+                      if step.get('name') == 'Upload classified family failure evidence')
+        self.assertIn("feedback_ready == 'true'", upload['if'])
+        outputs = workflow[True]['workflow_call']['outputs']
+        self.assertIn('jobs.reconcile.outputs.green', outputs['green']['value'])
+        self.assertIn('jobs.reconcile.outputs.feedback', outputs['feedback']['value'])
+
     def test_changed_pin_jobs_configure_local_git_identity_before_harness(self) -> None:
         identity = setup_step('Configure canary Git identity')
         self.assertIn('git config --local user.name "mesh-llama-canary-bot"', identity)

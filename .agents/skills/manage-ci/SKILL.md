@@ -465,8 +465,12 @@ checked-in expiry are the maintainer-controlled approval boundary.
   family certification then runs outside that session. A candidate-class
   family or independent-verification failure resumes from the exact immutable
   candidate bundle and digest-bound failure evidence in a new bounded repair
-  attempt; an infrastructure-only failure stops without invoking Goose. There
-  are at most three distributed repair attempts. Every edited candidate must
+  attempt. A runner/workflow failure receives one targeted recheck of only the
+  affected families on that same immutable candidate, without rebuilding or
+  invoking Goose; valid candidate failures from a mixed pass are retained.
+  Repeated infrastructure failure, or corrupt/foreign/contract evidence, stops
+  without invoking Goose. There are at most three distributed repair attempts.
+  Every edited candidate must
   rebuild and rerun the complete candidate family pass, followed by a fresh
   independent build and complete family pass on the same commit. Agent test
   results must never replace either trusted full pass. Coding turns are admitted
@@ -513,12 +517,18 @@ Environment or process-supervision failures stop without asking Goose to repair
 source. Within a candidate build, prepare/build failures return to the same
 bounded Goose session. A candidate-class family or independent-verification
 failure packages the exact candidate and newest failed-family evidence for the
-next repair attempt; infrastructure-only, missing, corrupt, or foreign evidence
-stops instead of starting an agent. The next attempt restores the prior
-candidate as uncommitted changes on the frozen base and starts a new bounded
-session that must read the supplied evidence. Every edit invalidates all family
-results. A complete green candidate pass must be followed by a fresh independent
-build and complete per-family pass on the same commit. A hosted aggregate
+next repair attempt. Runner/workflow failures and missing receipts trigger one
+targeted recheck of only the affected families against the same digest-bound
+producer package, with no Goose invocation or rebuild. Candidate failures from
+a mixed pass remain retained; when the recheck clears infrastructure, only
+confirmed candidate evidence can start the next repair attempt. A repeated
+infrastructure failure, or corrupt, foreign, duplicate, stale, or otherwise
+invalid contract evidence, stops instead of starting an agent. The next attempt
+restores the prior candidate as uncommitted changes on the frozen base and
+starts a new bounded session that must read the supplied evidence. Every edit
+invalidates all family results. A complete green candidate pass must be
+followed by a fresh independent build and complete per-family pass on the same
+commit. A hosted aggregate
 rejects missing, duplicate, failed, cancelled, or mismatched results. Only the
 final hosted publisher receives the repair credential, and a failed or
 exhausted pass publishes no branch or PR.
@@ -568,10 +578,12 @@ family job-result gate remains mandatory so missing uploads cannot hide failures
 Failed certifications upload their evidence and then fail the family job, so
 GitHub's failed-job rerun can select them instead of only retrying aggregation.
 GitHub failed-job reruns retain attempt-labelled evidence. The hosted aggregate
-classifies newest candidate failures separately from runner/workflow failures
-and emits a digest-bound feedback artifact only for a repairable pass. That
-artifact and its exact producer package are the sole inputs to the next bounded
-outer repair attempt. Rebuilding a producer invalidates its prior receipts.
+classifies newest candidate failures separately from runner/workflow failures.
+It emits a digest-bound classification artifact for either a candidate repair
+or the one targeted infrastructure recheck. Reconciliation combines retained
+candidate evidence with the recheck receipts; only a candidate-only bundle and
+its exact producer package can enter the next bounded outer repair attempt.
+Rebuilding a producer invalidates its prior receipts.
 
 ## Validation contract
 

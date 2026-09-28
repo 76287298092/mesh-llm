@@ -92,8 +92,11 @@ attempt runs one complete candidate family pass followed (only when all
 families pass) by one independent build and complete verification pass on the
 exact same commit. A candidate-class family failure emits digest-bound evidence
 and resumes from that exact candidate in the next bounded agent session.
-Infrastructure, missing, corrupt, or foreign evidence stops without invoking
-Goose, and exhaustion after attempt three denies publication.
+Runner/workflow failures or missing receipts receive one targeted retry of only
+the affected families on the same immutable package without Goose or a rebuild;
+candidate failures from a mixed pass remain retained. Repeated infrastructure
+failure, corrupt/foreign/invalid evidence, or exhaustion after attempt three
+stops without invoking Goose and denies publication.
 
 
 Manual `mesh_ref` dispatches accept an explicitly trusted same-repository branch
@@ -161,9 +164,13 @@ Failed certifications upload their evidence and then fail the family job, so
 GitHub's failed-job rerun can select them instead of only retrying aggregation.
 Reruns retain attempt-labelled family/build history. These diagnostics never
 substitute for either complete certification pass. The hosted aggregate emits
-an automatic-repair input only when the newest failed receipt and result bytes
-prove a candidate-class failure; it binds that evidence to the producer
-identity and exact candidate package.
+a digest-bound classification artifact for candidate repair or a single
+targeted infrastructure recheck. That recheck runs only the runner/workflow-
+failed or missing families against the same producer package, without Goose or
+compilation. Reconciliation retains valid candidate failures from the initial
+pass and emits automatic-repair input only when the remaining failures are
+proved candidate-class; it binds that evidence to the producer identity and
+exact candidate package.
 
 `scripts/plan-family-battery.py` validates the versioned JSON family policy
 before native compilation: the three core parity lanes for certified causal
@@ -245,8 +252,10 @@ actual execution still requires the immutable metadata and tensor scans.
 Aggregation reports every failed receipt, including its runner and outcome, in
 the job log and Actions summary before rejecting the pass. Candidate-class
 worker failures remain recoverable by later bounded repair passes;
-infrastructure or invalid aggregate evidence stops. Only complete independent
-success permits publication.
+runner/workflow failures receive one targeted same-candidate recheck. A clean
+recheck plus the retained initial successes completes that immutable full pass;
+a repeated infrastructure failure or invalid aggregate evidence stops. Only
+complete independent success permits publication.
 Full worker/build logs remain for 14 days; executable handoffs remain for seven
 days so a single-machine queue can complete later passes.
 
