@@ -37,7 +37,8 @@ and per-stage cache allocation with that result.
 ## Certification Command
 
 Use the repo harness. Pass the model id whenever the target comes from
-Hugging Face so the run can be promoted into reviewed topology policy.
+Hugging Face so the run can be tied to an immutable model artifact and reviewed
+for the certification manifest.
 
 ```bash
 just family-certify FAMILY /path/to/model.gguf \
@@ -108,9 +109,10 @@ After a meaningful run:
 
 1. Update `skippy/docs/FAMILY_STATUS.md` first. This is the source of truth for
    what a customer can run and with which settings.
-2. Promote the reviewed capability record in
-   `skippy/crates/skippy-topology/capabilities/reviewed-family-capabilities.json`
-   when the run should drive planner policy.
+2. Review any exceptional topology rules in `skippy/crates/skippy-topology`
+   against the inspected model metadata. Update
+   `ci/llama-canary/family-certified.json` and regenerate the release-bound
+   `skippy-api` certification roster when the evidence supports default splits.
 3. Keep raw run directories under `target/family-certify/...`; do not paste
    running logs into the docs.
 

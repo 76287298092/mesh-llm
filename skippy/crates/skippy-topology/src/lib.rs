@@ -18,8 +18,7 @@ pub use family_capability::{
     laguna_capability, llama_capability, minimax_m27_capability, olmo_capability,
     qwen2moe_capability, qwen3_dense_capability, qwen3moe_capability, qwen3next_capability,
     qwen3next_layers, qwen4exp_capability, qwen35_series_capability, recurrent_family_capability,
-    reviewed_capability_for_identity, reviewed_capability_records, rwkv6_capability,
-    rwkv7_capability,
+    rwkv6_capability, rwkv7_capability,
 };
 pub use phase_placement::{HandoffCostModel, PhaseAssignment, PhaseCandidate, assign_phase_roles};
 pub use planning::{
@@ -29,27 +28,6 @@ pub use planning::{
     plan_weighted_contiguous, wire_payload_bytes_per_token,
 };
 pub use validation::PlanError;
-
-/// Legacy source-compatibility shape for callers that imported the former
-/// runtime-family registry. Production capability discovery now comes from the
-/// model loaded by llama.cpp; no runtime family rows are published here.
-#[deprecated(
-    note = "runtime family inference was removed; use loaded-model capability metadata instead"
-)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct StageRuntimeFamilyExpectation {
-    pub llama_architecture: &'static str,
-    pub family_id: &'static str,
-    pub recurrent_or_hybrid: bool,
-}
-
-/// Deprecated compatibility export. Intentionally empty so production code
-/// cannot recover KV semantics from a hand-maintained family table.
-#[allow(deprecated)]
-#[deprecated(
-    note = "runtime family inference was removed; use loaded-model capability metadata instead"
-)]
-pub const STAGE_RUNTIME_LLAMA_FAMILY_EXPECTATIONS: &[StageRuntimeFamilyExpectation] = &[];
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct TopologyPlanRequest {
@@ -294,25 +272,6 @@ pub enum SidebandKind {
     TokenIds,
     Rwkv7VFirst,
     Gemma3nAltup,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
-pub struct ReviewedCapabilityRecord {
-    #[serde(default)]
-    pub model_id: Option<String>,
-    #[serde(default)]
-    pub source_repo: Option<String>,
-    #[serde(default)]
-    pub source_revision: Option<String>,
-    #[serde(default)]
-    pub source_file: Option<String>,
-    #[serde(default)]
-    pub canonical_ref: Option<String>,
-    #[serde(default)]
-    pub distribution_id: Option<String>,
-    #[serde(default)]
-    pub selector: Option<String>,
-    pub capability: FamilyCapabilityRecord,
 }
 
 #[cfg(test)]

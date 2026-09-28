@@ -216,9 +216,9 @@ production waits for the #1416 iteration-level scheduler cutover in Phase 4.
      failure mode: MTP weights shipped but `speculative_decoding` omitted
      from the package manifest → MTP silently never selected (depends on
      the open #1425 Nemotron package).
-- Family gate: add a `phase_disaggregation` capability to
-  `reviewed-family-capabilities.json`, granted per family as it passes the
-  harness ladder.
+- Family gate: add a recipe-bound `phase_disaggregation` certification signal
+  to the family evidence manifest, granted only after the harness ladder
+  passes. No such admission is implied by model-name inference.
 
 **Gate:** llama-benchy A/B on the lab — disaggregated vs decode-node-solo vs
 2-stage layer split, both role assignments, reporting TTFT/TPOT and the

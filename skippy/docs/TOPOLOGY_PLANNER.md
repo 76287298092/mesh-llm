@@ -43,8 +43,8 @@ make that explicit rather than relying on tribal memory.
 `just family-certify` is the first harness for collecting this evidence into a
 dated artifact. It records correctness reports, state-handoff
 payload pressure, optional staged speculative corpus summaries, and a
-`capability-draft.json` that can be reviewed before promoting new planner
-policy; see `docs/FAMILY_CERTIFY.md`.
+`capability-draft.json` that can inform explicit planner policy after review;
+see `skippy/docs/FAMILY_CERTIFY.md`.
 
 ## Core Rule
 
@@ -181,27 +181,17 @@ physical decode hops whenever residency allows it.
 
 ## Family Capability Records
 
-Family capability records let the planner reason from measured model-family
-facts instead of hard-coding only dense Qwen assumptions. Reviewed records live
-in `skippy/crates/skippy-topology/capabilities/reviewed-family-capabilities.json`
-and are keyed by model coordinate/canonical artifact identity. Heuristic family
-inference remains a fallback for unreviewed artifacts.
+Family capability records let the planner evaluate exceptional split boundaries,
+sidebands, and state affinity. Callers can supply them from inspected model
+metadata; model-name inference remains advisory and does not certify a family.
+Default split serving is gated separately by the release-bound certification
+roster generated from `ci/llama-canary/family-certified.json`.
 
-| Family | Planner facts |
-| --- | --- |
-| Llama | Dense activation-only staging; exact state mobility accepted in current smoke. |
-| Qwen3 dense | Dense activation-only staging; exact state mobility accepted in current smoke. |
-| DeepSeek2 | Dense/MLA activation staging; exact state mobility accepted in current smoke. |
-| GLM-4.7 Flash | Plans as the DeepSeek2/MLA-style activation path; exact state mobility accepted in current smoke. |
-| GLM4 | Dense activation-only staging; exact state mobility accepted in current smoke. |
-| Gemma2 | Dense activation-only staging; exact state mobility accepted in current smoke. |
-| Gemma3 | Dense activation-only staging; exact state mobility accepted in current smoke. |
-| Gemma4 A4B | Dense/MoE activation-only staging; exact state mobility accepted in current smoke. |
-| Gemma4 E4B | Not recurrent, but requires token-id sideband for downstream auxiliary input reconstruction; known-bad shared-KV boundaries are rejected. |
-| OLMo | Dense activation-only staging; exact state mobility accepted in current smoke. |
-| MiniMax M2.7 | Dense activation-only staging in current GGUF runtime-slice smoke; exact state mobility accepted; sharded GGUF stage materialization is supported. |
-| Falcon-H1 | Every layer range owns recurrent state, exact state mobility rejected as too large, stage owners are sticky. |
-| Qwen3Next | Recurrent ranges are supplied by the caller; ranges containing recurrent layers are sticky and exact state mobility is rejected as too large. |
+Special cases such as Gemma4 E4B shared-KV cuts, Gemma3n auxiliary sidebands,
+and recurrent-family owner affinity remain explicit capability constructors in
+`skippy-topology`. A model name alone does not upgrade an untested mobility
+policy to accepted; loaded-model metadata and certification evidence govern
+runtime admission.
 
 The important behavioral distinction is:
 

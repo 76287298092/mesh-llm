@@ -110,7 +110,7 @@ What to avoid:
   keyed by model, topology/run id, and stage id so reloads and multi-model
   serving do not collide.
 - Do not hardcode activation width, context size, or port arithmetic. Derive
-  activation width from model metadata or reviewed family capability, take
+  activation width from inspected model metadata, take
   context from mesh config, and allocate ports explicitly.
 - Do not make skippy-serving the public product API. Mesh keeps routing and
   user-facing product behavior, while `skippy-inference-api` provides the shared
@@ -440,8 +440,8 @@ Correctness requirements:
   prefix;
 - BLAKE3 content hashes deduplicate identical KV/recurrent pages, but a page is
   reusable only after the full cache identity matches;
-- recurrent state support must come from reviewed family capability data before
-  it can be enabled by `auto`.
+- recurrent state support must be established by native model metadata and
+  reviewed certification evidence before it can be enabled by `auto`.
 
 Operational requirements:
 

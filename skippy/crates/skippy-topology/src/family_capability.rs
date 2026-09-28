@@ -1,6 +1,6 @@
 use crate::{
-    ExactStateMobility, FamilyCapabilityRecord, LayerRange, LayerSpec, ReviewedCapabilityRecord,
-    SidebandKind, SidebandRequirement, SplitConstraint, SplitConstraintKind,
+    ExactStateMobility, FamilyCapabilityRecord, LayerRange, LayerSpec, SidebandKind,
+    SidebandRequirement, SplitConstraint, SplitConstraintKind,
 };
 
 #[cfg(test)]
@@ -810,36 +810,11 @@ pub fn gemma4_e4b_capability(layer_count: u32, activation_width: u32) -> FamilyC
     }
 }
 
-pub fn reviewed_capability_records() -> Vec<ReviewedCapabilityRecord> {
-    serde_json::from_str(include_str!(
-        "../capabilities/reviewed-family-capabilities.json"
-    ))
-    .expect("reviewed family capability registry must be valid JSON")
-}
-
-pub fn reviewed_capability_for_identity(
-    model_identity: &str,
-    layer_count: u32,
-    activation_width: u32,
-) -> Option<FamilyCapabilityRecord> {
-    let normalized = model_identity.to_ascii_lowercase();
-    reviewed_capability_records()
-        .into_iter()
-        .find(|record| reviewed_record_matches(record, &normalized))
-        .map(|record| capability_for_request(record.capability, layer_count, activation_width))
-}
-
 pub fn infer_family_capability(
     model_identity: &str,
     layer_count: u32,
     activation_width: u32,
 ) -> Option<FamilyCapabilityRecord> {
-    if let Some(capability) =
-        reviewed_capability_for_identity(model_identity, layer_count, activation_width)
-    {
-        return Some(capability);
-    }
-
     let normalized = model_identity.to_ascii_lowercase();
     let compact = normalized.replace(['_', '-', '/', ' '], "");
     // Release parsing needs the boundary after a dotted version, so it reads a
@@ -1519,63 +1494,6 @@ fn is_qwen3_active_parameter_moe(compact_identity: &str) -> bool {
     }
 
     false
-}
-
-fn reviewed_record_matches(record: &ReviewedCapabilityRecord, normalized_identity: &str) -> bool {
-    [
-        record.model_id.as_deref(),
-        record.canonical_ref.as_deref(),
-        record
-            .distribution_id
-            .as_deref()
-            .filter(|value| value.len() >= 12),
-    ]
-    .into_iter()
-    .flatten()
-    .any(|value| !value.is_empty() && normalized_identity.contains(&value.to_ascii_lowercase()))
-        || match (
-            record.source_repo.as_deref(),
-            record.source_revision.as_deref(),
-            record.source_file.as_deref(),
-        ) {
-            (Some(repo), Some(revision), Some(file)) => {
-                normalized_identity.contains(&repo.to_ascii_lowercase())
-                    && normalized_identity.contains(&revision.to_ascii_lowercase())
-                    && normalized_identity.contains(&file.to_ascii_lowercase())
-            }
-            (Some(repo), _, Some(file)) => {
-                normalized_identity.contains(&repo.to_ascii_lowercase())
-                    && normalized_identity.contains(&file.to_ascii_lowercase())
-            }
-            _ => false,
-        }
-}
-
-fn capability_for_request(
-    mut capability: FamilyCapabilityRecord,
-    layer_count: u32,
-    activation_width: u32,
-) -> FamilyCapabilityRecord {
-    let stored_layer_count = capability.layer_count;
-    capability.layer_count = layer_count;
-    // This is a per-request fallback, not a persistent latch: the reviewed
-    // record is deserialized into a fresh capability above on every lookup.
-    // A reviewed nonzero width therefore always remains authoritative, while
-    // a reviewed zero width can use the current package estimate on each call.
-    if capability.activation_width == 0 && activation_width != 0 {
-        capability.activation_width = activation_width;
-    }
-    for range in &mut capability.recurrent_ranges {
-        if range.start == 0 && range.end == stored_layer_count {
-            range.end = layer_count;
-        }
-    }
-    for sideband in &mut capability.sidebands {
-        if sideband.first_required_layer == stored_layer_count {
-            sideband.first_required_layer = layer_count;
-        }
-    }
-    capability
 }
 
 pub fn dense_attention_layers(count: u32, parameter_bytes: u64) -> Vec<LayerSpec> {

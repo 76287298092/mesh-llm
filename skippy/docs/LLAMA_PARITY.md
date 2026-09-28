@@ -96,10 +96,9 @@ enough to promote.
    artifact should fail the run instead of being reported as a skipped
    package-only proof.
 
-5. Promote passing rows into:
-
-   - `skippy/docs/FAMILY_STATUS.md`
-   - `skippy/crates/skippy-topology/capabilities/reviewed-family-capabilities.json`
+5. Promote passing rows into `skippy/docs/FAMILY_STATUS.md` and the
+   release-bound certification manifest at `ci/llama-canary/family-certified.json`.
+   Review exceptional topology rules in `skippy/crates/skippy-topology`.
 
 Raw run artifacts stay under `target/family-certify/...`.
 

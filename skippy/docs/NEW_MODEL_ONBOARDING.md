@@ -17,7 +17,7 @@ Issue #630, Cohere Command A+, is the first model tracked with this flow.
 | Package validated | `skippy-package-builder` writes, validates, and preflights a package with no unresolved manifest, artifact, sidecar, materialization, missing, duplicate, or checksum diagnostics. | May test staged serving. |
 | Runtime smoke passed | A package-backed model starts and answers through the OpenAI-compatible surface. | May collect serving evidence. |
 | Family certified | Split correctness, dtype matrix, state handoff/cache policy, required context capacity, and required multimodal sidebands pass. | May promote to reviewed support. |
-| Reviewed support | `skippy/docs/FAMILY_STATUS.md` and reviewed topology records are updated from evidence. | User-visible support claim. |
+| Reviewed support | `skippy/docs/FAMILY_STATUS.md` and the release-bound certification roster are updated from evidence. | User-visible support claim. |
 
 Do not skip from candidate to reviewed support. A big or popular model is still
 only a candidate until the evidence exists.
@@ -40,9 +40,10 @@ only a candidate until the evidence exists.
    whose native context is at least 131,072 tokens, a tiny-context runtime smoke
    is not promotion evidence: the live split must allocate 131,072 and complete
    a request with at least 120,000 prompt tokens plus a continuation.
-7. Promote only after the evidence maps cleanly to both
-   `skippy/docs/FAMILY_STATUS.md` and
-   `skippy/crates/skippy-topology/capabilities/reviewed-family-capabilities.json`.
+7. Promote only after the evidence maps cleanly to
+   `skippy/docs/FAMILY_STATUS.md` and the release-bound certification manifest
+   at `ci/llama-canary/family-certified.json`. Review any exceptional topology
+   rules in `skippy/crates/skippy-topology`.
 
 ## Standard Checks
 
@@ -113,7 +114,7 @@ Current certification status:
 | MoE and cache-policy review | Not run |
 
 Treat this as a candidate, not support. Do not add Command A+ to
-`FAMILY_STATUS.md`, `reviewed-family-capabilities.json`, or the catalog until:
+`FAMILY_STATUS.md`, the certification manifest, or the catalog until:
 
 1. The pinned mesh-llm llama.cpp tree can inspect/load the selected GGUF.
 2. Package writing and `verify-package-v2` pass for the selected quant.
