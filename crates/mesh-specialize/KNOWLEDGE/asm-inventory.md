@@ -223,3 +223,16 @@ It reuses the previously inventoried native NVFP4 MMA and output-scale sites.
 `reference/nvfp4_prefill_tiled.rs` invokes the independent logical decoded-product
 reference with bounded candidate shapes. Neither source nor emitted PTX is GPU
 qualification, and neither candidate changes current resident dispatch.
+
+## NVFP4 wide prefill experiment
+
+`nvfp4_prefill_wide.rs` adds six assembly sites: shared declaration and coordinates,
+CTA barrier, async wait, four-byte zero-filling async copy with global conversion,
+async commit, and shared word load. Native block-scaled MMA and BF16 rounding/store
+reuse the inventoried `nvfp4_linear.rs` helpers. Two 5760-byte stages are disjoint;
+eight warps reuse each A fragment for four adjacent output fragments.
+`reference/nvfp4_prefill_tiled.rs` supplies the independent decoded-product FP64
+oracle under identical admission bounds. `nvfp4_pipeline_trial.rs` compares both
+CTA schedules against that oracle and requires raw/BF16 bit identity with native
+`nvfp4_linear`, including N120/128/136 tails. Compilation, GPU resources and
+sanitisers remain pending for this new symbol; prior tiled evidence does not qualify it.

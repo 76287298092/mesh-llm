@@ -178,3 +178,97 @@ Retained artifact `features-nvfp4-tiled.ptx` SHA256
 `83f52bb4e754f336f46f8d2a333daa4d08e27a02dceb4504f1aeeb5087ec7513`.
 Host tests and Clippy pass. GPU resource, repeated operator/sanitizer checks and
 original-versus-revised model timing remain pending at this compilation checkpoint.
+
+
+`nvfp4-pipeline-check-2` at e68e93d95 passes the unchanged19 cases and all three
+sanitizers. Raw/BF16 bits still match native control. Revised JIT resources are
+37registers,4608shared bytes,112local bytes. Parent inspected PTX local accesses:
+the remaining stack storage belongs to the final array-of-four-output-tuples
+iterator. Four explicit stores are a possible follow-up, pending measured model
+results for the existing versions. 278 host tests and host/Linux Clippy pass.
+Model comparison `nvfp4-tiled-model-1` uses128/512 inputs, exact FP8/attention,
+MLPworkspaceon, and retained original/revised PTX as separate schedules. This
+entry records the planned scope, not a completed result.
+
+## Separate 32x128 register-reuse candidate
+
+Parent-reported full-model prefill medians for baseline/original/fixed32x32
+were 277.414/215.605/278.192 tokens/s at 128 inputs and
+305.580/233.389/306.601 at 512 inputs. The fixed32x32 schedule did not establish
+a meaningful win. These are parent observations, not measurements by this
+worker; the original and fixed kernels/PTX remain retained.
+
+Added only `kernels/nvptx/nvfp4_prefill_wide.rs`, symbol
+`nvfp4_prefill_wide`. The six-pointer/MNK/factor ABI, admitted dimensions and
+arithmetic contract match `nvfp4_prefill_tiled`. Launch differs: grid is
+`[ceil(N/128),ceil(M/32),1]`, block `[256,1,1]`. Existing
+`nvfp4_prefill_tiled_reference` is the independent logical oracle for the
+identical input representation and shape bounds; no new fragment-derived oracle
+is introduced.
+
+Warp w owns rows `16*(w/4)..+16` and columns `32*(w%4)..+32`. Four named
+accumulators cover offsets 0,8,16,24 within those columns. `load_a` loads the
+four A registers and scale once per K64 step. Four explicit `accumulate_b`
+calls reuse those registers against separate B fragments. Every output still
+receives ascending K64 MMA steps through the existing `mma_nvfp4` helper.
+The epilogue makes four explicit `store_fragment` calls, each containing four
+explicit existing `store_scaled_output` calls. It has no tuple-array iterator
+or dynamically indexed accumulator array. Global-factor RN and BF16 RNE remain
+owned by the existing helper. Actual register reuse and absence of local
+storage must be checked in emitted PTX and JIT resources.
+
+Each 5,760-byte stage contains A codes at 0..1024, W codes at 1024..5120,
+A scales at 5120..5248 and W scales at 5248..5760. Total shared storage is
+11,520 bytes. Thread t writes A word t and W words t,t+256,t+512,t+768.
+Threads 0..31 write A scale word t; threads 0..127 write W scale word t.
+These producer sets cover every aligned word exactly once, including tails.
+Invalid rows use zero source size with the live allocation base. No invalid-row
+pointer is formed. K64 admission means no partial code or scale word is read.
+The maximum A fragment accesses row31/code byte31 and scale byte127; maximum W
+fragment accesses row127/code byte31 and scale byte511, within their regions.
+
+Every thread commits one group after its five to seven copies. The original
+wait-group-zero and CTA publication barrier precede consumption; next-slot
+copies precede four current-slot MMAs. The terminal CTA barrier retires all
+readers before slot reuse. Tail threads participate in every MMA and barrier.
+Output columns owned by different warps/fragments do not overlap, and existing
+store guards remove M/N tails.
+
+PTX inventory alias for parent registration: `coordinates`, `copy_word`,
+`issue_stage`, `await_stage`, `barrier` and `shared_word` have the instruction
+semantics and compiler clobbers listed in the initial inventory above. The
+unique static shared symbol is `nvfp4_prefill_wide_stages[11520]`; its extent
+and producer proof are replaced by this section. Native MMA and output
+instruction sites remain in `nvfp4_linear`. No additional PTX instruction kind,
+TMA, swizzle, scale permutation or fusion is introduced.
+
+Technique references at Ninfer `e31bc99b13f517c8aae70b997b7c4a49b4dcdc5d`
+are `src/ops/linear/nvfp4/nvfp4_a4_mma.cuh:191-275` and
+`nvfp4_a4_tma.cuh:250-309`. These retain A fragments while iterating multiple
+output-column MMAs. This Rust candidate uses the repo's existing logical layout
+and MMA helpers; no Ninfer implementation is imported.
+
+Only rustfmt and its check were run. Compilation, resources, sanitizer results,
+operator comparisons and model timing remain unmeasured for the wide symbol.
+Parent must extend the unchanged numerical trial to N120,128,136, including
+M tails and K64/128/192 plus bounded long-K cases. Require independent oracle
+gates and raw/BF16 bit equality with the original native kernel, followed by
+all three sanitizers and paired full-model timing. No speedup is presumed.
+
+### Parent wide-candidate registration and preflight
+
+Registered the separate symbol and all six assembly sites. The trial now uses
+33 fixtures and 23,515,136 independent CPU products, reusing each oracle output
+for baseline, 32x32 and 32x128 comparisons. Added N120/128/136, M boundary cases,
+and bounded long-K wide-output fixtures. Both candidates must retain raw/BF16
+bit equality with native baseline; existing oracle limits are unchanged.
+
+At parent base `72d7a4e2e`, `just specialize-ptx`, macOS Clippy, all 278 host
+library tests and `just no-console-print` pass. Preserved new PTX as
+`target/specialize/iterate-20260927/features-nvfp4-wide.ptx`, SHA256
+`dd54c51a775eb95634b456caa03198e53954646727658de126e4ed5771bae162`.
+The new entry has no PTX local declarations or local load/store operations.
+This is compiler evidence only; JIT resources and GPU checks remain pending.
+Prior PTXs and full-model evidence are preserved. Remote preflight found Ninfer
+active and ComfyUI resident at 498 MiB; the next trial must restore the service
+if it stops it.

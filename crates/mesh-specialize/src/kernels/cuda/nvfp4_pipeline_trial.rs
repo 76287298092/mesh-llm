@@ -36,6 +36,7 @@ pub(crate) fn run(ptx: &str, device: i32) -> Result<Value> {
     );
     let module = Module::load(&ctx, ptx)?;
     let candidate_resources = module.function("nvfp4_prefill_tiled")?.resources()?;
+    let wide_resources = module.function("nvfp4_prefill_wide")?.resources()?;
     let baseline_resources = module.function("nvfp4_linear")?.resources()?;
     let fixtures = fixtures();
     let products: usize = fixtures
@@ -52,7 +53,8 @@ pub(crate) fn run(ptx: &str, device: i32) -> Result<Value> {
     }
     Ok(json!({
         "kind":"nvfp4-pipeline-synthetic-trial", "device":info,
-        "candidate_resources":candidate_resources,"baseline_resources":baseline_resources,
+        "candidate_resources":candidate_resources,"wide_resources":wide_resources,
+        "baseline_resources":baseline_resources,
         "jit_log":module.jit_log(),"cpu_oracle_products":products,
         "all_passed":cases.iter().all(|case| case["all_passed"] == true),
         "cases":cases,"bf16_l2_limit":BF16_L2_LIMIT,"raw_scaled_limit":RAW_SCALED_LIMIT,
@@ -75,7 +77,26 @@ fn fixtures() -> Vec<Fixture> {
         result.push(fixture(shape, true, false));
         result.push(fixture(shape, false, false));
     }
-    for shape in [[1, 8, 5120], [17, 8, 5120], [1, 24, 17408], [5, 8, 17408]] {
+    result.push(fixture([16, 136, 192], true, true));
+    for shape in [
+        [1, 120, 64],
+        [17, 128, 128],
+        [31, 136, 192],
+        [32, 120, 192],
+        [33, 136, 128],
+    ] {
+        result.push(fixture(shape, true, false));
+        result.push(fixture(shape, false, false));
+    }
+    for shape in [
+        [1, 8, 5120],
+        [17, 8, 5120],
+        [1, 24, 17408],
+        [5, 8, 17408],
+        [512, 128, 64],
+        [1, 136, 5120],
+        [1, 120, 17408],
+    ] {
         result.push(fixture(shape, false, false));
     }
     result
@@ -163,8 +184,22 @@ fn execute(ctx: &Context, module: &Module<'_>, fixture: Fixture) -> Result<Value
         upload(ctx, &fixture.sa)?,
         upload(ctx, &fixture.sw)?,
     ];
-    let candidate = launch(ctx, module, &inputs, fixture.shape, true)?;
-    let baseline = launch(ctx, module, &inputs, fixture.shape, false)?;
+    let candidate = launch(ctx, module, &inputs, fixture.shape, "nvfp4_prefill_tiled")?;
+    let wide = launch(ctx, module, &inputs, fixture.shape, "nvfp4_prefill_wide")?;
+    let baseline = launch(ctx, module, &inputs, fixture.shape, "nvfp4_linear")?;
+    let wide_metrics = compare(&reference, &wide, fixture.exact);
+    let wide_raw_differences = wide
+        .raw
+        .iter()
+        .zip(&baseline.raw)
+        .filter(|(a, b)| a.to_bits() != b.to_bits())
+        .count();
+    let wide_bf16_differences = wide
+        .bf16
+        .iter()
+        .zip(&baseline.bf16)
+        .filter(|(a, b)| a != b)
+        .count();
     let candidate_metrics = compare(&reference, &candidate, fixture.exact);
     let baseline_metrics = compare(&reference, &baseline, fixture.exact);
     let raw_differences = candidate
@@ -188,9 +223,13 @@ fn execute(ctx: &Context, module: &Module<'_>, fixture: Fixture) -> Result<Value
     Ok(
         json!({"name":fixture.name,"shape":fixture.shape,"requires_exact":fixture.exact,
         "all_passed":candidate_metrics["all_passed"] == true && baseline_metrics["all_passed"] == true
-            && raw_differences == 0 && bf16_differences == 0,
+            && raw_differences == 0 && bf16_differences == 0
+            && wide_metrics["all_passed"] == true
+            && wide_raw_differences == 0 && wide_bf16_differences == 0,
         "completed":true,"outputs_poisoned_before_launch":true,"comparison_count":m*n,
-        "candidate":candidate_metrics,"baseline":baseline_metrics,
+        "candidate":candidate_metrics,"baseline":baseline_metrics,"wide":wide_metrics,
+        "wide_native_raw_bit_differences":wide_raw_differences,
+        "wide_native_bf16_bit_differences":wide_bf16_differences,
         "native_baseline_raw_bit_differences":raw_differences,
         "native_baseline_bf16_bit_differences":bf16_differences,
         "native_baseline_raw_max_abs_error":(candidate_metrics["finite"] == true && baseline_metrics["finite"] == true).then_some(maximum)}),
@@ -202,7 +241,7 @@ fn launch(
     module: &Module<'_>,
     inputs: &[Buffer<'_>; 4],
     shape: [usize; 3],
-    candidate: bool,
+    symbol: &str,
 ) -> Result<Output> {
     let [m, n, k] = shape;
     let poison: Vec<u8> = (0..m * n).flat_map(|_| 0x7fc1_u16.to_le_bytes()).collect();
@@ -231,10 +270,11 @@ fn launch(
             .map(|v| (v as *mut u32).cast::<c_void>()),
     );
     args.push((&raw mut factor).cast::<c_void>());
-    let (symbol, tile_n, tile_m, threads) = if candidate {
-        ("nvfp4_prefill_tiled", 32, 32, 256)
-    } else {
-        ("nvfp4_linear", 8, 16, 32)
+    let (tile_n, tile_m, threads) = match symbol {
+        "nvfp4_prefill_tiled" => (32, 32, 256),
+        "nvfp4_prefill_wide" => (128, 32, 256),
+        "nvfp4_linear" => (8, 16, 32),
+        _ => anyhow::bail!("unsupported NVFP4 trial symbol"),
     };
     let function = module.function(symbol)?;
     let grid = [
