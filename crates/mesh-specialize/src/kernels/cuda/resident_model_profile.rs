@@ -134,24 +134,7 @@ pub(in crate::kernels) fn run(
             ("token-decode", &partitioned.output.logits),
         ],
     )?;
-    let partition = json!({
-        "prefill_logits_bit_exact": control.prefill_logits == partitioned.prefill_logits,
-        "whole_prefill_token": control.prefill_token,
-        "token_prefill_token": partitioned.prefill_token,
-        "decode_inputs_equal":teacher_token.is_some() || control.prefill_token==partitioned.prefill_token,
-        "prefill_distribution":crate::engine::logit_quality::compare(&control.prefill_logits,&partitioned.prefill_logits)?,
-        "teacher_forced_decode_distribution":if teacher_token.is_some() {crate::engine::logit_quality::compare(&control.output.logits,&partitioned.output.logits)?} else {Value::Null},
-        "layer_tail_drift":control.layer_tails.iter().zip(&partitioned.layer_tails).enumerate().map(|(layer,(a,b))|json!({"layer":layer,"drift":logit_drift(a,b)})).collect::<Vec<_>>(),
-        "prefill_logit_drift": logit_drift(&control.prefill_logits, &partitioned.prefill_logits),
-        "decode_logit_drift": logit_drift(&control.output.logits, &partitioned.output.logits),
-        "decode_logits_bit_exact": control.output.logits == partitioned.output.logits,
-        "state_bit_exact": control.state_sha256 == partitioned.state_sha256,
-        "whole_state_sha256": control.state_sha256,
-        "token_state_sha256": partitioned.state_sha256,
-        "cursor_exact": control.cursor_past == partitioned.cursor_past,
-        "prefill_bf16_differences": control.prefill_logits.iter().zip(&partitioned.prefill_logits).filter(|(a,b)|a!=b).count(),
-        "decode_bf16_differences": control.output.logits.iter().zip(&partitioned.output.logits).filter(|(a,b)|a!=b).count(),
-    });
+    let partition = partition_report(&control, &partitioned, teacher_token)?;
     let partition_exact = control.prefill_logits == partitioned.prefill_logits
         && control.output.logits == partitioned.output.logits
         && control.state_sha256 == partitioned.state_sha256
@@ -262,6 +245,31 @@ pub(in crate::kernels) fn run(
         "memory_after_free": {"free_bytes": memory_after_free.0, "total_bytes": memory_after_free.1},
         "memory_released": memory_released,
         "scope": "Profiled full-prefix execution and one full-decoder token; event instrumentation is not model throughput or an independent quality check.",
+    }))
+}
+
+fn partition_report(
+    control: &DecodeRun,
+    partitioned: &DecodeRun,
+    teacher_token: Option<u32>,
+) -> Result<Value> {
+    Ok(json!({
+        "prefill_logits_bit_exact": control.prefill_logits == partitioned.prefill_logits,
+        "whole_prefill_token": control.prefill_token,
+        "token_prefill_token": partitioned.prefill_token,
+        "decode_inputs_equal":teacher_token.is_some() || control.prefill_token==partitioned.prefill_token,
+        "prefill_distribution":crate::engine::logit_quality::compare(&control.prefill_logits,&partitioned.prefill_logits)?,
+        "teacher_forced_decode_distribution":if teacher_token.is_some() {crate::engine::logit_quality::compare(&control.output.logits,&partitioned.output.logits)?} else {Value::Null},
+        "layer_tail_drift":control.layer_tails.iter().zip(&partitioned.layer_tails).enumerate().map(|(layer,(a,b))|json!({"layer":layer,"drift":logit_drift(a,b)})).collect::<Vec<_>>(),
+        "prefill_logit_drift": logit_drift(&control.prefill_logits, &partitioned.prefill_logits),
+        "decode_logit_drift": logit_drift(&control.output.logits, &partitioned.output.logits),
+        "decode_logits_bit_exact": control.output.logits == partitioned.output.logits,
+        "state_bit_exact": control.state_sha256 == partitioned.state_sha256,
+        "whole_state_sha256": control.state_sha256,
+        "token_state_sha256": partitioned.state_sha256,
+        "cursor_exact": control.cursor_past == partitioned.cursor_past,
+        "prefill_bf16_differences": control.prefill_logits.iter().zip(&partitioned.prefill_logits).filter(|(a,b)|a!=b).count(),
+        "decode_bf16_differences": control.output.logits.iter().zip(&partitioned.output.logits).filter(|(a,b)|a!=b).count(),
     }))
 }
 
