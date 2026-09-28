@@ -68,6 +68,10 @@ async fn serve_inner(
     uuid::Uuid::parse_str(&id).context("invalid request ID")?;
     let mut request = PaidRequest::parse(&http)?;
     ensure!(request.model == model, "model mismatch");
+    // The digest of the request as the payer sent it, before the model is
+    // renamed for the local backend, as the free path digests the request it
+    // received.
+    let request_digest = crate::plugin::openai_exchange::request_body_digest(&request.body, None);
     // Prices and offers use the public model ID; the local backend is
     // registered, and must be addressed, under its internal name.
     let backend_model =
@@ -98,6 +102,7 @@ async fn serve_inner(
         )
         .await?;
     let _instance = node.begin_runtime_instance_request(port).await?;
+    let model_for_events = model.clone();
     let (events, mut receiver) = mpsc::unbounded_channel();
     let gate = Arc::new(InvoiceGate {
         payments: payments.clone(),
@@ -118,12 +123,35 @@ async fn serve_inner(
         input_settlement: Arc::new(tokio::sync::Mutex::new(None)),
     });
     let _serving_guard = ServingGuard { gate: gate.clone() };
-    let generated = generate(reader, writer, port, &request, &gate, &mut receiver).await;
+    // The same exchange events the free serving path publishes.
+    let exchange =
+        crate::network::openai::ingress::PaidServedExchange::begin(node, &model_for_events).await;
+    let mut delivered = exchange.as_ref().map(|_| DeliveredCapture::default());
+    let generated = generate(
+        reader,
+        writer,
+        port,
+        &request,
+        &gate,
+        &mut receiver,
+        delivered.as_mut(),
+    )
+    .await;
     // Close serving on every path, before anything else can observe this
     // peer, so an interrupted request's delivered output counts as debt.
     let closed = gate.close_serving().await;
     let transport_alive = generated?;
     closed?;
+    if let (Some(exchange), Some(delivered)) = (exchange, delivered) {
+        finish_exchange(
+            node,
+            &exchange,
+            delivered,
+            &model_for_events,
+            request_digest.as_deref(),
+        )
+        .await;
+    }
     // Generation is over. Release the runtime's in-flight slot (the gate
     // registration ended with generation) before waiting on the payer's wallet: those waits can last
     // up to the output invoice lifetime, and the debt they settle is already
@@ -170,6 +198,24 @@ async fn serve_inner(
     Ok(())
 }
 
+/// The terminal exchange event for what was delivered: the relay's own usage
+/// and digests over the delivered bytes, or none past the capture limit.
+async fn finish_exchange(
+    node: &Node,
+    exchange: &crate::network::openai::ingress::PaidServedExchange,
+    delivered: DeliveredCapture,
+    model: &str,
+    request_digest: Option<&str>,
+) {
+    let outcome = match delivered.into_bytes() {
+        Some(raw) => crate::network::openai::served_outcome_of_raw_response(&raw).await,
+        None => crate::network::openai::transport::RouteDispatchOutcome::Failed(
+            "served response exceeded the capture limit",
+        ),
+    };
+    exchange.finish(node, model, &outcome, request_digest).await;
+}
+
 /// Runs the backend under the registered payment gate until its output is
 /// delivered or the payer goes away; the registration ends with generation.
 async fn generate(
@@ -179,6 +225,7 @@ async fn generate(
     request: &PaidRequest,
     gate: &Arc<InvoiceGate>,
     receiver: &mut mpsc::UnboundedReceiver<GateEvent>,
+    delivered: Option<&mut DeliveredCapture>,
 ) -> Result<bool> {
     let backend_id = uuid::Uuid::new_v4();
     let _registration =
@@ -188,7 +235,33 @@ async fn generate(
     backend
         .write_all(&request.backend_http(&backend_id.to_string())?)
         .await?;
-    stream_output(reader, writer, &mut backend, gate, receiver).await
+    stream_output(reader, writer, &mut backend, gate, receiver, delivered).await
+}
+
+/// The bytes delivered to the payer, kept to replay through the relay for
+/// the exchange event's digests. Past [`MAX_CAPTURED_RESPONSE_BYTES`] the
+/// capture is dropped and the event carries no digests, never partial ones.
+#[derive(Default)]
+struct DeliveredCapture {
+    bytes: Vec<u8>,
+    overflowed: bool,
+}
+
+const MAX_CAPTURED_RESPONSE_BYTES: usize = 8 * 1024 * 1024;
+
+impl DeliveredCapture {
+    fn push(&mut self, bytes: &[u8]) {
+        if self.overflowed || self.bytes.len() + bytes.len() > MAX_CAPTURED_RESPONSE_BYTES {
+            self.overflowed = true;
+            self.bytes = Vec::new();
+            return;
+        }
+        self.bytes.extend_from_slice(bytes);
+    }
+
+    fn into_bytes(self) -> Option<Vec<u8>> {
+        (!self.overflowed).then_some(self.bytes)
+    }
 }
 
 async fn stream_output(
@@ -197,6 +270,7 @@ async fn stream_output(
     backend: &mut TcpStream,
     gate: &InvoiceGate,
     events: &mut mpsc::UnboundedReceiver<GateEvent>,
+    mut delivered: Option<&mut DeliveredCapture>,
 ) -> Result<bool> {
     // Decode runs as soon as prefill completes. Drain the backend into a
     // bounded buffer, but do not release even HTTP headers until the provider's
@@ -221,7 +295,9 @@ async fn stream_output(
         if gate_open {
             while let Some(bytes) = pending.pop_front() {
                 pending_bytes -= bytes.len();
-                if !deliver_output(writer, gate, &mut delivery, bytes).await? {
+                if !deliver_output(writer, gate, &mut delivery, bytes, delivered.as_deref_mut())
+                    .await?
+                {
                     return Ok(false);
                 }
             }
@@ -274,7 +350,7 @@ async fn stream_output(
                     );
                     backend_eof = true;
                 } else if gate_open {
-                    if !deliver_output(writer, gate, &mut delivery, buffer[..count].to_vec()).await? {
+                    if !deliver_output(writer, gate, &mut delivery, buffer[..count].to_vec(), delivered.as_deref_mut()).await? {
                         return Ok(false);
                     }
                 } else {
@@ -301,11 +377,15 @@ async fn deliver_output(
     gate: &InvoiceGate,
     delivery: &mut super::delivery::DeliveryUsage,
     bytes: Vec<u8>,
+    delivered: Option<&mut DeliveredCapture>,
 ) -> Result<bool> {
     let frame = Frame::Output { bytes };
     if wire::write(writer, &frame).await.is_err() {
         gate.cancelled.store(true, Ordering::Release);
         return Ok(false);
+    }
+    if let (Some(capture), Frame::Output { bytes }) = (delivered, &frame) {
+        capture.push(bytes);
     }
     let Frame::Output { bytes } = frame else {
         unreachable!("output frame changed before delivery accounting");
