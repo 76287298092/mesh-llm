@@ -19,4 +19,5 @@ pub mod schedule;
 pub mod mtp;
 
 pub mod native_source;
+pub mod native_mtp_views;
 pub(crate) mod native_views;
