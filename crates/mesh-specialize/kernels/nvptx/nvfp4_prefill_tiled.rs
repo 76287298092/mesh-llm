@@ -53,43 +53,88 @@ unsafe fn copy_word(destination: u32, source: *const u8, valid: bool) {
     }
 }
 
-/// Caller supplies validated allocations and a stage with no remaining readers.
+#[derive(Clone, Copy)]
+struct MatrixStage {
+    codes: *const u8,
+    scales: *const u8,
+    rows: usize,
+    origin: usize,
+}
+
+#[derive(Clone, Copy)]
+struct StageInputs {
+    a: MatrixStage,
+    w: MatrixStage,
+    k: usize,
+}
+
+/// Copy an aligned row word, using the live base for zero-filled tail rows.
 #[inline(always)]
-unsafe fn issue_stage(
-    inputs: [*const u8; 4],
-    rows: [usize; 2],
-    origins: [usize; 2],
+unsafe fn copy_row_word(
+    source_base: *const u8,
+    row: usize,
+    rows: usize,
+    stride: usize,
+    offset: usize,
+    destination: u32,
+) {
+    let valid = row < rows;
+    let source = if valid {
+        // SAFETY: Caller proves a full aligned word in the logical row. The
+        // invalid-row branch never forms an out-of-bounds source pointer.
+        unsafe { source_base.add(row * stride + offset) }
+    } else {
+        source_base
+    };
+    // SAFETY: The caller owns this shared word and proves source alignment.
+    unsafe { copy_word(destination, source, valid) };
+}
+
+/// One fixed producer path; every thread copies codes and the first warp scales.
+#[inline(always)]
+unsafe fn issue_matrix(
+    matrix: MatrixStage,
     k: usize,
     tile_k: usize,
     thread: usize,
-    base: u32,
+    code_base: u32,
+    scale_base: u32,
 ) {
-    // A codes 1024, W codes 1024, A scales 128, W scales 128 bytes per stage.
-    let mut word = thread;
-    while word < 576 {
-        let (matrix, local_row, chunk, stride, k_offset) = if word < 512 {
-            let matrix = word / 256;
-            let within = word % 256;
-            (matrix, within / 8, within % 8, k / 2, tile_k * 32)
-        } else {
-            let within = word - 512;
-            (2 + within / 32, within % 32, 0, k / 16, tile_k * 4)
-        };
-        let side = matrix % 2;
-        let row = origins[side] + local_row;
-        let valid = row < rows[side];
-        let source = if valid {
-            // SAFETY: K is divisible by 64 and tile_k < K/64. Row strides and
-            // tile offsets preserve four-byte alignment and cover the full word.
-            unsafe { inputs[matrix].add(row * stride + k_offset + chunk * 4) }
-        } else {
-            inputs[matrix]
-        };
-        // SAFETY: word < 576 and each producer owns disjoint shared words.
-        unsafe { copy_word(base + word as u32 * 4, source, valid) };
-        word += 256;
+    // SAFETY: Threads 0..256 cover all 256 code words exactly once. K/2 and
+    // K/16 strides and tile offsets are four-byte aligned because K % 64 == 0.
+    unsafe {
+        copy_row_word(
+            matrix.codes,
+            matrix.origin + thread / 8,
+            matrix.rows,
+            k / 2,
+            tile_k * 32 + (thread % 8) * 4,
+            code_base + thread as u32 * 4,
+        );
+        if thread < 32 {
+            // These 32 words cover all scale rows, without runtime matrix indexing.
+            copy_row_word(
+                matrix.scales,
+                matrix.origin + thread,
+                matrix.rows,
+                k / 16,
+                tile_k * 4,
+                scale_base + thread as u32 * 4,
+            );
+        }
     }
-    // SAFETY: Commit every thread's copies, with one outstanding group per thread.
+}
+
+/// Caller supplies validated allocations and a stage with no remaining readers.
+#[inline(always)]
+unsafe fn issue_stage(inputs: StageInputs, tile_k: usize, thread: usize, base: u32) {
+    // SAFETY: Named A/W regions are disjoint. Every thread copies one word from
+    // each code matrix; the first warp additionally copies both scale words.
+    unsafe {
+        issue_matrix(inputs.a, inputs.k, tile_k, thread, base, base + 2048);
+        issue_matrix(inputs.w, inputs.k, tile_k, thread, base + 1024, base + 2176);
+    }
+    // SAFETY: All threads reconverge and commit once, after their two/four copies.
     unsafe { asm!("cp.async.commit_group;", options(nostack)) };
 }
 
@@ -162,13 +207,25 @@ pub unsafe extern "ptx-kernel" fn nvfp4_prefill_tiled(
 ) {
     let (thread, tile_n, tile_m, base) = coordinates();
     let thread = thread as usize;
-    let origins = [tile_m as usize * 32, tile_n as usize * 32];
-    let rows = [m as usize, n as usize];
-    let inputs = [a, w, sa, sw];
+    let inputs = StageInputs {
+        a: MatrixStage {
+            codes: a,
+            scales: sa,
+            rows: m as usize,
+            origin: tile_m as usize * 32,
+        },
+        w: MatrixStage {
+            codes: w,
+            scales: sw,
+            rows: n as usize,
+            origin: tile_n as usize * 32,
+        },
+        k: k as usize,
+    };
     let tiles = k as usize / 64;
     let mut accum = (0.0_f32, 0.0_f32, 0.0_f32, 0.0_f32);
     // SAFETY: Stage zero has no readers and inputs satisfy the launch contract.
-    unsafe { issue_stage(inputs, rows, origins, k as usize, 0, thread, base) };
+    unsafe { issue_stage(inputs, 0, thread, base) };
     for tile in 0..tiles {
         await_stage();
         let current = base + (tile % 2) as u32 * STAGE_BYTES;
@@ -176,15 +233,15 @@ pub unsafe extern "ptx-kernel" fn nvfp4_prefill_tiled(
             let next = base + ((tile + 1) % 2) as u32 * STAGE_BYTES;
             // SAFETY: The previous terminal barrier retired all readers of this
             // slot. Copies run concurrently with current-slot loads and MMA.
-            unsafe { issue_stage(inputs, rows, origins, k as usize, tile + 1, thread, next) };
+            unsafe { issue_stage(inputs, tile + 1, thread, next) };
         }
         accum = accumulate_stage(current, thread, accum);
         barrier();
     }
     let warp = thread / 32;
     let lane = thread % 32;
-    let row = origins[0] + (warp / 4) * 16 + lane / 4;
-    let column = origins[1] + (warp % 4) * 8 + (lane % 4) * 2;
+    let row = inputs.a.origin + (warp / 4) * 16 + lane / 4;
+    let column = inputs.w.origin + (warp % 4) * 8 + (lane % 4) * 2;
     for (dr, dc, value) in [
         (0, 0, accum.0),
         (0, 1, accum.1),
@@ -198,8 +255,8 @@ pub unsafe extern "ptx-kernel" fn nvfp4_prefill_tiled(
                 raw,
                 row + dr,
                 column + dc,
-                rows[0],
-                rows[1],
+                inputs.a.rows,
+                inputs.w.rows,
                 value,
                 global_factor,
             )

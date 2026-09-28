@@ -128,3 +128,53 @@ invalidates a case and its error metrics are null. CUDA/API failures return
 errors; failed launches explicitly drain before buffers drop. Outputs begin as
 quiet NaN poison. This is operator qualification source without timing or model
 claims, and does not resolve the existing native-versus-integer arithmetic audit.
+
+## Fixed producer paths resource experiment
+
+The parent reports that the original candidate at `5dbe00e1d` passed all 19
+operator cases normally and under memcheck, racecheck and synccheck, including
+raw/BF16 bit equality with the native baseline. Reported CUDA resources were
+38 registers, 4,608 shared bytes and 144 local bytes for the candidate, versus
+53 registers and zero local bytes for the baseline. Those are parent-provided
+observations; this worker did not rerun them. Original PTX is retained as
+`features-head-pipeline.ptx`, SHA256
+`e8beed4f5bba069809a7ff3d80398bea6f3980aa77a9a9f7352c4753f6ec401a`.
+
+Replaced the dynamic matrix/row/origin array indexing in `issue_stage` with
+named `MatrixStage` fields and separate fixed A/W paths. Thread t now writes
+A code word t and W code word t. Threads 0..31 additionally write A scale word
+t and W scale word t. This redistributes the original scale-copy producers
+without changing any destination byte or logical source. All 256 threads
+reconverge before their single group commit. Tail rows still use source size
+zero with the live allocation base. Stage offsets, waits, publication and
+reader-retirement barriers, MMA order and output ownership remain unchanged.
+The existing PTX sites and safety contracts apply; no instruction was added.
+
+The intended effect is to let scalar replacement remove dynamically indexed
+local arrays. Local-byte removal, register use, numerical qualification and
+performance are unverified for this revision. Only rustfmt and its check were
+run. Parent must compile and compare resources, rerun the unchanged numerical
+and sanitizer trial, and measure original versus revised PTX before selecting
+this scheduling change. Arithmetic and qualification limits were not changed.
+
+
+Parent retained completed `nvfp4-pipeline-check-1` evidence at5dbe00e1d.
+All19 cases pass normal, memcheck, racecheck and synccheck with zero reported
+errors/hazards. Candidate and native control raw/BF16 outputs agree bit-for-bit.
+Maximum independent-oracle scaled raw error is8.729596730380663e-6, within the
+frozen1e-4 gate. Original resources are38registers/4608shared/144localbytes.
+Ninfer stayed inactive and ComfyUI498MiB was preserved.
+
+Parent added `MESH_SPECIALIZE_NVFP4_PROFILE=baseline|tiled-prefill`, absent means
+baseline. Tiled dispatch covers16..512 rows, N divisible by8 and K divisible by64
+within the kernel's dimensions. Smaller or unsupported shapes retain baseline;
+one-row integer decode is unchanged. Both ordinary allocations and MLP workspace
+use one checked schedule selector. Bench/profile/logit manifests record the NVFP4
+profile independently of FP8 and attention. MTP rejects tiled-prefill until its
+own recovery qualification. Existing strict model partition checks are unchanged.
+
+The fixed-producer revision compiles with Just, nightly2026-09-25 sm_120a.
+Retained artifact `features-nvfp4-tiled.ptx` SHA256
+`83f52bb4e754f336f46f8d2a333daa4d08e27a02dceb4504f1aeeb5087ec7513`.
+Host tests and Clippy pass. GPU resource, repeated operator/sanitizer checks and
+original-versus-revised model timing remain pending at this compilation checkpoint.

@@ -28,6 +28,11 @@ pub(in crate::kernels) fn run(
     request: &SpeculationRequest<'_>,
 ) -> Result<Value> {
     ensure!(
+        crate::kernels::nvfp4_profile::current()?
+            == crate::kernels::nvfp4_profile::Profile::Baseline,
+        "MTP requires the baseline NVFP4 schedule until the tiled profile is qualified"
+    );
+    ensure!(
         !super::nvfp4_projection_audit::enabled()?,
         "NVFP4 audit is diagnostic; use qwen-model-profile"
     );

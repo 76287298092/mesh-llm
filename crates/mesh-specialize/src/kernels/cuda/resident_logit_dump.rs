@@ -34,7 +34,8 @@ pub(super) fn write(
         files.push(json!({"file":filename,"elements":words.len(),"sha256":hex::encode(Sha256::digest(&bytes))}));
     }
     let metadata = json!({"schema_version":1,"arithmetic_profile":crate::kernels::fp8_profile::current()?.name(),
-        "attention_profile":crate::kernels::attention_profile::current()?.name(), "prefix_token_ids":tokens,"teacher_token":teacher,"encoding":"BF16 little-endian u16",
+        "attention_profile":crate::kernels::attention_profile::current()?.name(),
+        "nvfp4_profile":crate::kernels::nvfp4_profile::current()?.name(), "prefix_token_ids":tokens,"teacher_token":teacher,"encoding":"BF16 little-endian u16",
         "files":files,"scope":"diagnostic exports; compare matching input IDs and weights across profiles"});
     let mut file = OpenOptions::new()
         .write(true)

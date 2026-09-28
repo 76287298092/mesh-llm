@@ -2,6 +2,7 @@
 
 pub mod attention_profile;
 pub mod fp8_profile;
+pub mod nvfp4_profile;
 #[cfg(any(test, target_os = "linux"))]
 mod partition_audit;
 

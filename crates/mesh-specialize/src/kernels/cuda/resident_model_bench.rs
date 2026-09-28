@@ -136,6 +136,7 @@ pub(in crate::kernels) fn run(
         "device": info,
         "arithmetic_profile": crate::kernels::fp8_profile::current()?.name(),
         "attention_profile":crate::kernels::attention_profile::current()?.name(),
+        "nvfp4_profile":crate::kernels::nvfp4_profile::current()?.name(),
         "gpu_greedy":super::model_greedy::enabled()?, "mlp_workspace":super::model_workspace::enabled()?, "fp8_split_k":super::resident_fp8_splitk::configured_splits()?,
         "configured_capacity": config.capacity,
         "prompt_token_ids": request.tokens,

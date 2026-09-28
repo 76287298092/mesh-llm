@@ -94,10 +94,20 @@ impl Binding<'_, '_> {
             }
             Arithmetic::Fp8 if rows >= 4 => ("fp8_linear_exact4", 4, 4, 128, None),
             Arithmetic::Fp8 => ("fp8_linear_exact", 1, 4, 128, None),
-            Arithmetic::Nvfp4 { factor, .. } if rows == 1 => {
-                ("nvfp4_decode_exact", 1, 4, 128, Some(factor))
+            Arithmetic::Nvfp4 { factor, .. } => {
+                let s = crate::kernels::nvfp4_profile::current()?.schedule(
+                    rows,
+                    self.channels,
+                    self.width,
+                );
+                (
+                    s.kernel,
+                    s.tile_rows,
+                    s.tile_columns,
+                    s.threads,
+                    Some(factor),
+                )
             }
-            Arithmetic::Nvfp4 { factor, .. } => ("nvfp4_linear", 16, 8, 32, Some(factor)),
         };
         launch(
             module,
