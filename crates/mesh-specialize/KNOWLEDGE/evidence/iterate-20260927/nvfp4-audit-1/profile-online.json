@@ -1,0 +1,3558 @@
+{
+  "all_passed": false,
+  "allocation_bytes": {
+    "persistent_total": 21808987136,
+    "state_arena": 162398208,
+    "weight_arena": 21646588928
+  },
+  "arithmetic_profile": "exact-a8-v1",
+  "artifact_path": "/data/ai/models/mesh-specialize/qwen3.8-27b-f0b7c9e7-raw-v1.mspec",
+  "attention_audit": [],
+  "attention_profile": "bf16-online-fp32-v1",
+  "completed": true,
+  "control_cursor_past": 129,
+  "control_state_sha256": "b207c34b439573ebc615f7565a9da02f432e2f75e24097e9a2e9dca32dbc69db",
+  "decode_input_token": 98094,
+  "device": {
+    "driver_version": 13040,
+    "major": 12,
+    "minor": 0,
+    "name": "NVIDIA GeForce RTX 5090",
+    "ordinal": 0,
+    "total_bytes": 33731248128,
+    "uuid": "GPU-80ded6bd-1a89-2628-3d94-902187dbab1d"
+  },
+  "exact_output_and_state": true,
+  "exact_prefill_logits": true,
+  "fp8_split_k": null,
+  "gpu_selection_check": null,
+  "harness_elapsed_seconds": 26.640380394,
+  "identity": {
+    "model_id": "qwen3.8-27b:text:nvfp4-fp8:upstream-raw-v1",
+    "weights_id": "sha256:f49713878a072f8c9043060dc0e2f3b28421301e49471bee0c13c7570e59e81e"
+  },
+  "kernel_profile": {
+    "groups": [
+      {
+        "block": [
+          128,
+          1,
+          1
+        ],
+        "count": 112,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          4352,
+          1,
+          1
+        ],
+        "kernel": "nvfp4_decode_exact",
+        "max_gpu_ms": 0.051392000168561935,
+        "min_gpu_ms": 0.04649600014090538,
+        "total_gpu_ms": 5.328256029635668
+      },
+      {
+        "block": [
+          128,
+          1,
+          1
+        ],
+        "count": 56,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          1280,
+          1,
+          1
+        ],
+        "kernel": "nvfp4_decode_exact",
+        "max_gpu_ms": 0.05491200089454651,
+        "min_gpu_ms": 0.052639998495578766,
+        "total_gpu_ms": 2.988319981843233
+      },
+      {
+        "block": [
+          128,
+          1,
+          1
+        ],
+        "count": 96,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          12,
+          1,
+          1
+        ],
+        "kernel": "bf16_linear_decode",
+        "max_gpu_ms": 0.029472000896930695,
+        "min_gpu_ms": 0.026399999856948853,
+        "total_gpu_ms": 2.710752008482814
+      },
+      {
+        "block": [
+          128,
+          1,
+          1
+        ],
+        "count": 72,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          1280,
+          1,
+          1
+        ],
+        "kernel": "fp8_linear_exact",
+        "max_gpu_ms": 0.08214399963617325,
+        "min_gpu_ms": 0.030271999537944794,
+        "total_gpu_ms": 2.609183995053172
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 233,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "kernel": "fp8_quantize_bf16",
+        "max_gpu_ms": 0.028575999662280083,
+        "min_gpu_ms": 0.009631999768316746,
+        "total_gpu_ms": 2.5862079998478293
+      },
+      {
+        "block": [
+          128,
+          1,
+          1
+        ],
+        "count": 48,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          48,
+          1,
+          1
+        ],
+        "kernel": "gdn_recurrent",
+        "max_gpu_ms": 0.05347200110554695,
+        "min_gpu_ms": 0.05084799975156784,
+        "total_gpu_ms": 2.480703990906477
+      },
+      {
+        "block": [
+          128,
+          1,
+          1
+        ],
+        "count": 48,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          2560,
+          1,
+          1
+        ],
+        "kernel": "fp8_linear_exact",
+        "max_gpu_ms": 0.048928000032901764,
+        "min_gpu_ms": 0.04492799937725067,
+        "total_gpu_ms": 2.251583982259035
+      },
+      {
+        "block": [
+          128,
+          1,
+          1
+        ],
+        "count": 48,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          1536,
+          1,
+          1
+        ],
+        "kernel": "fp8_linear_exact",
+        "max_gpu_ms": 0.034752000123262405,
+        "min_gpu_ms": 0.0323840007185936,
+        "total_gpu_ms": 1.6271359659731388
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 16,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          24,
+          1,
+          1
+        ],
+        "kernel": "attention_online_bf16",
+        "max_gpu_ms": 0.09388799965381622,
+        "min_gpu_ms": 0.09177599847316742,
+        "total_gpu_ms": 1.4858559891581535
+      },
+      {
+        "block": [
+          128,
+          1,
+          1
+        ],
+        "count": 16,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          4352,
+          1,
+          1
+        ],
+        "kernel": "fp8_linear_exact",
+        "max_gpu_ms": 0.07430399954319,
+        "min_gpu_ms": 0.06908799707889557,
+        "total_gpu_ms": 1.1340159848332405
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 64,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "kernel": "residual_norm_bf16",
+        "max_gpu_ms": 0.01894400082528591,
+        "min_gpu_ms": 0.01583999954164028,
+        "total_gpu_ms": 1.0772159956395626
+      },
+      {
+        "block": [
+          128,
+          1,
+          1
+        ],
+        "count": 1,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          62080,
+          1,
+          1
+        ],
+        "kernel": "fp8_linear_exact",
+        "max_gpu_ms": 0.8742079734802246,
+        "min_gpu_ms": 0.8742079734802246,
+        "total_gpu_ms": 0.8742079734802246
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 66,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "kernel": "embedding_norm_bf16",
+        "max_gpu_ms": 0.021727999672293663,
+        "min_gpu_ms": 0.00825599953532219,
+        "total_gpu_ms": 0.8428159970790148
+      },
+      {
+        "block": [
+          128,
+          1,
+          1
+        ],
+        "count": 16,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          3072,
+          1,
+          1
+        ],
+        "kernel": "fp8_linear_exact",
+        "max_gpu_ms": 0.0530879981815815,
+        "min_gpu_ms": 0.05084799975156784,
+        "total_gpu_ms": 0.8382400125265121
+      },
+      {
+        "block": [
+          128,
+          1,
+          1
+        ],
+        "count": 32,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          256,
+          1,
+          1
+        ],
+        "kernel": "fp8_linear_exact",
+        "max_gpu_ms": 0.02035200037062168,
+        "min_gpu_ms": 0.018112000077962875,
+        "total_gpu_ms": 0.6081600021570921
+      },
+      {
+        "block": [
+          32,
+          1,
+          1
+        ],
+        "count": 112,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          320,
+          1,
+          1
+        ],
+        "kernel": "nvfp4_quantize_bf16",
+        "max_gpu_ms": 0.004224000032991171,
+        "min_gpu_ms": 0.002240000059828162,
+        "total_gpu_ms": 0.4197760021779686
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 64,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          68,
+          1,
+          1
+        ],
+        "kernel": "mlp_silu_product",
+        "max_gpu_ms": 0.006719999946653843,
+        "min_gpu_ms": 0.005535999778658152,
+        "total_gpu_ms": 0.3976959977298975
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 48,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          40,
+          1,
+          1
+        ],
+        "kernel": "causal_conv4_bf16",
+        "max_gpu_ms": 0.007327999919652939,
+        "min_gpu_ms": 0.005535999778658152,
+        "total_gpu_ms": 0.3016959987580776
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 64,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          20,
+          1,
+          1
+        ],
+        "kernel": "residual_add_bf16",
+        "max_gpu_ms": 0.004095999989658594,
+        "min_gpu_ms": 0.0025919999461621046,
+        "total_gpu_ms": 0.2534079998731613
+      },
+      {
+        "block": [
+          32,
+          1,
+          1
+        ],
+        "count": 56,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          1088,
+          1,
+          1
+        ],
+        "kernel": "nvfp4_quantize_bf16",
+        "max_gpu_ms": 0.004608000162988901,
+        "min_gpu_ms": 0.003616000059992075,
+        "total_gpu_ms": 0.22460800153203309
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 48,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          48,
+          1,
+          1
+        ],
+        "kernel": "gdn_gated_rms_norm",
+        "max_gpu_ms": 0.005888000130653381,
+        "min_gpu_ms": 0.003871999913826585,
+        "total_gpu_ms": 0.22169599938206375
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 48,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          16,
+          1,
+          1
+        ],
+        "kernel": "gdn_qk_norm",
+        "max_gpu_ms": 0.0054720002226531506,
+        "min_gpu_ms": 0.0021120000164955854,
+        "total_gpu_ms": 0.1548800019081682
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 48,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "kernel": "gdn_gates",
+        "max_gpu_ms": 0.004031999967992306,
+        "min_gpu_ms": 0.001888000057078898,
+        "total_gpu_ms": 0.1309120001969859
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 16,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          24,
+          1,
+          1
+        ],
+        "kernel": "attention_qk_prepare",
+        "max_gpu_ms": 0.004863999783992767,
+        "min_gpu_ms": 0.0037120000924915075,
+        "total_gpu_ms": 0.06835199985653162
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 16,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          4,
+          1,
+          1
+        ],
+        "kernel": "attention_qk_prepare",
+        "max_gpu_ms": 0.004416000097990036,
+        "min_gpu_ms": 0.0025919999461621046,
+        "total_gpu_ms": 0.06422399915754795
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 16,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          4,
+          1,
+          1
+        ],
+        "kernel": "attention_kv_append",
+        "max_gpu_ms": 0.0035840000491589308,
+        "min_gpu_ms": 0.0016319999704137444,
+        "total_gpu_ms": 0.038720000302419066
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 16,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          24,
+          1,
+          1
+        ],
+        "kernel": "attention_gate_bf16",
+        "max_gpu_ms": 0.003776000114157796,
+        "min_gpu_ms": 0.0018560000462457538,
+        "total_gpu_ms": 0.03795200027525425
+      }
+    ],
+    "launch_count": 1476,
+    "scope": "per-launch synchronized CUDA events; instrumentation changes wall time; excludes host allocation/copies",
+    "throughput_claim": false,
+    "total_gpu_ms": 31.756575910025276
+  },
+  "kind": "resident-model-single-decode-kernel-profile",
+  "logit_dump": null,
+  "memory_after_free": {
+    "free_bytes": 32219725824,
+    "total_bytes": 33731248128
+  },
+  "memory_before": {
+    "free_bytes": 32219725824,
+    "total_bytes": 33731248128
+  },
+  "memory_released": true,
+  "mlp_workspace": true,
+  "nvfp4_projection_audit": {
+    "bf16_differing_channels": [
+      2522
+    ],
+    "diagnostic_only": true,
+    "independent_cpu_samples": [
+      {
+        "channel": 0,
+        "cpu_bf16_bits": 48509,
+        "cpu_raw": -0.061793286353349686,
+        "integer_bf16_bits": 48509,
+        "integer_cpu_exact": true,
+        "integer_raw": -0.061793286353349686,
+        "native_bf16_bits": 48509,
+        "native_raw": -0.061793286353349686
+      },
+      {
+        "channel": 2522,
+        "cpu_bf16_bits": 16237,
+        "cpu_raw": 0.9238281846046448,
+        "integer_bf16_bits": 16237,
+        "integer_cpu_exact": true,
+        "integer_raw": 0.9238281846046448,
+        "native_bf16_bits": 16236,
+        "native_raw": 0.9238277673721313
+      },
+      {
+        "channel": 2560,
+        "cpu_bf16_bits": 15984,
+        "cpu_raw": 0.23437364399433136,
+        "integer_bf16_bits": 15984,
+        "integer_cpu_exact": true,
+        "integer_raw": 0.23437364399433136,
+        "native_bf16_bits": 15984,
+        "native_raw": 0.23437364399433136
+      },
+      {
+        "channel": 5119,
+        "cpu_bf16_bits": 48545,
+        "cpu_raw": -0.07859113067388535,
+        "integer_bf16_bits": 48545,
+        "integer_cpu_exact": true,
+        "integer_raw": -0.07859113067388535,
+        "native_bf16_bits": 48545,
+        "native_raw": -0.07859113067388535
+      }
+    ],
+    "input_codes_sha256": "da587003286ee5308b9c86589f28d0bfd88c03c41fec3c5c34943b3de9721711",
+    "input_scales_sha256": "5edb2c70ca70efb5e93a032b8e11fab9c2897748f1c0613d437486934850a477",
+    "integer_cpu_samples_exact": true,
+    "max_absolute_error": 4.172325134277344e-7,
+    "raw_relative_l2": 5.652781453406017e-8,
+    "row": 101,
+    "scope": "native batch output versus integer GPU on identical quantized row; sampled logical FP64 CPU oracle; outputs never feed model",
+    "shape": [
+      128,
+      5120,
+      17408
+    ],
+    "stored_rounding_exact": true,
+    "token_integer_outputs_equal": true,
+    "token_quantized_inputs_equal": true,
+    "token_row": 101,
+    "weight": "tensors/model.language_model.layers.22.mlp.down_proj"
+  },
+  "partition_row_audit": {
+    "all_row_hashes_equal": false,
+    "diagnostic_only": true,
+    "differences": [
+      {
+        "differing_rows": [
+          101
+        ],
+        "first_row": 101,
+        "layer": 22,
+        "token_sha256": "265923efd46f9a7bc9a8f234d7bd686c1b96c19e385f8e19bce5baf78aa62657",
+        "whole_sha256": "cf4b627176f2e3ef61f354dc2639389cdf128cde56ce4c96a9a25844019d0807"
+      },
+      {
+        "differing_rows": [
+          101
+        ],
+        "first_row": 101,
+        "layer": 23,
+        "token_sha256": "bd8a4ebb2076c2130c2df06bf0a255296409a6173b80f246d86c2efb20f1bf19",
+        "whole_sha256": "287841330b02983e10c23735f05ff8dfba1d7a9e016adb26e43c4887aa755e21"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          112,
+          113,
+          117,
+          118,
+          120,
+          121,
+          122,
+          124,
+          125,
+          126
+        ],
+        "first_row": 101,
+        "layer": 24,
+        "token_sha256": "5855de8a72e7b19f5e9e5cd13fa4780b17dce655e32a0621af1d78b2cf1f7c91",
+        "whole_sha256": "36c20a6057030fb49381e70a29204041679090e8be2918175233583791fff8cc"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 25,
+        "token_sha256": "bf884cec440bdf75aac399e6c6324b6a341a5523c0623ce7b853119d79f214f4",
+        "whole_sha256": "e9aef1b47e226cd7436139278b0e204cd85f5f8329dcbb38f0b20d166a0ac002"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 26,
+        "token_sha256": "8a4f97775cc82d00a042dc2490791faac62bcf21483bd163414ad9c230477039",
+        "whole_sha256": "2f107a7d653be0b532129e926a31ae8e3e5b7354c1ae0a70a33052796ee6a583"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 27,
+        "token_sha256": "49d470fdf3a407fcba52e7cf79d32ba7ca50f3c6495dea14f6ebd06b2b970559",
+        "whole_sha256": "efabf8cefbb6f8c582daf02c728f4e6708e3d5194bbae2d56f0e329c8842573f"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 28,
+        "token_sha256": "7b11442f0148f06e65b9ca32585de02432d13adc62ed5d3287623a352f8c8ef9",
+        "whole_sha256": "03bbdf876f85a2a5554b4a3547c8a6ec06e9dfed43d48ab1c9d0f3d7e32967b7"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 29,
+        "token_sha256": "950fed5aab1daa101ab9afc4e73b60c3430b79ca28eaf7ce756c99f83aa43270",
+        "whole_sha256": "2d2cbf9544c4bb3dede7ce2405b468afce6ed76f2a0b67141628cc9d921a454d"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 30,
+        "token_sha256": "4ac8a77865df4f9f245e8551e5985997b9382aa9bb9f95cec4988d857127cc33",
+        "whole_sha256": "a5da613772700327d895d229b760e3594208178796e410d6a10a6826bc7d46c9"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 31,
+        "token_sha256": "e022524c212d4bbba71c5b658eb3b3a9ba6c2ab28b3e54166734633d09f5037f",
+        "whole_sha256": "90687855d31ec50a529909f41e14f19cd8301da0a3d032f435dbd7c6d4f02003"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 32,
+        "token_sha256": "6d5f6019573426500c0410fa07de13fd42f7476cf8d7a85e76d55ffd82dc6b1d",
+        "whole_sha256": "5681faec0292f6392c60685a67ee8a7dac367c0158fbdbf2faf2aededcffc471"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 33,
+        "token_sha256": "ae84a639f526edd17625eb56dbf0e85c5535821fce9beed13eb219bbfad24855",
+        "whole_sha256": "ab5fe7193da4f521b7855e48a6dfc52f9aee390929d6c2ab344e760149c169cf"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 34,
+        "token_sha256": "8efdb3551685766cf86fdf6b6d6d2b0cbb40d648c974ff709013344d9df3db98",
+        "whole_sha256": "ed147c9fed3049603e70c291c549e62c7286aa90bfa2ce0b914a8a8e9686b7e8"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 35,
+        "token_sha256": "6c6948c1d198d91f32db19174949da381cbf08afbcfe8172d183f7fa742a9bd4",
+        "whole_sha256": "d9978bed84c993b752d971540bb1a1d710fe011a92c66f6e48170a6872a1d4e4"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 36,
+        "token_sha256": "3a8cf4b3ea41309fe7d219661799017d20ef78a05e82700f1380a86637d8ef66",
+        "whole_sha256": "6d98b6d4821c133fd69a17368cc4e673e81dff65b6d4830bb54936e0a8776dbc"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 37,
+        "token_sha256": "e7c59acfdf376fae4b899c0d5645292a16f51e544e9e7e49979b9783df8cb7b9",
+        "whole_sha256": "25213254bd09226fb5e3d6f31a23a44e59273f0eef87f97052e11ec85ae6233b"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 38,
+        "token_sha256": "1f45d3d9883f661a17ebff411f1bacbb5ab23769232bf622ab3fe574b547da97",
+        "whole_sha256": "189529052274c3655fd5ec024ec9f4a0b0bcaaac36b9f74e37fb8e94cdd39dfb"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 39,
+        "token_sha256": "94e861e1d2b6436cd488bb1f7d7b3bbfa4d3e179ea3a35c7ce9ac59bd3ad91f4",
+        "whole_sha256": "ac780190ba1b2c8e658b8cdbafc12b8559fd8262d18d8d219d432eff96516028"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 40,
+        "token_sha256": "2bd1d5b901fecfe7615b0e119f23f062f374fc9ce5feb806dfeb9cebb2130972",
+        "whole_sha256": "744179fcac40ebc754fb0c6765142bd6aabbc3e19edd7821b7d549070f49f722"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 41,
+        "token_sha256": "962df2a0b300ff9f5a1b2172b934a3f126edb5954f17332037f1d3cc3e86269f",
+        "whole_sha256": "19b966c0da8323e5f2470e3db4b264746f3f5aee8b2f5929b6e3e4b0ee6c1112"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 42,
+        "token_sha256": "5b0eef8490a0a91bacd7877108370a9097451859b829856995c467d5cd1a8729",
+        "whole_sha256": "ab0d1a071b9814a929c05f9c716b84462f4264f8f8f18e34851f0ff68d9371b6"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 43,
+        "token_sha256": "c041a6a0e525cedea6d1e09939b006157a4671b0eaa78165a4d0794c47ef3df5",
+        "whole_sha256": "d44d93c13d6941a10d2d2e5031583d4688c84a91a78a21f56eb69fe83dfe5825"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 44,
+        "token_sha256": "a5e45d4bb8297214559921b14bba3fb442bd4d6c2818fd287fd84b01477a509d",
+        "whole_sha256": "9215d35fa00ab3f975afe8bac367e67b0128a9c93ce58731e0e5469b8aa3f115"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 45,
+        "token_sha256": "1db12fcb48d4ce82ff9419cc307b1a2c6b9484641565ce2b30372ce251c71c96",
+        "whole_sha256": "bc81d2ea9d8ad9fa67fa7832191038c0c00b0242e7a693e5837229c0deacdfa3"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 46,
+        "token_sha256": "a7f0239e4eac0b4bedae85f3c7902cc737cf0c5188012b15ff4ff85eeb292bdc",
+        "whole_sha256": "9ad2d91474cca1355450fb552501192f77552f0fa9f81e3893e361f370dfb7a5"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 47,
+        "token_sha256": "c1c257c14ec1c8609a70e2dde0e38735be05ec9c890c1c2c0d0add3f840d27ab",
+        "whole_sha256": "58b531fcb21d53f10747c07f7b3853070e4209598aa109799a7da2197730f90e"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 48,
+        "token_sha256": "5b17e79a6e1e7770ac378e4ca6e8cf237431ef65ac798917ebec1d0ff3cabdca",
+        "whole_sha256": "2863505a49884d9e96ae725c75cd94dfc3fb276f264a6fed208a72c6e366ce12"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 49,
+        "token_sha256": "99a0121984f695e033b5e2280590c20b0adb736e44d96972112d70b9d63bfa5c",
+        "whole_sha256": "092c09cdba7da504d9fda44428950252e375255e7e6dbbf3836b8b357406879a"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 50,
+        "token_sha256": "6cdd13ceb891d05e59b5916180094cc89e7022a40e8b92e1812cc1e443b6308d",
+        "whole_sha256": "804748ecad4d00d950f97430878b1a4b50a8cb54b04fd2a3e4f5a0ebde70bebe"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 51,
+        "token_sha256": "da0647eb7d31ea7bdf0dd9e6e3098e1b035f407354041af17a105b740adacd32",
+        "whole_sha256": "3b5138e6519e98f03e73c6f53a63ca7433e197bfde8141223ebeaf2b65dc1099"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 52,
+        "token_sha256": "ab7f40a53a6e871a9ac469ca346f4fd3a68404e659567d23dc592aee7e5a2af9",
+        "whole_sha256": "c1c7ba6982158ad22a25d92dcf7574fa077eb09c8b8255c3a052af11d652c25a"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 53,
+        "token_sha256": "885b1fa2cc13beab5295484be16437ff39f79b2558e9b199703a9f4e4a990d3b",
+        "whole_sha256": "fb2830cb0ca7bb69d0082ba95bc6f0f9b7a3215b7ca3ccda225b6f7df5182ef2"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 54,
+        "token_sha256": "faa40d077782ed7abad0492ba370402397c6cd57a3ed4c33722da5cd463c648d",
+        "whole_sha256": "0bd1df37f9bacf20192e2d0ad5fbd9d7d47e95c27f18212503e0e9dbce11c3f1"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 55,
+        "token_sha256": "24cbfa57fa1cef258a4fde2e4ccdf282256b28925497cd3540b6195638f06489",
+        "whole_sha256": "b6ec9d52f571ac05129fc197dcd5cab5c03192f4ac03cf126126c5a8996bba13"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 56,
+        "token_sha256": "e45509732caaab11f3ab21e2d07ce146d216cefec71011265f0ca304fe1a85c4",
+        "whole_sha256": "797781e76b19b662a3b3de72bad98019c3551be79b987993ee11e4c3c9b6f505"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 57,
+        "token_sha256": "af550f56b73fc60ce02b825b1b037fe52749a95e62bfc090c39bdfb2f2807368",
+        "whole_sha256": "062fdcba0f4da53c4bb9727a7c2be545225c920984b5fea206ef6b2ccb5459ba"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 58,
+        "token_sha256": "d802f7292d4e62123dfbbe74f02fec0b5dd1fad391d5dbbdd5dc143c2b9c447b",
+        "whole_sha256": "955b9e4da74a22b81034f13473ef90caae5e17a2e94e38bf6b150b032b1ce58b"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 59,
+        "token_sha256": "403139d2193bdad8f1849b9c6b9fecd6ddc083362687ace423a8d5ab0e168b5a",
+        "whole_sha256": "104b7d8eab8dc4c34c9d836ceb59b7cc5d699c768e5136a64e3b991e053f2182"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 60,
+        "token_sha256": "237f6d6a5a0aa18b50895d17a9ceb054ca67f6bbca39279938cb7038ff14e36d",
+        "whole_sha256": "11be00dac3cbe750ebf610ea85f386e8b316ffa84b2c6e38067a8518472896a9"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 61,
+        "token_sha256": "79c4037194470db78895e28bdbfd55c91c40ff54fa8aa47107d0d568803f64f9",
+        "whole_sha256": "0ab297e09f29722f3800135c30efc1a6655f39383fdecbdbd95af9a0922f346a"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 62,
+        "token_sha256": "27dbc5abb455b461df863b94922e920254acc1fe90608c8a162232e684e73ac8",
+        "whole_sha256": "69e8cb16fb7d7abb5bf64ffd72f79ed10c97c140dd864f0b40f64b75f33789c3"
+      },
+      {
+        "differing_rows": [
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127
+        ],
+        "first_row": 101,
+        "layer": 63,
+        "token_sha256": "f08b6d1dda27ab046f3ecab20462e41be86f67531835c9cd59eaa5f0a2ca0ce2",
+        "whole_sha256": "01123bf17da7bc9b719c14500839f8a9c84f4f595e8e632566d506831481e7c1"
+      }
+    ],
+    "layers": 64,
+    "row_bytes": 10240,
+    "rows": 128,
+    "scope": "BF16 layer outputs, SHA256 per row; first layer with any differing row precedes later-layer drift"
+  },
+  "partition_stage_audit": {
+    "diagnostic_only": true,
+    "layer": 22,
+    "rows": 128,
+    "scope": "existing observed layer path; MLP stage observation uses ordinary allocation path instead of workspace, so profile/control equality must also be checked",
+    "stages": {
+      "a": {
+        "all_row_hashes_equal": true,
+        "diagnostic_only": true,
+        "differences": [],
+        "layers": 1,
+        "row_bytes": 96,
+        "rows": 128,
+        "scope": "BF16 layer outputs, SHA256 per row; first layer with any differing row precedes later-layer drift"
+      },
+      "b": {
+        "all_row_hashes_equal": true,
+        "diagnostic_only": true,
+        "differences": [],
+        "layers": 1,
+        "row_bytes": 96,
+        "rows": 128,
+        "scope": "BF16 layer outputs, SHA256 per row; first layer with any differing row precedes later-layer drift"
+      },
+      "convolution": {
+        "all_row_hashes_equal": true,
+        "diagnostic_only": true,
+        "differences": [],
+        "layers": 1,
+        "row_bytes": 20480,
+        "rows": 128,
+        "scope": "BF16 layer outputs, SHA256 per row; first layer with any differing row precedes later-layer drift"
+      },
+      "gated": {
+        "all_row_hashes_equal": true,
+        "diagnostic_only": true,
+        "differences": [],
+        "layers": 1,
+        "row_bytes": 12288,
+        "rows": 128,
+        "scope": "BF16 layer outputs, SHA256 per row; first layer with any differing row precedes later-layer drift"
+      },
+      "hidden": {
+        "all_row_hashes_equal": false,
+        "diagnostic_only": true,
+        "differences": [
+          {
+            "differing_rows": [
+              101
+            ],
+            "first_row": 101,
+            "layer": 0,
+            "token_sha256": "265923efd46f9a7bc9a8f234d7bd686c1b96c19e385f8e19bce5baf78aa62657",
+            "whole_sha256": "cf4b627176f2e3ef61f354dc2639389cdf128cde56ce4c96a9a25844019d0807"
+          }
+        ],
+        "layers": 1,
+        "row_bytes": 10240,
+        "rows": 128,
+        "scope": "BF16 layer outputs, SHA256 per row; first layer with any differing row precedes later-layer drift"
+      },
+      "mlp_activation": {
+        "all_row_hashes_equal": true,
+        "diagnostic_only": true,
+        "differences": [],
+        "layers": 1,
+        "row_bytes": 34816,
+        "rows": 128,
+        "scope": "BF16 layer outputs, SHA256 per row; first layer with any differing row precedes later-layer drift"
+      },
+      "mlp_down": {
+        "all_row_hashes_equal": false,
+        "diagnostic_only": true,
+        "differences": [
+          {
+            "differing_rows": [
+              101
+            ],
+            "first_row": 101,
+            "layer": 0,
+            "token_sha256": "5253a78dd4f76d1b86ef57a1b0c5a768acfdf9906f357c10a00d8578044c39dd",
+            "whole_sha256": "5dc6359ab981b907ec81065a37a99c619c38d7c8e68baf798a87f37224d46cc9"
+          }
+        ],
+        "layers": 1,
+        "row_bytes": 10240,
+        "rows": 128,
+        "scope": "BF16 layer outputs, SHA256 per row; first layer with any differing row precedes later-layer drift"
+      },
+      "mlp_gate": {
+        "all_row_hashes_equal": true,
+        "diagnostic_only": true,
+        "differences": [],
+        "layers": 1,
+        "row_bytes": 34816,
+        "rows": 128,
+        "scope": "BF16 layer outputs, SHA256 per row; first layer with any differing row precedes later-layer drift"
+      },
+      "mlp_up": {
+        "all_row_hashes_equal": true,
+        "diagnostic_only": true,
+        "differences": [],
+        "layers": 1,
+        "row_bytes": 34816,
+        "rows": 128,
+        "scope": "BF16 layer outputs, SHA256 per row; first layer with any differing row precedes later-layer drift"
+      },
+      "normalized": {
+        "all_row_hashes_equal": true,
+        "diagnostic_only": true,
+        "differences": [],
+        "layers": 1,
+        "row_bytes": 10240,
+        "rows": 128,
+        "scope": "BF16 layer outputs, SHA256 per row; first layer with any differing row precedes later-layer drift"
+      },
+      "out": {
+        "all_row_hashes_equal": true,
+        "diagnostic_only": true,
+        "differences": [],
+        "layers": 1,
+        "row_bytes": 10240,
+        "rows": 128,
+        "scope": "BF16 layer outputs, SHA256 per row; first layer with any differing row precedes later-layer drift"
+      },
+      "post_norm": {
+        "all_row_hashes_equal": true,
+        "diagnostic_only": true,
+        "differences": [],
+        "layers": 1,
+        "row_bytes": 10240,
+        "rows": 128,
+        "scope": "BF16 layer outputs, SHA256 per row; first layer with any differing row precedes later-layer drift"
+      },
+      "post_residual": {
+        "all_row_hashes_equal": true,
+        "diagnostic_only": true,
+        "differences": [],
+        "layers": 1,
+        "row_bytes": 10240,
+        "rows": 128,
+        "scope": "BF16 layer outputs, SHA256 per row; first layer with any differing row precedes later-layer drift"
+      },
+      "qkv": {
+        "all_row_hashes_equal": true,
+        "diagnostic_only": true,
+        "differences": [],
+        "layers": 1,
+        "row_bytes": 20480,
+        "rows": 128,
+        "scope": "BF16 layer outputs, SHA256 per row; first layer with any differing row precedes later-layer drift"
+      },
+      "z": {
+        "all_row_hashes_equal": true,
+        "diagnostic_only": true,
+        "differences": [],
+        "layers": 1,
+        "row_bytes": 12288,
+        "rows": 128,
+        "scope": "BF16 layer outputs, SHA256 per row; first layer with any differing row precedes later-layer drift"
+      }
+    }
+  },
+  "prefill_kernel_profile": {
+    "groups": [
+      {
+        "block": [
+          32,
+          1,
+          1
+        ],
+        "count": 72,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          640,
+          8,
+          1
+        ],
+        "kernel": "fp8_prefill_exact",
+        "max_gpu_ms": 2.209023952484131,
+        "min_gpu_ms": 0.7791360020637512,
+        "total_gpu_ms": 67.73964774608612
+      },
+      {
+        "block": [
+          128,
+          1,
+          1
+        ],
+        "count": 48,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          48,
+          1,
+          1
+        ],
+        "kernel": "gdn_recurrent",
+        "max_gpu_ms": 1.2722879648208618,
+        "min_gpu_ms": 1.2641279697418213,
+        "total_gpu_ms": 60.946144342422485
+      },
+      {
+        "block": [
+          32,
+          1,
+          1
+        ],
+        "count": 48,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          1280,
+          8,
+          1
+        ],
+        "kernel": "fp8_prefill_exact",
+        "max_gpu_ms": 1.1117759943008423,
+        "min_gpu_ms": 1.1000319719314575,
+        "total_gpu_ms": 53.10556757450104
+      },
+      {
+        "block": [
+          32,
+          1,
+          1
+        ],
+        "count": 48,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          768,
+          8,
+          1
+        ],
+        "kernel": "fp8_prefill_exact",
+        "max_gpu_ms": 0.7268159985542297,
+        "min_gpu_ms": 0.7157120108604431,
+        "total_gpu_ms": 34.652768075466156
+      },
+      {
+        "block": [
+          32,
+          1,
+          1
+        ],
+        "count": 112,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          2176,
+          8,
+          1
+        ],
+        "kernel": "nvfp4_linear",
+        "max_gpu_ms": 0.27670401334762573,
+        "min_gpu_ms": 0.26368001103401184,
+        "total_gpu_ms": 29.991327941417694
+      },
+      {
+        "block": [
+          32,
+          1,
+          1
+        ],
+        "count": 16,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          2176,
+          8,
+          1
+        ],
+        "kernel": "fp8_prefill_exact",
+        "max_gpu_ms": 1.7812479734420776,
+        "min_gpu_ms": 1.7535040378570557,
+        "total_gpu_ms": 28.19932782649994
+      },
+      {
+        "block": [
+          32,
+          1,
+          1
+        ],
+        "count": 56,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          640,
+          8,
+          1
+        ],
+        "kernel": "nvfp4_linear",
+        "max_gpu_ms": 0.49398401379585266,
+        "min_gpu_ms": 0.46112000942230225,
+        "total_gpu_ms": 26.74911993741989
+      },
+      {
+        "block": [
+          32,
+          1,
+          1
+        ],
+        "count": 16,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          1536,
+          8,
+          1
+        ],
+        "kernel": "fp8_prefill_exact",
+        "max_gpu_ms": 1.3083839416503906,
+        "min_gpu_ms": 1.2878719568252563,
+        "total_gpu_ms": 20.716511845588684
+      },
+      {
+        "block": [
+          128,
+          1,
+          1
+        ],
+        "count": 96,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          12,
+          128,
+          1
+        ],
+        "kernel": "bf16_linear_decode",
+        "max_gpu_ms": 0.17164799571037292,
+        "min_gpu_ms": 0.16819199919700623,
+        "total_gpu_ms": 16.327711910009384
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 64,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          8704,
+          1,
+          1
+        ],
+        "kernel": "mlp_silu_product",
+        "max_gpu_ms": 0.1600320041179657,
+        "min_gpu_ms": 0.15561600029468536,
+        "total_gpu_ms": 10.037535890936852
+      },
+      {
+        "block": [
+          32,
+          1,
+          1
+        ],
+        "count": 32,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          128,
+          8,
+          1
+        ],
+        "kernel": "fp8_prefill_exact",
+        "max_gpu_ms": 0.2250239998102188,
+        "min_gpu_ms": 0.21862399578094482,
+        "total_gpu_ms": 7.089376077055931
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 48,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          5120,
+          1,
+          1
+        ],
+        "kernel": "causal_conv4_bf16",
+        "max_gpu_ms": 0.09795200079679489,
+        "min_gpu_ms": 0.09382399916648865,
+        "total_gpu_ms": 4.56284798681736
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 16,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          3072,
+          1,
+          1
+        ],
+        "kernel": "attention_online_bf16",
+        "max_gpu_ms": 0.24828800559043884,
+        "min_gpu_ms": 0.24201600253582,
+        "total_gpu_ms": 3.9046080261468887
+      },
+      {
+        "block": [
+          32,
+          1,
+          1
+        ],
+        "count": 56,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          139264,
+          1,
+          1
+        ],
+        "kernel": "nvfp4_quantize_bf16",
+        "max_gpu_ms": 0.06992000341415405,
+        "min_gpu_ms": 0.06787200272083282,
+        "total_gpu_ms": 3.8727999553084373
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 48,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          6144,
+          1,
+          1
+        ],
+        "kernel": "gdn_gated_rms_norm",
+        "max_gpu_ms": 0.06019200012087822,
+        "min_gpu_ms": 0.0575999990105629,
+        "total_gpu_ms": 2.848479997366667
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 232,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          128,
+          1,
+          1
+        ],
+        "kernel": "fp8_quantize_bf16",
+        "max_gpu_ms": 0.028543999418616295,
+        "min_gpu_ms": 0.009631999768316746,
+        "total_gpu_ms": 2.682943994179368
+      },
+      {
+        "block": [
+          32,
+          1,
+          1
+        ],
+        "count": 112,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          40960,
+          1,
+          1
+        ],
+        "kernel": "nvfp4_quantize_bf16",
+        "max_gpu_ms": 0.023584000766277313,
+        "min_gpu_ms": 0.021344000473618507,
+        "total_gpu_ms": 2.5099200010299683
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 64,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          128,
+          1,
+          1
+        ],
+        "kernel": "residual_norm_bf16",
+        "max_gpu_ms": 0.01926399953663349,
+        "min_gpu_ms": 0.0161920003592968,
+        "total_gpu_ms": 1.1337279994040728
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 65,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          128,
+          1,
+          1
+        ],
+        "kernel": "embedding_norm_bf16",
+        "max_gpu_ms": 0.02223999984562397,
+        "min_gpu_ms": 0.009664000011980534,
+        "total_gpu_ms": 0.9423360023647547
+      },
+      {
+        "block": [
+          128,
+          1,
+          1
+        ],
+        "count": 1,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          62080,
+          1,
+          1
+        ],
+        "kernel": "fp8_linear_exact",
+        "max_gpu_ms": 0.8740479946136475,
+        "min_gpu_ms": 0.8740479946136475,
+        "total_gpu_ms": 0.8740479946136475
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 48,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          2048,
+          1,
+          1
+        ],
+        "kernel": "gdn_qk_norm",
+        "max_gpu_ms": 0.01033599954098463,
+        "min_gpu_ms": 0.006207999773323536,
+        "total_gpu_ms": 0.3524479987099767
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 64,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          2560,
+          1,
+          1
+        ],
+        "kernel": "residual_add_bf16",
+        "max_gpu_ms": 0.006271999794989824,
+        "min_gpu_ms": 0.003776000114157796,
+        "total_gpu_ms": 0.3041599972639233
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 16,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          3072,
+          1,
+          1
+        ],
+        "kernel": "attention_qk_prepare",
+        "max_gpu_ms": 0.009759999811649323,
+        "min_gpu_ms": 0.0077760000713169575,
+        "total_gpu_ms": 0.1344320005737245
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 48,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          24,
+          1,
+          1
+        ],
+        "kernel": "gdn_gates",
+        "max_gpu_ms": 0.004031999967992306,
+        "min_gpu_ms": 0.0021120000164955854,
+        "total_gpu_ms": 0.13161600031889975
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 16,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          3072,
+          1,
+          1
+        ],
+        "kernel": "attention_gate_bf16",
+        "max_gpu_ms": 0.007135999854654074,
+        "min_gpu_ms": 0.00508800009265542,
+        "total_gpu_ms": 0.09785600006580353
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 16,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          512,
+          1,
+          1
+        ],
+        "kernel": "attention_qk_prepare",
+        "max_gpu_ms": 0.0046720001846551895,
+        "min_gpu_ms": 0.0037440001033246517,
+        "total_gpu_ms": 0.06761600123718381
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 16,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          512,
+          1,
+          1
+        ],
+        "kernel": "attention_kv_append",
+        "max_gpu_ms": 0.00431999983265996,
+        "min_gpu_ms": 0.002208000048995018,
+        "total_gpu_ms": 0.05436800024472177
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 1,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "kernel": "embedding_norm_bf16",
+        "max_gpu_ms": 0.012896000407636166,
+        "min_gpu_ms": 0.012896000407636166,
+        "total_gpu_ms": 0.012896000407636166
+      },
+      {
+        "block": [
+          256,
+          1,
+          1
+        ],
+        "count": 1,
+        "dynamic_shared_bytes": 0,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "kernel": "fp8_quantize_bf16",
+        "max_gpu_ms": 0.01033599954098463,
+        "min_gpu_ms": 0.01033599954098463,
+        "total_gpu_ms": 0.01033599954098463
+      }
+    ],
+    "launch_count": 1476,
+    "scope": "per-launch synchronized CUDA events; instrumentation changes wall time; excludes host allocation/copies",
+    "throughput_claim": false,
+    "total_gpu_ms": 380.0524791229982
+  },
+  "prefix_token_ids": [
+    248044,
+    8219,
+    16138,
+    24057,
+    31976,
+    39895,
+    47814,
+    55733,
+    63652,
+    71571,
+    79490,
+    87409,
+    95328,
+    3247,
+    11166,
+    19085,
+    27004,
+    34923,
+    42842,
+    50761,
+    58680,
+    66599,
+    74518,
+    82437,
+    90356,
+    98275,
+    6194,
+    14113,
+    22032,
+    29951,
+    37870,
+    45789,
+    53708,
+    61627,
+    69546,
+    77465,
+    85384,
+    93303,
+    1222,
+    9141,
+    17060,
+    24979,
+    32898,
+    40817,
+    48736,
+    56655,
+    64574,
+    72493,
+    80412,
+    88331,
+    96250,
+    4169,
+    12088,
+    20007,
+    27926,
+    35845,
+    43764,
+    51683,
+    59602,
+    67521,
+    75440,
+    83359,
+    91278,
+    99197,
+    7116,
+    15035,
+    22954,
+    30873,
+    38792,
+    46711,
+    54630,
+    62549,
+    70468,
+    78387,
+    86306,
+    94225,
+    2144,
+    10063,
+    17982,
+    25901,
+    33820,
+    41739,
+    49658,
+    57577,
+    65496,
+    73415,
+    81334,
+    89253,
+    97172,
+    5091,
+    13010,
+    20929,
+    28848,
+    36767,
+    44686,
+    52605,
+    60524,
+    68443,
+    76362,
+    84281,
+    92200,
+    100119,
+    8038,
+    15957,
+    23876,
+    31795,
+    39714,
+    47633,
+    55552,
+    63471,
+    71390,
+    79309,
+    87228,
+    95147,
+    3066,
+    10985,
+    18904,
+    26823,
+    34742,
+    42661,
+    50580,
+    58499,
+    66418,
+    74337,
+    82256,
+    90175,
+    98094,
+    6013
+  ],
+  "profiled_cursor_past": 129,
+  "profiled_decode_wall_seconds": 0.044769116,
+  "profiled_state_sha256": "b207c34b439573ebc615f7565a9da02f432e2f75e24097e9a2e9dca32dbc69db",
+  "projection_audit": [],
+  "ptx_sha256": "961d1652408eeb9ec8d72aa9c14d32ced2c2f0efb3e8e2a32dd0d5cdcc0c4a05",
+  "resulting_past": 129,
+  "schema_version": 1,
+  "scope": "Profiled full-prefix execution and one full-decoder token; event instrumentation is not model throughput or an independent quality check.",
+  "teacher_forced_token": 98094,
+  "unprofiled_decode_wall_seconds": 0.03845479,
+  "warmup": {
+    "input_token": 248044,
+    "output_token": 271,
+    "past": 1,
+    "timed": false
+  },
+  "whole_vs_token_partition": {
+    "cursor_exact": true,
+    "decode_bf16_differences": 237755,
+    "decode_inputs_equal": true,
+    "decode_logit_drift": {
+      "cosine": 0.9985766207518083,
+      "diagnostic_only": true,
+      "finite": true,
+      "max_abs_error": 1.2109375,
+      "normalized_l2": 0.0533500215626303
+    },
+    "decode_logits_bit_exact": false,
+    "layer_tail_drift": [
+      {
+        "drift": {
+          "cosine": 1.0,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0
+        },
+        "layer": 0
+      },
+      {
+        "drift": {
+          "cosine": 1.0,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0
+        },
+        "layer": 1
+      },
+      {
+        "drift": {
+          "cosine": 1.0,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0
+        },
+        "layer": 2
+      },
+      {
+        "drift": {
+          "cosine": 1.0,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0
+        },
+        "layer": 3
+      },
+      {
+        "drift": {
+          "cosine": 1.0,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0
+        },
+        "layer": 4
+      },
+      {
+        "drift": {
+          "cosine": 1.0,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0
+        },
+        "layer": 5
+      },
+      {
+        "drift": {
+          "cosine": 1.0,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0
+        },
+        "layer": 6
+      },
+      {
+        "drift": {
+          "cosine": 1.0,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0
+        },
+        "layer": 7
+      },
+      {
+        "drift": {
+          "cosine": 1.0,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0
+        },
+        "layer": 8
+      },
+      {
+        "drift": {
+          "cosine": 1.0,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0
+        },
+        "layer": 9
+      },
+      {
+        "drift": {
+          "cosine": 1.0,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0
+        },
+        "layer": 10
+      },
+      {
+        "drift": {
+          "cosine": 1.0,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0
+        },
+        "layer": 11
+      },
+      {
+        "drift": {
+          "cosine": 1.0,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0
+        },
+        "layer": 12
+      },
+      {
+        "drift": {
+          "cosine": 1.0,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0
+        },
+        "layer": 13
+      },
+      {
+        "drift": {
+          "cosine": 1.0,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0
+        },
+        "layer": 14
+      },
+      {
+        "drift": {
+          "cosine": 1.0,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0
+        },
+        "layer": 15
+      },
+      {
+        "drift": {
+          "cosine": 1.0,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0
+        },
+        "layer": 16
+      },
+      {
+        "drift": {
+          "cosine": 1.0,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0
+        },
+        "layer": 17
+      },
+      {
+        "drift": {
+          "cosine": 1.0,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0
+        },
+        "layer": 18
+      },
+      {
+        "drift": {
+          "cosine": 1.0,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0
+        },
+        "layer": 19
+      },
+      {
+        "drift": {
+          "cosine": 1.0,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0
+        },
+        "layer": 20
+      },
+      {
+        "drift": {
+          "cosine": 1.0,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0
+        },
+        "layer": 21
+      },
+      {
+        "drift": {
+          "cosine": 1.0,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0
+        },
+        "layer": 22
+      },
+      {
+        "drift": {
+          "cosine": 1.0,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0
+        },
+        "layer": 23
+      },
+      {
+        "drift": {
+          "cosine": 1.0,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.0,
+          "normalized_l2": 0.0
+        },
+        "layer": 24
+      },
+      {
+        "drift": {
+          "cosine": 0.9999569085372308,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.0361328125,
+          "normalized_l2": 0.009287202637306043
+        },
+        "layer": 25
+      },
+      {
+        "drift": {
+          "cosine": 0.9998526896487673,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.25,
+          "normalized_l2": 0.01744934333462837
+        },
+        "layer": 26
+      },
+      {
+        "drift": {
+          "cosine": 0.9996917346372296,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.5,
+          "normalized_l2": 0.02555808112211324
+        },
+        "layer": 27
+      },
+      {
+        "drift": {
+          "cosine": 0.9995271322581443,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.75,
+          "normalized_l2": 0.031925347891545275
+        },
+        "layer": 28
+      },
+      {
+        "drift": {
+          "cosine": 0.9993263790735323,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.5,
+          "normalized_l2": 0.03717006311155194
+        },
+        "layer": 29
+      },
+      {
+        "drift": {
+          "cosine": 0.9989216936111176,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.25,
+          "normalized_l2": 0.04682047110422197
+        },
+        "layer": 30
+      },
+      {
+        "drift": {
+          "cosine": 0.9988287262015059,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.5,
+          "normalized_l2": 0.049422221382628174
+        },
+        "layer": 31
+      },
+      {
+        "drift": {
+          "cosine": 0.9986345549196689,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.25,
+          "normalized_l2": 0.05246440978814448
+        },
+        "layer": 32
+      },
+      {
+        "drift": {
+          "cosine": 0.9984760701280653,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.359375,
+          "normalized_l2": 0.055203569278452234
+        },
+        "layer": 33
+      },
+      {
+        "drift": {
+          "cosine": 0.9972884335285318,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.5,
+          "normalized_l2": 0.07365279615375445
+        },
+        "layer": 34
+      },
+      {
+        "drift": {
+          "cosine": 0.9973139962085659,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.75,
+          "normalized_l2": 0.0740432929130902
+        },
+        "layer": 35
+      },
+      {
+        "drift": {
+          "cosine": 0.997441625629115,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.359375,
+          "normalized_l2": 0.07169961126062256
+        },
+        "layer": 36
+      },
+      {
+        "drift": {
+          "cosine": 0.9976743961843336,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.375,
+          "normalized_l2": 0.06828927599661888
+        },
+        "layer": 37
+      },
+      {
+        "drift": {
+          "cosine": 0.9976073288132195,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.75,
+          "normalized_l2": 0.07009648386798294
+        },
+        "layer": 38
+      },
+      {
+        "drift": {
+          "cosine": 0.9973266375791522,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.5,
+          "normalized_l2": 0.07359358509941971
+        },
+        "layer": 39
+      },
+      {
+        "drift": {
+          "cosine": 0.997383225626213,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.5,
+          "normalized_l2": 0.07280008887260804
+        },
+        "layer": 40
+      },
+      {
+        "drift": {
+          "cosine": 0.9972963099879165,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 1.0,
+          "normalized_l2": 0.07471231226161659
+        },
+        "layer": 41
+      },
+      {
+        "drift": {
+          "cosine": 0.9969885540953138,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 1.0,
+          "normalized_l2": 0.07883693895037448
+        },
+        "layer": 42
+      },
+      {
+        "drift": {
+          "cosine": 0.997227695810584,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.5,
+          "normalized_l2": 0.07485857211564784
+        },
+        "layer": 43
+      },
+      {
+        "drift": {
+          "cosine": 0.9972237036453997,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.5,
+          "normalized_l2": 0.07518731075761463
+        },
+        "layer": 44
+      },
+      {
+        "drift": {
+          "cosine": 0.9972262250711975,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.5,
+          "normalized_l2": 0.07501900781246608
+        },
+        "layer": 45
+      },
+      {
+        "drift": {
+          "cosine": 0.9963437072601933,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.453125,
+          "normalized_l2": 0.0858923644963867
+        },
+        "layer": 46
+      },
+      {
+        "drift": {
+          "cosine": 0.9965162527898764,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.5,
+          "normalized_l2": 0.08345031455284824
+        },
+        "layer": 47
+      },
+      {
+        "drift": {
+          "cosine": 0.9955275872348884,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.53125,
+          "normalized_l2": 0.09448515882862883
+        },
+        "layer": 48
+      },
+      {
+        "drift": {
+          "cosine": 0.9950683347992922,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 0.53173828125,
+          "normalized_l2": 0.09929108050653111
+        },
+        "layer": 49
+      },
+      {
+        "drift": {
+          "cosine": 0.9934929387870689,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 1.5,
+          "normalized_l2": 0.11466353939563992
+        },
+        "layer": 50
+      },
+      {
+        "drift": {
+          "cosine": 0.991721538006392,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 1.75,
+          "normalized_l2": 0.1291201371078658
+        },
+        "layer": 51
+      },
+      {
+        "drift": {
+          "cosine": 0.9922004228682434,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 1.1484375,
+          "normalized_l2": 0.12466026449559943
+        },
+        "layer": 52
+      },
+      {
+        "drift": {
+          "cosine": 0.9921731964634057,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 1.1015625,
+          "normalized_l2": 0.12489126749575381
+        },
+        "layer": 53
+      },
+      {
+        "drift": {
+          "cosine": 0.9918011287582246,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 1.265625,
+          "normalized_l2": 0.12779439011027802
+        },
+        "layer": 54
+      },
+      {
+        "drift": {
+          "cosine": 0.9921444614600293,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 3.5,
+          "normalized_l2": 0.12588130727028296
+        },
+        "layer": 55
+      },
+      {
+        "drift": {
+          "cosine": 0.9929598828551017,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 2.5,
+          "normalized_l2": 0.1190225480181823
+        },
+        "layer": 56
+      },
+      {
+        "drift": {
+          "cosine": 0.9934507637846941,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 4.0,
+          "normalized_l2": 0.11542211557512323
+        },
+        "layer": 57
+      },
+      {
+        "drift": {
+          "cosine": 0.9914398498107516,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 2.0,
+          "normalized_l2": 0.1305737281490526
+        },
+        "layer": 58
+      },
+      {
+        "drift": {
+          "cosine": 0.991160301938033,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 3.0,
+          "normalized_l2": 0.13357524876853347
+        },
+        "layer": 59
+      },
+      {
+        "drift": {
+          "cosine": 0.9929778792898708,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 4.0,
+          "normalized_l2": 0.11910989654175434
+        },
+        "layer": 60
+      },
+      {
+        "drift": {
+          "cosine": 0.9924158561568674,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 3.0,
+          "normalized_l2": 0.12334630911926718
+        },
+        "layer": 61
+      },
+      {
+        "drift": {
+          "cosine": 0.9916599403395415,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 6.0,
+          "normalized_l2": 0.12935969099008246
+        },
+        "layer": 62
+      },
+      {
+        "drift": {
+          "cosine": 0.9944806017199983,
+          "diagnostic_only": true,
+          "finite": true,
+          "max_abs_error": 24.0,
+          "normalized_l2": 0.1088617534838863
+        },
+        "layer": 63
+      }
+    ],
+    "prefill_bf16_differences": 238354,
+    "prefill_distribution": {
+      "candidate_probability_of_control_top": 0.041107079372977195,
+      "candidate_top_margin": 0.78125,
+      "candidate_top_token": 98094,
+      "control_top_margin": 0.34375,
+      "control_top_probability": 0.031220441227628824,
+      "control_top_token": 98094,
+      "diagnostic_only": true,
+      "greedy_agreement": true,
+      "kl_control_to_candidate_nats": 0.03423271681987278,
+      "total_variation": 0.10323740021230171
+    },
+    "prefill_logit_drift": {
+      "cosine": 0.9985121395113168,
+      "diagnostic_only": true,
+      "finite": true,
+      "max_abs_error": 1.125,
+      "normalized_l2": 0.0552439535988619
+    },
+    "prefill_logits_bit_exact": false,
+    "state_bit_exact": false,
+    "teacher_forced_decode_distribution": {
+      "candidate_probability_of_control_top": 0.28230308948882554,
+      "candidate_top_margin": 1.125,
+      "candidate_top_token": 6013,
+      "control_top_margin": 2.0625,
+      "control_top_probability": 0.368609491131082,
+      "control_top_token": 6013,
+      "diagnostic_only": true,
+      "greedy_agreement": true,
+      "kl_control_to_candidate_nats": 0.04890424811315138,
+      "total_variation": 0.13253200715890867
+    },
+    "token_prefill_token": 98094,
+    "token_state_sha256": "63060a3fd17f992a9ebb41aaf94955e469b24592e4f4c3c4ec0252f8ea810c25",
+    "whole_prefill_token": 98094,
+    "whole_state_sha256": "b207c34b439573ebc615f7565a9da02f432e2f75e24097e9a2e9dca32dbc69db"
+  },
+  "whole_vs_token_partition_exact": false
+}

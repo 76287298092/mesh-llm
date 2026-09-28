@@ -222,3 +222,34 @@ one-token row101 must match the captured quantized bytes and integer raw/BF16
 outputs. Stored BF16/raw rounding and finiteness are checked. Model reports
 retain numerical failures and strict partition gates; throughput/MTP reject
 this diagnostic mode. No PTX changed. Live audit pending.
+
+
+Completed `nvfp4-audit-1` at d501dcbd9 on RTX5090, driver615.71.09. Same
+quantized row101 codes/scales through layer22 down projection, M128/N5120/K17408,
+produce one differing BF16 channel2522. Native raw0.9238277673721313 rounds to
+bits16236; integer GPU and independent CPU raw0.9238281846046448 round to16237.
+The BF16 midpoint is0.923828125. Maximum raw absolute error is4.172325134277344e-7,
+relativeL2 is5.652781453406017e-8. All four selected CPU samples match integer
+GPU exactly. Subsequent token-row quantized inputs and integer outputs match
+byte-for-byte. Stored rounding/finiteness and profile/control outputs/state pass.
+The strict partition gate still fails; the diagnostic command exits1 and the
+wrapper preserves that expected failure. This confirms a same-input arithmetic
+association difference at the first observed divergent projection. It does not
+prove the cause of every later difference or establish semantic degradation.
+Only four channels have independent CPU coverage, not all5120.
+
+Completed `attention-answers-1` at the same revision with512 generated tokens,
+one repetition each for Python Fibonacci and bicycle explanation prompts.
+Exact FP8, splitKoff, MLPworkspaceon, GPUgreedyoff; old features-greedy PTX retained.
+All runs completed and reported arena release. Both first Python answers passed
+n=-3,0,1,2,3,5,10,50,100 against an independently constructed sequence after manual
+code inspection. Both prose answers are coherent, but factual accuracy was not
+certified. Wording differs and both discuss gyroscopic effects. This is a two-
+prompt smoke check, not broad quality evidence. The fixed-output benchmark ignores
+EOS; decoded first answers stop at the first im_end marker. Later generated tokens
+are retained and included in throughput. Decode tokens/s, exact then online:
+Python20.2076/24.9034, prose20.2202/24.7970. Single repetition, fixed order, shared
+GPU with ComfyUI498MiB; no clean speedup or Ninfer parity claim. Ninfer remained
+inactive and ComfyUI was preserved. Strict128-row partition failure remains open.
+Reports, script, hashes, decoded text and Python checks are retained under the
+corresponding `KNOWLEDGE/evidence/iterate-20260927/` directories.
