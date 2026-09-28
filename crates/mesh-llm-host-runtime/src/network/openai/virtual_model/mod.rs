@@ -560,8 +560,20 @@ async fn virtual_model_candidates(
             }
         }
 
-        let remote_hosts = node.hosts_for_model(&model_id).await;
-        let has_remote_instances = !remote_hosts.is_empty();
+        let discovered_hosts = node.hosts_for_model(&model_id).await;
+        let has_discovered_remote_host = !discovered_hosts.is_empty();
+        // MoA workers call peers without the payment protocol, so a peer that
+        // charges for this model answers 402 and, because 402 is not a
+        // retryable replica error, takes the whole worker down even when a free
+        // replica exists. Keep the committee on free replicas until
+        // committee-level payment is designed (#2059) — the candidate path's
+        // half of the retired MoA self-fill exclusion (#2097).
+        let remote_hosts = crate::network::openai::payment_routing::exclude_paid_hosts(
+            node,
+            &model_id,
+            discovered_hosts,
+        )
+        .await;
         for host in remote_hosts {
             let context_length = node.peer_model_context_length(host, &model_id).await;
             if context_can_satisfy(required_tokens, context_length) {
@@ -573,8 +585,11 @@ async fn virtual_model_candidates(
         }
 
         // Plugin-backed inference models have no mesh endpoint. Keep one
-        // untargeted candidate when discovery did not find a host instance.
-        if !has_local_instance && !has_remote_instances {
+        // untargeted candidate when discovery found no host instance at all —
+        // never when instances exist but every one was filtered out, or the
+        // plugin's nested call would re-enter the ingress filter that just
+        // excluded them.
+        if !has_local_instance && !has_discovered_remote_host {
             candidates.push(candidate_from(None, None));
         }
     }
@@ -701,5 +716,123 @@ mod tests {
         assert!(context_can_satisfy(Some(16_384), Some(32_768)));
         assert!(context_can_satisfy(Some(16_384), None));
         assert!(context_can_satisfy(None, Some(4_096)));
+    }
+
+    /// The candidate path's half of #2097: a replica that charges for the
+    /// model must not be offered to the committee, and must not be swapped for
+    /// an untargeted candidate that re-enters the ingress that filtered it.
+    #[cfg(feature = "payments")]
+    #[tokio::test]
+    async fn paid_replicas_are_not_offered_as_virtual_model_candidates() {
+        let node = crate::mesh::Node::new_for_tests(crate::mesh::NodeRole::Client)
+            .await
+            .expect("test node must start");
+        let free = replica_node().await;
+        let paid = replica_node().await;
+        advertise_replica(&node, &free, "paid-model", None).await;
+        advertise_replica(&node, &paid, "paid-model", Some(replica_price())).await;
+        assert_eq!(
+            node.hosts_for_model("paid-model").await.len(),
+            2,
+            "both replicas must be discovered before the payment filter runs"
+        );
+
+        let candidates = virtual_model_candidates(
+            &node,
+            vec!["paid-model".to_string()],
+            &Default::default(),
+            None,
+        )
+        .await;
+
+        let targets = candidates
+            .iter()
+            .map(|candidate| candidate.target_node_id.clone())
+            .collect::<Vec<_>>();
+        assert_eq!(
+            targets,
+            vec![Some(hex::encode(free.id().as_bytes()))],
+            "only the free replica may be offered as a candidate"
+        );
+        free.endpoint.close().await;
+        paid.endpoint.close().await;
+        node.endpoint.close().await;
+    }
+
+    /// Every replica paid: the model drops out of the candidate set entirely.
+    /// An untargeted candidate here would route the nested call straight back
+    /// to the paid peer the filter exists to avoid.
+    #[cfg(feature = "payments")]
+    #[tokio::test]
+    async fn a_model_served_only_by_a_paid_replica_yields_no_candidate() {
+        let node = crate::mesh::Node::new_for_tests(crate::mesh::NodeRole::Client)
+            .await
+            .expect("test node must start");
+        let paid = replica_node().await;
+        advertise_replica(&node, &paid, "paid-only-model", Some(replica_price())).await;
+        assert_eq!(node.hosts_for_model("paid-only-model").await.len(), 1);
+
+        let candidates = virtual_model_candidates(
+            &node,
+            vec!["paid-only-model".to_string()],
+            &Default::default(),
+            None,
+        )
+        .await;
+
+        assert!(
+            candidates.is_empty(),
+            "a paid-only model must yield no candidate: {candidates:?}"
+        );
+        paid.endpoint.close().await;
+        node.endpoint.close().await;
+    }
+
+    #[cfg(feature = "payments")]
+    async fn replica_node() -> crate::mesh::Node {
+        crate::mesh::Node::new_for_tests(crate::mesh::NodeRole::Client)
+            .await
+            .expect("replica node must start")
+    }
+
+    #[cfg(feature = "payments")]
+    fn replica_price() -> mesh_llm_payments_types::pricing::Pricing {
+        mesh_llm_payments_types::pricing::Pricing {
+            input_msat_per_million: 1,
+            output_msat_per_million: 1,
+            minimum_invoice_msat: 1,
+        }
+    }
+
+    /// Advertise `replica` to `node` as an HTTP host serving `model`, priced
+    /// when `price` is given.
+    #[cfg(feature = "payments")]
+    async fn advertise_replica(
+        node: &crate::mesh::Node,
+        replica: &crate::mesh::Node,
+        model: &str,
+        price: Option<mesh_llm_payments_types::pricing::Pricing>,
+    ) {
+        let mut announcement =
+            replica.build_local_announcement(replica.snapshot_local_announcement_data().await);
+        announcement.role = crate::mesh::NodeRole::Host { http_port: 9337 };
+        announcement.serving_models = vec![model.to_string()];
+        announcement.hosted_models = Some(vec![model.to_string()]);
+        if let Some(price) = price {
+            announcement
+                .lightning_offers
+                .insert(model.to_string(), price);
+        }
+        // `insert_test_peer` marks liveness observed, which
+        // `hosts_for_model` requires; the conversion from an announcement
+        // leaves the peer unadmitted, so admit it the way gossip would.
+        let mut peer = crate::mesh::PeerInfo::from_announcement(
+            replica.id(),
+            replica.endpoint.addr(),
+            &announcement,
+            crate::crypto::OwnershipSummary::default(),
+        );
+        peer.admitted = true;
+        node.insert_test_peer(peer).await;
     }
 }

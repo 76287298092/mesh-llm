@@ -43,6 +43,90 @@ fn models_list_json(
     models_list_json_with_virtual(models, descriptors, runtimes, &[])
 }
 
+/// Add the mesh-wide capability union to the automatic directive's entry.
+///
+/// The directive is served by `crate::network::openai::automatic`, which hands
+/// the request to a capability-selected concrete model whenever the plugin
+/// route cannot honour it. So the entry has to describe the mesh, not the
+/// route: see `mesh_capability_union`.
+fn advertise_mesh_capability_union(
+    model: &mut serde_json::Value,
+    models: &[String],
+    descriptors: &[mesh::ServedModelDescriptor],
+    virtual_models: &[crate::plugin::VirtualModelRoute],
+) {
+    let union = mesh_capability_union(models, descriptors, virtual_models);
+    let Some(object) = model.as_object_mut() else {
+        return;
+    };
+    if let Some(capabilities) = object
+        .get_mut("capabilities")
+        .and_then(serde_json::Value::as_array_mut)
+    {
+        for (name, served) in [
+            ("multimodal", union.supports_multimodal_runtime()),
+            ("vision", union.supports_vision_runtime()),
+            ("audio", union.supports_audio_runtime()),
+            ("reasoning", union.reasoning_label().is_some()),
+            ("system_one", union.supports_system_one_runtime()),
+        ] {
+            let already_advertised = capabilities
+                .iter()
+                .any(|value| value.as_str() == Some(name));
+            if served && !already_advertised {
+                capabilities.push(serde_json::json!(name));
+            }
+        }
+        capabilities.sort_by(|left, right| {
+            left.as_str()
+                .unwrap_or_default()
+                .cmp(right.as_str().unwrap_or_default())
+        });
+    }
+    for (field, status) in [
+        ("multimodal_status", union.multimodal_status()),
+        ("vision_status", union.vision_status()),
+        ("audio_status", union.audio_status()),
+        ("reasoning_status", union.reasoning_status()),
+        ("system_one_status", union.system_one_status()),
+    ] {
+        object.insert(field.to_string(), serde_json::json!(status));
+    }
+}
+
+/// Capabilities the automatic directive can serve: the union across the mesh.
+///
+/// A committee is text-only by construction, but the directive is not the
+/// committee — a media request is served by a modality-capable model instead.
+/// So what the directive can accept is what *any* served model can accept.
+/// Plugin-owned virtual models are excluded: they are not concrete targets.
+fn mesh_capability_union(
+    models: &[String],
+    descriptors: &[mesh::ServedModelDescriptor],
+    virtual_models: &[crate::plugin::VirtualModelRoute],
+) -> crate::models::ModelCapabilities {
+    let mut union = crate::models::ModelCapabilities {
+        // `moe` describes one model's architecture, not something a caller can
+        // request, so it is not part of an admission union.
+        moe: false,
+        ..Default::default()
+    };
+    for model in models {
+        if virtual_models.iter().any(|route| route.model_id == *model) {
+            continue;
+        }
+        let (base_model, _) = crate::network::openai::ingress::parse_model_with_profile(model);
+        let caps = capabilities_for_model(base_model, descriptors);
+        union.multimodal |= caps.multimodal;
+        union.vision = union.vision.max(caps.vision);
+        union.audio = union.audio.max(caps.audio);
+        union.reasoning = union.reasoning.max(caps.reasoning);
+        union.tool_use = union.tool_use.max(caps.tool_use);
+        union.system_one = union.system_one.max(caps.system_one);
+    }
+    union
+}
+
 fn models_list_json_with_virtual(
     models: &[String],
     descriptors: &[mesh::ServedModelDescriptor],
@@ -77,7 +161,7 @@ fn models_list_json_with_virtual(
                 }
                 capabilities.sort();
                 capabilities.dedup();
-                return Some(serde_json::json!({
+                let mut model = serde_json::json!({
                     "id": route.model_id,
                     "display_name": route.model_id,
                     "object": "model",
@@ -90,7 +174,24 @@ fn models_list_json_with_virtual(
                         "supports_tools": route.supports_tools,
                         "supports_streaming": route.supports_streaming,
                     }
-                }));
+                });
+                // The automatic directive is not one plugin's model. A request
+                // that states something its owning route cannot honour — media
+                // input, `stream: true`, a non-chat endpoint — is served by a
+                // capability-selected concrete model instead of the plugin, so
+                // what the directive can accept is what *any* served model can
+                // accept, not what the route declares. Advertising only the
+                // declared set tells a client the mesh cannot take a request
+                // the mesh will happily route.
+                if route.model_id == crate::network::openai::automatic::DIRECTIVE {
+                    advertise_mesh_capability_union(
+                        &mut model,
+                        models,
+                        descriptors,
+                        virtual_models,
+                    );
+                }
+                return Some(model);
             }
             let (base_model, profile) =
                 crate::network::openai::ingress::parse_model_with_profile(m);
@@ -759,5 +860,91 @@ mod tests {
 
         assert_eq!(body["data"][0]["reasoning_status"], "supported");
         assert!(body["data"][0].get("reasoning").is_none());
+    }
+
+    fn virtual_route(
+        model_id: &str,
+        input_modalities: &[&str],
+    ) -> crate::plugin::VirtualModelRoute {
+        crate::plugin::VirtualModelRoute {
+            plugin_name: "mesh-moa".into(),
+            model_id: model_id.into(),
+            handler: "chat".into(),
+            input_modalities: input_modalities
+                .iter()
+                .map(|value| value.to_string())
+                .collect(),
+            output_modalities: vec!["text".into()],
+            supports_tools: true,
+            supports_streaming: true,
+            requires_candidates: true,
+            progress_lines: Vec::new(),
+        }
+    }
+
+    /// #2093's contract, on the plugin-built directive entry: the directive is
+    /// not the committee, so it advertises what any served model can accept.
+    #[test]
+    fn directive_entry_advertises_the_mesh_capability_union() {
+        let models = vec!["mesh".to_string(), "laya-test".to_string()];
+        let descriptors = vec![local_gguf_descriptor_with_capabilities(
+            "laya-test",
+            crate::models::ModelCapabilities {
+                system_one: crate::models::CapabilityLevel::Supported,
+                ..Default::default()
+            },
+        )];
+        let virtual_models = vec![virtual_route("mesh", &["text", "image", "audio"])];
+
+        let body = models_list_json_with_virtual(&models, &descriptors, &[], &virtual_models);
+        let mesh = body["data"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|model| model["id"] == "mesh")
+            .expect("virtual mesh model should be listed");
+        let capabilities = mesh["capabilities"].as_array().unwrap();
+
+        assert!(
+            capabilities
+                .iter()
+                .any(|capability| capability == "system_one"),
+            "the directive must advertise a capability any served model can accept: {capabilities:?}"
+        );
+        assert_eq!(mesh["system_one_status"], "supported");
+        assert_eq!(mesh["reasoning_status"], "none");
+        // The declared modalities survive the union.
+        assert!(capabilities.iter().any(|capability| capability == "vision"));
+        assert!(capabilities.iter().any(|capability| capability == "tools"));
+    }
+
+    /// The union belongs to the directive alone: another plugin's model is not
+    /// the mesh, and a request it cannot honour is rejected rather than
+    /// re-routed, so it keeps exactly what its manifest declares.
+    #[test]
+    fn other_virtual_models_keep_their_declared_capabilities() {
+        let models = vec!["mesh-translate".to_string(), "laya-test".to_string()];
+        let descriptors = vec![local_gguf_descriptor_with_capabilities(
+            "laya-test",
+            crate::models::ModelCapabilities {
+                system_one: crate::models::CapabilityLevel::Supported,
+                ..Default::default()
+            },
+        )];
+        let virtual_models = vec![virtual_route("mesh-translate", &["text"])];
+
+        let body = models_list_json_with_virtual(&models, &descriptors, &[], &virtual_models);
+        let translate = body["data"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|model| model["id"] == "mesh-translate")
+            .expect("virtual model should be listed");
+
+        assert_eq!(
+            translate["capabilities"],
+            serde_json::json!(["text", "tools"])
+        );
+        assert!(translate.get("system_one_status").is_none());
     }
 }
