@@ -460,3 +460,12 @@ all new PTX sites to the assembly inventory. 276 host tests, host Clippy, and
 Just PTX compilation pass. GPU execution, actual resource use, sanitizers,
 resident dispatch and performance qualification remain pending. The graph plan
 is source-reviewed design only. No existing arithmetic profile was promoted.
+
+
+A16 head follow-up: 37 independent GPU cases pass normal execution plus memcheck,
+racecheck and synccheck. Explicit head-only A16 GEMV/MMA model profiles retain
+decoder arithmetic and MTP rejection. Two prompt model comparisons pass strict
+within-profile checks and equal same-input state, but the new schedule does not
+improve ordinary decode. It remains experimental. Evidence is `a16-head-model-1`.
+Dedicated NVFP4 worker has delivered a bounded GPU harness, not yet registered or
+compiled; parent will qualify it next. Goal and meaningful quality gates remain open.

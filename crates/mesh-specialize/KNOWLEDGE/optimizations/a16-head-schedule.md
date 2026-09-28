@@ -169,3 +169,18 @@ eligibility because decoder arithmetic is unchanged. MTP still rejects every
 non-exact profile. Default exact, previous A16-decode and native prefill profiles
 remain separate. Cross-profile logits/quality, real-weight reference samples and
 model performance are pending; no profile is promoted.
+
+
+`a16-head-model-1` at2e5f77d2f completes head-only integration checks on Python
+and prose prompts. All six reports pass same-profile strict partition/output/state
+gates; identical teacher tokens give exactly identical complete state across all
+three profiles. Three-repetition decode medians, exact/GEMV/MMA, are
+25.53780/25.61944/25.40962 for Python and25.50770/25.67297/25.49304 for prose.
+Shared GPU, fixed order, ComfyUI498MiB. There is no ordinary-decode speedup to
+promote. A16 schedules have identical32-token sequences; prose differs from A8.
+Two measured positions per prompt agree in greedy winner, but worst exact-to-A16
+KL0.00210307/TV0.0270414 and incomplete answers do not establish broad quality.
+The candidate stays explicit and unpromoted. Small-batch timing, sampled real-weight
+CPU audit and full-model sanitizer remain pending. See the evidence README and
+comparison JSON for full limits and retained logit manifests. Next performance
+integration area is NVFP4 prefill pipeline, not further one-row head tuning.
