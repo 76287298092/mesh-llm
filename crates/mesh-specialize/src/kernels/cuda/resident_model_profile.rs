@@ -120,16 +120,7 @@ pub(in crate::kernels) fn run(
         true,
         teacher_token,
     )?;
-    let row_audit = match (&control.row_audit, &partitioned.row_audit) {
-        (Some(a), Some(b)) => Some(a.compare(b)?),
-        (None, None) => None,
-        _ => anyhow::bail!("partition audit enablement changed during trial"),
-    };
-    let stage_audit = match (&control.stage_audit, &partitioned.stage_audit) {
-        (Some(a), Some(b)) => Some(a.compare(b)?),
-        (None, None) => None,
-        _ => anyhow::bail!("partition stage audit enablement changed"),
-    };
+    let (row_audit, stage_audit) = compare_captures(&control, &partitioned)?;
     let logit_dump = super::resident_logit_dump::write(
         tokens,
         teacher_token,
@@ -264,6 +255,23 @@ pub(in crate::kernels) fn run(
         "memory_released": memory_released,
         "scope": "Profiled full-prefix execution and one full-decoder token; event instrumentation is not model throughput or an independent quality check.",
     }))
+}
+
+fn compare_captures(
+    control: &DecodeRun,
+    partitioned: &DecodeRun,
+) -> Result<(Option<Value>, Option<Value>)> {
+    let row_audit = match (&control.row_audit, &partitioned.row_audit) {
+        (Some(a), Some(b)) => Some(a.compare(b)?),
+        (None, None) => None,
+        _ => anyhow::bail!("partition audit enablement changed during trial"),
+    };
+    let stage_audit = match (&control.stage_audit, &partitioned.stage_audit) {
+        (Some(a), Some(b)) => Some(a.compare(b)?),
+        (None, None) => None,
+        _ => anyhow::bail!("partition stage audit enablement changed"),
+    };
+    Ok((row_audit, stage_audit))
 }
 
 fn partition_report(

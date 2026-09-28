@@ -93,8 +93,10 @@ pub(super) fn compare(ctx: &Context, module: &Module<'_>, c: Case<'_, '_>) -> Re
         "nonfinite audit output"
     );
     let differing = native
-        .chunks_exact(2)
-        .zip(exact_bytes.chunks_exact(2))
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .zip(exact_bytes.as_chunks::<2>().0.iter())
         .enumerate()
         .filter_map(|(i, (a, b))| (a != b).then_some(i))
         .collect::<Vec<_>>();
@@ -127,9 +129,9 @@ pub(super) fn compare(ctx: &Context, module: &Module<'_>, c: Case<'_, '_>) -> Re
     let denominator: f64 = b.iter().map(|&b| f64::from(b).powi(2)).sum();
     let rounded = a
         .iter()
-        .zip(native.chunks_exact(2))
-        .chain(b.iter().zip(exact_bytes.chunks_exact(2)))
-        .all(|(&x, bytes)| crate::entry_reference::round_bf16(x).to_le_bytes() == bytes);
+        .zip(native.as_chunks::<2>().0.iter())
+        .chain(b.iter().zip(exact_bytes.as_chunks::<2>().0.iter()))
+        .all(|(&x, bytes)| crate::entry_reference::round_bf16(x).to_le_bytes() == *bytes);
     ensure!(
         rounded,
         "audit BF16 output disagrees with stored raw rounding"
@@ -151,7 +153,9 @@ fn read(buffer: &Buffer<'_>, offset: usize, length: usize) -> Result<Vec<u8>> {
 }
 fn floats(bytes: &[u8]) -> Vec<f32> {
     bytes
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .map(|x| f32::from_le_bytes([x[0], x[1], x[2], x[3]]))
         .collect()
 }
