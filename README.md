@@ -11,9 +11,15 @@ peer, or uses Skippy stage splits for models that are too large for one box.
 
 ## Mesh and standalone Skippy
 
-Skippy owns model management, native inference, split execution and OpenAI serving. Mesh adds peer discovery, transport, routing, plugins and the console around the same Skippy serving implementation.
+[Skippy](skippy/README.md) owns model management, native inference, split
+execution and OpenAI serving. [Mesh](mesh/README.md) adds peer discovery,
+transport, routing, plugins and the console around the same Skippy serving
+implementation.
 
-The source lives in two product trees: `mesh/` and `skippy/`. They share one root Cargo workspace and lockfile. Product crates, authored docs, scripts and evaluations live with their owner; Mesh also owns the website and SDKs. Root `docs/` is generated website output.
+The source lives in those two product trees. They share one root Cargo workspace
+and lockfile. Product crates, authored docs, scripts and evaluations live with
+their owner; Mesh also owns the website and SDKs. Root `docs/` is generated
+website output.
 
 Build the standalone CLI from the workspace root with `just skippy-build`, then run `target/debug/skippy --help`. See [Skippy configuration](skippy/docs/CONFIGURATION.md) and [split serving](skippy/docs/SKIPPY_SPLITS.md).
 
