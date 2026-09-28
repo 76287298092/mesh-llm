@@ -414,3 +414,23 @@ separate; independently inspect later-layer same-input attention if drift needs
 localization. Neither native projection nor online attention should inherit a
 quality pass from the other. Matched Ninfer provenance/configuration, long-context,
 concurrency and serving behavior remain required.
+
+## Partition failure localization
+
+Completed row/stage diagnostics atfbf877158/ff387d8ce locate the online-attention
+128-token partition failure to GDNlayer22,row101,NVFP4downprojection. All rows
+through layer21 and every layer22 stage through BF16MLPactivation agree. Stage
+observation preserves previous whole/token complete state hashes. Next: retain
+actual row101 quantized input/scales and compare native NVFP4 MMA, existing
+integer decode, and independent CPU oracle on identical weights; record BF16
+boundaries, rawerror and input identity. The native/single-row arithmetic split
+is the leading hypothesis, not yet a quantified root cause. Do not edit attention
+arithmetic or loosen exact gates based on this failure. After localization,
+resume candidate quality and performance qualification without making bitwise
+identity a substitute for meaningful quality evidence.
+
+Current remote source/binaryff387d8ce; all diagnostic processes are terminal.
+Ninfer remainsinactive. Other mesh-llm processes appeared during trials and were
+preserved; refresh process/service state. Stage1's exact memory-release gate
+failed due to concurrent allocation; numerical stage checks passed. Stage2
+passed memory release but retains the expected strict partition failure.

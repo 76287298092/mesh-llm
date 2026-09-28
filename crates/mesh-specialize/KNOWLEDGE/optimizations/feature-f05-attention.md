@@ -200,3 +200,13 @@ existing layer stage outputs; observed MLP uses the ordinary allocation path,
 so whole-profile/control equality and previous hashes must be checked before
 using it to localize arithmetic. Captures stop before teacher decode and never
 feed model values. Stage diagnostics are not throughput or qualification.
+
+`partition-stage-1` exact mode passes every row/stage numerical check but fails
+global free-memory release because another mesh-llm process appeared onGPU0
+with1000MiB; preserve that failed gate. `partition-stage-2` online mode localizes
+the first differing stage to layer22 NVFP4 `mlp_down`, row101. Every prior stage,
+including BF16 MLPactivation inputs, matches at all128rows. Both whole/token
+final-state hashes match the prior non-stage-captured trial; profile/control
+outputs/state match and memory release passes in stage2. Strict partition still
+fails. Next audit identical quantized inputs through native/integer projection
+and independent CPU reference; no attention arithmetic change is justified yet.
