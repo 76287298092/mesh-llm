@@ -72,6 +72,14 @@ thread-coordinate read to select four independent N tiles per CTA. Qualified
 results are recorded in the decode projection optimization entry.
 
 
+## Isolated unrolled exponential
+
+| Source symbol | Instructions / reused sites | Reference | Status |
+| --- | --- | --- | --- |
+| `exponential_unrolled.rs:exp_nonpositive/horner` | No new inline assembly; reuses explicit `mul.rn.f64`, `add.rn.f64`, `sub.rn.f64` with17 scalar literal-coefficient Horner stages and original range/factor order | Unchanged device exponential's raw FP64 bits, dense/cutoff/range-boundary/NaN fixtures, supplemental host order and coefficient-bit checks | Unqualified; [contract and observed control traffic](findings/attention-unrolled-fp64.md) |
+| `exponential_probe.rs:index` | `%ctaid.x`/`%tid.x` reads for independent count-bounded raw-bit output entries | Explicit raw-u64 inputs and old/new output bits, guards, repeats and immutable input readback | Unqualified; SM120a |
+| `attention_unrolled_fp64.rs:causal_attention_unrolled_fp64` | Reuses original CTA256 shared/shuffle reduction, barriers, rounded FP64 recurrence and conversions; true const specialization changes only exponential helper | Strict all-FP32/BF16 control bits plus unchanged independent FP64 attention oracle, M1/17/128 tests | Unqualified; original and graph entries explicitly retain false specialization |
+
 ## Exact-order FP64 warp attention
 
 | Source symbol | Instructions / reused sites | Reference | Status |

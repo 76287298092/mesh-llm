@@ -1,0 +1,5918 @@
+{
+  "ab_decode_shape": {
+    "kernel": "bf16_linear_decode",
+    "launches_per_gdn_layer": 2,
+    "requested": "baseline",
+    "scope": "shape-selected A/B only; FP64 reassociation; not a qualification claim",
+    "selected": "baseline",
+    "shape": [
+      1,
+      48,
+      5120
+    ]
+  },
+  "ab_prompt_shape": {
+    "kernel": "bf16_linear_decode",
+    "launches_per_gdn_layer": 2,
+    "requested": "baseline",
+    "scope": "shape-selected A/B only; FP64 reassociation; not a qualification claim",
+    "selected": "baseline",
+    "shape": [
+      106,
+      48,
+      5120
+    ]
+  },
+  "ab_schedule": "baseline",
+  "allocation_bytes": {
+    "persistent_arena_payload": 20553281536,
+    "state_arena_payload": 177602560,
+    "weight_arena_payload": 20375678976
+  },
+  "arithmetic_profile": "exact-a8-v1",
+  "artifact_path": "/data/ai/ninfer/models/qwen3_8_27b_nvfp4.ninfer",
+  "attention_profile": "bf16-warp-fp64-exact-order-v1",
+  "completed": true,
+  "configured_capacity": 361,
+  "configured_gpu_greedy": false,
+  "device": {
+    "driver_version": 13040,
+    "major": 12,
+    "minor": 0,
+    "name": "NVIDIA GeForce RTX 5090",
+    "ordinal": 0,
+    "total_bytes": 33731248128,
+    "uuid": "GPU-80ded6bd-1a89-2628-3d94-902187dbab1d"
+  },
+  "execution": {
+    "execution": "stream",
+    "stream_forward": {
+      "ab_decode": {
+        "kernel": "bf16_linear_decode",
+        "launches_per_gdn_layer": 2,
+        "requested": "baseline",
+        "scope": "shape-selected A/B only; FP64 reassociation; not a qualification claim",
+        "selected": "baseline",
+        "shape": [
+          1,
+          48,
+          5120
+        ]
+      },
+      "ab_max_rows": {
+        "kernel": "bf16_linear_decode",
+        "launches_per_gdn_layer": 2,
+        "requested": "baseline",
+        "scope": "shape-selected A/B only; FP64 reassociation; not a qualification claim",
+        "selected": "baseline",
+        "shape": [
+          106,
+          48,
+          5120
+        ]
+      },
+      "ab_schedule": "baseline",
+      "arena_bytes": 32781312,
+      "arena_peak_live_bytes": 32781136,
+      "attention_profile": "bf16-warp-fp64-exact-order-v1",
+      "attention_warp_fp64_handle_resolved": true,
+      "attention_workspace_bytes": 0,
+      "fp8_decode_schedule": {
+        "counts_are": "host selection decisions, including capture, excluding graph replays; not GPU launch counts",
+        "fallback_alignment": 0,
+        "fallback_width": 0,
+        "ineligible_profile_or_rows": 0,
+        "requested": "baseline",
+        "scope": "exact-profile M=1 resident_fp8 and stream projections; MLP workspace/prepared paths unchanged",
+        "selected_baseline": 119066,
+        "selected_vector16": 0,
+        "vector16_handle_resolved": false,
+        "vector16_kernel": "fp8_linear_exact_vector16"
+      },
+      "kernels": [
+        "fp8_embedding_gather",
+        "embedding_norm_bf16",
+        "residual_norm_bf16",
+        "residual_add_bf16",
+        "fp8_quantize_bf16",
+        "fp8_linear_exact",
+        "fp8_linear_exact4",
+        "fp8_verify_exact",
+        "fp8_prefill_exact",
+        "nvfp4_quantize_bf16",
+        "nvfp4_decode_exact",
+        "nvfp4_linear",
+        "bf16_linear_decode",
+        "causal_conv4_bf16",
+        "gdn_qk_norm",
+        "gdn_gates",
+        "gdn_gates_f32_params",
+        "gdn_recurrent",
+        "gdn_gated_rms_norm",
+        "attention_qk_prepare",
+        "attention_kv_append",
+        "causal_attention_bf16",
+        "attention_gate_bf16",
+        "mlp_silu_product",
+        "greedy_bf16_tiles",
+        "greedy_bf16_finish"
+      ],
+      "max_rows": 106,
+      "paired_ab": null,
+      "per_forward_host_transfers": [
+        "token IDs: stream-ordered pageable HtoD, 4 bytes per row",
+        "selection: 16-byte DtoH after one stream synchronize",
+        "logits: optional diagnostic DtoH of vocabulary*2 bytes"
+      ],
+      "rope_positions": 361,
+      "rope_table_bytes": 46208,
+      "split_attention": null,
+      "weight_representations": {
+        "dispatch": "verified logical tensor dtype, independent of source container",
+        "embedding": "fp8_e4m3 + bf16 row scale",
+        "embedding_norm_input": "bf16",
+        "full_ninfer_arithmetic_parity": false,
+        "gdn_parameters": [
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 0
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 1
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 2
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 4
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 5
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 6
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 8
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 9
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 10
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 12
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 13
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 14
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 16
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 17
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 18
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 20
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 21
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 22
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 24
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 25
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 26
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 28
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 29
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 30
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 32
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 33
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 34
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 36
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 37
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 38
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 40
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 41
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 42
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 44
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 45
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 46
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 48
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 49
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 50
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 52
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 53
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 54
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 56
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 57
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 58
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 60
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 61
+          },
+          {
+            "a_log_dt_bias": "f32",
+            "beta": "bf16",
+            "layer": 62
+          }
+        ]
+      }
+    }
+  },
+  "fixed_output_tokens": 256,
+  "fp8_split_k": null,
+  "gpu_greedy": true,
+  "harness_elapsed_seconds": 64.982890649,
+  "identity": {
+    "model_id": "qwen3.8-27b:text:ninfer-v3-control-v1",
+    "weights_id": "sha256:74d2c57145e6ff11d1d2faa79594477f9bc903a611af1fb20218189fbbb77d82"
+  },
+  "kind": "resident-model-fixed-token-benchmark",
+  "memory": {
+    "after_release_free_bytes": 32747487232,
+    "arena_memory_release_observed": false,
+    "minimum_sampled_free_bytes": 12157648896,
+    "samples": [
+      {
+        "device_used_bytes_snapshot": 981663744,
+        "free_bytes": 32749584384,
+        "repetition": null,
+        "stage": "before_model_allocations",
+        "step": null,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21357592576,
+        "free_bytes": 12373655552,
+        "repetition": null,
+        "stage": "after_weights_loaded",
+        "step": null,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": null,
+        "stage": "warmup_session_allocated",
+        "step": null,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": null,
+        "stage": "warmup_prefill_completed",
+        "step": null,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": null,
+        "stage": "warmup_forward_completed",
+        "step": null,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21395341312,
+        "free_bytes": 12335906816,
+        "repetition": null,
+        "stage": "warmup_session_released",
+        "step": null,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "repetition_session_allocated",
+        "step": null,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "prefill_forward_completed",
+        "step": 0,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 1,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 2,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 3,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 4,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 5,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 6,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 7,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 8,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 9,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 10,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 11,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 12,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 13,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 14,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 15,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 16,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 17,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 18,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 19,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 20,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 21,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 22,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 23,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 24,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 25,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 26,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 27,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 28,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 29,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 30,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 31,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 32,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 33,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 34,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 35,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 36,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 37,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 38,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 39,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 40,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 41,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 42,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 43,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 44,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 45,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 46,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 47,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 48,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 49,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 50,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 51,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 52,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 53,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 54,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 55,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 56,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 57,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 58,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 59,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 60,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 61,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 62,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 63,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 64,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 65,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 66,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 67,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 68,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 69,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 70,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 71,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 72,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 73,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 74,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 75,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 76,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 77,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 78,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 79,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 80,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 81,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 82,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 83,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 84,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 85,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 86,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 87,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 88,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 89,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 90,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 91,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 92,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 93,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 94,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 95,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 96,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 97,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 98,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 99,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 100,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 101,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 102,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 103,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 104,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 105,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 106,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 107,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 108,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 109,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 110,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 111,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 112,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 113,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 114,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 115,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 116,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 117,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 118,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 119,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 120,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 121,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 122,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 123,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 124,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 125,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 126,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 127,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 128,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 129,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 130,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 131,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 132,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 133,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 134,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 135,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 136,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 137,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 138,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 139,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 140,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 141,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 142,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 143,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 144,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 145,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 146,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 147,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 148,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 149,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 150,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 151,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 152,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 153,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 154,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 155,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 156,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 157,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 158,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 159,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 160,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 161,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 162,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 163,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 164,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 165,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 166,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 167,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 168,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 169,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 170,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 171,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 172,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 173,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 174,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 175,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 176,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 177,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 178,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 179,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 180,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 181,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 182,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 183,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 184,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 185,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 186,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 187,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 188,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 189,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 190,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 191,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 192,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 193,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 194,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 195,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 196,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 197,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 198,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 199,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 200,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 201,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 202,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 203,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 204,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 205,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 206,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 207,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 208,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 209,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 210,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 211,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 212,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 213,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 214,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 215,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 216,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 217,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 218,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 219,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 220,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 221,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 222,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 223,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 224,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 225,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 226,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 227,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 228,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 229,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 230,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 231,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 232,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 233,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 234,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 235,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 236,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 237,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 238,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 239,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 240,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 241,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 242,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 243,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 244,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 245,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 246,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 247,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 248,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 249,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 250,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 251,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 252,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 253,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 254,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 1,
+        "stage": "decode_forward_completed",
+        "step": 255,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21395341312,
+        "free_bytes": 12335906816,
+        "repetition": 1,
+        "stage": "repetition_session_released",
+        "step": null,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "repetition_session_allocated",
+        "step": null,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "prefill_forward_completed",
+        "step": 0,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 1,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 2,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 3,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 4,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 5,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 6,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 7,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 8,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 9,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 10,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 11,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 12,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 13,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 14,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 15,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 16,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 17,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 18,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 19,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 20,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 21,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 22,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 23,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 24,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 25,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 26,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 27,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 28,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 29,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 30,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 31,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 32,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 33,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 34,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 35,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 36,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 37,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 38,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 39,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 40,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 41,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 42,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 43,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 44,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 45,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 46,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 47,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 48,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 49,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 50,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 51,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 52,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 53,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 54,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 55,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 56,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 57,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 58,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 59,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 60,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 61,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 62,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 63,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 64,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 65,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 66,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 67,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 68,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 69,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 70,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 71,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 72,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 73,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 74,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 75,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 76,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 77,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 78,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 79,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 80,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 81,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 82,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 83,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 84,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 85,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 86,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 87,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 88,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 89,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 90,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 91,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 92,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 93,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 94,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 95,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 96,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 97,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 98,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 99,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 100,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 101,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 102,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 103,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 104,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 105,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 106,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 107,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 108,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 109,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 110,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 111,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 112,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 113,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 114,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 115,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 116,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 117,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 118,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 119,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 120,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 121,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 122,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 123,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 124,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 125,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 126,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 127,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 128,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 129,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 130,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 131,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 132,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 133,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 134,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 135,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 136,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 137,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 138,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 139,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 140,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 141,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 142,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 143,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 144,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 145,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 146,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 147,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 148,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 149,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 150,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 151,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 152,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 153,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 154,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 155,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 156,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 157,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 158,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 159,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 160,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 161,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 162,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 163,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 164,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 165,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 166,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 167,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 168,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 169,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 170,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 171,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 172,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 173,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 174,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 175,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 176,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 177,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 178,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 179,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 180,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 181,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 182,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 183,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 184,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 185,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 186,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 187,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 188,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 189,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 190,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 191,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 192,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 193,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 194,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 195,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 196,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 197,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 198,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 199,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 200,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 201,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 202,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 203,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 204,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 205,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 206,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 207,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 208,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 209,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 210,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 211,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 212,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 213,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 214,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 215,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 216,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 217,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 218,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 219,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 220,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 221,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 222,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 223,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 224,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 225,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 226,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 227,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 228,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 229,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 230,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 231,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 232,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 233,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 234,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 235,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 236,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 237,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 238,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 239,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 240,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 241,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 242,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 243,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 244,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 245,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 246,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 247,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 248,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 249,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 250,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 251,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 252,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 253,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 254,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21573599232,
+        "free_bytes": 12157648896,
+        "repetition": 2,
+        "stage": "decode_forward_completed",
+        "step": 255,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 21395341312,
+        "free_bytes": 12335906816,
+        "repetition": 2,
+        "stage": "repetition_session_released",
+        "step": null,
+        "total_bytes": 33731248128
+      },
+      {
+        "device_used_bytes_snapshot": 983760896,
+        "free_bytes": 32747487232,
+        "repetition": null,
+        "stage": "after_model_release",
+        "step": null,
+        "total_bytes": 33731248128
+      }
+    ],
+    "transient_peak_measured": false
+  },
+  "mlp_workspace": false,
+  "model_source": {
+    "canonical_tensor_bytes": 20375588160,
+    "canonical_tensors": 1589,
+    "container": "ninfer-single-file-v3",
+    "full_ninfer_arithmetic_parity": false,
+    "source_artifact_id": "19c9ec11085642f1bbe340cd7cf6c207",
+    "source_bytes": 23719715844,
+    "source_dirty": false,
+    "source_sha256": "74d2c57145e6ff11d1d2faa79594477f9bc903a611af1fb20218189fbbb77d82",
+    "startup_verification_seconds": 31.689680756,
+    "stream_buffer_bytes": 65536,
+    "transform_allocation_limit_bytes": 134217728,
+    "transform_total_buffer_limit_bytes": 268435456,
+    "virtual_offsets": true,
+    "whole_file_hash_passes": 2
+  },
+  "nvfp4_profile": "nvfp4-native-prefill-integer-decode-v1",
+  "profile": {
+    "eos_termination_ignored": true,
+    "kind": "fixed-length raw-token engineering measurement",
+    "memory_note": "CUDA memory values are checkpoints, not a transient peak measurement.",
+    "prefill_includes_final_logits_and_first_greedy_token": true,
+    "qualification_claim": false,
+    "serving_claim": false,
+    "timing_excludes": [
+      "weight loading",
+      "session allocation",
+      "memory sampling",
+      "JIT warmup",
+      "graph capture and instantiation (separately reported per repetition)"
+    ]
+  },
+  "prompt_token_ids": [
+    248045,
+    846,
+    198,
+    7734,
+    264,
+    1248,
+    11,
+    11346,
+    3255,
+    883,
+    264,
+    324,
+    55965,
+    51624,
+    852,
+    49296,
+    421,
+    279,
+    27056,
+    682,
+    20720,
+    87748,
+    310,
+    17199,
+    421,
+    635,
+    524,
+    2905,
+    13,
+    58737,
+    279,
+    12552,
+    11,
+    279,
+    51624,
+    579,
+    7071,
+    13618,
+    11,
+    279,
+    1118,
+    14457,
+    8028,
+    11,
+    321,
+    1204,
+    279,
+    21831,
+    86582,
+    888,
+    264,
+    12050,
+    13,
+    5272,
+    40630,
+    46368,
+    7472,
+    321,
+    20623,
+    13,
+    18037,
+    6849,
+    440,
+    279,
+    3255,
+    26,
+    635,
+    524,
+    884,
+    264,
+    2192,
+    466,
+    866,
+    829,
+    1509,
+    13,
+    561,
+    3255,
+    1220,
+    381,
+    506,
+    3140,
+    1330,
+    15706,
+    4105,
+    1248,
+    321,
+    1220,
+    809,
+    440,
+    279,
+    51624,
+    3154,
+    449,
+    89013,
+    5307,
+    13,
+    248046,
+    198,
+    248045,
+    74455,
+    198,
+    248068,
+    271,
+    248069,
+    271
+  ],
+  "prompt_tokens": 106,
+  "ptx_sha256": "e95e42c8b2c43e0ef391b1469340d853505668b62976f5c99ca3b9f4b04c26a0",
+  "repetition_count": 2,
+  "repetitions": [
+    {
+      "cursor_poisoned": false,
+      "decode_interval_count": 255,
+      "decode_intervals": [
+        0.033312236,
+        0.032940429,
+        0.032975098,
+        0.033032364,
+        0.03306161,
+        0.033122497,
+        0.03317693,
+        0.033242079,
+        0.03326416,
+        0.033305021,
+        0.033370023,
+        0.03343239,
+        0.033467073,
+        0.033519262,
+        0.033555662,
+        0.033901469,
+        0.033689157,
+        0.033710499,
+        0.033758281,
+        0.033809326,
+        0.033866862,
+        0.033912074,
+        0.033961525,
+        0.034000729,
+        0.034038665,
+        0.034093591,
+        0.034145217,
+        0.034201371,
+        0.034249378,
+        0.034301986,
+        0.034616849,
+        0.034377367,
+        0.034442916,
+        0.034499867,
+        0.034535349,
+        0.034581952,
+        0.034619612,
+        0.034671858,
+        0.034721462,
+        0.034763739,
+        0.034820455,
+        0.034875,
+        0.03491863,
+        0.034975241,
+        0.035362604,
+        0.035067943,
+        0.035106979,
+        0.035158584,
+        0.035228481,
+        0.035271392,
+        0.035311664,
+        0.035359186,
+        0.035426697,
+        0.03547034,
+        0.035521902,
+        0.03555587,
+        0.035607232,
+        0.035652991,
+        0.035988103,
+        0.035752497,
+        0.035802881,
+        0.035837473,
+        0.035899059,
+        0.035948381,
+        0.035986911,
+        0.036044993,
+        0.036085086,
+        0.036130594,
+        0.036178202,
+        0.036224237,
+        0.036278344,
+        0.0363169,
+        0.036661412,
+        0.036413586,
+        0.036457814,
+        0.036507614,
+        0.036583442,
+        0.036619003,
+        0.036652872,
+        0.036699489,
+        0.036751685,
+        0.036799763,
+        0.036851636,
+        0.036899029,
+        0.036956249,
+        0.037016064,
+        0.037327553,
+        0.037085068,
+        0.037146694,
+        0.037188028,
+        0.037236101,
+        0.037297127,
+        0.037353139,
+        0.037402825,
+        0.037450699,
+        0.037492863,
+        0.037533506,
+        0.03757885,
+        0.037650165,
+        0.037989724,
+        0.037721558,
+        0.037774515,
+        0.03781012,
+        0.037878461,
+        0.037906649,
+        0.0379842,
+        0.038007225,
+        0.038062437,
+        0.038125568,
+        0.038158768,
+        0.038213178,
+        0.038256079,
+        0.038685017,
+        0.038357661,
+        0.038406676,
+        0.038446413,
+        0.038521241,
+        0.038528582,
+        0.038585068,
+        0.038651083,
+        0.038703642,
+        0.038745946,
+        0.038783367,
+        0.038837248,
+        0.038884719,
+        0.039207073,
+        0.038991626,
+        0.039044175,
+        0.039106413,
+        0.03913922,
+        0.039168273,
+        0.039232971,
+        0.039276493,
+        0.039322563,
+        0.039359906,
+        0.039403905,
+        0.039488185,
+        0.039506807,
+        0.039887649,
+        0.039611627,
+        0.039689764,
+        0.039712989,
+        0.039750141,
+        0.039818753,
+        0.039855204,
+        0.039905193,
+        0.039952297,
+        0.040000683,
+        0.040061558,
+        0.040096166,
+        0.040460984,
+        0.04020166,
+        0.040259576,
+        0.040284889,
+        0.04036516,
+        0.040388805,
+        0.040435835,
+        0.040492162,
+        0.040527605,
+        0.040602056,
+        0.040644702,
+        0.040673429,
+        0.040704779,
+        0.04111164,
+        0.040837826,
+        0.04087668,
+        0.040927001,
+        0.040961108,
+        0.041027066,
+        0.041057198,
+        0.04109075,
+        0.041180011,
+        0.04120652,
+        0.041258013,
+        0.041317246,
+        0.04164816,
+        0.041410412,
+        0.041455019,
+        0.041506015,
+        0.041554205,
+        0.041597585,
+        0.041653377,
+        0.041698643,
+        0.041733386,
+        0.041786076,
+        0.041841699,
+        0.041903356,
+        0.042217194,
+        0.042145743,
+        0.042024586,
+        0.042079093,
+        0.042138564,
+        0.042196377,
+        0.04223299,
+        0.042289693,
+        0.042337496,
+        0.042372407,
+        0.042418049,
+        0.04244526,
+        0.042906866,
+        0.04256709,
+        0.042584111,
+        0.042652034,
+        0.042701566,
+        0.042752646,
+        0.042799614,
+        0.042858296,
+        0.042898158,
+        0.042937595,
+        0.043008909,
+        0.043400529,
+        0.043116785,
+        0.043141736,
+        0.043209185,
+        0.043262441,
+        0.043282792,
+        0.043322933,
+        0.043402577,
+        0.04345868,
+        0.043481234,
+        0.043542555,
+        0.043562907,
+        0.043924505,
+        0.043667492,
+        0.043727323,
+        0.043778553,
+        0.043822152,
+        0.043854931,
+        0.043941703,
+        0.043960346,
+        0.044014288,
+        0.044065178,
+        0.044087259,
+        0.044456702,
+        0.044200333,
+        0.044250294,
+        0.044301535,
+        0.044361911,
+        0.044387354,
+        0.044464456,
+        0.044487063,
+        0.044529034,
+        0.04459738,
+        0.044656636,
+        0.045074232,
+        0.044744996,
+        0.044794423,
+        0.044825651,
+        0.044890656,
+        0.044949033,
+        0.044986019,
+        0.045040863,
+        0.045076551,
+        0.045138248,
+        0.045180964
+      ],
+      "decode_setup_inclusive_seconds": 9.960307351999997,
+      "decode_setup_inclusive_tokens_per_second": 25.60161960753117,
+      "decode_setup_seconds": 1.21e-7,
+      "decode_tokens_per_second": 25.601619918545268,
+      "decode_total_seconds": 9.960307230999998,
+      "decode_wall_seconds_including_setup": 9.966972595,
+      "decode_wall_tokens_per_second_including_setup": 25.58449896089034,
+      "final_cursor_past": 361,
+      "generated_token_ids": [
+        760,
+        9662,
+        383,
+        5068,
+        6451,
+        10404,
+        1467,
+        524,
+        1204,
+        75,
+        26,
+        424,
+        58330,
+        13,
+        1049,
+        557,
+        264,
+        1496,
+        11,
+        14979,
+        93502,
+        1183,
+        421,
+        59918,
+        1472,
+        279,
+        11679,
+        46004,
+        26271,
+        3594,
+        11,
+        54651,
+        2631,
+        279,
+        10679,
+        9035,
+        4883,
+        314,
+        279,
+        324,
+        55965,
+        321,
+        48257,
+        303,
+        279,
+        24066,
+        314,
+        82697,
+        645,
+        16413,
+        13,
+        1690,
+        25292,
+        1578,
+        11,
+        82697,
+        995,
+        11815,
+        303,
+        279,
+        12098,
+        314,
+        279,
+        8252,
+        8394,
+        11,
+        264,
+        55218,
+        77991,
+        791,
+        2320,
+        383,
+        264,
+        25888,
+        3438,
+        2619,
+        530,
+        661,
+        314,
+        2948,
+        3045,
+        421,
+        186530,
+        6359,
+        680,
+        1083,
+        279,
+        509,
+        51554,
+        19177,
+        314,
+        279,
+        4634,
+        21678,
+        13,
+        561,
+        12552,
+        4924,
+        557,
+        264,
+        909,
+        31971,
+        1925,
+        11,
+        264,
+        12931,
+        314,
+        6730,
+        874,
+        21192,
+        1056,
+        264,
+        8693,
+        2002,
+        11,
+        9469,
+        303,
+        4161,
+        694,
+        43407,
+        1634,
+        11,
+        9662,
+        1402,
+        305,
+        338,
+        10519,
+        321,
+        264,
+        3074,
+        11,
+        65987,
+        32485,
+        4757,
+        421,
+        52995,
+        5652,
+        277,
+        12922,
+        8574,
+        279,
+        9117,
+        430,
+        413,
+        57107,
+        364,
+        36958,
+        13,
+        271,
+        36,
+        69388,
+        725,
+        2199,
+        557,
+        264,
+        2197,
+        2176,
+        617,
+        314,
+        13618,
+        11,
+        22825,
+        321,
+        632,
+        28726,
+        286,
+        13,
+        2332,
+        220,
+        15,
+        19,
+        15,
+        15,
+        3979,
+        11,
+        279,
+        16136,
+        1000,
+        29437,
+        11,
+        264,
+        24149,
+        13934,
+        78252,
+        1083,
+        279,
+        20513,
+        314,
+        780,
+        2526,
+        11,
+        52010,
+        290,
+        44104,
+        13,
+        1216,
+        1000,
+        9704,
+        11,
+        780,
+        33124,
+        48172,
+        303,
+        279,
+        8981,
+        3594,
+        11,
+        321,
+        6601,
+        383,
+        780,
+        8545,
+        37260,
+        58094,
+        321,
+        5415,
+        47660,
+        13,
+        561,
+        4088,
+        310,
+        279,
+        324,
+        55965,
+        557,
+        264,
+        26305,
+        314,
+        46578,
+        13,
+        561,
+        1752,
+        557,
+        47966,
+        440,
+        1363,
+        472,
+        321,
+        9561,
+        11,
+        279,
+        22317,
+        23221,
+        780,
+        24435,
+        4118,
+        10685,
+        757,
+        13,
+        1216,
+        1000,
+        24562,
+        279,
+        799,
+        7493,
+        321
+      ],
+      "graph": null,
+      "prefill_cursor_past": 106,
+      "prefill_input_tokens": 106,
+      "prefill_input_tokens_per_second": 305.9953692912475,
+      "prefill_seconds": 0.346410471,
+      "repetition": 1,
+      "sequence_output_tokens_per_second": 24.822007447081415,
+      "sequence_wall_seconds": 10.313428539,
+      "wall_scope": "Sequence starts before eager prefill; decode wall starts before graph setup; both end after last decode memory checkpoint. Includes per-session capture/instantiate, host loop and memory sampling, excludes session/weight allocation and final graph destruction. Setup-inclusive interval rate excludes memory sampling, wall rate includes it."
+    },
+    {
+      "cursor_poisoned": false,
+      "decode_interval_count": 255,
+      "decode_intervals": [
+        0.03303671,
+        0.032908017,
+        0.03299089,
+        0.03306154,
+        0.033087532,
+        0.033441645,
+        0.033167732,
+        0.033229607,
+        0.033265633,
+        0.033325077,
+        0.033379239,
+        0.033418787,
+        0.033466117,
+        0.033521871,
+        0.03356258,
+        0.033620311,
+        0.033650713,
+        0.033717628,
+        0.033767448,
+        0.033796242,
+        0.03419581,
+        0.033900429,
+        0.03394873,
+        0.034007339,
+        0.034029905,
+        0.034102278,
+        0.034153494,
+        0.034199406,
+        0.034239028,
+        0.034274571,
+        0.03434405,
+        0.034392385,
+        0.034430409,
+        0.034476564,
+        0.034533486,
+        0.034966889,
+        0.034621194,
+        0.034681911,
+        0.034739417,
+        0.034774075,
+        0.034831522,
+        0.034864616,
+        0.03491097,
+        0.034970157,
+        0.035016231,
+        0.035065987,
+        0.035123586,
+        0.035168685,
+        0.035215853,
+        0.035615351,
+        0.035314886,
+        0.03535053,
+        0.035427909,
+        0.035455661,
+        0.035515185,
+        0.035544987,
+        0.035613899,
+        0.035644382,
+        0.035707335,
+        0.035742719,
+        0.035797153,
+        0.035824938,
+        0.035893774,
+        0.036208114,
+        0.035989169,
+        0.036034841,
+        0.036079245,
+        0.036136092,
+        0.036209324,
+        0.036235167,
+        0.036278286,
+        0.036346848,
+        0.036380441,
+        0.036449684,
+        0.036469413,
+        0.036525732,
+        0.03656832,
+        0.036888563,
+        0.036672654,
+        0.036710988,
+        0.036751247,
+        0.036796242,
+        0.036828548,
+        0.036896444,
+        0.036944028,
+        0.036997855,
+        0.037068409,
+        0.037091816,
+        0.037133016,
+        0.037205955,
+        0.037263561,
+        0.037500107,
+        0.037326803,
+        0.037396874,
+        0.037423389,
+        0.037510717,
+        0.037542783,
+        0.037593884,
+        0.037617297,
+        0.037680878,
+        0.037740379,
+        0.037777231,
+        0.037816876,
+        0.03789126,
+        0.038197078,
+        0.037981391,
+        0.038021605,
+        0.038055886,
+        0.038119342,
+        0.038158941,
+        0.038380392,
+        0.038259987,
+        0.038295751,
+        0.038350469,
+        0.038389587,
+        0.03845513,
+        0.038493848,
+        0.038854283,
+        0.038589764,
+        0.03864766,
+        0.038711049,
+        0.03873232,
+        0.03879088,
+        0.038839192,
+        0.038893195,
+        0.038949806,
+        0.038992628,
+        0.039046871,
+        0.039074691,
+        0.039136241,
+        0.039462835,
+        0.039230532,
+        0.039283072,
+        0.039319384,
+        0.039372547,
+        0.039410372,
+        0.03948586,
+        0.039502959,
+        0.039586259,
+        0.039621971,
+        0.039666965,
+        0.039715015,
+        0.040066206,
+        0.039798601,
+        0.039842946,
+        0.039905512,
+        0.039960394,
+        0.040007693,
+        0.040037019,
+        0.04010935,
+        0.040169763,
+        0.040206021,
+        0.040226835,
+        0.040301913,
+        0.040336996,
+        0.040670055,
+        0.040427296,
+        0.040499153,
+        0.040522984,
+        0.040598741,
+        0.040636857,
+        0.040683797,
+        0.040720496,
+        0.040770641,
+        0.040804317,
+        0.040902231,
+        0.040928987,
+        0.041259133,
+        0.041022823,
+        0.041069628,
+        0.041103787,
+        0.041170287,
+        0.041210985,
+        0.041261117,
+        0.041314035,
+        0.041357452,
+        0.041408862,
+        0.041436118,
+        0.04150452,
+        0.041821734,
+        0.041609639,
+        0.041641036,
+        0.041687416,
+        0.041738853,
+        0.041806631,
+        0.041844138,
+        0.041853626,
+        0.041932374,
+        0.041985732,
+        0.042014282,
+        0.042084585,
+        0.042397003,
+        0.042182908,
+        0.042232792,
+        0.042281769,
+        0.042334148,
+        0.042382155,
+        0.04244189,
+        0.042481739,
+        0.042513628,
+        0.042564972,
+        0.042622864,
+        0.042659298,
+        0.042982839,
+        0.042769857,
+        0.042797871,
+        0.0428575,
+        0.042901914,
+        0.042963904,
+        0.042998565,
+        0.043041958,
+        0.043104574,
+        0.043137043,
+        0.043172102,
+        0.043226337,
+        0.043565534,
+        0.043330995,
+        0.043389779,
+        0.043435835,
+        0.043489267,
+        0.043541869,
+        0.043577385,
+        0.043630924,
+        0.043680542,
+        0.043714855,
+        0.043782035,
+        0.044102428,
+        0.043889426,
+        0.043911102,
+        0.043962417,
+        0.044013716,
+        0.044077993,
+        0.044124397,
+        0.0441696,
+        0.044212393,
+        0.044256007,
+        0.044293824,
+        0.044637847,
+        0.044390655,
+        0.044457645,
+        0.044513242,
+        0.044519795,
+        0.044575208,
+        0.044637516,
+        0.04467751,
+        0.044724729,
+        0.044778721,
+        0.04483828,
+        0.044905934,
+        0.045226943,
+        0.04495889,
+        0.045018632,
+        0.045081764,
+        0.045147761,
+        0.045175985
+      ],
+      "decode_setup_inclusive_seconds": 9.959839961000002,
+      "decode_setup_inclusive_tokens_per_second": 25.60282102910388,
+      "decode_setup_seconds": 1.11e-7,
+      "decode_tokens_per_second": 25.602821314441112,
+      "decode_total_seconds": 9.959839850000002,
+      "decode_wall_seconds_including_setup": 9.965033223,
+      "decode_wall_tokens_per_second_including_setup": 25.589478157628413,
+      "final_cursor_past": 361,
+      "generated_token_ids": [
+        760,
+        9662,
+        383,
+        5068,
+        6451,
+        10404,
+        1467,
+        524,
+        1204,
+        75,
+        26,
+        424,
+        58330,
+        13,
+        1049,
+        557,
+        264,
+        1496,
+        11,
+        14979,
+        93502,
+        1183,
+        421,
+        59918,
+        1472,
+        279,
+        11679,
+        46004,
+        26271,
+        3594,
+        11,
+        54651,
+        2631,
+        279,
+        10679,
+        9035,
+        4883,
+        314,
+        279,
+        324,
+        55965,
+        321,
+        48257,
+        303,
+        279,
+        24066,
+        314,
+        82697,
+        645,
+        16413,
+        13,
+        1690,
+        25292,
+        1578,
+        11,
+        82697,
+        995,
+        11815,
+        303,
+        279,
+        12098,
+        314,
+        279,
+        8252,
+        8394,
+        11,
+        264,
+        55218,
+        77991,
+        791,
+        2320,
+        383,
+        264,
+        25888,
+        3438,
+        2619,
+        530,
+        661,
+        314,
+        2948,
+        3045,
+        421,
+        186530,
+        6359,
+        680,
+        1083,
+        279,
+        509,
+        51554,
+        19177,
+        314,
+        279,
+        4634,
+        21678,
+        13,
+        561,
+        12552,
+        4924,
+        557,
+        264,
+        909,
+        31971,
+        1925,
+        11,
+        264,
+        12931,
+        314,
+        6730,
+        874,
+        21192,
+        1056,
+        264,
+        8693,
+        2002,
+        11,
+        9469,
+        303,
+        4161,
+        694,
+        43407,
+        1634,
+        11,
+        9662,
+        1402,
+        305,
+        338,
+        10519,
+        321,
+        264,
+        3074,
+        11,
+        65987,
+        32485,
+        4757,
+        421,
+        52995,
+        5652,
+        277,
+        12922,
+        8574,
+        279,
+        9117,
+        430,
+        413,
+        57107,
+        364,
+        36958,
+        13,
+        271,
+        36,
+        69388,
+        725,
+        2199,
+        557,
+        264,
+        2197,
+        2176,
+        617,
+        314,
+        13618,
+        11,
+        22825,
+        321,
+        632,
+        28726,
+        286,
+        13,
+        2332,
+        220,
+        15,
+        19,
+        15,
+        15,
+        3979,
+        11,
+        279,
+        16136,
+        1000,
+        29437,
+        11,
+        264,
+        24149,
+        13934,
+        78252,
+        1083,
+        279,
+        20513,
+        314,
+        780,
+        2526,
+        11,
+        52010,
+        290,
+        44104,
+        13,
+        1216,
+        1000,
+        9704,
+        11,
+        780,
+        33124,
+        48172,
+        303,
+        279,
+        8981,
+        3594,
+        11,
+        321,
+        6601,
+        383,
+        780,
+        8545,
+        37260,
+        58094,
+        321,
+        5415,
+        47660,
+        13,
+        561,
+        4088,
+        310,
+        279,
+        324,
+        55965,
+        557,
+        264,
+        26305,
+        314,
+        46578,
+        13,
+        561,
+        1752,
+        557,
+        47966,
+        440,
+        1363,
+        472,
+        321,
+        9561,
+        11,
+        279,
+        22317,
+        23221,
+        780,
+        24435,
+        4118,
+        10685,
+        757,
+        13,
+        1216,
+        1000,
+        24562,
+        279,
+        799,
+        7493,
+        321
+      ],
+      "graph": null,
+      "prefill_cursor_past": 106,
+      "prefill_input_tokens": 106,
+      "prefill_input_tokens_per_second": 305.9991508812241,
+      "prefill_seconds": 0.34640619,
+      "repetition": 2,
+      "sequence_output_tokens_per_second": 24.826729341494037,
+      "sequence_wall_seconds": 10.311466987,
+      "wall_scope": "Sequence starts before eager prefill; decode wall starts before graph setup; both end after last decode memory checkpoint. Includes per-session capture/instantiate, host loop and memory sampling, excludes session/weight allocation and final graph destruction. Setup-inclusive interval rate excludes memory sampling, wall rate includes it."
+    }
+  ],
+  "requested_final_cursor_past": 361,
+  "schema_version": 1,
+  "warmup": {
+    "decode_steps": 1,
+    "final_cursor_past": 107,
+    "graph": null,
+    "input_token_ids": [
+      248045,
+      846,
+      198,
+      7734,
+      264,
+      1248,
+      11,
+      11346,
+      3255,
+      883,
+      264,
+      324,
+      55965,
+      51624,
+      852,
+      49296,
+      421,
+      279,
+      27056,
+      682,
+      20720,
+      87748,
+      310,
+      17199,
+      421,
+      635,
+      524,
+      2905,
+      13,
+      58737,
+      279,
+      12552,
+      11,
+      279,
+      51624,
+      579,
+      7071,
+      13618,
+      11,
+      279,
+      1118,
+      14457,
+      8028,
+      11,
+      321,
+      1204,
+      279,
+      21831,
+      86582,
+      888,
+      264,
+      12050,
+      13,
+      5272,
+      40630,
+      46368,
+      7472,
+      321,
+      20623,
+      13,
+      18037,
+      6849,
+      440,
+      279,
+      3255,
+      26,
+      635,
+      524,
+      884,
+      264,
+      2192,
+      466,
+      866,
+      829,
+      1509,
+      13,
+      561,
+      3255,
+      1220,
+      381,
+      506,
+      3140,
+      1330,
+      15706,
+      4105,
+      1248,
+      321,
+      1220,
+      809,
+      440,
+      279,
+      51624,
+      3154,
+      449,
+      89013,
+      5307,
+      13,
+      248046,
+      198,
+      248045,
+      74455,
+      198,
+      248068,
+      271,
+      248069,
+      271
+    ],
+    "output_token_id": 9662,
+    "prefill_output_token_id": 760,
+    "protocol": "full-requested-prompt-plus-one-actual-decode-v1"
+  },
+  "warmup_protocol_change": "All executions now warm the full requested prompt plus one actual decode on a disposable fresh session; graph mode captures and replays during warmup. Former protocol warmed one token without decode. Timed repetitions still use fresh sessions and unchanged requested output sequences."
+}

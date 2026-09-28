@@ -735,6 +735,28 @@ pub fn bf16_ab_decode_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json
 pub mod attention_v2_plan;
 pub mod attention_warp_plan;
 
+/// Qualify isolated exponential delivery against original attention bits and FP64 oracle.
+pub fn attention_unrolled_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::attention_unrolled_trial::run(ptx, device);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device);
+        anyhow::bail!("Unrolled attention qualification requires Linux")
+    }
+}
+
+/// Standalone raw-FP64 old/new exponential bit probe, including NaN payloads.
+pub fn exponential_unrolled_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::exponential_trial::standalone(ptx, device);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device);
+        anyhow::bail!("Exponential bit qualification requires Linux")
+    }
+}
+
 /// Qualify exact-order warp attention against unchanged control bits and FP64 oracle.
 pub fn attention_warp_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json::Value> {
     #[cfg(target_os = "linux")]

@@ -35,6 +35,7 @@ pub(super) struct Functions<'m, 'ctx> {
     pub(super) attention_kv_append: Function<'m, 'ctx>,
     pub(super) causal_attention: Function<'m, 'ctx>,
     pub(super) causal_attention_warp: Option<Function<'m, 'ctx>>,
+    pub(super) causal_attention_unrolled: Option<Function<'m, 'ctx>>,
     pub(super) attention_gate: Function<'m, 'ctx>,
     pub(super) mlp_silu_product: Function<'m, 'ctx>,
     pub(super) greedy_tiles: Function<'m, 'ctx>,
@@ -112,7 +113,12 @@ impl<'m, 'ctx> Functions<'m, 'ctx> {
             .uses_warp(1)
             .then(|| get(crate::kernels::attention_warp_plan::KERNEL))
             .transpose()?;
+        let causal_attention_unrolled = (crate::kernels::attention_profile::current()?
+            == crate::kernels::attention_profile::Profile::UnrolledFp64)
+            .then(|| get("causal_attention_unrolled_fp64"))
+            .transpose()?;
         Ok(Self {
+            causal_attention_unrolled,
             causal_attention_warp,
             fp8_linear_exact_vector16,
             fp8_decode_schedule,

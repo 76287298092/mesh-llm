@@ -96,9 +96,10 @@ fn append_offsets_and_causal_lengths_cover_nonzero_and_last_positions() {
 #[test]
 fn position_entries_delegate_to_exact_bodies_without_new_arithmetic() {
     let adapters = include_str!("../kernels/nvptx/graph_position.rs");
-    for symbol in ["prepare_body(", "append_body(", "attention_body("] {
+    for symbol in ["prepare_body(", "append_body(", "attention_body::<false>("] {
         assert!(adapters.contains(symbol));
     }
+    assert!(!adapters.contains("attention_body::<true>"));
     assert!(!adapters.contains("asm!"));
     assert!(!adapters.contains("extern \"C\""));
     assert!(adapters.contains("*past as usize * (rotary_dim / 2) as usize"));

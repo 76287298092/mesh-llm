@@ -296,8 +296,10 @@ pub(super) mod stream_forward;
 pub(super) mod resident_model_score;
 mod resident_score;
 
+pub(super) mod attention_unrolled_trial;
 mod attention_v2_launch;
 pub(super) mod attention_v2_trial;
 pub(super) mod attention_warp_trial;
+pub(super) mod exponential_trial;
 
 mod resident_attention_split;

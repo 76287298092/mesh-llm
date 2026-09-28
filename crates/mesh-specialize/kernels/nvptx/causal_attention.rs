@@ -311,7 +311,7 @@ pub unsafe extern "ptx-kernel" fn causal_attention_bf16(
 ) {
     // SAFETY: The entry's contract is exactly the shared body's contract.
     unsafe {
-        attention_body(
+        attention_body::<false>(
             q,
             cache_k,
             cache_v,
@@ -328,9 +328,19 @@ pub unsafe extern "ptx-kernel" fn causal_attention_bf16(
     }
 }
 
-/// Shared exact FP64 body; callers uphold `causal_attention_bf16`'s contract.
 #[inline(always)]
-pub(super) unsafe fn attention_body(
+fn attention_exp<const UNROLLED: bool>(value: f64) -> f64 {
+    if UNROLLED {
+        super::exponential_unrolled::exp_nonpositive(value)
+    } else {
+        super::exponential::exp_nonpositive(value)
+    }
+}
+
+/// Shared control schedule; false retains the original exponential implementation.
+/// Both specializations inherit `causal_attention_bf16`'s full safety contract.
+#[inline(always)]
+pub(super) unsafe fn attention_body<const UNROLLED_EXP: bool>(
     q: *const u16,
     cache_k: *const u16,
     cache_v: *const u16,
@@ -403,9 +413,9 @@ pub(super) unsafe fn attention_body(
             let alpha = if normalizer == 0.0 {
                 0.0_f64
             } else {
-                super::exponential::exp_nonpositive(subtract_rn(maximum, next_maximum))
+                attention_exp::<UNROLLED_EXP>(subtract_rn(maximum, next_maximum))
             };
-            let beta = super::exponential::exp_nonpositive(subtract_rn(score, next_maximum));
+            let beta = attention_exp::<UNROLLED_EXP>(subtract_rn(score, next_maximum));
             normalizer = add_rn(multiply_rn(normalizer, alpha), beta);
             maximum = next_maximum;
             // Only slot zero is still being consumed as the dot by other threads.

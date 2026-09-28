@@ -99,7 +99,7 @@ pub unsafe extern "ptx-kernel" fn causal_attention_bf16_position(
 ) {
     // SAFETY: The position and original attention contracts are upheld by the host.
     unsafe {
-        super::causal_attention::attention_body(
+        super::causal_attention::attention_body::<false>(
             q,
             cache_k,
             cache_v,

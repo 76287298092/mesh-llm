@@ -50,6 +50,12 @@ pub(crate) fn run(args: &[String]) -> DynResult<()> {
         [command, rest @ ..] if command == "nvfp4-prmt-real-check" => nvfp4_prmt::real(rest),
         [command, rest @ ..] if command == "attention-v2-check" => probe::attention_v2(rest),
         [command, rest @ ..] if command == "attention-warp-check" => probe::attention_warp(rest),
+        [command, rest @ ..] if command == "attention-unrolled-check" => {
+            probe::attention_unrolled(rest)
+        }
+        [command, rest @ ..] if command == "exponential-unrolled-check" => {
+            probe::exponential_unrolled(rest)
+        }
         [command, rest @ ..] if command == "feature-attention-check" => {
             probe::feature_attention(rest)
         }

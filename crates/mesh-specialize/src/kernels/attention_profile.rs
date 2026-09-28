@@ -11,6 +11,8 @@ pub enum Profile {
     SplitDecode,
     /// Exact-order FP64 warp schedule for M=1; unchanged baseline for larger chunks.
     WarpFp64,
+    /// Original CTA schedule for all rows, with exact-order unrolled exponential.
+    UnrolledFp64,
 }
 impl Profile {
     pub fn name(self) -> &'static str {
@@ -20,12 +22,14 @@ impl Profile {
             Self::OnlineAudit => "bf16-online-audit-exact-output-v1",
             Self::SplitDecode => "bf16-split-decode-fp32-exact-prefill-v1",
             Self::WarpFp64 => "bf16-warp-fp64-exact-order-v1",
+            Self::UnrolledFp64 => "bf16-unrolled-fp64-exact-order-v1",
         }
     }
     /// Fallback kernel. Callers handle `uses_split(rows)` and M=1 warp dispatch separately.
     pub fn kernel(self) -> &'static str {
         match self {
             Self::Online => "attention_online_bf16",
+            Self::UnrolledFp64 => "causal_attention_unrolled_fp64",
             Self::Exact | Self::OnlineAudit | Self::SplitDecode | Self::WarpFp64 => {
                 "causal_attention_bf16"
             }
@@ -45,7 +49,10 @@ impl Profile {
         self == Self::SplitDecode && (1..=8).contains(&rows)
     }
     pub fn supports_stream(self) -> bool {
-        matches!(self, Self::Exact | Self::SplitDecode | Self::WarpFp64)
+        matches!(
+            self,
+            Self::Exact | Self::SplitDecode | Self::WarpFp64 | Self::UnrolledFp64
+        )
     }
     pub fn is_audit(self) -> bool {
         self == Self::OnlineAudit
@@ -58,8 +65,9 @@ fn parse(value: Option<&str>) -> Result<Profile> {
         Some("online-audit") => Ok(Profile::OnlineAudit),
         Some("split-decode") => Ok(Profile::SplitDecode),
         Some("warp-fp64") => Ok(Profile::WarpFp64),
+        Some("unrolled-fp64") => Ok(Profile::UnrolledFp64),
         _ => bail!(
-            "MESH_SPECIALIZE_ATTENTION_PROFILE must be exact, online, online-audit, split-decode, or warp-fp64"
+            "MESH_SPECIALIZE_ATTENTION_PROFILE must be exact, online, online-audit, split-decode, warp-fp64, or unrolled-fp64"
         ),
     }
 }
@@ -141,7 +149,26 @@ mod tests {
     }
 
     #[test]
-    fn stream_admits_exact_split_decode_or_warp() {
+    fn unrolled_is_explicit_and_uses_control_schedule_for_all_rows() {
+        let profile = parse(Some("unrolled-fp64")).unwrap();
+        assert_eq!(profile, Profile::UnrolledFp64);
+        assert_eq!(profile.name(), "bf16-unrolled-fp64-exact-order-v1");
+        for rows in [1, 5, 17, 128, 512, 2048] {
+            assert_eq!(
+                profile.kernel_for_rows(rows),
+                "causal_attention_unrolled_fp64"
+            );
+            assert!(!profile.uses_warp(rows));
+            assert!(!profile.uses_split(rows));
+        }
+        assert!(!profile.is_audit());
+        assert_eq!(parse(None).unwrap(), Profile::Exact);
+        assert!(parse(Some("unrolled")).is_err());
+    }
+
+    #[test]
+    fn stream_admits_exact_split_decode_warp_or_unrolled() {
+        assert!(Profile::UnrolledFp64.supports_stream());
         assert!(Profile::WarpFp64.supports_stream());
         assert!(Profile::Exact.supports_stream());
         assert!(Profile::SplitDecode.supports_stream());

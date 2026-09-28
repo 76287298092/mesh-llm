@@ -116,6 +116,8 @@ pub mod bf16_ab_decode_reference;
 pub mod attention_v2_reference;
 #[path = "../reference/attention_warp_fp64.rs"]
 pub mod attention_warp_reference;
+#[path = "../reference/exponential_unrolled.rs"]
+pub mod exponential_unrolled_reference;
 
 #[path = "../reference/fp8_embedding_gather.rs"]
 pub mod fp8_embedding_gather_reference;

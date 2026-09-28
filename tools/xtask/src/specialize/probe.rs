@@ -102,6 +102,14 @@ pub(super) fn bf16_ab_decode(args: &[String]) -> DynResult<()> {
     run_probe(args, mesh_specialize::kernels::bf16_ab_decode_trial)
 }
 
+pub(super) fn attention_unrolled(args: &[String]) -> DynResult<()> {
+    run_probe(args, mesh_specialize::kernels::attention_unrolled_trial)
+}
+
+pub(super) fn exponential_unrolled(args: &[String]) -> DynResult<()> {
+    run_probe(args, mesh_specialize::kernels::exponential_unrolled_trial)
+}
+
 pub(super) fn attention_warp(args: &[String]) -> DynResult<()> {
     run_probe(args, mesh_specialize::kernels::attention_warp_trial)
 }

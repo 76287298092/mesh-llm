@@ -64,3 +64,20 @@ comparisons, and repeated matched whole-model timings. Preserve raw failures.
 Device, driver, toolchain, clock/power, and uncontended model timing are **not
 measured** in this implementation handoff. No promotion is authorized by source
 or synthetic host checks alone.
+
+
+## Measured rejection, September28
+
+At aac74c4c5, all11operatorcases and106/512-input modelchecks preservecontrol
+raw/logit/state bits. Memcheckpasses; unfilteredracecheck timesout at1200seconds.
+Candidate-filtered racecheck/synccheck thenpass. Those filterlimits are explicit.
+Balanced modelmedians REGRESS:26.479→25.603tok/s after106inputs and
+18.166→17.034 after512inputs,256outputs,foursamples/profile. Do notpromote.
+Evidence: evidence/reassess-20260928/warp-attention-1 and warp-attention-2.
+
+Both originalandwarpkernels use152localbytes. PTX725e13e... shows a136-byte
+Taylorcoefficientarray copiedbyte-by-byte into localmemory insideeachnontrivial
+exponential call, then17local FP64loads/mul/add steps. Warpduplicates thiswork
+acrosslanes/outputshards. This is source/assemblyevidence, not an independent
+wall-time attribution. A separate unrolledHorner experiment will preserve
+coefficientbits, operationorder androunding to isolatethis generatedtraffic.

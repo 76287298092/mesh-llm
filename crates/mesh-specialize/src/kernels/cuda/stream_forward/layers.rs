@@ -176,6 +176,11 @@ pub(super) fn attention(
         shapes.kv_heads,
         shapes.attention_width,
     );
+    let unrolled = k.causal_attention_unrolled.as_ref();
+    anyhow::ensure!(
+        unrolled.is_none() || e.position.is_none(),
+        "unrolled-fp64 attention has no qualified graph position variant"
+    );
     let warp = k.causal_attention_warp.as_ref().filter(|_| rows == 1);
     if warp.is_some() {
         anyhow::ensure!(
@@ -248,7 +253,7 @@ pub(super) fn attention(
             step,
         )?;
     } else {
-        // SplitDecode changes M<=8; WarpFp64 changes only M=1. Other rows keep baseline.
+        // UnrolledFp64 retains the control geometry for every row count.
         let scale = 1.0_f32 / (aw as f32).sqrt();
         let attend = Args::new()
             .ptrs(&[a.q_prepared[0], key_state, value_state])
@@ -268,7 +273,8 @@ pub(super) fn attention(
             )
         } else {
             (
-                e.position.map_or(&k.causal_attention, |p| &p.attention),
+                unrolled
+                    .unwrap_or_else(|| e.position.map_or(&k.causal_attention, |p| &p.attention)),
                 [to_u32(rows * qh)?, 1, 1],
                 [256, 1, 1],
             )
