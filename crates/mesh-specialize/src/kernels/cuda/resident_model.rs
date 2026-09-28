@@ -289,39 +289,68 @@ impl<'w, 'ctx> Model<'w, 'ctx> {
         let mut hidden = entry.residual;
         drop(entry.normalized);
         for (index, block) in self.blocks.iter().enumerate() {
-            hidden = match block {
-                Block::Gdn(layer) => {
-                    if record {
-                        let (next, layer_record) = layer.forward_recorded(
-                            ctx,
-                            module,
-                            &hidden,
-                            &mut session.state,
-                            transaction.rows(),
-                        )?;
-                        recovery.push(layer_record);
-                        next
-                    } else {
-                        layer.forward(
-                            ctx,
-                            module,
-                            &hidden,
-                            &mut session.state,
-                            transaction.rows(),
-                        )?
-                    }
+            hidden = if super::partition_stage_audit::selected(index) {
+                ensure!(!record, "partition stage audit cannot record MTP recovery");
+                let mut inspect = |name: &str, buffer: &Buffer<'_>| {
+                    super::partition_stage_audit::record(name, transaction.rows(), buffer)
+                };
+                match block {
+                    Block::Gdn(layer) => layer.forward_observed(
+                        ctx,
+                        module,
+                        &hidden,
+                        &mut session.state,
+                        transaction.rows(),
+                        Some(&mut inspect),
+                    )?,
+                    Block::Attention(layer) => layer.forward_observed(
+                        ctx,
+                        module,
+                        &hidden,
+                        &mut session.state,
+                        &resident_attention::Step {
+                            rows: transaction.rows(),
+                            past: transaction.past(),
+                            capacity: transaction.capacity(),
+                        },
+                        Some(&mut inspect),
+                    )?,
                 }
-                Block::Attention(layer) => layer.forward(
-                    ctx,
-                    module,
-                    &hidden,
-                    &mut session.state,
-                    &resident_attention::Step {
-                        rows: transaction.rows(),
-                        past: transaction.past(),
-                        capacity: transaction.capacity(),
-                    },
-                )?,
+            } else {
+                match block {
+                    Block::Gdn(layer) => {
+                        if record {
+                            let (next, layer_record) = layer.forward_recorded(
+                                ctx,
+                                module,
+                                &hidden,
+                                &mut session.state,
+                                transaction.rows(),
+                            )?;
+                            recovery.push(layer_record);
+                            next
+                        } else {
+                            layer.forward(
+                                ctx,
+                                module,
+                                &hidden,
+                                &mut session.state,
+                                transaction.rows(),
+                            )?
+                        }
+                    }
+                    Block::Attention(layer) => layer.forward(
+                        ctx,
+                        module,
+                        &hidden,
+                        &mut session.state,
+                        &resident_attention::Step {
+                            rows: transaction.rows(),
+                            past: transaction.past(),
+                            capacity: transaction.capacity(),
+                        },
+                    )?,
+                }
             };
             if let Some(inspect) = observer.as_deref_mut() {
                 inspect(index, &hidden)?;

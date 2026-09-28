@@ -256,6 +256,7 @@ pub(super) mod resident_recovery;
 
 pub(super) mod resident_fp8_a16;
 
+mod partition_stage_audit;
 pub(super) mod resident_logit_dump;
 
 pub(super) mod resident_fp8_splitk;

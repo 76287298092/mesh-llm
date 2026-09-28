@@ -183,3 +183,20 @@ The ordinary last-row drift report and strict partition gates remain intact.
 This is diagnostic instrumentation, not a performance measurement. Host tests
 cover submission-independent row hashing, earlier-row localization, and invalid
 capture extents;269 host tests pass. Real-model localization is pending.
+
+Arithmetic guarantee checked against NVIDIA PTX ISA9.4, `mma` precision section:
+<https://docs.nvidia.com/cuda/parallel-thread-execution/#warp-level-matrix-instructions-mma>.
+For E2M1 floating-point MMA, the specification provides a minimum accumulation
+precision but does not fix accumulation order or rounding. Thus native NVFP4
+MMA cannot be assumed equivalent to our integer reduction for every input merely
+because earlier fixtures matched. This supports measuring the downstream
+hypothesis; it does not identify the cause of the observed partition failure.
+
+`partition-audit-1` atfbf877158 localized the earliest all-row mismatch to
+GDNlayer22,row101(zero-based). All rows through layer21 agree. Exact attention
+agrees across every row and layer. Both modes retain prior whole/token final
+state hashes. Next diagnostic `MESH_SPECIALIZE_PARTITION_STAGE_LAYER=22` records
+existing layer stage outputs; observed MLP uses the ordinary allocation path,
+so whole-profile/control equality and previous hashes must be checked before
+using it to localize arithmetic. Captures stop before teacher decode and never
+feed model values. Stage diagnostics are not throughput or qualification.

@@ -124,6 +124,11 @@ pub(in crate::kernels) fn run(
         (None, None) => None,
         _ => anyhow::bail!("partition audit enablement changed during trial"),
     };
+    let stage_audit = match (&control.stage_audit, &partitioned.stage_audit) {
+        (Some(a), Some(b)) => Some(a.compare(b)?),
+        (None, None) => None,
+        _ => anyhow::bail!("partition stage audit enablement changed"),
+    };
     let logit_dump = super::resident_logit_dump::write(
         tokens,
         teacher_token,
@@ -156,6 +161,7 @@ pub(in crate::kernels) fn run(
         prefill_kernel_profile: _,
         layer_tails: _,
         row_audit: _,
+        stage_audit: _,
     } = control;
     let DecodeRun {
         prefill_logits: profiled_prefill_logits,
@@ -169,6 +175,7 @@ pub(in crate::kernels) fn run(
         prefill_kernel_profile,
         layer_tails: _,
         row_audit: _,
+        stage_audit: _,
     } = profiled;
     let prefill_exact = control_prefill_logits == profiled_prefill_logits
         && control_prefill_token == profiled_prefill_token
@@ -223,6 +230,7 @@ pub(in crate::kernels) fn run(
         "resulting_past": resulting_past,
         "logit_dump":logit_dump,
         "exact_prefill_logits": prefill_exact,
+        "partition_stage_audit":stage_audit,
         "partition_row_audit":row_audit,
         "whole_vs_token_partition": partition,
         "whole_vs_token_partition_exact": partition_exact,
@@ -274,6 +282,7 @@ fn partition_report(
 }
 
 struct DecodeRun {
+    stage_audit: Option<super::partition_stage_audit::Stages>,
     row_audit: Option<crate::kernels::partition_audit::Rows>,
     layer_tails: Vec<Vec<u16>>,
     prefill_logits: Vec<u16>,
@@ -408,6 +417,7 @@ fn run_unprofiled(
     teacher_token: Option<u32>,
 ) -> Result<DecodeRun> {
     let mut session = Session::new(context, config)?;
+    let capture = super::partition_stage_audit::Capture::start(config.layers.len(), tokens.len())?;
     let mut layer_tails = Vec::new();
     let mut row_audit = match std::env::var("MESH_SPECIALIZE_PARTITION_AUDIT") {
         Err(std::env::VarError::NotPresent) => None,
@@ -464,6 +474,7 @@ fn run_unprofiled(
         check_committed(&session, &output, tokens.len())?;
         (output.logits, output.token, output.past)
     };
+    let stage_audit = capture.finish();
     let (output, wall_seconds) = timed_forward(
         context,
         module,
@@ -478,6 +489,7 @@ fn run_unprofiled(
     context.synchronize()?;
     Ok(DecodeRun {
         layer_tails,
+        stage_audit,
         row_audit,
         prefill_logits,
         prefill_token,
@@ -519,6 +531,7 @@ fn run_profiled(
     Ok(DecodeRun {
         layer_tails: Vec::new(),
         row_audit: None,
+        stage_audit: None,
         prefill_logits,
         prefill_token,
         prefill_past,
