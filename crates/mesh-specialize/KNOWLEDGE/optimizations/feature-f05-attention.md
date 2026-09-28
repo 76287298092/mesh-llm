@@ -1,9 +1,11 @@
 # F05: tiled FP32 online attention candidate
 
-Status: source candidate authored on 2026-09-27. The parent has not registered or
-compiled it. Driver JIT, GPU correctness, sanitizers, resource use, timing, real
-weights, and full-model qualification remain pending. Resident dispatch remains
-unchanged.
+Status: opt-in resident integration at `238ac8a7d`. Synthetic GPU checks and
+three sanitizers passed; same-input real-weight layer3 audits passed at128/512.
+Two short natural prompts passed strict same-profile model checks but showed
+cross-profile logit drift and a changed prose continuation. Current timings are
+CPU-contended and do not establish an uncontended speedup. Default remains exact;
+longer-answer quality and resident sanitizer qualification are pending.
 
 ## Candidate contract
 
@@ -153,3 +155,14 @@ candidate model throughput. PTX stayed `features-greedy`, SHA256
 Host267tests, both-host Clippy, Linux release build and no-console checks pass.
 Ninfer stayed inactive and ComfyUI remained resident. Candidate-driven natural
 model comparison is running separately in `attention-model-1`; no promotion.
+
+## Short natural-prompt model comparison
+
+`attention-model-1` passed strict same-profile whole/token partition and complete
+profile/control state checks for both prompts and modes. Python32-token outputs
+match; prose differs. Prefill KL(exact||online) is0.04787/0.02129 and total
+variation0.05999/0.06801; one same-input teacher-decode KL is2.707e-5/5.504e-5.
+The tiny audited operator differences do not bound full-model drift. Semantic
+quality remains unqualified. Timings were CPU-contended (load49.44 with unrelated
+CUDA compilation), fixed-order and shared-GPU; no clean speedup claim. See the
+evidence README and comparison JSON. Default and exact gates remain unchanged.
