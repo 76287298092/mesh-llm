@@ -116,6 +116,9 @@ fn models_list_json_with_virtual(
             if capabilities.reasoning_label().is_some() {
                 caps.push("reasoning");
             }
+            if capabilities.supports_system_one_runtime() {
+                caps.push("system_one");
+            }
             let display_name = if public_id == *m
                 && descriptor.is_none_or(|descriptor| descriptor.identity.model_name == public_id)
             {
@@ -133,6 +136,7 @@ fn models_list_json_with_virtual(
                 "vision_status": capabilities.vision_status(),
                 "audio_status": capabilities.audio_status(),
                 "reasoning_status": capabilities.reasoning_status(),
+                "system_one_status": capabilities.system_one_status(),
             });
             if let Some(metadata) = model_metadata_json(base_model, descriptor, runtimes)
                 && let Some(object) = model.as_object_mut()
@@ -702,6 +706,42 @@ mod tests {
         assert!(capabilities.iter().any(|cap| cap == "vision"));
         assert_eq!(body["data"][0]["vision_status"], "supported");
         assert_eq!(body["data"][0]["multimodal_status"], "supported");
+    }
+
+    #[test]
+    fn models_list_advertises_runtime_verified_system_one_support() {
+        let models = vec!["openjev-latest".to_string()];
+        let descriptors = vec![local_gguf_descriptor_with_capabilities(
+            &models[0],
+            crate::models::ModelCapabilities {
+                system_one: crate::models::CapabilityLevel::Supported,
+                ..Default::default()
+            },
+        )];
+
+        let body = models_list_json(&models, &descriptors, &[]);
+        let capabilities = body["data"][0]["capabilities"].as_array().unwrap();
+
+        assert!(capabilities.iter().any(|cap| cap == "system_one"));
+        assert_eq!(body["data"][0]["system_one_status"], "supported");
+    }
+
+    #[test]
+    fn models_list_does_not_advertise_unverified_system_one_support() {
+        let models = vec!["possible-system-one".to_string()];
+        let descriptors = vec![local_gguf_descriptor_with_capabilities(
+            &models[0],
+            crate::models::ModelCapabilities {
+                system_one: crate::models::CapabilityLevel::Likely,
+                ..Default::default()
+            },
+        )];
+
+        let body = models_list_json(&models, &descriptors, &[]);
+        let capabilities = body["data"][0]["capabilities"].as_array().unwrap();
+
+        assert!(!capabilities.iter().any(|cap| cap == "system_one"));
+        assert_eq!(body["data"][0]["system_one_status"], "likely");
     }
 
     #[test]
