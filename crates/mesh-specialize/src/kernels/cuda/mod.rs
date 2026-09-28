@@ -34,6 +34,7 @@ mod resident_bf16;
 mod resident_conv;
 mod resident_embedding;
 mod resident_fp8;
+mod resident_fp8_head;
 mod resident_gdn;
 mod resident_gdn_core;
 pub(super) mod resident_gdn_trial;

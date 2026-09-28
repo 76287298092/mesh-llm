@@ -147,3 +147,25 @@ sanitizers and GPU access NOT RUN. No timing is taken. Parent reported earlier
 kernel/source integration checks at `daabf18c3`; this new launch trial has not yet
 been included in those checks. Representative resident head timing and real-weight
 coverage remain separate parent gates after synthetic and sanitizer qualification.
+
+
+At source 6283972c9, `a16-head-check-1` passes all 37 independent cases in
+normal execution and memcheck, racecheck, and synccheck. Each sanitizer reports
+zero errors or hazards. RTX5090, driver615.71.09; PTX hash is the retained
+head-pipeline artifact above. Exact mapping cases are bit-identical. General
+cases have four total BF16 differences and maximum scaled raw error
+6.455662616742589e-7, below the frozen 1e-4 limit. Stored BF16 RNE checks pass.
+CUDA JIT resources are 40 registers, 8192 shared bytes, and zero local bytes.
+The PTX local declaration does not survive JIT as local memory. Ninfer stayed
+inactive and ComfyUI498MiB was preserved. This is operator qualification only.
+
+Parent added two explicit model experiments, `MESH_SPECIALIZE_FP8_PROFILE=a16-head`
+and `a16-head-gemv`. Only the LM head receives BF16 activations directly. Decoder
+projections retain default arithmetic, including the unchanged existing NVFP4
+shape dispatch. The sliced candidate admits 1..8 rows, while the GEMV control
+requires one row. Unsupported shapes fail before launch. Ordinary execution
+uses one final hidden row for the head. Both profiles retain MLP workspace
+eligibility because decoder arithmetic is unchanged. MTP still rejects every
+non-exact profile. Default exact, previous A16-decode and native prefill profiles
+remain separate. Cross-profile logits/quality, real-weight reference samples and
+model performance are pending; no profile is promoted.

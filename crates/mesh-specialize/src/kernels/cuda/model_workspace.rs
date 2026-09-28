@@ -22,9 +22,9 @@ pub(super) fn shared(ctx: &Context) -> Result<Option<Shared<'_>>> {
         return Ok(None);
     }
     ensure!(
-        crate::kernels::fp8_profile::current()? == crate::kernels::fp8_profile::Profile::Exact
+        crate::kernels::fp8_profile::current()?.exact_decoder()
             && super::resident_fp8_splitk::configured_splits()?.is_none(),
-        "model MLP workspace requires exact profile and split-K off"
+        "model MLP workspace requires exact decoder projections and split-K off"
     );
     Ok(Some(Rc::new(RefCell::new(Cache {
         ctx,

@@ -35,9 +35,9 @@ impl<'w, 'ctx> Chain<'w, 'ctx> {
         );
         ensure!(owner.belongs_to(ctx), "workspace weight context mismatch");
         ensure!(
-            crate::kernels::fp8_profile::current()? == crate::kernels::fp8_profile::Profile::Exact
+            crate::kernels::fp8_profile::current()?.exact_decoder()
                 && super::resident_fp8_splitk::configured_splits()?.is_none(),
-            "MLP workspace experiment requires exact profile and split-K off"
+            "MLP workspace experiment requires exact decoder projections and split-K off"
         );
         let binding = |suffix: &str, k, n| -> Result<Binding<'w, 'ctx>> {
             match Projection::new(owner, &format!("{prefix}.{suffix}"), k, n, kind)? {

@@ -54,7 +54,7 @@ impl<'w, 'ctx> Head<'w, 'ctx> {
         let final_hidden = Buffer::new(context, row_bytes)?;
         final_hidden.copy_from_at(0, hidden, source_offset, row_bytes)?;
         let normalized = self.norm.run(context, module, &final_hidden, 1)?;
-        self.projection.run(context, module, &normalized, 1)
+        self.project(context, module, &normalized, 1)
     }
 
     /// Normalize and project every hidden row, retaining one vocabulary row per input row.
@@ -75,7 +75,28 @@ impl<'w, 'ctx> Head<'w, 'ctx> {
         );
         validate_all_rows_extent(rows, self.width, hidden.len())?;
         let normalized = self.norm.run(context, module, hidden, rows)?;
-        self.projection.run(context, module, &normalized, rows)
+        self.project(context, module, &normalized, rows)
+    }
+
+    fn project<'a>(
+        &self,
+        context: &'a Context,
+        module: &Module<'_>,
+        normalized: &Buffer<'_>,
+        rows: usize,
+    ) -> Result<resident_fp8::Output<'a>> {
+        use crate::kernels::fp8_profile::{self, Profile};
+        match fp8_profile::current()? {
+            Profile::A16Head | Profile::A16HeadGemv => super::resident_fp8_head::run(
+                context,
+                module,
+                normalized,
+                &self.projection.workspace_binding()?,
+                rows,
+                fp8_profile::current()? == Profile::A16Head,
+            ),
+            _ => self.projection.run(context, module, normalized, rows),
+        }
     }
 }
 

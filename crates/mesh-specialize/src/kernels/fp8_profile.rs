@@ -6,6 +6,8 @@ use std::sync::OnceLock;
 pub enum Profile {
     Exact,
     A16Decode,
+    A16Head,
+    A16HeadGemv,
     NativePrefill,
     NativePrefillAudit,
     NativePrefillShort,
@@ -16,6 +18,8 @@ impl Profile {
         match self {
             Self::Exact => "exact-a8-v1",
             Self::A16Decode => "fp8-a16-decode-v1",
+            Self::A16Head => "exact-decoder-a16-head-v1",
+            Self::A16HeadGemv => "exact-decoder-a16-head-gemv-v1",
             Self::NativePrefill => "native-fp8-prefill-v1",
             Self::NativePrefillAudit => "native-fp8-prefill-v1-audit",
             Self::NativePrefillShort => "native-fp8-prefill-k64-v1",
@@ -30,24 +34,30 @@ impl Profile {
     }
     pub fn native_kernel(self) -> Option<&'static str> {
         match self {
-            Self::Exact | Self::A16Decode => None,
+            Self::Exact | Self::A16Decode | Self::A16Head | Self::A16HeadGemv => None,
             Self::NativePrefill | Self::NativePrefillAudit => Some("fp8_prefill_native"),
             Self::NativePrefillShort | Self::NativePrefillShortAudit => {
                 Some("fp8_prefill_native_short")
             }
         }
     }
+    /// Head-only candidates retain the default decoder projection arithmetic.
+    pub fn exact_decoder(self) -> bool {
+        matches!(self, Self::Exact | Self::A16Head | Self::A16HeadGemv)
+    }
 }
 fn parse(value: Option<&str>) -> Result<Profile> {
     match value {
         None | Some("exact") => Ok(Profile::Exact),
         Some("a16-decode") => Ok(Profile::A16Decode),
+        Some("a16-head") => Ok(Profile::A16Head),
+        Some("a16-head-gemv") => Ok(Profile::A16HeadGemv),
         Some("native-prefill") => Ok(Profile::NativePrefill),
         Some("native-prefill-audit") => Ok(Profile::NativePrefillAudit),
         Some("native-prefill-short") => Ok(Profile::NativePrefillShort),
         Some("native-prefill-short-audit") => Ok(Profile::NativePrefillShortAudit),
         _ => bail!(
-            "MESH_SPECIALIZE_FP8_PROFILE must be exact, a16-decode, native-prefill, native-prefill-audit, native-prefill-short, or native-prefill-short-audit"
+            "MESH_SPECIALIZE_FP8_PROFILE must be exact, a16-decode, a16-head, a16-head-gemv, native-prefill, native-prefill-audit, native-prefill-short, or native-prefill-short-audit"
         ),
     }
 }
@@ -88,6 +98,15 @@ mod tests {
         );
         assert_eq!(parse(Some("a16-decode")).unwrap(), Profile::A16Decode);
         assert!(Profile::A16Decode.native_kernel().is_none());
+        for value in ["a16-head", "a16-head-gemv"] {
+            let profile = parse(Some(value)).unwrap();
+            assert!(profile.exact_decoder());
+            assert!(profile.native_kernel().is_none());
+            assert!(!profile.is_audit());
+            assert_ne!(profile, Profile::Exact);
+        }
+        assert!(!Profile::A16Decode.exact_decoder());
+        assert!(!Profile::NativePrefill.exact_decoder());
         assert!(!parse(None).unwrap().is_audit());
         assert!(parse(Some("native")).is_err());
     }
