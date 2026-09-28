@@ -392,3 +392,25 @@ prefill/decode timings at increasing contexts. Reject experimental attention in
 MTP until recovery/profile identity is qualified. No `.ninfer` parser or imported
 compute implementation is involved; existing F05 source remains its worker's
 feature and parent owns integration/qualification.
+
+## Online attention model checkpoint
+
+At source238ac8a7d, real-weight layer3 attention audits passed the existing
+component budgets at128/512inputs. Candidate-driven Python/prose32-token runs
+passed strict same-profile partition and profile/control full-state checks.
+Cross-profile prefill KL(exact||online) is0.04787/0.02129; Python tokens agree,
+prose wording differs. This does not establish semantic degradation or quality
+parity. The short trial was CPU-contended (many unrelated CUDA compiler jobs,
+load49.44); timing cannot establish an uncontended win. Evidence is retained in
+`attention-model-1`; exact remains default and MTP rejects online attention.
+
+`attention-prefill-1` stopped at the strict128-token partition gate;512 was not
+run. Next: localize all-row/layer divergence and audit the first differing
+operator on identical inputs. Then candidate whole-model sanitizers,512-token
+complete natural answers and multiple-position teacher-forced likelihood and
+distribution comparisons on fixed reference text. Two next-token distributions
+and opening-word agreement cannot certify quality. Keep time and quality claims
+separate; independently inspect later-layer same-input attention if drift needs
+localization. Neither native projection nor online attention should inherit a
+quality pass from the other. Matched Ninfer provenance/configuration, long-context,
+concurrency and serving behavior remain required.

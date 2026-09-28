@@ -166,3 +166,10 @@ The tiny audited operator differences do not bound full-model drift. Semantic
 quality remains unqualified. Timings were CPU-contended (load49.44 with unrelated
 CUDA compilation), fixed-order and shared-GPU; no clean speedup claim. See the
 evidence README and comparison JSON. Default and exact gates remain unchanged.
+
+`attention-prefill-1` then failed strict128-token whole/token partition equivalence,
+while profile/control remained exact. The script stopped before512. First observed
+last-row hidden drift is layer25; earlier rows were not captured. Preserve the
+failure and investigate possible downstream NVFP4 multirow-native/single-row
+integer arithmetic differences on identical inputs before attributing the failure
+to attention or relaxing any gate. See failure-summary.json and evidence README.
