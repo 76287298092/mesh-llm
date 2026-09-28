@@ -7,7 +7,7 @@ Start with [the implementation plan](../PLAN.md) and the
 | --- | --- |
 | [A16 head schedule](optimizations/a16-head-schedule.md) | 37 GPU cases and sanitizers pass; head-only model checks pass, no ordinary-decode speedup, quality still open |
 | [NVFP4 prefill pipeline](optimizations/nvfp4-prefill-pipeline.md) | Wide32x128 passes operator sanitizers and tested exact model comparisons; shared-GPU prefill medians improve about6%, remains opt-in |
-| [Ordinary decode graph plan](findings/ordinary-decode-graph-plan.md) | Source-reviewed integration design; no model capture yet |
+| [Ordinary decode graph plan](findings/ordinary-decode-graph-plan.md) | Checked MLP views pass real-weight reuse/abort and three sanitizers; prepared stream execution and model capture pending |
 | [Exact GPU greedy selection](optimizations/gpu-greedy.md) | Device and resident checks plus three sanitizers pass; short timing change below1%, no stable speedup established |
 | [Tiled online attention](optimizations/feature-f05-attention.md) | Opt-in; short checks pass, strict128-row partition fails at NVFP4 rounding boundary; two longer answer checks are limited smoke evidence |
 | [Ninfer runtime deep dive](findings/ninfer-runtime-deep-dive.md) | Complete-source execution comparison; workspace/stream ordering first, then GPU selection/graphs, shape-specific kernels, and long-context algorithms |

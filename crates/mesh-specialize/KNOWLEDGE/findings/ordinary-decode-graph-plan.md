@@ -679,3 +679,59 @@ and function lookup and uses the default stream; graph capture is not ready.
 A mechanical duplicate closure during editing was caught by rustfmt and corrected.
 Linux compilation and real-weight/sanitizer qualification are next. macOS checks
 do not compile this Linux-only CUDA module and cannot qualify these edits.
+
+### Prepared MLP projection implementation status
+
+Authored `src/kernels/cuda/mlp_prepared_projection.rs` as the next bounded unit;
+parent owns registration, stream lease, integration and qualification. The exact
+requested lifetime interface works without adjustment:
+`Prepared<'module, 'w, 'ctx>::new(&'ctx Context, &'module Module<'ctx>,
+&Binding<'w, 'ctx>, rows) -> Result<Self>` and unsafe
+`enqueue(&self, &Stream<'ctx>, &DeviceRead, &[DeviceWrite; 5]) -> Result<()>`.
+Functions borrow the module, and the plan retains the weight-owner borrow while
+keeping shape, addresses, launch dimensions and scale values private.
+
+Creation admits MLP rows 1..=512 and widths/channels 1..=32768, validates contexts,
+non-null weight addresses, NVFP4 divisibility and finite positive scales/factor,
+resolves both functions, and freezes profile-selected dispatch. FP8 dispatch is
+currently duplicated from `Binding::enqueue`; keep both synchronized or let the
+parent extract a shared selector. NVFP4 uses the existing canonical profile
+scheduler directly. No new kernel or arithmetic is introduced.
+
+Enqueue validates exact input bytes, output minimum extents, alignment, contexts
+and nonaliasing, then uses fixed stack argument arrays for the two launches. It
+contains no successful-path Vec/string construction, lookup, allocation, wait or
+readback. Parent concurrently changed `launch_on_stream` to format its operation
+string only on error. Inspection of that updated wrapper, context activation and
+view validation found no remaining explicit Rust success-path heap allocation;
+this is source inspection, not an allocator trace or a statement about CUDA's
+internal allocations. Driver code was not edited by this worker.
+
+Three pure host tests are authored for FP8 dispatch boundaries/scratch extents,
+NVFP4 profile dispatch/scalar bits, and geometry/scale rejection. Rustfmt completed;
+no Cargo, GPU, sanitizer or performance test ran. The parent must compare prepared
+versus existing projection diagnostics and complete MLP outputs on the same inputs,
+qualify failures after quantization, and retain module/weight/input/output owners
+through stream completion or error draining. Preparation still trusts the internal
+Binding's association between verified weight addresses and owner. No safe launch,
+stream lease, or graph lifetime guarantee is claimed.
+
+### Checked-view integration qualification
+
+Source/binary `0a8bef6dc` passes Linux Clippy with warnings denied,357 library
+tests including the seven new range/alias tests, and26 validation-binary tests.
+The Just release tool build passed with the existing linker fallback notice.
+`device-views-mlp-check-1` uses unchanged PTX `dd54c51a...` and passes all eight
+real-weight cases under normal execution, memcheck, racecheck and synccheck;
+the sanitizer summaries report zero errors/hazards. Cases are layer0 NVFP4 and
+layer56 FP8 MLPs at rows1,5,128,512, using deterministic signed BF16 inputs.
+Each compares seven saved intermediates/output buffers against the existing
+non-workspace execution, checks stable addresses/reuse, and tests abort-after-gate
+drain/poisoning. These are component checks, not model-quality or throughput claims.
+Ninfer was restored active with health HTTP200; ComfyUI remained at498MiB.
+
+The prepared-projection worker deliverable and the parent's error-only stream
+launch formatting change are subsequent, unqualified work. They are not included
+in this source pin or these results. Next: bind an explicit-stream completion
+lease, prepare all MLP functions once, and compare the prepared chain with this
+qualified default-stream baseline before ordinary-model integration.
