@@ -31,6 +31,45 @@ class CiArtifactActionTests(unittest.TestCase):
             ACTIONS / "compute-changes" / "derive-outputs.sh"
         ).read_text(encoding="utf-8")
 
+    def test_skippy_cli_is_one_separate_platform_input_before_mesh_host(self) -> None:
+        action = self.read_action("prepare-skippy-cli-input")
+        self.assertIn("just \"$recipe\"", action)
+        self.assertIn("& just $recipe", action)
+        self.assertIn("skippy.sha256", action)
+        self.assertIn("skippy.exe.sha256", action)
+        for platform in ("linux", "macos", "windows"):
+            workflow = (ROOT / ".github" / "workflows" / f"ci-{platform}-host-slice.yml").read_text(encoding="utf-8")
+            self.assertLess(
+                workflow.index("Prepare standalone Skippy CLI"),
+                workflow.index("Prepare immutable"),
+            )
+            self.assertIn(f"ci-skippy-cli-{platform}-", workflow)
+
+    def test_skippy_release_cli_archive_is_separate_and_checksum_bound(self) -> None:
+        script = ROOT / "skippy" / "scripts" / "package-cli-release.sh"
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            cli = root / "cli"
+            cli.mkdir()
+            (cli / "skippy").write_bytes(b"skippy-test-cli")
+            checksum = hashlib.sha256(b"skippy-test-cli").hexdigest()
+            (cli / "skippy.sha256").write_text(f"{checksum}  skippy\n", encoding="utf-8")
+            output = root / "release"
+            subprocess.run(
+                ["bash", str(script), "v1.2.3", "linux-x86_64", str(cli), str(output)],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            archive = output / "skippy-v1.2.3-linux-x86_64-cli.tar.gz"
+            self.assertTrue(archive.is_file())
+            self.assertIn(hashlib.sha256(archive.read_bytes()).hexdigest(), (output / f"{archive.name}.sha256").read_text(encoding="utf-8"))
+            with tarfile.open(archive, "r:gz") as package:
+                self.assertEqual(set(package.getnames()), {"skippy", "skippy.sha256"})
+        release = RELEASE_WORKFLOW.read_text(encoding="utf-8")
+        self.assertEqual(release.count("uses: ./.github/actions/prepare-skippy-cli-input"), 3)
+        self.assertIn("name: release-skippy-cli-windows-x86_64", release)
+
     def test_external_actions_have_sha_and_release_provenance(self) -> None:
         action_files = sorted(ACTIONS.glob("*/action.yml"))
         workflow_files = sorted(
@@ -1028,7 +1067,7 @@ class CiArtifactActionTests(unittest.TestCase):
         for recipe in (
             "release-host-build",
             "release-runtime-build",
-            "release-host-build-windows",
+            "skippy-cli-release-build",
         ):
             with self.subTest(recipe=recipe):
                 self.assertIn(recipe, recipe_names)
@@ -2375,7 +2414,7 @@ class CiArtifactActionTests(unittest.TestCase):
                 if "pr_approved_ref:" in block:
                     approved_policy_calls += 1
                     self.assertIn("pr_approved_sha:", block)
-        self.assertEqual(selector_calls, 19)
+        self.assertEqual(selector_calls, 20)
         self.assertEqual(approved_policy_calls, 18)
 
         cases = (
@@ -3130,6 +3169,16 @@ class CiArtifactActionTests(unittest.TestCase):
             workflow = (
                 ROOT / ".github" / "workflows" / filename
             ).read_text(encoding="utf-8")
+            if filename == "ci-linux-runtime-slice.yml":
+                self.assertIn(
+                    "allow_depot_remote_cache: ${{ matrix.runtime.backend != 'cpu' && needs.runner_policy.outputs.allow_depot_remote_cache }}",
+                    workflow,
+                )
+                self.assertIn(
+                    "allow_native_github_cache: ${{ matrix.runtime.backend == 'cpu' && needs.runner_policy.outputs.allow_native_github_cache_cpu || needs.runner_policy.outputs.allow_native_github_cache }}",
+                    workflow,
+                )
+                continue
             self.assertIn(
                 "allow_depot_remote_cache: ${{ needs.runner_policy.outputs.allow_depot_remote_cache }}",
                 workflow,

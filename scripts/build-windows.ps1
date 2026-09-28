@@ -4,7 +4,8 @@ param(
     [string]$RocmArch = "",
     [string]$BuildProfile = "",
     [switch]$DynamicHost,
-    [switch]$HostOnly
+    [switch]$HostOnly,
+    [switch]$SkippyOnly
 )
 
 # Stable workspace entrypoint; implementation belongs to Mesh.

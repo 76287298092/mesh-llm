@@ -50,22 +50,24 @@ LLVM.LLVM`.
 
 ## Build from source
 
-Build the normal debug product: a backend-neutral dynamic host, its adjacent
-locally packaged native runtime, and the UI:
+Build both debug products in order: patched llama.cpp and the standalone
+Skippy CLI with a locally packaged runtime, then the backend-neutral MeshLLM
+host and console:
 
 ```bash
-just build
+just
 ```
+
+This produces `target/debug/skippy`, `target/debug/native-runtimes/`, and
+`target/debug/mesh-llm`. Pass `--runtime-bundle target/debug/native-runtimes`
+when running Skippy; MeshLLM discovers the adjacent runtime itself.
+Use `just skippy` when working only on the complete standalone Skippy product,
+or `just mesh` to rebuild only MeshLLM. `just build` runs the same sequence
+as bare `just`; `just skippy-cli-build` builds only Skippy's CLI.
 
 Release and packaging use the same host/runtime boundary. The only lower-level
 static compilation primitive is runtime packaging; it never builds a host.
-Build a release host once:
-
-```bash
-just release-host-build
-```
-
-Then build the backend runtime you are changing:
+For explicit local stages, build the backend runtime you are changing first:
 
 ```bash
 just release-runtime-build cpu
@@ -83,6 +85,15 @@ CUDA major and architecture from the toolchain/environment.
 PATH=/opt/cuda/bin:$PATH just release-runtime-build cuda
 # or
 PATH=/usr/local/cuda/bin:$PATH just release-runtime-build cuda
+```
+
+Then build the standalone Skippy CLI, followed by the neutral MeshLLM host
+and console once. The same host can be composed with any compatible backend
+runtime:
+
+```bash
+just skippy-cli-release-build
+just release-host-build
 ```
 
 Exercise the exact release discovery boundary with an isolated cache:

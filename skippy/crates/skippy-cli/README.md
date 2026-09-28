@@ -2,7 +2,7 @@
 
 The `skippy` binary owns standalone argument parsing, model preparation and console output. The `skippy-serving` library owns service loops and accepts plain Rust options.
 
-Build with `just skippy-build`. Supply a separately packaged native runtime:
+Build with `just skippy-cli-build`. Supply a separately packaged native runtime:
 
 ```sh
 target/debug/skippy --runtime-bundle /path/to/runtime serve-openai --model-path /path/to/model.gguf

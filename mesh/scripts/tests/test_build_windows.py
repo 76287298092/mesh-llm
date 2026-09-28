@@ -28,7 +28,7 @@ class BuildWindowsScriptTests(unittest.TestCase):
     def test_windows_release_recipes_request_dynamic_hosts(self):
         justfile = read_justfile_source(ROOT / "Justfile")
         for recipe in (
-            "release-build-windows:",
+            "[windows]\nrelease-build:",
             "release-build-cuda-windows",
             "release-build-rocm-windows",
             "release-build-vulkan-windows:",

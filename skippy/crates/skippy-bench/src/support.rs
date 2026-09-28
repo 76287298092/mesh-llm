@@ -53,7 +53,7 @@ pub fn ensure_release_skippy_serving_bin(path: &Path) -> Result<()> {
     let debug_path = path.contains("target/debug/skippy") || path.contains("target\\debug\\skippy");
     if debug_path {
         bail!(
-            "SkippyBench benchmark-managed skippy-serving runs require a release binary; run `just skippy-release-build` and use --stage-server-bin target/release/skippy"
+            "SkippyBench benchmark-managed skippy-serving runs require a release binary; run `just skippy-cli-release-build` and use --stage-server-bin target/release/skippy"
         );
     }
     Ok(())

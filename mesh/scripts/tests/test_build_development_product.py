@@ -6,19 +6,30 @@ from scripts.tests.justfile_source import read_justfile_source
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 SCRIPT = ROOT / "mesh" / "scripts" / "build-development-product.sh"
+SKIPPY_SCRIPT = ROOT / "skippy" / "scripts" / "build-development-product.sh"
+WINDOWS_SCRIPT = ROOT / "mesh" / "scripts" / "build-windows.ps1"
+WINDOWS_FORWARDER = ROOT / "scripts" / "build-windows.ps1"
 JUSTFILE = ROOT / "Justfile"
 
 
 class DevelopmentProductBuildTests(unittest.TestCase):
-    def test_builds_dynamic_host_before_exactly_one_runtime(self) -> None:
-        contents = SCRIPT.read_text(encoding="utf-8")
-        self.assertIn('"$SCRIPT_DIR/build-host.sh" --profile "$PROFILE"', contents)
-        self.assertIn('package-native-runtime.sh" "${runtime_args[@]}"', contents)
-        self.assertIn('runtime_out="$host_dir/native-runtimes"', contents)
-        self.assertNotIn("build-llama.sh", contents)
+    def test_builds_complete_skippy_product_before_dynamic_mesh_host(self) -> None:
+        mesh = SCRIPT.read_text(encoding="utf-8")
+        skippy = SKIPPY_SCRIPT.read_text(encoding="utf-8")
+        self.assertLess(
+            mesh.index('just skippy "$BACKEND" "$CUDA_ARCH" "$ROCM_ARCH"'),
+            mesh.index('just mesh "$PROFILE"'),
+        )
+        self.assertLess(
+            skippy.index('package-native-runtime.sh" "${runtime_args[@]}"'),
+            skippy.index('just skippy-cli-build'),
+        )
+        self.assertIn('runtime_out="$host_dir/native-runtimes"', mesh)
+        self.assertIn('Skippy CLI:     $host_dir/skippy', mesh)
+        self.assertNotIn("build-llama.sh", mesh)
 
     def test_linux_default_retains_backend_detection_order(self) -> None:
-        contents = SCRIPT.read_text(encoding="utf-8")
+        contents = SKIPPY_SCRIPT.read_text(encoding="utf-8")
         cuda = contents.index("BACKEND=cuda")
         rocm = contents.index("BACKEND=rocm")
         vulkan = contents.index("BACKEND=vulkan")
@@ -29,13 +40,20 @@ class DevelopmentProductBuildTests(unittest.TestCase):
         self.assertIn("vulkaninfo --summary", contents)
         self.assertIn("pkg-config --exists vulkan", contents)
 
-    def test_build_runtime_empty_backend_defaults_to_cpu(self) -> None:
-        # `$$backend` here read the shell PID, not the recipe argument. The
-        # behavioral check that this actually defaults (and that an explicit
-        # backend survives) lives in test_justfile_release_runtime.py.
+    def test_native_only_recipe_defaults_to_the_platform_backend(self) -> None:
         justfile = read_justfile_source(JUSTFILE)
-        recipe = justfile[justfile.index('build-runtime backend=""'):]
-        self.assertIn('[[ -n "$backend" ]] || backend=cpu', recipe)
+        recipe = justfile[justfile.index('release-runtime-build backend=""'):]
+        self.assertIn('selected_backend=metal; else selected_backend=cpu', recipe)
+
+    def test_windows_builds_standalone_skippy_before_mesh(self) -> None:
+        contents = WINDOWS_SCRIPT.read_text(encoding="utf-8")
+        runtime = contents.index('"--out", $runtimeOut')
+        skippy = contents.index('Invoke-NativeCommand "cargo" $skippyArgs')
+        mesh = contents.index('Write-Host "Building mesh-llm..."')
+        self.assertLess(runtime, skippy)
+        self.assertLess(skippy, mesh)
+        self.assertLess(contents.index('if ($SkippyOnly)'), mesh)
+        self.assertIn("[switch]$SkippyOnly", WINDOWS_FORWARDER.read_text(encoding="utf-8"))
 
     def test_preserves_documented_named_just_arguments(self) -> None:
         contents = SCRIPT.read_text(encoding="utf-8")

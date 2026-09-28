@@ -314,6 +314,22 @@ jobs:
           printf '%s' "$RELEASE_ATTESTATION_SIGNING_KEY" > "$MESH_RELEASE_ATTESTATION_SIGNING_KEY_FILE"
           printf '%s' "$RELEASE_ATTESTATION_PUBLIC_KEY" > "$MESH_RELEASE_ATTESTATION_PUBLIC_KEY_FILE"
 
+      - name: Prepare standalone Skippy CLI
+        uses: ./.github/actions/prepare-skippy-cli-input
+        with:
+          profile: release
+      - name: Package standalone Skippy CLI
+        env:
+          RELEASE_TAG: ${{ needs.metadata.outputs.tag }}
+          SKIPPY_TARGET: ${{ matrix.target }}
+        run: skippy/scripts/package-cli-release.sh "$RELEASE_TAG" "$SKIPPY_TARGET" skippy-cli-input skippy-release
+      - name: Upload immutable Skippy CLI input
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: release-skippy-cli-${{ matrix.target }}
+          path: skippy-release/*
+          if-no-files-found: error
+
       - name: Build and attest release host
         uses: ./.github/actions/prepare-host-input
         with:
@@ -916,6 +932,21 @@ jobs:
           printf '%s' "$RELEASE_ATTESTATION_SIGNING_KEY" > "$MESH_RELEASE_ATTESTATION_SIGNING_KEY_FILE"
           printf '%s' "$RELEASE_ATTESTATION_PUBLIC_KEY" > "$MESH_RELEASE_ATTESTATION_PUBLIC_KEY_FILE"
 
+      - name: Prepare standalone Skippy CLI
+        uses: ./.github/actions/prepare-skippy-cli-input
+        with:
+          profile: release
+      - name: Package standalone ARM64 Skippy CLI
+        env:
+          RELEASE_TAG: ${{ needs.metadata.outputs.tag }}
+        run: skippy/scripts/package-cli-release.sh "$RELEASE_TAG" linux-aarch64 skippy-cli-input skippy-release
+      - name: Upload immutable ARM64 Skippy CLI input
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: release-skippy-cli-linux-aarch64
+          path: skippy-release/*
+          if-no-files-found: error
+
       - name: Build and attest ARM64 release host
         uses: ./.github/actions/prepare-host-input
         with:
@@ -1332,7 +1363,11 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: '3.x'
+      - uses: taiki-e/install-action@3d23c1bbdafe696dfccad2664945a04f47d03dc3 # just
       - uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+      - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
+        with:
+          arch: x64
       - name: Prepare dispatched release version
         if: github.event_name == 'workflow_dispatch'
         shell: bash
@@ -1356,6 +1391,21 @@ jobs:
         run: |
           Set-Content -Path $env:MESH_RELEASE_ATTESTATION_SIGNING_KEY_FILE -Value $env:RELEASE_ATTESTATION_SIGNING_KEY -NoNewline
           Set-Content -Path $env:MESH_RELEASE_ATTESTATION_PUBLIC_KEY_FILE -Value $env:RELEASE_ATTESTATION_PUBLIC_KEY -NoNewline
+      - name: Prepare standalone Skippy CLI
+        uses: ./.github/actions/prepare-skippy-cli-input
+        with:
+          profile: release
+      - name: Package standalone Windows Skippy CLI
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ needs.metadata.outputs.tag }}
+        run: skippy/scripts/package-cli-release.sh "$RELEASE_TAG" windows-x86_64 skippy-cli-input skippy-release
+      - name: Upload immutable Windows Skippy CLI input
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: release-skippy-cli-windows-x86_64
+          path: skippy-release/*
+          if-no-files-found: error
       - name: Build and attest Windows release host
         uses: ./.github/actions/prepare-windows-host-input
         with:
@@ -1762,6 +1812,18 @@ jobs:
 
       - name: Remove smoke-only binary
         run: rm -f release-artifacts/mesh-llm
+
+      - name: Verify standalone Skippy CLI release assets
+        env:
+          RELEASE_TAG: ${{ needs.metadata.outputs.tag }}
+        run: |
+          set -euo pipefail
+          for target in darwin-aarch64 linux-x86_64 linux-aarch64 windows-x86_64; do
+            archive="skippy-${RELEASE_TAG}-${target}-cli.tar.gz"
+            test -s "release-artifacts/$archive"
+            test -s "release-artifacts/$archive.sha256"
+            (cd release-artifacts && shasum -a 256 --check "$archive.sha256")
+          done
 
       - name: Generate native runtime release manifest
         env:

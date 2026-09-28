@@ -1177,7 +1177,7 @@ fn run_correctness_chain(layout: &TestLayout, spec: FamilySpec, splits: (u32, u3
         });
     if !stage_server_bin.is_file() {
         bail!(
-            "skippy-server binary is required for activation chain tests; build it with `just skippy-build` or set SKIPPY_STAGE_SERVER_BIN"
+            "skippy-server binary is required for activation chain tests; build it with `just skippy-cli-build` or set SKIPPY_STAGE_SERVER_BIN"
         );
     }
     let model_id = format!(

@@ -18,7 +18,7 @@ model := models_dir / "GLM-4.7-Flash-Q4_K_M.gguf"
 macos_deployment_target := env("MACOSX_DEPLOYMENT_TARGET", "")
 export MACOSX_DEPLOYMENT_TARGET := if macos_deployment_target == "" { trim(read(justfile_directory() / "scripts/lib/macos-deployment-target.txt")) } else { macos_deployment_target }
 
-# Build for the current platform.
+# Bare `just` builds both products in order: Skippy, then MeshLLM.
 default: build
 
 import 'just/build.just'

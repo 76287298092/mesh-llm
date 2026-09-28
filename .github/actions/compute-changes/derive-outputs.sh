@@ -85,7 +85,7 @@ JUSTFILE_RECIPE_AWK='
   }
 
   function is_backend_recipe(name) {
-    return name ~ /^(with-lld|build|build-dev|build-mac|build-linux|build-runtime|release-host-build|release-host-build-windows|release-runtime-build|release-build|release-build-[[:alnum:]-]+|llama-prepare|llama-prepare-latest|llama-build|skippy-quantize-standalone-build|skippy-quantize-standalone-release-build|bundle|release-bundle|release-bundle-[[:alnum:]-]+)$/
+    return name ~ /^(with-lld|build|build-dev|mesh|skippy|skippy-release|skippy-cli-build|skippy-cli-release-build|release-host-build|release-runtime-build|release-build|release-build-[[:alnum:]-]+|llama-prepare|llama-prepare-latest|llama-build|skippy-quantize-standalone-build|skippy-quantize-standalone-release-build|bundle|release-bundle)$/
   }
 
   FNR == 1 { backend = 0 }

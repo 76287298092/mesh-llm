@@ -106,12 +106,12 @@ loaded from its flat imports under `just/`:
 ```bash
 # primary (CUDA 12.6.3 toolkit required on the host / container)
 just release-build-cuda
-just release-bundle-cuda "$VERSION"
+just release-bundle "$VERSION" dist cuda
 
 # Blackwell (CUDA 12.8 toolkit required on the host / container)
 # The Linux CUDA recipes select toolkit-dependent architectures internally.
 just release-build-cuda
-just release-bundle-cuda "$VERSION"
+just release-bundle "$VERSION" dist cuda
 ```
 
 The Linux CUDA recipe selects its architecture list from the toolkit detected

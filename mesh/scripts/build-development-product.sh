@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Compose the normal local development product: one dynamic host plus one
-# locally built native runtime adjacent to that host. The static llama build is
-# intentionally confined to package-native-runtime.sh.
+# Build the two local products in dependency order: Skippy's native runtime
+# and standalone CLI, then the MeshLLM host and console. The native llama
+# build is confined to package-native-runtime.sh.
 
 set -euo pipefail
 
@@ -65,39 +65,15 @@ case "$PROFILE" in
     *) echo "development product profile must be debug or dev, got: $PROFILE" >&2; exit 1 ;;
 esac
 
-if [[ -z "$BACKEND" ]]; then
-    case "$(uname -s)" in
-        Darwin) BACKEND=metal ;;
-        Linux)
-            if command -v nvidia-smi >/dev/null 2>&1 || command -v tegrastats >/dev/null 2>&1 || command -v nvcc >/dev/null 2>&1; then
-                BACKEND=cuda
-            elif command -v rocm-smi >/dev/null 2>&1 || command -v rocminfo >/dev/null 2>&1 || command -v hipcc >/dev/null 2>&1 || [[ -x /opt/rocm/bin/hipcc ]]; then
-                BACKEND=rocm
-            elif command -v glslc >/dev/null 2>&1 && \
-                { (command -v vulkaninfo >/dev/null 2>&1 && vulkaninfo --summary >/dev/null 2>&1) || \
-                  pkg-config --exists vulkan 2>/dev/null || [[ -n "${VULKAN_SDK:-}" ]]; }; then
-                BACKEND=vulkan
-            else
-                BACKEND=cpu
-            fi
-            ;;
-        *) BACKEND=cpu ;;
-    esac
-fi
-
-# The host is deliberately built first without a selected backend. A runtime
-# failure must never cause Cargo to fall back to a statically linked host.
-MESH_LLM_BUILD_PROFILE="$PROFILE" "$SCRIPT_DIR/build-host.sh" --profile "$PROFILE"
-
 host_dir="$REPO_ROOT/target/debug"
 runtime_out="$host_dir/native-runtimes"
-rm -rf "$runtime_out"
-runtime_args=(--build --backend "$BACKEND" --out "$runtime_out")
-[[ -n "$CUDA_ARCH" ]] && export LLAMA_STAGE_CUDA_ARCHITECTURES="$CUDA_ARCH"
-[[ -n "$ROCM_ARCH" ]] && export LLAMA_STAGE_AMDGPU_TARGETS="$ROCM_ARCH"
-"$SCRIPT_DIR/package-native-runtime.sh" "${runtime_args[@]}"
+just skippy "$BACKEND" "$CUDA_ARCH" "$ROCM_ARCH"
 
-echo "Composed local development product:"
-echo "  host:    $host_dir/mesh-llm"
-echo "  runtime: $runtime_out"
-echo "The host discovers this adjacent runtime automatically; no current-directory search is used."
+# MeshLLM consumes Skippy but remains a separate, backend-neutral product.
+MESH_LLM_BUILD_PROFILE="$PROFILE" just mesh "$PROFILE"
+
+echo "Built local products:"
+echo "  Skippy CLI:     $host_dir/skippy"
+echo "  Skippy runtime: $runtime_out"
+echo "  MeshLLM host:   $host_dir/mesh-llm"
+echo "Skippy accepts --runtime-bundle $runtime_out; MeshLLM discovers the adjacent runtime automatically."

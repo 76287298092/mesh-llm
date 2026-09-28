@@ -13,7 +13,7 @@ peer discovery, routing, transport, plugins, SDKs, and a web console.
 Run repository commands from the workspace root:
 
 ```bash
-just skippy-build
+just skippy-cli-build
 ./target/debug/skippy --help
 ```
 

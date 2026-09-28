@@ -104,6 +104,7 @@ jobs:
         with:
           ref: ${{ inputs.source_sha || github.sha }}
           persist-credentials: false
+      - uses: taiki-e/install-action@3d23c1bbdafe696dfccad2664945a04f47d03dc3 # just
       - name: Resolve product source layout
         id: layout
         uses: Mesh-LLM/mesh-llm/.github/actions/resolve-source-layout@196eba4c21f9b445d0bf11f7938f87e799dd7c8c # product-layout compatibility helpers
@@ -128,6 +129,17 @@ jobs:
         env:
           UI_DIR: ${{ steps.layout.outputs.ui_dir }}
         run: test -s "$UI_DIR/dist/index.html"
+      - name: Prepare standalone Skippy CLI
+        uses: ./.github/actions/prepare-skippy-cli-input
+        with:
+          profile: ${{ inputs.profile }}
+      - name: Upload immutable macOS Skippy CLI input
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: ci-skippy-cli-macos-${{ matrix.host.architecture }}
+          path: skippy-cli-input/
+          if-no-files-found: error
+          retention-days: 1
       - name: Prepare immutable macOS host
         uses: ./.github/actions/prepare-host-input
         with:

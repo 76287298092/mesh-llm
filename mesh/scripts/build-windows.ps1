@@ -4,10 +4,14 @@ param(
     [string]$RocmArch = "",
     [string]$BuildProfile = "",
     [switch]$DynamicHost,
-    [switch]$HostOnly
+    [switch]$HostOnly,
+    [switch]$SkippyOnly
 )
 
 $ErrorActionPreference = "Stop"
+if ($HostOnly -and $SkippyOnly) {
+    throw "-HostOnly and -SkippyOnly are mutually exclusive."
+}
 
 $scriptDir = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "../../scripts"))
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $scriptDir ".."))
@@ -1197,6 +1201,18 @@ Invoke-InRepo {
         "--target", "x86_64-pc-windows-msvc",
         "--out", $runtimeOut
     )
+
+    # Complete the standalone Skippy product before building MeshLLM.
+    $skippyArgs = @("build", "--locked", "-p", "skippy-cli", "--bin", "skippy", "--features", "dynamic-native-runtime")
+    if ($buildProfile -eq "release") {
+        $skippyArgs += "--release"
+    }
+    Invoke-NativeCommand "cargo" $skippyArgs
+    Write-Host "Skippy standalone CLI: target\$profileDir\skippy.exe"
+
+    if ($SkippyOnly) {
+        return
+    }
 
     if ($env:MESH_LLM_SKIP_UI -eq "1") {
         Write-Host "Skipping mesh-llm UI build because MESH_LLM_SKIP_UI=1."

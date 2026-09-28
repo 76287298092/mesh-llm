@@ -21,7 +21,13 @@ and lockfile. Product crates, authored docs, scripts and evaluations live with
 their owner; Mesh also owns the website and SDKs. Root `docs/` is generated
 website output.
 
-Build the standalone CLI from the workspace root with `just skippy-build`, then run `target/debug/skippy --help`. See [Skippy configuration](skippy/docs/CONFIGURATION.md) and [split serving](skippy/docs/SKIPPY_SPLITS.md).
+Bare `just` (or `just build`) builds the standalone Skippy product (patched
+llama.cpp runtime and `skippy` CLI) first, then the MeshLLM host and console.
+Use `just skippy` to build Skippy alone, `just mesh` to rebuild only MeshLLM,
+or `just skippy-cli-build` for only the Skippy CLI. Skippy's separately packaged
+native runtime can be supplied with `--runtime-bundle`. See
+[Skippy configuration](skippy/docs/CONFIGURATION.md)
+and [split serving](skippy/docs/SKIPPY_SPLITS.md).
 
 ## Quick start
 

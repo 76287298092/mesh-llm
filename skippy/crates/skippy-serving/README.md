@@ -8,8 +8,8 @@ in [`skippy-cli`](../skippy-cli/README.md); Mesh hosts the same service loops in
 
 ## Native runtime startup
 
-On Unix, `just skippy-build` builds the dynamic standalone host for local
-iteration; `just skippy-release-build` builds the release host. Build its
+On Unix, `just skippy-cli-build` builds the dynamic standalone host for local
+iteration; `just skippy-cli-release-build` builds the release host. Build its
 matching native runtime with `just release-runtime-build <backend>` (for example,
 `metal` on Apple Silicon), then pass `--runtime-bundle dist/native-runtimes` to
 the serving command. Runtime packaging verifies the native payload separately

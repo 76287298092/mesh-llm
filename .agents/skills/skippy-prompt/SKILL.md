@@ -47,7 +47,7 @@ startup, observation, prompt driving, and teardown.
    - Vulkan-capable Linux without CUDA/ROCm: Vulkan.
    - CPU only as a last resort or explicit user request.
 6. Build on each host with repo-native `just` targets. Use `just build` on
-   macOS and `just build-runtime backend=<backend> ...` on Linux when UI rebuild
+   macOS and `just release-runtime-build <backend>` on Linux when UI rebuild
    is unnecessary. Do not hand-roll cargo/cmake build sequences.
 7. Materialize or locate model/package inputs on the launcher. If the source
    model only exists locally, rsync package/materialized stage inputs to remote

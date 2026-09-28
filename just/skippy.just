@@ -1,14 +1,39 @@
-# Build the standalone server host; supply a separately packaged native runtime
-# through --runtime-bundle when running a serving command.
+# Build the complete standalone Skippy product for local iteration.
 [unix]
-skippy-build:
-    scripts/prepare-llama.sh pinned
-    just with-lld cargo build --locked -p skippy-cli --features dynamic-native-runtime
+skippy backend="" cuda_arch="" rocm_arch="":
+    @skippy/scripts/build-development-product.sh --backend "{{ backend }}" --cuda-arch "{{ cuda_arch }}" --rocm-arch "{{ rocm_arch }}"
+
+[windows]
+skippy backend="" cuda_arch="" rocm_arch="":
+    @powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-windows.ps1 -Backend "{{ backend }}" -CudaArch "{{ cuda_arch }}" -RocmArch "{{ rocm_arch }}" -SkippyOnly
+
+# Build only the standalone server host; supply a separately packaged native
+# runtime through --runtime-bundle when running a serving command.
+[unix]
+skippy-cli-build:
+    cargo build --locked -p skippy-cli --features dynamic-native-runtime
+
+[windows]
+skippy-cli-build:
+    @cargo build --locked -p skippy-cli --bin skippy --features dynamic-native-runtime
 
 [unix]
-skippy-release-build:
-    scripts/prepare-llama.sh pinned
-    just with-lld cargo build --release --locked -p skippy-cli --features dynamic-native-runtime
+skippy-cli-release-build:
+    cargo build --release --locked -p skippy-cli --features dynamic-native-runtime
+
+[windows]
+skippy-cli-release-build:
+    @cargo build --release --locked -p skippy-cli --bin skippy --features dynamic-native-runtime
+
+# Build the complete Skippy release product for the current platform.
+[unix]
+skippy-release backend="" target="":
+    @just release-runtime-build "{{ backend }}" "{{ target }}"
+    @just skippy-cli-release-build
+
+[windows]
+skippy-release backend="":
+    @powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-windows.ps1 -Backend "{{ backend }}" -BuildProfile release -SkippyOnly
 
 # Build the skippy benchmark/debug telemetry collector.
 [unix]

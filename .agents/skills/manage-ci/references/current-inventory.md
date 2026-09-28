@@ -361,7 +361,7 @@ runner-contract update is active.
 | `static-abi-artifact.yml` | Typed static llama ABI producer with internal runner policy and an exact toolchain-epoch output |
 | `ci-rust-tests-slice.yml` | Typed deterministic Cargo test batches that verify the producer-owned static ABI toolchain epoch and a pinned, digest-verified Skippy correctness fixture; related PR changes (including `mesh-llm-skippy-adapter`) additionally compile the asserted `mesh-llm-skippy-adapter` library test `config::hardware_translation_tests::safetensors_checkpoint_reaches_mesh_host_runtime` and smoke an immutable SmolLM2 SafeTensors checkpoint through the Mesh config/adapter/Skippy serving/native path to sampled prefill and decode with every supported load-time quantization |
 | `ci-{linux,macos,windows}-host-slice.yml` | Platform-pure neutral host producers; no empty cross-platform jobs |
-| `ci-{linux,macos,windows}-runtime-slice.yml` | Platform-pure native runtime producers. The Linux CPU row also runs the native runtime-event gate against the runtime it just built and uploads its evidence. |
+| `ci-{linux,macos,windows}-runtime-slice.yml` | Platform-pure native runtime producers. The Linux CPU row also runs the native runtime-event gate against its verified built-or-restored runtime and uploads its evidence. |
 | `ci-{linux,macos,windows}-product-slice.yml` | Platform-pure composition-only product consumers |
 | `ci-platform-checks-slice.yml` | macOS portable/unit, Windows portable/unit, and Windows log-store privacy ACL checks |
 | `ci-linux-product-smoke-slice.yml`, `ci-macos-product-smoke-slice.yml` | Platform-local core, scripted, and model-download smokes. Core CPU/CUDA/Metal restores the registry-pinned SmolLM2 Q8 and IBM Granite 4.0 H Q4 pair once and runs both through standalone inference, OpenAI client compatibility, and constrained-Tokio restart. The CPU two-node split row uses the same pair for dense KV and strict recurrent `KvRecurrent` validation, persists strict-whitelist seed/worker identity and stage/model snapshots, reconciles two-observer topology and exact two-stage contiguous-cut agreement, and uploads evidence on every outcome. The Linux CPU row additionally preserves node cache roots across restart and requires an observable durable-L3 fill before status and clear verification. Product restore verifies the manifest backend and forces discovery through the bundled runtime. CUDA verifies the packaged dependency closure with `LD_LIBRARY_PATH` unset, runs inherited and strict device probes, installs no cudart or cuBLAS packages, and leaves the NVIDIA driver host-owned. There is no separate product-integration or Qwen migration lane. |
@@ -699,11 +699,22 @@ boundary.
 
 - `prepare-host-input` / `prepare-windows-host-input`: neutral host bytes,
   import report and checksum.
+- `prepare-skippy-cli-input`: one backend-neutral standalone Skippy CLI and
+  checksum per platform host slice, built before the MeshLLM host. PR/main CI
+  publishes `ci-skippy-cli-<platform>-<architecture>` once per platform;
+  release publishes separate versioned CLI archives from the same producer.
 - `prepare-native-runtime-input`: one verified native runtime archive and
   manifest. Non-Windows artifacts include the checksum-bound
   `skippy-package-builder` tool used by split-serving consumers to prepare
   package-v2 fixtures; Windows artifacts remain DLL-only until the producer has
-  a reliable import-library path for the tool.
+  a reliable import-library path for the tool. The Linux CPU row uses a
+  forced-hosted selection from the central runner policy, leaving accelerator
+  rows on their normal provider, and can restore an exact cache of this
+  packaged runtime, keyed by target,
+  toolchain/image epoch, Skippy and native recipe inputs. Restored bytes are
+  verified against the planned backend and target as well as the full package
+  contract before the runtime-event gate and run-scoped upload. Only trusted
+  main pushes publish; PRs restore only and Depot rows bypass this cache.
 - `prepare-static-abi-input`: portable static ABI archive.
 - `compose-product-input`: exact host/runtime verification and composition.
   Linux CPU readiness also feeds the composed host's real `runtime list
@@ -1092,10 +1103,11 @@ installer/native/hardware crates.
 Runtime selection is shared with Mesh embedded local startup; no runner or
 release publication policy changes.
 
-Unix standalone server host builds are exposed as `just skippy-build`
-and `just skippy-release-build`; both enable dynamic-native-runtime.
-They consume a separately packaged runtime at execution time and do not alter
-CI lane selection or release publication.
+Unix standalone server host builds are exposed as `just skippy-cli-build`
+and `just skippy-cli-release-build`; both enable dynamic-native-runtime.
+They consume a separately packaged runtime at execution time. Platform host
+and release jobs build the CLI once per platform, with release publishing a
+separate Skippy CLI archive.
 
 `skippy-api` owns shared single-stage configuration, family cache policy and
 checkpoint preparation. The host consumes it; publish/affected-crate rosters and
@@ -1111,7 +1123,7 @@ Split-certification roster generation now targets `skippy/crates/skippy-api/src/
 The release-bound recipe build script and admission checks move with this neutral
 owner; canary generation/check commands and enforcement policy are unchanged.
 
-The standalone command now lives in `skippy-cli` (binary `skippy`); `skippy-serving` is the Clap-free embedded service library. CLI source is included in Docker prechecks, affected-crate selection, split-serving ownership and the publish roster after its server dependency. Certification, benchmark, smoke and WAN lab launches use the new binary. `just skippy-build` and `just skippy-release-build` select the dynamic-runtime CLI.
+The standalone command now lives in `skippy-cli` (binary `skippy`); `skippy-serving` is the Clap-free embedded service library. CLI source is included in Docker prechecks, affected-crate selection, split-serving ownership and the publish roster after its server dependency. Certification, benchmark, smoke and WAN lab launches use the new binary. `just skippy-cli-build` and `just skippy-cli-release-build` select the dynamic-runtime CLI.
 
 Mesh raw byte-stream interfaces and TCP/QUIC relay are owned by
 `mesh-llm-transport`, consumed by the host and client. The runtime-product

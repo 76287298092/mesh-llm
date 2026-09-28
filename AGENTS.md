@@ -54,8 +54,11 @@ The build runs Tailwind, Eleventy and Pagefind. It copies website source assets 
 Always use `just`. Never build manually.
 
 ```bash
-just build         # DEBUG build → ./target/debug/mesh-llm (fast, for iteration)
-just release-build # RELEASE build → ./target/release/mesh-llm (slow, for serious testing / deploy)
+just               # DEBUG products → ./target/debug/skippy, then ./target/debug/mesh-llm
+just skippy        # standalone Skippy CLI plus selected native runtime
+just mesh          # MeshLLM console and backend-neutral host only
+just build         # same as bare `just`
+just release-build # RELEASE products → ./target/release/skippy, then ./target/release/mesh-llm
 just bundle        # portable tarball (uses the release binary)
 just stop          # stop tracked mesh-llm runtime processes
 just test          # quick inference test against :9337
@@ -68,12 +71,15 @@ just ui-clean      # nuke node_modules + dist (fixes stale npm state)
 
 **Which build to use:**
 
-- `just build` → produces `./target/debug/mesh-llm` plus its adjacent
-  `target/debug/native-runtimes/` directory. It is the normal fast local
-  product: a backend-neutral dynamic host and one locally packaged runtime.
+- `just build` → builds `./target/debug/skippy` and its native runtime first,
+  then `./target/debug/mesh-llm` and console. Both binaries share the adjacent
+  `target/debug/native-runtimes/` directory. Skippy takes it through
+  `--runtime-bundle`; MeshLLM discovers it automatically. This is the normal
+  fast local build for both products.
   Use it for iteration and startup checks; use a release product for serious
   behavior/performance testing or deployment.
-- `just release-build` → produces `./target/release/mesh-llm`. Use this for any
+- `just release-build` → produces `./target/release/skippy` before
+  `./target/release/mesh-llm`. Use this for any
   serious testing, deploying to test machines, bundling, or releases. Release
   builds always produce one backend-neutral host plus a packageable native
   runtime. When validating branch-local Skippy ABI, llama.cpp patches, MAS
@@ -97,13 +103,19 @@ first decide whether you need the default dynamic release packaging path or an
 embedded branch-local native ABI; do not test new ABI symbols against downloaded
 release native runtimes.
 
-Release artifacts follow one three-layer graph:
+Release artifacts follow one four-layer graph:
 
 | Layer | Command | Output |
 |---|---|---|
 | Neutral host | `just release-host-build` | `target/release/mesh-llm` plus an import-policy report during packaging |
+| Standalone Skippy CLI | `just skippy-cli-release-build` | `target/release/skippy`; release CI publishes a separate versioned CLI archive |
 | Native runtime | `just release-runtime-build <backend>` | `dist/native-runtimes/<runtime-id>/` plus archive/checksum |
 | Product | `just release-bundle vX.Y.Z <output>` | `mesh-bundle/` containing the host, one runtime, and product/host-import manifests |
+
+`just skippy` and `just skippy-release` build Skippy's CLI and selected native
+runtime without building MeshLLM. `just mesh` builds only MeshLLM. Bare `just`,
+`just build`, and `just release-build` build Skippy first, then MeshLLM. Both products share
+the workspace version and release tag for now, but have distinct deliverables.
 
 The host dependency policy is enforced by
 `scripts/verify-host-dependencies.py`. Release, installer, SDK, native-package,
@@ -137,10 +149,11 @@ mesh-llm embeds the stage runtime and links patched llama.cpp static ABI
 libraries. The only durable llama.cpp patch queue is
 `skippy/llama_cpp/patches`, pinned by `skippy/llama_cpp/upstream.txt`.
 
-- `just build` builds the UI and a dynamic host, then packages the selected
-  local runtime next to it. The host never links a backend library.
+- `just build` packages the selected native runtime and builds the standalone
+  Skippy CLI, then builds the UI and dynamic MeshLLM host. The hosts never link
+  a backend library.
 - Static llama.cpp compilation is the explicitly named native-runtime primitive
-  (`just build-runtime` / `scripts/package-native-runtime.sh --build`), used
+  (`just release-runtime-build` / `scripts/package-native-runtime.sh --build`), used
   when changing the Skippy ABI or patch queue. It is not a host build path.
 - Do not reintroduce an external `llama-server` / `rpc-server` runtime lane.
 - If you need to update upstream llama.cpp, use `scripts/prepare-llama.sh`,
