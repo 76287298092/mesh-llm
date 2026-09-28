@@ -14,7 +14,10 @@ use super::{
 };
 use anyhow::{Result, ensure};
 
-use crate::kernels::GdnShape as Shape;
+use crate::kernels::{
+    GdnShape as Shape,
+    ab_schedule::{self, Schedule},
+};
 
 pub(super) type StageObserver<'a> = dyn FnMut(&str, &Buffer<'_>) -> Result<()> + 'a;
 
@@ -25,6 +28,7 @@ pub(super) struct Layer<'w, 'ctx> {
     z: resident_fp8::Projection<'w, 'ctx>,
     a: resident_bf16::Projection<'w, 'ctx>,
     b: resident_bf16::Projection<'w, 'ctx>,
+    ab_schedule: Schedule,
     conv: Convolution<'w, 'ctx>,
     core: GdnCore<'w, 'ctx>,
     out: resident_fp8::Projection<'w, 'ctx>,
@@ -50,6 +54,7 @@ impl<'w, 'ctx> Layer<'w, 'ctx> {
                 && (1..=256).contains(&shape.head_width),
             "invalid resident GDN head dimensions"
         );
+        let ab_schedule = ab_schedule::current()?;
         let hidden = shape.hidden;
         let channels = (2 * shape.key_heads + shape.value_heads) * shape.head_width;
         let inner = shape.value_heads * shape.head_width;
@@ -91,6 +96,7 @@ impl<'w, 'ctx> Layer<'w, 'ctx> {
                 hidden,
                 shape.value_heads,
             )?,
+            ab_schedule,
             conv: Convolution::new(weights, &format!("{attention}.conv1d.weight"), channels)?,
             core: GdnCore::new(
                 weights,
@@ -176,9 +182,18 @@ impl<'w, 'ctx> Layer<'w, 'ctx> {
         observe(&mut observer, "qkv", &qkv.values)?;
         let z = self.z.run(ctx, module, &normalized, rows)?;
         observe(&mut observer, "z", &z.values)?;
-        let a = self.a.run(ctx, module, &normalized, rows)?;
-        observe(&mut observer, "a", &a.values)?;
-        let b = self.b.run(ctx, module, &normalized, rows)?;
+        let paired =
+            self.a
+                .try_run_pair(&self.b, ctx, module, &normalized, (self.ab_schedule, rows))?;
+        let (a, b) = if let Some((a, b)) = paired {
+            observe(&mut observer, "a", &a.values)?;
+            (a, b)
+        } else {
+            let a = self.a.run(ctx, module, &normalized, rows)?;
+            observe(&mut observer, "a", &a.values)?;
+            let b = self.b.run(ctx, module, &normalized, rows)?;
+            (a, b)
+        };
         observe(&mut observer, "b", &b.values)?;
         let conv = self
             .conv

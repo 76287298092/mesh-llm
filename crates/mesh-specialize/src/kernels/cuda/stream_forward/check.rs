@@ -88,6 +88,7 @@ pub(in crate::kernels) fn run(
         "arithmetic_profile": fp8_profile::current()?.name(),
         "attention_profile": attention_profile::current()?.name(),
         "nvfp4_profile": nvfp4_profile::current()?.name(),
+        "ab_schedule": crate::kernels::ab_schedule::current()?.name(),
         "legacy_gpu_greedy": crate::kernels::cuda::model_greedy::enabled()?,
         "stream_forward": stream.report(),
         "weight_readback": weight_readback,
@@ -191,6 +192,7 @@ impl Harness<'_, '_, '_, '_> {
         let report = json!({
             "step": index,
             "input_tokens": input.len(),
+            "ab_shape_schedule": self.stream.ab_schedule.report(input.len(), self.stream.shapes.gdn_value_heads, self.stream.shapes.hidden),
             "legacy_token": reference.token,
             "stream_token": output.token,
             "stream_cpu_greedy_token": stream_cpu_token,

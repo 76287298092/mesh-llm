@@ -299,6 +299,18 @@ Per-site evidence and reassociation limits are in
 [the FP64 section](optimizations/decode-a16-pack.md#paired-fp64-continuation).
 PTX/JIT, GPU, sanitizer, and actual-model qualification are pending.
 
+## Exact FP8 vector16 decode (unqualified)
+
+`kernels/nvptx/fp8_linear_exact_vector16.rs` adds two inline sites:
+`coordinates` reads `%laneid`, `%tid.x`, `%ctaid.x`; `load16` issues readonly
+`ld.global.v4.u32` for a fully readable aligned 16-byte global span. Integer
+products/adds, full-mask paired-word shuffles, rounded conversion and scale
+products reuse the unchanged helpers inventoried in `fp8_linear_exact.rs`.
+Independent oracle: `reference/projections.rs::linear` (decoded logical FP64).
+ABI, bounds, admission, complete fixture coverage and reproduction command:
+[vector16 decode](findings/fp8-exact-vector16.md). PTX compilation, JIT resources,
+GPU/sanitizer and full-model evidence are pending; no measured speedup.
+
 ## Native encoded embedding and F32 GDN parameters
 
 `fp8_embedding_gather` and `gdn_gates_f32_params` add entry points but no new

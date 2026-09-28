@@ -1,6 +1,8 @@
 //! Device-specific instruction qualification, separate from model execution.
 
+pub mod ab_schedule;
 pub mod attention_profile;
+pub mod fp8_decode_schedule;
 pub mod fp8_profile;
 pub mod nvfp4_profile;
 #[cfg(any(test, target_os = "linux"))]

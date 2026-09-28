@@ -15,6 +15,7 @@
 //! IDs (4 bytes per row), one stream synchronize, and one 16-byte selection
 //! readback. Full BF16 logits are downloaded only when requested.
 
+mod ab_schedule;
 pub(super) mod bench;
 pub(in crate::kernels) mod check;
 pub(in crate::kernels) mod chunked_bench;
@@ -41,8 +42,11 @@ use super::{
 };
 use crate::{
     engine::rope::TextRope,
-    kernels::{DecoderConfig, attention_profile, fp8_profile, nvfp4_profile},
+    kernels::{
+        DecoderConfig, ab_schedule as ab_profile, attention_profile, fp8_profile, nvfp4_profile,
+    },
 };
+use ab_schedule::PairedAb;
 use anyhow::{Context as _, Result, anyhow, ensure};
 use functions::Functions;
 use layers::Step;
@@ -62,6 +66,8 @@ pub(super) struct StreamForward<'m, 'w, 'ctx> {
     kernels: Functions<'m, 'ctx>,
     attention_profile: attention_profile::Profile,
     split_attention: Option<SplitAttention<'m, 'ctx>>,
+    ab_schedule: ab_profile::Schedule,
+    paired_ab: Option<PairedAb<'m, 'ctx>>,
     stream: Stream<'ctx>,
     arena: Buffer<'ctx>,
     rope: Rope<'ctx>,
@@ -97,6 +103,7 @@ impl<'m, 'w, 'ctx> StreamForward<'m, 'w, 'ctx> {
         max_rows: usize,
     ) -> Result<Self> {
         let attention_profile = ensure_supported_profiles()?;
+        let ab_schedule = ab_profile::current()?;
         let context = weights.context();
         ensure!(
             module.belongs_to(context),
@@ -112,8 +119,12 @@ impl<'m, 'w, 'ctx> StreamForward<'m, 'w, 'ctx> {
             .then(|| SplitAttention::new(context, module, &shapes, max_rows, config.capacity))
             .transpose()?;
         let bound = ModelWeights::bind(weights, config)?;
-        let specs = forward_program(&shapes, max_rows)?;
+        let mut specs = forward_program(&shapes, max_rows)?;
+        let paired_ab = PairedAb::new(ab_schedule, module, &shapes, &mut specs)?;
         let plan = ArenaPlan::place(&specs)?;
+        if let Some(paired) = &paired_ab {
+            paired.validate_plan(&plan, max_rows)?;
+        }
         let arena = Buffer::new(context, plan.total_bytes)?;
         let slots = Slots::resolve(&plan, arena.pointer())?;
         arena.upload_at(slots.row_ids_offset, &row_id_bytes(max_rows)?)?;
@@ -130,6 +141,8 @@ impl<'m, 'w, 'ctx> StreamForward<'m, 'w, 'ctx> {
             kernels,
             attention_profile,
             split_attention,
+            ab_schedule,
+            paired_ab,
             stream,
             arena,
             rope,
@@ -149,8 +162,13 @@ impl<'m, 'w, 'ctx> StreamForward<'m, 'w, 'ctx> {
             "arena_bytes": self.arena_bytes,
             "arena_peak_live_bytes": self.peak_live_bytes,
             "attention_profile": self.attention_profile.name(),
+            "fp8_decode_schedule": self.kernels.fp8_decode_report(),
             "attention_workspace_bytes": self.split_attention.as_ref().map_or(0, SplitAttention::workspace_bytes),
             "split_attention": self.split_attention.as_ref().map(SplitAttention::report),
+            "ab_schedule": self.ab_schedule.name(),
+            "ab_decode": self.ab_schedule.report(1, self.shapes.gdn_value_heads, self.shapes.hidden),
+            "ab_max_rows": self.ab_schedule.report(self.max_rows, self.shapes.gdn_value_heads, self.shapes.hidden),
+            "paired_ab": self.paired_ab.as_ref().map(PairedAb::report),
             "rope_table_bytes": self.rope.buffer.len(),
             "rope_positions": self.rope.positions,
             "kernels": functions::KERNEL_NAMES,
@@ -265,7 +283,15 @@ impl<'m, 'w, 'ctx> StreamForward<'m, 'w, 'ctx> {
         layers::entry(&e, &self.bound, slots, shapes, step.rows)?;
         for layer in &self.bound.layers {
             match &layer.block {
-                Block::Gdn(weights) => layers::gdn(&e, weights, slots, shapes, state, step.rows)?,
+                Block::Gdn(weights) => layers::gdn(
+                    &e,
+                    weights,
+                    slots,
+                    shapes,
+                    state,
+                    step.rows,
+                    self.paired_ab.as_ref(),
+                )?,
                 Block::Attention(weights) => {
                     layers::attention(
                         &e,

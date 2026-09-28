@@ -1,6 +1,10 @@
 //! Kernel handles resolved once per executor, never per launch.
 
 use super::super::driver::{Function, Module};
+use crate::kernels::{
+    fp8_decode_schedule::{self, Decisions, Schedule, Selection},
+    fp8_profile::Profile,
+};
 use anyhow::{Context as _, Result};
 
 /// Every kernel the default exact profile can launch in a whole forward.
@@ -11,6 +15,9 @@ pub(super) struct Functions<'m, 'ctx> {
     pub(super) residual_add: Function<'m, 'ctx>,
     pub(super) fp8_quantize: Function<'m, 'ctx>,
     pub(super) fp8_linear_exact: Function<'m, 'ctx>,
+    fp8_linear_exact_vector16: Option<Function<'m, 'ctx>>,
+    fp8_decode_schedule: Schedule,
+    fp8_decode_decisions: Decisions,
     pub(super) fp8_linear_exact4: Function<'m, 'ctx>,
     pub(super) fp8_verify_exact: Function<'m, 'ctx>,
     pub(super) fp8_prefill_exact: Function<'m, 'ctx>,
@@ -63,13 +70,47 @@ pub(super) const KERNEL_NAMES: [&str; 26] = [
 ];
 
 impl<'m, 'ctx> Functions<'m, 'ctx> {
+    /// StreamForward admits only the exact arithmetic profile. All pointer and
+    /// finite-code contracts are inherited from the prevalidated stream bindings.
+    pub(super) fn fp8_decode(
+        &self,
+        rows: usize,
+        width: usize,
+        pointers: [u64; 2],
+    ) -> Result<&Function<'m, 'ctx>> {
+        let selection = self
+            .fp8_decode_schedule
+            .select(Profile::Exact, rows, width, pointers);
+        self.fp8_decode_decisions.record(selection);
+        if selection == Selection::Vector16 {
+            self.fp8_linear_exact_vector16
+                .as_ref()
+                .context("vector16 handle was not resolved")
+        } else {
+            Ok(&self.fp8_linear_exact)
+        }
+    }
+
+    pub(super) fn fp8_decode_report(&self) -> serde_json::Value {
+        let mut report = self.fp8_decode_decisions.report(self.fp8_decode_schedule);
+        report["vector16_handle_resolved"] = self.fp8_linear_exact_vector16.is_some().into();
+        report
+    }
+
     pub(super) fn new(module: &'m Module<'ctx>) -> Result<Self> {
         let get = |name: &str| {
             module
                 .function(name)
                 .with_context(|| format!("resolve stream forward kernel {name}"))
         };
+        let fp8_decode_schedule = fp8_decode_schedule::current()?;
+        let fp8_linear_exact_vector16 = (fp8_decode_schedule == Schedule::Vector16)
+            .then(|| get(fp8_decode_schedule::VECTOR16_KERNEL))
+            .transpose()?;
         Ok(Self {
+            fp8_linear_exact_vector16,
+            fp8_decode_schedule,
+            fp8_decode_decisions: Decisions::default(),
             fp8_embedding_gather: get("fp8_embedding_gather")?,
             embedding_norm: get("embedding_norm_bf16")?,
             residual_norm: get("residual_norm_bf16")?,

@@ -16,6 +16,7 @@ mod causal_conv4;
 mod device_view;
 mod driver;
 pub(super) mod embedding_norm;
+mod fp8_decode_trial;
 pub(super) mod fp8_exact_trial;
 pub(super) mod fp8_mlp_trial;
 mod gdn_output;

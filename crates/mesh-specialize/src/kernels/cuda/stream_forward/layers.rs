@@ -2,6 +2,7 @@
 //! of the arena template in `program.rs`.
 
 use super::{
+    ab_schedule::PairedAb,
     graph_position::past_argument,
     ops::{Args, EPSILON, Enqueue, to_u32},
     program::{NormSlots, Shapes, Slots},
@@ -61,6 +62,7 @@ pub(super) fn gdn(
     shapes: &Shapes,
     state: &ResidentState<'_>,
     rows: usize,
+    paired_ab: Option<&PairedAb<'_, '_>>,
 ) -> Result<()> {
     let g = &s.gdn;
     let k = e.kernels;
@@ -76,8 +78,16 @@ pub(super) fn gdn(
     e.embedding_norm([s.hidden, s.row_ids, w.norm], &g.norm, rows, h)?;
     e.projection(&w.qkv, g.norm.out, &g.qkv, rows)?;
     e.projection(&w.z, g.norm.out, &g.z, rows)?;
-    e.bf16_linear([g.norm.out, w.a], g.a, rows, [vh, h])?;
-    e.bf16_linear([g.norm.out, w.b], g.b, rows, [vh, h])?;
+    if let Some(paired) = paired_ab.filter(|_| rows == 1) {
+        paired.enqueue(
+            e,
+            [g.norm.out, w.a, w.b, g.a[0], g.b[0], g.a[1], g.b[1]],
+            rows,
+        )?;
+    } else {
+        e.bf16_linear([g.norm.out, w.a], g.a, rows, [vh, h])?;
+        e.bf16_linear([g.norm.out, w.b], g.b, rows, [vh, h])?;
+    }
     let conv = Args::new()
         .ptrs(&[g.qkv.values, w.conv, history])
         .ptrs(&g.conv)

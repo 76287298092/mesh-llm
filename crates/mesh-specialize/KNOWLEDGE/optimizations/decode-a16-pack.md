@@ -275,3 +275,82 @@ All eleven inline-assembly sites are registered in `KNOWLEDGE/asm-inventory.md`.
 Durable rule: retaining FP64 permits a different parallel schedule, not a
 universal bit-identity claim. Keep strict bounded failures and actual-model
 qualification separate from microkernel timing.
+
+## Default-off model integration
+
+Implemented against coordinator-supplied source `4e75df069`, 2026-09-28.
+`MESH_SPECIALIZE_AB_SCHEDULE=baseline|paired-fp64` is process-fixed, defaults to
+baseline, and rejects unknown/empty values. It is independent of FP8, NVFP4,
+and attention profiles. Selection admits paired FP64 only for M1, N1..256,
+and K8..32768 divisible by eight. Larger M and unsupported shapes retain the
+two unchanged `bf16_linear_decode` calls. The FP32 candidate remains trial-only.
+No default promotion or threshold changes are included.
+
+`src/kernels/ab_schedule.rs` owns parsing, pure shape selection, and reports
+that distinguish requested and selected schedules. `resident_gdn::Layer` fixes
+the request at construction; `resident_bf16::Projection::try_run_pair` validates
+the same resident owner, matching N/K, shared CUDA context, exact input length,
+and all seven non-null, aligned, non-overlapping address extents. Verified weight
+views and owned output buffers remain live through launch and synchronization,
+including launch-error cleanup. Baseline keeps its original A-observe-B-observe
+ordering. Paired mode observes both outputs after their shared completion.
+
+The stream path owns a pre-resolved optional `PairedAb` handle, with no new device
+buffers, in `stream_forward/ab_schedule.rs`. `layers::gdn` receives it as its
+seventh argument and uses `e.launch` with the unchanged paired ABI only for M1.
+The existing normalized input, A/B weights, and `g.a/g.b` values/raw slots supply
+all seven addresses. The enqueue path validates all seven spans before launch;
+ActiveStream checks the function's context. It allocates nothing and performs no
+lookup, host transfer, or wait. Functions/ops modules remain untouched by this
+worker; the concurrent FP8 schedule metadata is preserved.
+
+### Paired-only liveness repair
+
+The original arena template records A at operation index **7** and B at **8**.
+Unused raw output lifetimes originally end at their respective write operations,
+so a sequential plan may legally reuse A.raw storage for B.raw or B.values.
+That reuse is invalid for the simultaneous paired launch.
+
+Only when paired FP64 is admitted, all four A/B output specs are extended over
+the inclusive `[7,8]` interval before arena placement. A/B values retain their
+later gate-consumption endpoints. Normalized input must already span both
+operations; the planner rejects an inconsistent template before mutation.
+Operation numbers and all unrelated buffer specs are unchanged. Baseline leaves
+all specs and therefore its layout unchanged. An opted-in arena planned for
+M16/M512 remains conservatively extended even though those multi-row forwards
+still use two baseline kernels.
+
+Full max_rows extent checks explicitly verify the normalized input and all four
+output slots against the arena and against one another. A shared pure
+`validate_launch_access` additionally checks the complete seven-pointer launch,
+including normalized-input/output aliasing, weight extents, alignment, and address
+overflow. Host tests cover max_rows **1, 16, 512**, untouched baseline specs,
+unsupported-shape fallback, malformed templates, short output slots, and every
+pairwise pointer alias. These are authored tests; parent owns execution.
+
+Graph capture rejects a configured paired schedule before graph allocation or
+capture, even if another shape would fall back. Combined graph+A/B qualification
+must be explicit rather than inheriting the graph control's result. A pure guard
+test covers both schedules. Model benchmark/profile and stream-check reports
+include requested/shape-selected schedules, and stream checks report each step's
+actual M/N/K selection. The existing source-derived BF16/FP32 GDN parameter
+representation is untouched. Model-score and source-loading code are unchanged.
+
+### Qualification status
+
+Coordinator-reported component evidence at `4e75df069`: all ten plain GPU cases
+pass for both candidates; FP64 raw-FP32 and BF16 bits match both the sequential
+oracle and control. Reported FP64 JIT resources are **46 registers, 32 bytes
+static shared, zero local bytes**. At N48/K5120, reported warmed paired event
+median is about **4.94 us** versus **38.0 us** for two control launches. These
+are coordinator-reported cache-resident component timings, not worker-reproduced
+results or model throughput. Parent retains the raw evidence and qualification.
+
+The new integration is not covered by those component results. Required next
+gates are parent host compilation/Clippy/tests, actual-model same-input A/B and
+complete state/logit bit equivalence, and model memcheck/racecheck/synccheck.
+Only then measure model timing; graph+A/B and MTP remain separately unqualified.
+The worker ran direct edition-2024 rustfmt only, with child traversal disabled,
+and no Cargo, Git, SSH, GPU, or delegation. All touched source files stay below
+1,000 lines. The large profile JSON is built first, then A/B metadata is added;
+no crate recursion limit was raised.

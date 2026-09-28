@@ -5,6 +5,7 @@ Start with [the implementation plan](../PLAN.md) and the
 
 | Entry | Status |
 | --- | --- |
+| [Exact FP8 vector16 decode](findings/fp8-exact-vector16.md) | Implemented, unqualified: explicit exact M=1 vector-load schedule, independent oracle/control trial; default unchanged |
 | [Direct Ninfer source](optimizations/direct-ninfer-source.md) | Original .ninfer file executes target-only; all1589 canonical/GPU hashes match; bounded model checks/sanitizers and49K-position scoring pass; no throughput parity |
 | [Native representation contract](findings/ninfer-import-contract.md) | Exact source layouts, FP8 embedding/F32 GDN compatibility, reversible transforms and remaining arithmetic differences |
 | [BF16 split attention v2](optimizations/attention-v2.md) | Implemented, unqualified: split-decode opt-in wired to legacy/stream, exact larger prefill, independent FP64 trial; no default change |

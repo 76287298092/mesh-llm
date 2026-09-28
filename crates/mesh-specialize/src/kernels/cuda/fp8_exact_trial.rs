@@ -16,6 +16,11 @@ pub(crate) fn standalone(ptx: &str, device: i32) -> Result<Value> {
         "exact FP8 probe requires SM120"
     );
     let module = Module::load(&ctx, ptx)?;
+    // Explicit standalone hook; resident/MTP component checks still call the
+    // unchanged `run` below and do not acquire schedule timings or large fixtures.
+    if super::fp8_decode_trial::enabled()? {
+        return super::fp8_decode_trial::run(&ctx, &module);
+    }
     let mut result = run(&ctx, &module)?;
     result["kind"] = json!("exact-fp8-projection-probe");
     result["device"] = json!(info);

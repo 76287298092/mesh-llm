@@ -22,6 +22,7 @@ mod fp8_embedding_gather;
 mod fp8_linear;
 mod fp8_linear_exact;
 mod fp8_linear_exact4;
+mod fp8_linear_exact_vector16;
 mod fp8_linear_rounding;
 mod fp8_native_prefill;
 mod fp8_prefill_exact;

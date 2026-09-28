@@ -283,7 +283,9 @@ impl<'a, 's, 'm, 'ctx> Enqueue<'a, 's, 'm, 'ctx> {
         )?;
         let (kernel, tile_rows, tile_columns, threads) = fp8_schedule(rows, w.channels);
         let function = match kernel {
-            Fp8Kernel::Exact => &self.kernels.fp8_linear_exact,
+            Fp8Kernel::Exact => self
+                .kernels
+                .fp8_decode(rows, w.width, [s.codes, w.weight])?,
             Fp8Kernel::Exact4 => &self.kernels.fp8_linear_exact4,
             Fp8Kernel::Verify => &self.kernels.fp8_verify_exact,
             Fp8Kernel::Prefill => &self.kernels.fp8_prefill_exact,

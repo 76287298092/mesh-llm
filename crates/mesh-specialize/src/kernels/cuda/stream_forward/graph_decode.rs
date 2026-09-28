@@ -7,7 +7,7 @@
 
 use super::{StreamForward, StreamOutput, graph_drain, graph_position::Position, layers::Step};
 use crate::kernels::{
-    attention_profile,
+    ab_schedule, attention_profile,
     cuda::{
         driver::{
             Buffer,
@@ -42,6 +42,14 @@ pub(super) fn ensure_exact(profile: attention_profile::Profile) -> Result<()> {
     Ok(())
 }
 
+fn ensure_baseline_ab(schedule: ab_schedule::Schedule) -> Result<()> {
+    ensure!(
+        schedule == ab_schedule::Schedule::Baseline,
+        "graph execution requires MESH_SPECIALIZE_AB_SCHEDULE=baseline; paired A/B is not combined-qualified"
+    );
+    Ok(())
+}
+
 impl<'a, 'm, 'w, 'ctx> GraphDecode<'a, 'm, 'w, 'ctx> {
     /// Capture without running any node or changing the committed cursor. Prefill
     /// must already have completed eagerly on this executor and fresh session.
@@ -50,6 +58,7 @@ impl<'a, 'm, 'w, 'ctx> GraphDecode<'a, 'm, 'w, 'ctx> {
         session: &'a mut Session<'ctx>,
     ) -> Result<Self> {
         ensure_exact(forward.attention_profile)?;
+        ensure_baseline_ab(forward.ab_schedule)?;
         ensure!(!session.cursor.is_poisoned(), "graph session is poisoned");
         ensure!(
             session.cursor.past() > 0,
@@ -229,7 +238,14 @@ fn enqueue_replay(
 
 #[cfg(test)]
 mod tests {
-    use super::ensure_exact;
+    use super::{ensure_baseline_ab, ensure_exact};
+    use crate::kernels::ab_schedule::Schedule;
+
+    #[test]
+    fn rejects_paired_ab_before_graph_capture() {
+        assert!(ensure_baseline_ab(Schedule::Baseline).is_ok());
+        assert!(ensure_baseline_ab(Schedule::PairedFp64).is_err());
+    }
     use crate::{engine::session::Cursor, kernels::attention_profile::Profile};
 
     #[test]

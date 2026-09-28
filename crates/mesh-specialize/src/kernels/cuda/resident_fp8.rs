@@ -21,6 +21,7 @@ pub(super) struct Projection<'w, 'ctx> {
     width: usize,
     channels: usize,
     profile: crate::kernels::fp8_profile::Profile,
+    decode_schedule: crate::kernels::fp8_decode_schedule::Schedule,
 }
 
 impl<'w, 'ctx> Projection<'w, 'ctx> {
@@ -52,6 +53,7 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
             width,
             channels,
             profile: crate::kernels::fp8_profile::current()?,
+            decode_schedule: crate::kernels::fp8_decode_schedule::current()?,
         })
     }
 
@@ -121,8 +123,30 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
             } else {
                 (1, 4, 128, "fp8_linear_exact")
             };
-        let linear = module.function(kernel)?;
         let codes = Buffer::new(context, extents.code_bytes)?;
+        let selection = self.decode_schedule.select(
+            self.profile,
+            rows,
+            self.width,
+            [codes.pointer(), weight_pointer],
+        );
+        let kernel = if kernel == crate::kernels::fp8_decode_schedule::BASELINE_KERNEL {
+            selection.kernel()
+        } else {
+            kernel
+        };
+        if self.decode_schedule == crate::kernels::fp8_decode_schedule::Schedule::Vector16 {
+            tracing::debug!(
+                requested = "vector16",
+                actual_kernel = kernel,
+                reason = selection.reason(),
+                rows,
+                width = self.width,
+                channels = self.channels,
+                "FP8 decode schedule selection"
+            );
+        }
+        let linear = module.function(kernel)?;
         let row_scales = Buffer::new(context, extents.row_scale_bytes)?;
         let output = Buffer::new(context, extents.output_bytes)?;
         let unrounded = Buffer::new(context, extents.unrounded_bytes)?;

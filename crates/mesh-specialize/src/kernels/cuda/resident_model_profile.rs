@@ -52,23 +52,7 @@ pub(in crate::kernels) fn run(
     tokens: &[u32],
     teacher_token: Option<u32>,
 ) -> Result<Value> {
-    ensure!(
-        teacher_token.is_none_or(|t| (t as usize) < config.vocabulary),
-        "teacher token outside vocabulary"
-    );
-    super::fp8_projection_audit::take_reports();
-    super::attention_audit::take_reports();
-    super::nvfp4_projection_audit::take();
-    validate_request(
-        tokens,
-        config.vocabulary,
-        config.capacity,
-        config.layers.len(),
-    )?;
-    ensure!(
-        ptx.contains(".target sm_120a"),
-        "profile requires SM120a PTX"
-    );
+    prepare_profile(ptx, config, tokens, teacher_token)?;
     let layout = Layout::new(
         objects
             .iter()
@@ -212,7 +196,7 @@ pub(in crate::kernels) fn run(
         && audit_passed
         && nvfp4_audit_passed;
 
-    Ok(json!({
+    let mut report = json!({
         "attention_profile":crate::kernels::attention_profile::current()?.name(),
         "nvfp4_profile":crate::kernels::nvfp4_profile::current()?.name(),
         "attention_audit":attention_audit,
@@ -255,7 +239,42 @@ pub(in crate::kernels) fn run(
         "memory_after_free": {"free_bytes": memory_after_free.0, "total_bytes": memory_after_free.1},
         "memory_released": memory_released,
         "scope": "Profiled full-prefix execution and one full-decoder token; event instrumentation is not model throughput or an independent quality check.",
-    }))
+    });
+    let ab = crate::kernels::ab_schedule::current()?;
+    report["ab_schedule"] = json!(ab.name());
+    report["ab_prefix_shape"] = ab.report(
+        tokens.len(),
+        config.gdn_shape.value_heads,
+        config.gdn_shape.hidden,
+    );
+    report["ab_decode_shape"] = ab.report(1, config.gdn_shape.value_heads, config.gdn_shape.hidden);
+    Ok(report)
+}
+
+fn prepare_profile(
+    ptx: &str,
+    config: &DecoderConfig,
+    tokens: &[u32],
+    teacher_token: Option<u32>,
+) -> Result<()> {
+    ensure!(
+        teacher_token.is_none_or(|t| (t as usize) < config.vocabulary),
+        "teacher token outside vocabulary"
+    );
+    super::fp8_projection_audit::take_reports();
+    super::attention_audit::take_reports();
+    super::nvfp4_projection_audit::take();
+    validate_request(
+        tokens,
+        config.vocabulary,
+        config.capacity,
+        config.layers.len(),
+    )?;
+    ensure!(
+        ptx.contains(".target sm_120a"),
+        "profile requires SM120a PTX"
+    );
+    Ok(())
 }
 
 fn compare_captures(
