@@ -438,7 +438,7 @@ passed memory release but retains the expected strict partition failure.
 ## Deep-dive follow-up workers
 
 User explicitly requested GPT-6-Astra at low reasoning (correcting an initial
-Luna request) for this dispatch. Three dedicated workers are active:
+Luna request) for this dispatch. Three dedicated workers delivered their bounded work:
 
 - `feature_a16_head_schedule`: item3, new sliced-K BF16-input/FP8-weight head
   kernel and independent reference; owns only fp8_a16_head device/reference
@@ -454,3 +454,9 @@ may not run Cargo, GPU jobs, SSH, Git mutations, services or further delegation.
 Parent retains design review, integration, registration/assembly inventory,
 serial builds, GPU/reference/sanitizer/model qualification, Git and the ongoing
 layer22 NVFP4 numerical audit. Candidate delivery is not performance parity.
+
+Parent registered both separate candidates and independent references, and added
+all new PTX sites to the assembly inventory. 276 host tests, host Clippy, and
+Just PTX compilation pass. GPU execution, actual resource use, sanitizers,
+resident dispatch and performance qualification remain pending. The graph plan
+is source-reviewed design only. No existing arithmetic profile was promoted.

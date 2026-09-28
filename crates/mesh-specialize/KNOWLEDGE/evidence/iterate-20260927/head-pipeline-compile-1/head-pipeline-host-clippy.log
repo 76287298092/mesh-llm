@@ -1,0 +1,33 @@
+    Checking mesh-specialize v0.76.1 (/Users/ndizazzo/.codex/worktrees/ninfer-performance/mesh-llm/crates/mesh-specialize)
+error: manual implementation of `.is_multiple_of()`
+  --> crates/mesh-specialize/src/../reference/fp8_a16_head.rs:44:39
+   |
+44 |         (8..=262_144).contains(&n) && n % 8 == 0,
+   |                                       ^^^^^^^^^^ help: replace with: `n.is_multiple_of(8)`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#manual_is_multiple_of
+   = note: `-D clippy::manual-is-multiple-of` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_is_multiple_of)]`
+
+error: manual implementation of `.is_multiple_of()`
+  --> crates/mesh-specialize/src/../reference/fp8_a16_head.rs:48:39
+   |
+48 |         (16..=32_768).contains(&k) && k % 16 == 0,
+   |                                       ^^^^^^^^^^^ help: replace with: `k.is_multiple_of(16)`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#manual_is_multiple_of
+
+error: could not compile `mesh-specialize` (lib) due to 2 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: using `chunks_exact` with a constant chunk size
+   --> crates/mesh-specialize/src/../reference/fp8_a16_head.rs:140:46
+    |
+140 |             for row in result.unrounded_fp32.chunks_exact(8) {
+    |                                              ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<8>().0`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#chunks_exact_to_as_chunks
+    = note: `-D clippy::chunks-exact-to-as-chunks` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::chunks_exact_to_as_chunks)]`
+
+error: could not compile `mesh-specialize` (lib test) due to 3 previous errors
+error: recipe `with-lld` failed with exit code 101

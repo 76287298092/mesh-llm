@@ -15,6 +15,7 @@ mod causal_conv4;
 mod embedding_norm;
 mod exponential;
 mod fp8_a16_decode;
+mod fp8_a16_head;
 mod fp8_linear;
 mod fp8_linear_exact;
 mod fp8_linear_exact4;
@@ -110,6 +111,7 @@ mod nvfp4_quantize;
 mod nvfp4_decode;
 mod nvfp4_decode_exact;
 mod nvfp4_linear;
+mod nvfp4_prefill_tiled;
 
 mod mlp_activation;
 mod residual_add;

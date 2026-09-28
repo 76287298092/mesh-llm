@@ -1,0 +1,101 @@
+# NVFP4 prefill pipeline candidate
+
+Status: source candidate, September 27, 2026. No compilation, host test, GPU
+launch, sanitizer or timing run was performed by this worker. Parent integration
+and qualification are required. Before/after performance, register usage, driver,
+toolchain, clocks and device observations are not measured. Intended target is
+SM120a. This entry does not close deep-dive experiment 4.
+
+The independent Rust implementation uses the existing logical packed matrices,
+the existing native K64 MMA helper, and the existing FP32 multiply/BF16 epilogue.
+It adds one separate `nvfp4_prefill_tiled` symbol. It does not change the baseline
+or add runtime dispatch. The scalar reference delegates decoded products to
+`nvfp4_linear_reference`, which does not use GPU fragment indexing. Its f64 dot
+is an independent numerical oracle, not a promise of native-MMA bit identity.
+The parent's pre-existing native-multirow versus integer-one-row mismatch at
+layer 22 down projection, row 101 after online attention remains unresolved by
+this work. No universal integer-exact claim applies to this candidate.
+
+## Layout and lifetime proof
+
+A CTA has 256 threads and computes 32x32 outputs. Warp `w` computes rows
+`16*(w/4)..+16` and columns `8*(w%4)..+8`. Each warp retains the original 16x8
+fragment mapping and accumulates exactly one K64 MMA per iteration in ascending
+K order. Output guards cover M and N tails without removing threads from MMA
+or barriers. Admission is M 1..512, N 8..32768 divisible by 8, K 64..32768
+divisible by 64. Launch grid is `[ceil(N/32),ceil(M/32),1]`, block `[256,1,1]`.
+
+The 4,608-byte shared allocation contains two 2,304-byte stages. Each stage has
+A codes at 0..1024, W codes at 1024..2048, A scales at 2048..2176, and W scales
+at 2176..2304. A code row contains 32 bytes for K64; a scale row contains four
+bytes. A rows are reused by four warps and W rows by two warps. Producer thread
+t owns words t, t+256, and t+512 while in range 0..576. These sets are disjoint
+and cover the full stage. All source and destination addresses are four-byte
+aligned because base pointers are aligned and K is divisible by 64.
+
+Missing M/N rows use `cp.async` source size zero, with the live allocation base
+as source. Thus no out-of-bounds Rust pointer is formed. Both codes and scales
+are zero-filled for missing rows. Their MMA results are discarded. Valid row
+scale words are copied unchanged; there is no scale permutation or K tail.
+
+The prologue issues and commits stage zero. Every iteration waits for all of
+its thread's copies and then executes a CTA barrier, publishing all producers'
+words to every consumer. It then issues and commits the next stage before
+loading current fragments and executing MMA. The terminal CTA barrier retires
+all readers before that slot can be overwritten two iterations later. There is
+at most one pending group per thread. Final iteration has no next copy and ends
+with no pending group. All barriers and loop counts are CTA-uniform. The async
+copies can overlap current-stage computation; useful overlap is not measured.
+
+## PTX inventory for parent integration
+
+Instruction references use the [NVIDIA PTX ISA](https://docs.nvidia.com/cuda/parallel-thread-execution/).
+Every new assembly block below uses a compiler memory clobber through absence of
+`nomem` and `readonly`; synchronization cannot be optimized past shared accesses.
+
+| Site | Instructions and guarantee | Safety contract |
+| --- | --- | --- |
+| `coordinates` | `.shared .align 16 .b8`, `mov.u32`, `%tid.x`, `%ctaid.x/y`; per-CTA allocation and thread/block identifiers. See state spaces and special registers. | One inlined allocation site; exactly 256 x threads and no y/z thread dimension. |
+| `copy_word` | `cvta.to.global.u64`; `cp.async.ca.shared.global ...,4,src-size`. [Async copy](https://docs.nvidia.com/cuda/parallel-thread-execution/#data-movement-and-conversion-instructions-cp-async) permits four-byte copy and zero-fills bytes beyond source size. | Aligned disjoint shared words, valid global base, source size 0 or 4, no shared reader before completion. |
+| `issue_stage` | `cp.async.commit_group`; commits the executing thread's prior uncommitted copies. | Each destination written once per group; each thread commits after issuing its words. |
+| `await_stage` | `cp.async.wait_group 0`; completes this thread's committed groups. | All producers wait before CTA barrier; a wait alone is not cross-thread publication. |
+| `barrier` | `bar.sync 0`; CTA synchronization and memory ordering. | All 256 threads reach matching barriers; no early return. Also protects completed readers against slot reuse. |
+| `shared_word` | `ld.shared.b32`; reads a four-byte shared word. | Aligned address in published current stage; next copies target the other slot. |
+
+The reused `nvfp4_linear::mma_nvfp4` owns the existing
+`mma.sync.aligned.m16n8k64...block_scale.scale_vec::4X` site and its scale/lane
+contract. `store_scaled_output` owns `mul.rn.f32` and BF16 RNE. Their inventory
+entries remain applicable; there is no new floating-point arithmetic instruction
+site in this file. No TMA, tensor-map binding, producer-specialized warp,
+scale permutation, fusion or imported Ninfer code is included.
+
+## Provenance and qualification
+
+Technique reference is Ninfer `e31bc99b13f517c8aae70b997b7c4a49b4dcdc5d`,
+`src/ops/linear/nvfp4/nvfp4_a4_tma.cuh:130-220`, read from the parent's local
+checkout. Its producer/consumer stage lifetimes informed the investigation;
+this implementation uses ordinary async word copies and CTA barriers with the
+repo's existing MMA, not Ninfer's TMA implementation or container format.
+
+Parent must register the device module, scalar reference and PTX inventory, then
+compile through the repo's Just lane. Run independent signed/nonuniform-scale
+operator fixtures at K64,128,192 and larger K, M1,17,31,32,33,128,512 and N8,24,
+32,40 plus real 5120/17408 dimensions. K192 explicitly exercises slot reuse.
+Compare both raw FP32 and BF16 against the unchanged native kernel on identical
+inputs, then separately compare the independent oracle under the parent's
+frozen arithmetic policy. Run memcheck, racecheck and synccheck, including tails
+and repeated launches. Real-weight same-input layer audits, whole-model state,
+quality and paired uncontended 128/512-token timings remain mandatory. Tests in
+the reference file check logical mapping/tails, signed cancellation, nonuniform
+scales and shape admission; passing them cannot certify device indexing.
+
+
+Parent compilation checkpoint: 276 host tests and host Clippy pass; three
+Clippy findings in the A16 reference were repaired without arithmetic changes.
+`just specialize-ptx` passes with nightly2026-09-25, SM120a. Retained PTX
+`target/specialize/iterate-20260927/features-head-pipeline.ptx` SHA256
+`e8beed4f5bba069809a7ff3d80398bea6f3980aa77a9a9f7352c4753f6ec401a`.
+Both expected entry symbols are present. PTX declares local storage,40bytes for
+A16 and144bytes for NVFP4; these are virtual PTX declarations, not measured JIT
+register/spill/resource usage. GPU qualification and resident integration remain
+pending. Existing baseline PTX remains retained separately.

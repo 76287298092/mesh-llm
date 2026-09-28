@@ -5,8 +5,11 @@ Start with [the implementation plan](../PLAN.md) and the
 
 | Entry | Status |
 | --- | --- |
+| [A16 head schedule](optimizations/a16-head-schedule.md) | Dedicated candidate and independent reference compile; GPU/model qualification pending |
+| [NVFP4 prefill pipeline](optimizations/nvfp4-prefill-pipeline.md) | Separate async-copy candidate compiles; GPU/model qualification pending |
+| [Ordinary decode graph plan](findings/ordinary-decode-graph-plan.md) | Source-reviewed integration design; no model capture yet |
 | [Exact GPU greedy selection](optimizations/gpu-greedy.md) | Device and resident checks plus three sanitizers pass; short timing change below1%, no stable speedup established |
-| [Tiled online attention](optimizations/feature-f05-attention.md) | Opt-in integration; real-weight operator audits and short same-profile model checks pass, cross-profile quality and uncontended speed remain open |
+| [Tiled online attention](optimizations/feature-f05-attention.md) | Opt-in; short checks pass, strict128-row partition fails at NVFP4 rounding boundary; two longer answer checks are limited smoke evidence |
 | [Ninfer runtime deep dive](findings/ninfer-runtime-deep-dive.md) | Complete-source execution comparison; workspace/stream ordering first, then GPU selection/graphs, shape-specific kernels, and long-context algorithms |
 | [Ninfer model format](findings/ninfer-model-format.md) | Pinned packer/consumer analysis; row-major FP8, swizzled NVFP4 scales, provenance gaps and isolating experiments |
 | [Ninfer feature parity](findings/ninfer-feature-parity.md) | Parent source assessment of ten performance mechanisms, honest measurement gaps and one owner per feature |

@@ -203,3 +203,23 @@ Greedy follow-up: `evidence/iterate-20260927/greedy-check-1` passes77 independen
 cases under normal execution and all three sanitizer tools (zero errors/hazards).
 Source `11b84609f`; tile/finish24/20registers,64sharedbytes each,0localbytes.
 Whole-model selected-token execution and throughput remain under qualification.
+
+
+## Deep-dive follow-up candidates (not resident dispatch)
+
+`fp8_a16_head.rs` adds eight assembly sites: coordinates, partial_base,
+store_partial, load_partial, add_rn, scale_rn, BF16m16n8k16mma, and a CTAbarrier.
+Complete site contracts and independent tests are in
+[the A16 head inventory](optimizations/a16-head-schedule.md#ptx-inventory-handoff).
+`reference/fp8_a16_head.rs` uses logical FP64 products, not fragment execution.
+Parent checked A/B/C mappings against NVIDIA PTX ISA9.4 section9.7.16.5.8;
+GPU asymmetric fixtures, resource inspection and sanitizers remain required.
+
+`nvfp4_prefill_tiled.rs` adds six sites: coordinate/shared declaration,
+cvta+cp.async four-byte/zero-fill copies, commit_group, wait_group0, CTAbarrier,
+and shared word load. Complete bounds and publication/reuse contracts are in
+[the NVFP4 pipeline inventory](optimizations/nvfp4-prefill-pipeline.md#ptx-inventory-for-parent-integration).
+It reuses the previously inventoried native NVFP4 MMA and output-scale sites.
+`reference/nvfp4_prefill_tiled.rs` invokes the independent logical decoded-product
+reference with bounded candidate shapes. Neither source nor emitted PTX is GPU
+qualification, and neither candidate changes current resident dispatch.

@@ -94,3 +94,8 @@ pub mod gdn_replay_reference;
 
 #[path = "../reference/greedy_bf16.rs"]
 pub mod greedy_bf16_reference;
+
+#[path = "../reference/fp8_a16_head.rs"]
+pub mod fp8_a16_head_reference;
+#[path = "../reference/nvfp4_prefill_tiled.rs"]
+pub mod nvfp4_prefill_tiled_reference;

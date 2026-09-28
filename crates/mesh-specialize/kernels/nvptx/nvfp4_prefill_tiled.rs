@@ -1,0 +1,208 @@
+//! Experimental two-stage 32x32 NVFP4 CTA. See the pipeline knowledge entry.
+use super::nvfp4_linear::{mma_nvfp4, store_scaled_output};
+use core::arch::asm;
+const STAGE_BYTES: u32 = 2304;
+
+#[inline(always)]
+fn coordinates() -> (u32, u32, u32, u32) {
+    let (thread, tile_n, tile_m, base): (u32, u32, u32, u32);
+    // SAFETY: CTA-local static storage and special registers.
+    unsafe {
+        asm!(
+            ".shared .align 16 .b8 nvfp4_prefill_stages[4608];",
+            "mov.u32 {base}, nvfp4_prefill_stages;",
+            "mov.u32 {thread}, %tid.x;",
+            "mov.u32 {tile_n}, %ctaid.x;",
+            "mov.u32 {tile_m}, %ctaid.y;",
+            base = out(reg32) base, thread = out(reg32) thread,
+            tile_n = out(reg32) tile_n, tile_m = out(reg32) tile_m,
+            options(nostack),
+        );
+    }
+    (thread, tile_n, tile_m, base)
+}
+
+#[inline(always)]
+fn barrier() {
+    // SAFETY: All 256 threads reach each barrier, including output-tail threads.
+    unsafe { asm!("bar.sync 0;", options(nostack)) };
+}
+
+#[inline(always)]
+fn await_stage() {
+    // SAFETY: Each thread waits for its own committed copies before CTA publication.
+    unsafe { asm!("cp.async.wait_group 0;", options(nostack)) };
+    barrier();
+}
+
+/// Both addresses must be four-byte aligned. Destination is a unique shared word;
+/// source is live global storage, readable for four bytes when valid.
+#[inline(always)]
+unsafe fn copy_word(destination: u32, source: *const u8, valid: bool) {
+    let size = if valid { 4_u32 } else { 0 };
+    // SAFETY: Zero source size performs zero fill. Invalid rows use the valid
+    // allocation base, never an out-of-bounds pointer.
+    unsafe {
+        asm!(
+            "cvta.to.global.u64 {global}, {source};",
+            "cp.async.ca.shared.global [{destination}], [{global}], 4, {size};",
+            global = out(reg64) _, source = in(reg64) source as u64,
+            destination = in(reg32) destination, size = in(reg32) size,
+            options(nostack),
+        );
+    }
+}
+
+/// Caller supplies validated allocations and a stage with no remaining readers.
+#[inline(always)]
+unsafe fn issue_stage(
+    inputs: [*const u8; 4],
+    rows: [usize; 2],
+    origins: [usize; 2],
+    k: usize,
+    tile_k: usize,
+    thread: usize,
+    base: u32,
+) {
+    // A codes 1024, W codes 1024, A scales 128, W scales 128 bytes per stage.
+    let mut word = thread;
+    while word < 576 {
+        let (matrix, local_row, chunk, stride, k_offset) = if word < 512 {
+            let matrix = word / 256;
+            let within = word % 256;
+            (matrix, within / 8, within % 8, k / 2, tile_k * 32)
+        } else {
+            let within = word - 512;
+            (2 + within / 32, within % 32, 0, k / 16, tile_k * 4)
+        };
+        let side = matrix % 2;
+        let row = origins[side] + local_row;
+        let valid = row < rows[side];
+        let source = if valid {
+            // SAFETY: K is divisible by 64 and tile_k < K/64. Row strides and
+            // tile offsets preserve four-byte alignment and cover the full word.
+            unsafe { inputs[matrix].add(row * stride + k_offset + chunk * 4) }
+        } else {
+            inputs[matrix]
+        };
+        // SAFETY: word < 576 and each producer owns disjoint shared words.
+        unsafe { copy_word(base + word as u32 * 4, source, valid) };
+        word += 256;
+    }
+    // SAFETY: Commit every thread's copies, with one outstanding group per thread.
+    unsafe { asm!("cp.async.commit_group;", options(nostack)) };
+}
+
+#[inline(always)]
+fn shared_word(address: u32) -> u32 {
+    let value: u32;
+    // SAFETY: Called on aligned words in the current, waited/published stage.
+    unsafe {
+        asm!("ld.shared.b32 {value}, [{address}];",
+            value = out(reg32) value, address = in(reg32) address, options(nostack));
+    }
+    value
+}
+
+#[inline(always)]
+fn accumulate_stage(base: u32, thread: usize, accum: (f32, f32, f32, f32)) -> (f32, f32, f32, f32) {
+    let warp = thread / 32;
+    let lane = thread % 32;
+    let group = lane / 4;
+    let part = lane % 4;
+    let row = (warp / 4) * 16 + group;
+    let column = (warp % 4) * 8 + group;
+    let a = base + (row * 32 + part * 4) as u32;
+    let b = base + 1024 + (column * 32 + part * 4) as u32;
+    let scale_a = match part {
+        0 => shared_word(base + 2048 + row as u32 * 4),
+        1 => shared_word(base + 2048 + (row + 8) as u32 * 4),
+        _ => 0,
+    };
+    let scale_b = if part == 0 {
+        shared_word(base + 2176 + column as u32 * 4)
+    } else {
+        0
+    };
+    mma_nvfp4(
+        shared_word(a),
+        shared_word(a + 256),
+        shared_word(a + 16),
+        shared_word(a + 272),
+        shared_word(b),
+        shared_word(b + 16),
+        scale_a,
+        scale_b,
+        accum,
+    )
+}
+
+/// Compute logical row-major packed NVFP4 A times W transpose.
+///
+/// # Safety
+/// SM120a, grid `[ceil(n/32), ceil(m/32), 1]`, block `[256, 1, 1]`.
+/// M in 1..=512; N a multiple of 8 in 8..=32768; K a multiple of 64
+/// in 64..=32768. A/W cover M*K/2 and N*K/2 bytes; SA/SW cover M*K/16 and
+/// N*K/16 bytes, all four-byte aligned. Codes are low-nibble-first E2M1 and
+/// scales unsigned finite E4M3 codes 0..=126. Outputs cover M*N aligned u16/f32
+/// items. All allocations are disjoint and live through completion. Factor is
+/// positive finite; host acceptance rejects nonfinite results.
+#[unsafe(no_mangle)]
+pub unsafe extern "ptx-kernel" fn nvfp4_prefill_tiled(
+    a: *const u8,
+    w: *const u8,
+    sa: *const u8,
+    sw: *const u8,
+    out: *mut u16,
+    raw: *mut f32,
+    m: u32,
+    n: u32,
+    k: u32,
+    global_factor: f32,
+) {
+    let (thread, tile_n, tile_m, base) = coordinates();
+    let thread = thread as usize;
+    let origins = [tile_m as usize * 32, tile_n as usize * 32];
+    let rows = [m as usize, n as usize];
+    let inputs = [a, w, sa, sw];
+    let tiles = k as usize / 64;
+    let mut accum = (0.0_f32, 0.0_f32, 0.0_f32, 0.0_f32);
+    // SAFETY: Stage zero has no readers and inputs satisfy the launch contract.
+    unsafe { issue_stage(inputs, rows, origins, k as usize, 0, thread, base) };
+    for tile in 0..tiles {
+        await_stage();
+        let current = base + (tile % 2) as u32 * STAGE_BYTES;
+        if tile + 1 < tiles {
+            let next = base + ((tile + 1) % 2) as u32 * STAGE_BYTES;
+            // SAFETY: The previous terminal barrier retired all readers of this
+            // slot. Copies run concurrently with current-slot loads and MMA.
+            unsafe { issue_stage(inputs, rows, origins, k as usize, tile + 1, thread, next) };
+        }
+        accum = accumulate_stage(current, thread, accum);
+        barrier();
+    }
+    let warp = thread / 32;
+    let lane = thread % 32;
+    let row = origins[0] + (warp / 4) * 16 + lane / 4;
+    let column = origins[1] + (warp % 4) * 8 + (lane % 4) * 2;
+    for (dr, dc, value) in [
+        (0, 0, accum.0),
+        (0, 1, accum.1),
+        (8, 0, accum.2),
+        (8, 1, accum.3),
+    ] {
+        // SAFETY: Unique lane ownership and the helper's M/N guards cover tails.
+        unsafe {
+            store_scaled_output(
+                out,
+                raw,
+                row + dr,
+                column + dc,
+                rows[0],
+                rows[1],
+                value,
+                global_factor,
+            )
+        };
+    }
+}
