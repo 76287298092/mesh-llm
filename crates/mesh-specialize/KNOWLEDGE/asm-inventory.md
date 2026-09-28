@@ -281,3 +281,5 @@ same factored arithmetic body with BF16 loads. Independent oracles are
 See [consumer contract](optimizations/ninfer-parameter-consumers.md) for parameter
 order, round-before-norm boundary, alias contract and the nine-case harness.
 Host tests and Rust PTX compilation pass; GPU qualification is pending.
+
+Native-consumer qualification update: direct-source-1 and native-final-checks-1 pass all nine parameter cases, same-source model checks and three sanitizers. Racecheck used forced synchronization. All1589 canonical source and GPU tensor hashes match independent evidence; old raw-mspec33-step regression also passes. See optimizations/direct-ninfer-source.md for bounds and source/PTX pins.

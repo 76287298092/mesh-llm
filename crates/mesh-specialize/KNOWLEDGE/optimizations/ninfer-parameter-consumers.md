@@ -1,8 +1,10 @@
 # Encoded embedding and FP32 GDN parameter consumers
 
-Status: implemented, not compiled or GPU-qualified by this worker. This is bounded
-weight-representation compatibility, not full Ninfer arithmetic parity or a profile
-promotion. Parent owns the direct `.ninfer` reader, normalized weight views,
+Status: bounded GPU qualification passes at 9b627a3d6/fd500c885: all nine
+independent-reference cases and memcheck/racecheck/synccheck pass. Real-model
+checks and source hashes are recorded in direct-ninfer-source.md. This is
+weight-representation compatibility, not full Ninfer arithmetic parity or
+promotion of an alternative arithmetic profile. Parent owns the direct `.ninfer` reader, normalized weight views,
 registration in the central inventory, compilation, integration, and qualification.
 No Ninfer source is imported. No raw-profile admission checks are loosened.
 
@@ -189,3 +191,5 @@ synccheck remain for the parent. Source revision: uncommitted parent worktree;
 commit not queried. Target GPU SM120a; driver/toolchain/clocks not measured here.
 Performance before/after: not measured. This change makes no speed, memory-free,
 quality, full arithmetic parity, or automatic profile-promotion claim.
+
+Parent qualification is in `direct-ninfer-source.md` and evidence/reassess-20260928/native-final-checks-1. Worker-only validation notes above are historical; racecheck used forced synchronization and one worker.

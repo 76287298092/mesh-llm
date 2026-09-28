@@ -5,6 +5,8 @@ Start with [the implementation plan](../PLAN.md) and the
 
 | Entry | Status |
 | --- | --- |
+| [Direct Ninfer source](optimizations/direct-ninfer-source.md) | Original .ninfer file executes target-only; all1589 canonical/GPU hashes match; bounded model checks/sanitizers and49K-position scoring pass; no throughput parity |
+| [Native representation contract](findings/ninfer-import-contract.md) | Exact source layouts, FP8 embedding/F32 GDN compatibility, reversible transforms and remaining arithmetic differences |
 | [BF16 split attention v2](optimizations/attention-v2.md) | Implemented, unqualified: split-decode opt-in wired to legacy/stream, exact larger prefill, independent FP64 trial; no default change |
 | [A16 head schedule](optimizations/a16-head-schedule.md) | 37 GPU cases and sanitizers pass; head-only model checks pass, no ordinary-decode speedup, quality still open |
 | [NVFP4 prefill pipeline](optimizations/nvfp4-prefill-pipeline.md) | Wide32x128 passes operator sanitizers and tested exact model comparisons; shared-GPU prefill medians improve about6%, remains opt-in |

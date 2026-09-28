@@ -1,0 +1,603 @@
+{
+  "all_passed": true,
+  "cases": [
+    {
+      "all_passed": true,
+      "elements": 6,
+      "fixtures": "endpoint/repeated tokens, +/- zero, +/- halfway ties, finite E4M3 extremes and BF16 subnormal row scale",
+      "gather_exact_bf16": true,
+      "guards_intact": true,
+      "inputs_unchanged": true,
+      "kind": "embedding",
+      "normalization": {
+        "all_passed": true,
+        "bf16": {
+          "allowed_bf16_ulp": 1,
+          "elements": 6,
+          "maximum_bf16_ulp": 0,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true
+        },
+        "guards_intact": true,
+        "identity_alias_bit_identical": true,
+        "raw": {
+          "absolute_tolerance": 1.9999999949504854e-6,
+          "elements": 6,
+          "maximum_absolute_error": 0.0,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true,
+          "relative_tolerance": 1.9999999949504854e-6
+        },
+        "residual_exact": true,
+        "rounding_matches_raw": true
+      },
+      "repeat_bit_identical": true,
+      "rows": 6,
+      "vocabulary": 8,
+      "width": 1
+    },
+    {
+      "all_passed": true,
+      "elements": 42,
+      "fixtures": "endpoint/repeated tokens, +/- zero, +/- halfway ties, finite E4M3 extremes and BF16 subnormal row scale",
+      "gather_exact_bf16": true,
+      "guards_intact": true,
+      "inputs_unchanged": true,
+      "kind": "embedding",
+      "normalization": {
+        "all_passed": true,
+        "bf16": {
+          "allowed_bf16_ulp": 1,
+          "elements": 42,
+          "maximum_bf16_ulp": 0,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true
+        },
+        "guards_intact": true,
+        "identity_alias_bit_identical": true,
+        "raw": {
+          "absolute_tolerance": 1.9999999949504854e-6,
+          "elements": 42,
+          "maximum_absolute_error": 0.0,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true,
+          "relative_tolerance": 1.9999999949504854e-6
+        },
+        "residual_exact": true,
+        "rounding_matches_raw": true
+      },
+      "repeat_bit_identical": true,
+      "rows": 6,
+      "vocabulary": 8,
+      "width": 7
+    },
+    {
+      "all_passed": true,
+      "elements": 1542,
+      "fixtures": "endpoint/repeated tokens, +/- zero, +/- halfway ties, finite E4M3 extremes and BF16 subnormal row scale",
+      "gather_exact_bf16": true,
+      "guards_intact": true,
+      "inputs_unchanged": true,
+      "kind": "embedding",
+      "normalization": {
+        "all_passed": true,
+        "bf16": {
+          "allowed_bf16_ulp": 1,
+          "elements": 1542,
+          "maximum_bf16_ulp": 0,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true
+        },
+        "guards_intact": true,
+        "identity_alias_bit_identical": true,
+        "raw": {
+          "absolute_tolerance": 1.9999999949504854e-6,
+          "elements": 1542,
+          "maximum_absolute_error": 4.76837158203125e-7,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true,
+          "relative_tolerance": 1.9999999949504854e-6
+        },
+        "residual_exact": true,
+        "rounding_matches_raw": true
+      },
+      "repeat_bit_identical": true,
+      "rows": 6,
+      "vocabulary": 8,
+      "width": 257
+    },
+    {
+      "all_passed": true,
+      "elements": 30720,
+      "fixtures": "endpoint/repeated tokens, +/- zero, +/- halfway ties, finite E4M3 extremes and BF16 subnormal row scale",
+      "gather_exact_bf16": true,
+      "guards_intact": true,
+      "inputs_unchanged": true,
+      "kind": "embedding",
+      "normalization": {
+        "all_passed": true,
+        "bf16": {
+          "allowed_bf16_ulp": 1,
+          "elements": 30720,
+          "maximum_bf16_ulp": 0,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true
+        },
+        "guards_intact": true,
+        "identity_alias_bit_identical": true,
+        "raw": {
+          "absolute_tolerance": 1.9999999949504854e-6,
+          "elements": 30720,
+          "maximum_absolute_error": 0.0,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true,
+          "relative_tolerance": 1.9999999949504854e-6
+        },
+        "residual_exact": true,
+        "rounding_matches_raw": true
+      },
+      "repeat_bit_identical": true,
+      "rows": 6,
+      "vocabulary": 8,
+      "width": 5120
+    },
+    {
+      "all_outputs_bit_identical_to_legacy": true,
+      "all_passed": true,
+      "beta_bit_identical_to_legacy": true,
+      "candidate": {
+        "beta": {
+          "allowed_bf16_ulp": 1,
+          "elements": 48,
+          "maximum_bf16_ulp": 0,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true
+        },
+        "decay": {
+          "absolute_tolerance": 3.000000106112566e-6,
+          "elements": 48,
+          "maximum_absolute_error": 5.960464477539063e-8,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true,
+          "relative_tolerance": 4.999999873689376e-6
+        },
+        "domain_valid": true,
+        "g": {
+          "absolute_tolerance": 3.000000106112566e-6,
+          "elements": 48,
+          "maximum_absolute_error": 3.814697265625e-6,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true,
+          "relative_tolerance": 4.999999873689376e-6
+        },
+        "passed": true
+      },
+      "decay_bits_different_from_narrowed": 0,
+      "gate_bits_different_from_narrowed": 0,
+      "guards_intact": true,
+      "heads": 48,
+      "inputs_unchanged": true,
+      "kind": "gates",
+      "legacy_bf16": {
+        "beta": {
+          "allowed_bf16_ulp": 1,
+          "elements": 48,
+          "maximum_bf16_ulp": 0,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true
+        },
+        "decay": {
+          "absolute_tolerance": 3.000000106112566e-6,
+          "elements": 48,
+          "maximum_absolute_error": 5.960464477539063e-8,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true,
+          "relative_tolerance": 4.999999873689376e-6
+        },
+        "domain_valid": true,
+        "g": {
+          "absolute_tolerance": 3.000000106112566e-6,
+          "elements": 48,
+          "maximum_absolute_error": 3.814697265625e-6,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true,
+          "relative_tolerance": 4.999999873689376e-6
+        },
+        "passed": true
+      },
+      "low_f32_bits": {
+        "a_log": false,
+        "dt_bias": false
+      },
+      "oracle_gate_bits_different_from_narrowed": 0,
+      "precision_check_passed": true,
+      "repeat_bit_identical": true,
+      "representable_parameters_require_bit_identity": true,
+      "rows": 1
+    },
+    {
+      "all_outputs_bit_identical_to_legacy": true,
+      "all_passed": true,
+      "beta_bit_identical_to_legacy": true,
+      "candidate": {
+        "beta": {
+          "allowed_bf16_ulp": 1,
+          "elements": 336,
+          "maximum_bf16_ulp": 0,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true
+        },
+        "decay": {
+          "absolute_tolerance": 3.000000106112566e-6,
+          "elements": 336,
+          "maximum_absolute_error": 5.960464477539063e-8,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true,
+          "relative_tolerance": 4.999999873689376e-6
+        },
+        "domain_valid": true,
+        "g": {
+          "absolute_tolerance": 3.000000106112566e-6,
+          "elements": 336,
+          "maximum_absolute_error": 3.814697265625e-6,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true,
+          "relative_tolerance": 4.999999873689376e-6
+        },
+        "passed": true
+      },
+      "decay_bits_different_from_narrowed": 0,
+      "gate_bits_different_from_narrowed": 0,
+      "guards_intact": true,
+      "heads": 48,
+      "inputs_unchanged": true,
+      "kind": "gates",
+      "legacy_bf16": {
+        "beta": {
+          "allowed_bf16_ulp": 1,
+          "elements": 336,
+          "maximum_bf16_ulp": 0,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true
+        },
+        "decay": {
+          "absolute_tolerance": 3.000000106112566e-6,
+          "elements": 336,
+          "maximum_absolute_error": 5.960464477539063e-8,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true,
+          "relative_tolerance": 4.999999873689376e-6
+        },
+        "domain_valid": true,
+        "g": {
+          "absolute_tolerance": 3.000000106112566e-6,
+          "elements": 336,
+          "maximum_absolute_error": 3.814697265625e-6,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true,
+          "relative_tolerance": 4.999999873689376e-6
+        },
+        "passed": true
+      },
+      "low_f32_bits": {
+        "a_log": false,
+        "dt_bias": false
+      },
+      "oracle_gate_bits_different_from_narrowed": 0,
+      "precision_check_passed": true,
+      "repeat_bit_identical": true,
+      "representable_parameters_require_bit_identity": true,
+      "rows": 7
+    },
+    {
+      "all_outputs_bit_identical_to_legacy": false,
+      "all_passed": true,
+      "beta_bit_identical_to_legacy": true,
+      "candidate": {
+        "beta": {
+          "allowed_bf16_ulp": 1,
+          "elements": 336,
+          "maximum_bf16_ulp": 0,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true
+        },
+        "decay": {
+          "absolute_tolerance": 3.000000106112566e-6,
+          "elements": 336,
+          "maximum_absolute_error": 1.4901161193847656e-8,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true,
+          "relative_tolerance": 4.999999873689376e-6
+        },
+        "domain_valid": true,
+        "g": {
+          "absolute_tolerance": 3.000000106112566e-6,
+          "elements": 336,
+          "maximum_absolute_error": 3.814697265625e-6,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true,
+          "relative_tolerance": 4.999999873689376e-6
+        },
+        "passed": true
+      },
+      "decay_bits_different_from_narrowed": 210,
+      "gate_bits_different_from_narrowed": 336,
+      "guards_intact": true,
+      "heads": 48,
+      "inputs_unchanged": true,
+      "kind": "gates",
+      "legacy_bf16": {
+        "beta": {
+          "allowed_bf16_ulp": 1,
+          "elements": 336,
+          "maximum_bf16_ulp": 0,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true
+        },
+        "decay": {
+          "absolute_tolerance": 3.000000106112566e-6,
+          "elements": 336,
+          "maximum_absolute_error": 5.960464477539063e-8,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true,
+          "relative_tolerance": 4.999999873689376e-6
+        },
+        "domain_valid": true,
+        "g": {
+          "absolute_tolerance": 3.000000106112566e-6,
+          "elements": 336,
+          "maximum_absolute_error": 3.814697265625e-6,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true,
+          "relative_tolerance": 4.999999873689376e-6
+        },
+        "passed": true
+      },
+      "low_f32_bits": {
+        "a_log": true,
+        "dt_bias": false
+      },
+      "oracle_gate_bits_different_from_narrowed": 336,
+      "precision_check_passed": true,
+      "repeat_bit_identical": true,
+      "representable_parameters_require_bit_identity": false,
+      "rows": 7
+    },
+    {
+      "all_outputs_bit_identical_to_legacy": false,
+      "all_passed": true,
+      "beta_bit_identical_to_legacy": true,
+      "candidate": {
+        "beta": {
+          "allowed_bf16_ulp": 1,
+          "elements": 336,
+          "maximum_bf16_ulp": 0,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true
+        },
+        "decay": {
+          "absolute_tolerance": 3.000000106112566e-6,
+          "elements": 336,
+          "maximum_absolute_error": 5.960464477539063e-8,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true,
+          "relative_tolerance": 4.999999873689376e-6
+        },
+        "domain_valid": true,
+        "g": {
+          "absolute_tolerance": 3.000000106112566e-6,
+          "elements": 336,
+          "maximum_absolute_error": 3.814697265625e-6,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true,
+          "relative_tolerance": 4.999999873689376e-6
+        },
+        "passed": true
+      },
+      "decay_bits_different_from_narrowed": 140,
+      "gate_bits_different_from_narrowed": 252,
+      "guards_intact": true,
+      "heads": 48,
+      "inputs_unchanged": true,
+      "kind": "gates",
+      "legacy_bf16": {
+        "beta": {
+          "allowed_bf16_ulp": 1,
+          "elements": 336,
+          "maximum_bf16_ulp": 0,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true
+        },
+        "decay": {
+          "absolute_tolerance": 3.000000106112566e-6,
+          "elements": 336,
+          "maximum_absolute_error": 5.960464477539063e-8,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true,
+          "relative_tolerance": 4.999999873689376e-6
+        },
+        "domain_valid": true,
+        "g": {
+          "absolute_tolerance": 3.000000106112566e-6,
+          "elements": 336,
+          "maximum_absolute_error": 3.814697265625e-6,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true,
+          "relative_tolerance": 4.999999873689376e-6
+        },
+        "passed": true
+      },
+      "low_f32_bits": {
+        "a_log": false,
+        "dt_bias": true
+      },
+      "oracle_gate_bits_different_from_narrowed": 266,
+      "precision_check_passed": true,
+      "repeat_bit_identical": true,
+      "representable_parameters_require_bit_identity": false,
+      "rows": 7
+    },
+    {
+      "all_outputs_bit_identical_to_legacy": false,
+      "all_passed": true,
+      "beta_bit_identical_to_legacy": true,
+      "candidate": {
+        "beta": {
+          "allowed_bf16_ulp": 1,
+          "elements": 336,
+          "maximum_bf16_ulp": 0,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true
+        },
+        "decay": {
+          "absolute_tolerance": 3.000000106112566e-6,
+          "elements": 336,
+          "maximum_absolute_error": 5.960464477539063e-8,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true,
+          "relative_tolerance": 4.999999873689376e-6
+        },
+        "domain_valid": true,
+        "g": {
+          "absolute_tolerance": 3.000000106112566e-6,
+          "elements": 336,
+          "maximum_absolute_error": 3.814697265625e-6,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true,
+          "relative_tolerance": 4.999999873689376e-6
+        },
+        "passed": true
+      },
+      "decay_bits_different_from_narrowed": 210,
+      "gate_bits_different_from_narrowed": 322,
+      "guards_intact": true,
+      "heads": 48,
+      "inputs_unchanged": true,
+      "kind": "gates",
+      "legacy_bf16": {
+        "beta": {
+          "allowed_bf16_ulp": 1,
+          "elements": 336,
+          "maximum_bf16_ulp": 0,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true
+        },
+        "decay": {
+          "absolute_tolerance": 3.000000106112566e-6,
+          "elements": 336,
+          "maximum_absolute_error": 5.960464477539063e-8,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true,
+          "relative_tolerance": 4.999999873689376e-6
+        },
+        "domain_valid": true,
+        "g": {
+          "absolute_tolerance": 3.000000106112566e-6,
+          "elements": 336,
+          "maximum_absolute_error": 3.814697265625e-6,
+          "mismatches": 0,
+          "nonfinite": 0,
+          "passed": true,
+          "relative_tolerance": 4.999999873689376e-6
+        },
+        "passed": true
+      },
+      "low_f32_bits": {
+        "a_log": true,
+        "dt_bias": true
+      },
+      "oracle_gate_bits_different_from_narrowed": 322,
+      "precision_check_passed": true,
+      "repeat_bit_identical": true,
+      "representable_parameters_require_bit_identity": false,
+      "rows": 7
+    }
+  ],
+  "device": {
+    "driver_version": 13040,
+    "major": 12,
+    "minor": 0,
+    "name": "NVIDIA GeForce RTX 5090",
+    "ordinal": 0,
+    "total_bytes": 33731248128,
+    "uuid": "GPU-80ded6bd-1a89-2628-3d94-902187dbab1d"
+  },
+  "full_ninfer_arithmetic_parity": false,
+  "guards": {
+    "outputs_poisoned": true,
+    "prefix_bytes": 256,
+    "suffix_bytes": 256
+  },
+  "jit_log": "info: ptxas info    : (C7508) Potential Performance Loss: 'setmaxnreg' ignored; unable to determine register count at entry.\n",
+  "kind": "native-parameter-synthetic-check",
+  "model_executable": false,
+  "model_import_required": false,
+  "performance_claim": false,
+  "ptx_path": "/home/ndizazzo/dev/mesh/mesh-llm/target/specialize/reassess-20260927/ptx/direct-9b627a3d6.ptx",
+  "ptx_sha256": "fc91792b98e57945200ab46f4e48b23316b6337c4fea718e1a1d16b946071b11",
+  "resources": {
+    "embedding_norm_bf16": {
+      "local_bytes": 0,
+      "max_threads_per_block": 1024,
+      "registers": 22,
+      "static_shared_bytes": 1024
+    },
+    "fp8_embedding_gather": {
+      "local_bytes": 0,
+      "max_threads_per_block": 1024,
+      "registers": 18,
+      "static_shared_bytes": 0
+    },
+    "gdn_gates": {
+      "local_bytes": 0,
+      "max_threads_per_block": 1024,
+      "registers": 21,
+      "static_shared_bytes": 0
+    },
+    "gdn_gates_f32_params": {
+      "local_bytes": 0,
+      "max_threads_per_block": 1024,
+      "registers": 21,
+      "static_shared_bytes": 0
+    }
+  },
+  "schema_version": 1,
+  "scope": "synthetic encoded gather, pre-norm BF16 rounding, identity-ID alias safety, and gate parameter precision only"
+}

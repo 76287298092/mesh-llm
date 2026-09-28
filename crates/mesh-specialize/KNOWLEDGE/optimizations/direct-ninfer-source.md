@@ -1,8 +1,10 @@
 # Direct NInfer model source
 
-Status: implemented for parent compilation and qualification. No offline conversion
-or `.mspec` intermediate is required. This entry describes source integrity and
-canonical weight routing, not a performance or quality result. The user explicitly
+Status: implemented and qualified for the bounded target-text cases documented
+below. No offline conversion or `.mspec` intermediate is required. Real-file
+hashes, independent canonical hashes, GPU readback, model checks, sanitizers,
+quality and throughput measurements are recorded; general performance parity
+and native speculation remain open. The user explicitly
 authorized native reading for this continuation; the earlier plan's prohibition
 on a native-container parser does not apply to this task. No upstream reader or
 compute implementation is imported.
@@ -162,3 +164,65 @@ inference arithmetic or timed benchmark execution. `ninfer-inspect --canonical`
 exposes the virtual tensor hashes for cross-checking. Tests cover the reference
 transformations independently. Full canonical cross-check/readback and bounded
 native-file sanitizers are still pending at this checkpoint.
+
+
+## Completed bounded qualification
+
+Implementation `9b627a3d6`; full diagnostics `fd500c885`. The current local
+checkout is `/Users/ndizazzo/dev/worktrees/ninfer-direct-runtime` after verified
+archive-snapshot recovery. Carrack retained the implementation and evidence.
+
+Independent NumPy reshape/transpose hashing matches every one of the **1,589**
+canonical arrays, **20,375,588,160 bytes**, including source dtype and shape.
+GPU readback under each sanitizer matches all 1,589 canonical hashes before
+model execution. The old `.mspec` control also matches its captured `ab33f730e`
+logits, selected tokens and all state hashes over 33 steps; no mismatch.
+
+Parameter and direct-model memcheck/synccheck report zero errors. Racecheck
+reports zero hazards with `--force-synchronization-limit 1` and one worker.
+The instrumented model case is two inputs plus one decode step; it is not full
+long-context sanitizer coverage. Noninstrumented native model equivalence
+covers 106/512 inputs plus two decode steps. All three 256-output benchmark
+repetitions complete without EOS before the budget. Services were restored.
+
+| Native-file stream workload | Prefill tokens/s, median | Decode tokens/s, median |
+| --- | ---: | ---: |
+| 106 input / 256 output | 306.41 | 26.48 |
+| 512 input / 256 output | 327.62 | 18.16 |
+
+The corresponding installed Ninfer MTP0 BF16-KV decode reference is about76.3
+at both prompt lengths. Native loading removes the source-weight ambiguity;
+it does not establish throughput parity or erase arithmetic/algorithm gaps.
+
+Scoring:49,148 positions, context512/stride256, four domains. Native control
+mean NLL1.6207356816 versus Ninfer1.6207768509 (about−0.00254% relative).
+This is average teacher-forced likelihood, not full-logit agreement, reasoning
+quality, long-context quality, or serving equivalence. Source arithmetic
+mismatches are retained in the import contract.
+
+Validation:353 macOS library tests;461 Linux library tests plus26 validator
+tests; Clippy on both host and Linux target; Just PTX/no-console checks;
+38 Python validation tests. Counts describe separate scopes, not one universal
+qualification total.
+
+Durable evidence: `evidence/reassess-20260928/direct-source-summary.json`,
+`direct-source-1/`, `native-final-checks-1/`, and `mspec-regression-1/`.
+Large raw score records remain under the corresponding target directories,
+identified by their `raw-sha256.txt` manifests.
+
+### Usage and limitations
+
+Ordinary `qwen-model-bench`, `qwen-model-score`, `qwen-stream-check`, and the
+bounded `qwen-chunked-bench` entrypoints accept the original `.ninfer` file as
+`--artifact`; they require no conversion or intermediate `.mspec` file.
+`ninfer-inspect --artifact FILE --output NEW_JSON --canonical` emits verified
+logical tensor hashes without GPU execution. `--hash-objects` instead inspects
+physical source objects. Output paths must be new.
+
+Only the observed **single-file v3, pinned Qwen3.8-27B target-text artifact** is
+admitted for execution. Other native models and multi-file artifacts are not
+silently accepted. MTP/Q4 proposal execution, vision/DFlash2, and old BF16-only
+CPU model references remain explicitly unsupported. Chunked/long-context and
+serving/concurrency performance are not qualified by the short trials above.
+Full-file and canonical hashing currently add roughly31seconds of verification
+at startup in the scoring campaign; this is outside model throughput timing.

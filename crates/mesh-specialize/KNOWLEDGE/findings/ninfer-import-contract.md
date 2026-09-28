@@ -130,3 +130,10 @@ encoded embedding and FP32 gate oracles; direct-file legacy/stream model checks;
 short and chunked teacher-forced quality, sanitizers, and matched model timings.
 MTP remains explicitly unsupported for direct loading until its packed consumers,
 shortlist mapping and recovery behavior are independently qualified.
+
+
+Qualification update: `../optimizations/direct-ninfer-source.md` now records
+real-file hashes, independent canonical hashes, full GPU tensor readback,
+legacy/stream equivalence, bounded sanitizers, quality and model timings.
+The earlier "next" list above describes the original gates, not their current
+status. MTP and general serving/long-context qualification remain open.

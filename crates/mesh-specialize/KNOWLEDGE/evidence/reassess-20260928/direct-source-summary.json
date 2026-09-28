@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "kind": "direct-ninfer-qualified-scope",
+  "source_sha256": "74d2c57145e6ff11d1d2faa79594477f9bc903a611af1fb20218189fbbb77d82",
+  "implementation_commit": "9b627a3d61629132625b9a7c985f70d6beffa351",
+  "diagnostics_commit": "fd500c8852fc0d45c614a95d90abd82da1ec14c4",
+  "benchmarks": [
+    {
+      "name": "story-128",
+      "input_tokens": 106,
+      "outputs": 256,
+      "repetitions": 3,
+      "prefill_tps": 306.4109788071222,
+      "decode_tps": 26.477586770873454,
+      "first_eos_before_budget": false
+    },
+    {
+      "name": "pg19-512",
+      "input_tokens": 512,
+      "outputs": 256,
+      "repetitions": 3,
+      "prefill_tps": 327.6191400008197,
+      "decode_tps": 18.159845152450316,
+      "first_eos_before_budget": false
+    }
+  ],
+  "quality": {
+    "scored_tokens": 49148,
+    "native_mean_nll": 1.620735681613017,
+    "ninfer_mean_nll": 1.6207768508509623,
+    "relative_nll_difference": -2.5400929143160056e-05,
+    "scope": "four-domain fixed-window512 stride256; no full-distribution or task-quality parity claim"
+  },
+  "canonical_comparison": {
+    "all_passed": true,
+    "tensors": 1589,
+    "logical_bytes": 20375588160,
+    "mismatches": [],
+    "reference": "independent NumPy byte transforms via official read-only reader"
+  },
+  "mspec_regression": {
+    "all_passed": true,
+    "steps": 33,
+    "mismatches": [],
+    "scope": "same raw mspec, prompt/capacity, logits/tokens/all state hashes versus ab33f730e",
+    "weight_readback_passed": true
+  },
+  "unsupported": [
+    "multi-file native models",
+    "other model/artifact pins",
+    "native MTP/Q4 proposal execution",
+    "BF16-only CPU model reference for native source",
+    "serving/concurrency parity"
+  ]
+}
