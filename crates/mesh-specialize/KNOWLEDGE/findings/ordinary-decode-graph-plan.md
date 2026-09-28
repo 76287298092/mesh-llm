@@ -756,3 +756,39 @@ reported as complete-model throughput. Input producers finish before the lease.
 No capture or safe asynchronous API is introduced. Ordinary model dispatch remains
 on its qualified default-stream path until prepared integration is separately proven.
 Linux compilation and GPU/sanitizer qualification of this change are pending.
+
+### Prepared stream qualification and next model boundary
+
+`prepared-mlp-check-1` at source/binary `41ee9916d` passes eight real-weight
+FP8/NVFP4 cases at rows1,5,128,512 in normal, memcheck, racecheck and synccheck
+runs. All sanitizer summaries report zero errors/hazards. The prepared path
+matches seven baseline intermediate/output buffers exactly, retains stable arena
+addresses and rejects reuse after injected gate submission failures at rows1.
+Actual CUDA launch/synchronization failure injection remains untested; failed
+drain logging/poisoning is not proof of completion. Input readiness is established
+by the synchronized preceding trial work, not a general cross-stream dependency.
+Linux Clippy,360 library tests,26 validation-binary tests, Just release tool build
+and no-console check pass. Ninfer restored active/HTTP200; ComfyUI498MiB preserved.
+
+Normal one-row NVFP4 workspace-one-wait median is156.343us versus prepared
+154.127us; FP8 is272.269us versus267.717us. Prepared submission medians are
+6.155us/6.392us. These are three-sample fixed-order component screening medians,
+excluding preparation/view binding and the first prepared warmup. Larger shapes
+show no consistent gain. This is not a whole-model throughput improvement or
+proof of broad allocation-free execution. Raw timings remain in the evidence.
+
+The next model integration should keep existing Model/Layer/Mlp lifetimes intact
+with a separately owned ordinary execution wrapper borrowing Model and Module.
+It owns one nonblocking stream, a dedicated fixed row-one MLP arena and one
+prepared plan per layer. Obtain temporary binding arrays from Mlp; plans retain
+weight owners and module rather than borrowing those arrays. Do not use the
+shape-changing baseline/MTP arena. Keep prefill and recorded/speculative paths
+unchanged, and admit only ordinary one-row execution with matching geometry.
+An optional short-lived prepared MLP call reaches the existing post-normalization
+MLP point in GDN and attention. Establish producer completion before nonblocking
+submission, finish its stream before the existing owning output copy/residual,
+and leave the cursor uncommitted plus execution poisoned on error. Construct the
+wrapper before benchmark warmup, report preparation/additional arena cost, and
+drop it before model/weight memory-release checks. Compare full logits/state with
+independent baseline sessions before claiming any throughput change. Whole-model
+prepared execution and graph capture remain separate unfinished requirements.

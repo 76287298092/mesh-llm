@@ -1,0 +1,501 @@
+{
+  "all_passed": true,
+  "cases": [
+    {
+      "abort_after_gate_checked": true,
+      "all_passed": true,
+      "channels": 17408,
+      "compared_buffers": 7,
+      "control_wall_seconds": [
+        0.106585112,
+        0.110275695,
+        0.111013017
+      ],
+      "fp8": false,
+      "input_fixture": "deterministic signed BF16, not recorded model activations",
+      "prefix": "tensors/model.language_model.layers.0.mlp",
+      "prepared_abort_after_gate_checked": true,
+      "prepared_exact": true,
+      "prepared_submit_and_completion_seconds": [
+        [
+          0.000595359,
+          0.105981359
+        ],
+        [
+          0.000637286,
+          0.106360994
+        ],
+        [
+          0.000581868,
+          0.102872557
+        ],
+        [
+          0.00056789,
+          0.109238722
+        ]
+      ],
+      "prepared_warmup_repetitions": 1,
+      "rows": 1,
+      "stable_addresses": true,
+      "timing_order": "workspace-waits,workspace-one-wait,prepared-stream,control; screening only; prepared excludes preparation/view binding",
+      "variants": [
+        {
+          "all_passed": true,
+          "operator_waits": true,
+          "wall_seconds": [
+            0.109556652,
+            0.111357846,
+            0.11030507
+          ]
+        },
+        {
+          "all_passed": true,
+          "operator_waits": false,
+          "wall_seconds": [
+            0.100704414,
+            0.105506213,
+            0.105361565
+          ]
+        }
+      ],
+      "width": 5120,
+      "workspace_bytes": 471552
+    },
+    {
+      "abort_after_gate_checked": false,
+      "all_passed": true,
+      "channels": 17408,
+      "compared_buffers": 7,
+      "control_wall_seconds": [
+        0.158762604,
+        0.159872967,
+        0.148934299
+      ],
+      "fp8": false,
+      "input_fixture": "deterministic signed BF16, not recorded model activations",
+      "prefix": "tensors/model.language_model.layers.0.mlp",
+      "prepared_abort_after_gate_checked": false,
+      "prepared_exact": true,
+      "prepared_submit_and_completion_seconds": [
+        [
+          0.000930024,
+          0.147214138
+        ],
+        [
+          0.000756706,
+          0.146530305
+        ],
+        [
+          0.000872623,
+          0.144925186
+        ],
+        [
+          0.000789634,
+          0.140309056
+        ]
+      ],
+      "prepared_warmup_repetitions": 1,
+      "rows": 5,
+      "stable_addresses": true,
+      "timing_order": "workspace-waits,workspace-one-wait,prepared-stream,control; screening only; prepared excludes preparation/view binding",
+      "variants": [
+        {
+          "all_passed": true,
+          "operator_waits": true,
+          "wall_seconds": [
+            0.153162067,
+            0.154029407,
+            0.159819345
+          ]
+        },
+        {
+          "all_passed": true,
+          "operator_waits": false,
+          "wall_seconds": [
+            0.146206747,
+            0.148705879,
+            0.146330778
+          ]
+        }
+      ],
+      "width": 5120,
+      "workspace_bytes": 2355456
+    },
+    {
+      "abort_after_gate_checked": false,
+      "all_passed": true,
+      "channels": 17408,
+      "compared_buffers": 7,
+      "control_wall_seconds": [
+        1.243064518,
+        1.255059332,
+        1.25784362
+      ],
+      "fp8": false,
+      "input_fixture": "deterministic signed BF16, not recorded model activations",
+      "prefix": "tensors/model.language_model.layers.0.mlp",
+      "prepared_abort_after_gate_checked": false,
+      "prepared_exact": true,
+      "prepared_submit_and_completion_seconds": [
+        [
+          0.033431759,
+          1.239839528
+        ],
+        [
+          0.02981043,
+          1.249857269
+        ],
+        [
+          0.033942161,
+          1.203849366
+        ],
+        [
+          0.023671523,
+          1.230923532
+        ]
+      ],
+      "prepared_warmup_repetitions": 1,
+      "rows": 128,
+      "stable_addresses": true,
+      "timing_order": "workspace-waits,workspace-one-wait,prepared-stream,control; screening only; prepared excludes preparation/view binding",
+      "variants": [
+        {
+          "all_passed": true,
+          "operator_waits": true,
+          "wall_seconds": [
+            1.272607581,
+            1.270600777,
+            1.245236524
+          ]
+        },
+        {
+          "all_passed": true,
+          "operator_waits": false,
+          "wall_seconds": [
+            1.2521607160000001,
+            1.217309552,
+            1.244879447
+          ]
+        }
+      ],
+      "width": 5120,
+      "workspace_bytes": 60284928
+    },
+    {
+      "abort_after_gate_checked": false,
+      "all_passed": true,
+      "channels": 17408,
+      "compared_buffers": 7,
+      "control_wall_seconds": [
+        4.318269364,
+        4.32937466,
+        4.339106089
+      ],
+      "fp8": false,
+      "input_fixture": "deterministic signed BF16, not recorded model activations",
+      "prefix": "tensors/model.language_model.layers.0.mlp",
+      "prepared_abort_after_gate_checked": false,
+      "prepared_exact": true,
+      "prepared_submit_and_completion_seconds": [
+        [
+          0.114165919,
+          4.265905814
+        ],
+        [
+          0.099308248,
+          4.259006252
+        ],
+        [
+          0.137288688,
+          4.250127344
+        ],
+        [
+          0.15129377,
+          4.261733895
+        ]
+      ],
+      "prepared_warmup_repetitions": 1,
+      "rows": 512,
+      "stable_addresses": true,
+      "timing_order": "workspace-waits,workspace-one-wait,prepared-stream,control; screening only; prepared excludes preparation/view binding",
+      "variants": [
+        {
+          "all_passed": true,
+          "operator_waits": true,
+          "wall_seconds": [
+            4.352876139,
+            4.344818243,
+            4.362698921
+          ]
+        },
+        {
+          "all_passed": true,
+          "operator_waits": false,
+          "wall_seconds": [
+            4.310405032,
+            4.254409837,
+            4.274799382
+          ]
+        }
+      ],
+      "width": 5120,
+      "workspace_bytes": 241139712
+    },
+    {
+      "abort_after_gate_checked": true,
+      "all_passed": true,
+      "channels": 17408,
+      "compared_buffers": 7,
+      "control_wall_seconds": [
+        0.082823675,
+        0.079969364,
+        0.083557858
+      ],
+      "fp8": true,
+      "input_fixture": "deterministic signed BF16, not recorded model activations",
+      "prefix": "tensors/model.language_model.layers.56.mlp",
+      "prepared_abort_after_gate_checked": true,
+      "prepared_exact": true,
+      "prepared_submit_and_completion_seconds": [
+        [
+          0.000508272,
+          0.083211359
+        ],
+        [
+          0.000541187,
+          0.080955352
+        ],
+        [
+          0.000525718,
+          0.081278777
+        ],
+        [
+          0.000474928,
+          0.081286863
+        ]
+      ],
+      "prepared_warmup_repetitions": 1,
+      "rows": 1,
+      "stable_addresses": true,
+      "timing_order": "workspace-waits,workspace-one-wait,prepared-stream,control; screening only; prepared excludes preparation/view binding",
+      "variants": [
+        {
+          "all_passed": true,
+          "operator_waits": true,
+          "wall_seconds": [
+            0.084213746,
+            0.081771774,
+            0.085543338
+          ]
+        },
+        {
+          "all_passed": true,
+          "operator_waits": false,
+          "wall_seconds": [
+            0.088500098,
+            0.080006788,
+            0.079249553
+          ]
+        }
+      ],
+      "width": 5120,
+      "workspace_bytes": 477696
+    },
+    {
+      "abort_after_gate_checked": false,
+      "all_passed": true,
+      "channels": 17408,
+      "compared_buffers": 7,
+      "control_wall_seconds": [
+        0.056837706,
+        0.059144627,
+        0.059046849
+      ],
+      "fp8": true,
+      "input_fixture": "deterministic signed BF16, not recorded model activations",
+      "prefix": "tensors/model.language_model.layers.56.mlp",
+      "prepared_abort_after_gate_checked": false,
+      "prepared_exact": true,
+      "prepared_submit_and_completion_seconds": [
+        [
+          0.000296452,
+          0.052627484
+        ],
+        [
+          0.000298951,
+          0.054526108
+        ],
+        [
+          0.000292632,
+          0.054936767
+        ],
+        [
+          0.000312762,
+          0.055189322
+        ]
+      ],
+      "prepared_warmup_repetitions": 1,
+      "rows": 5,
+      "stable_addresses": true,
+      "timing_order": "workspace-waits,workspace-one-wait,prepared-stream,control; screening only; prepared excludes preparation/view binding",
+      "variants": [
+        {
+          "all_passed": true,
+          "operator_waits": true,
+          "wall_seconds": [
+            0.062430159,
+            0.059765052,
+            0.05982366
+          ]
+        },
+        {
+          "all_passed": true,
+          "operator_waits": false,
+          "wall_seconds": [
+            0.053438973,
+            0.0530915,
+            0.056738757
+          ]
+        }
+      ],
+      "width": 5120,
+      "workspace_bytes": 2382336
+    },
+    {
+      "abort_after_gate_checked": false,
+      "all_passed": true,
+      "channels": 17408,
+      "compared_buffers": 7,
+      "control_wall_seconds": [
+        0.310106476,
+        0.312460364,
+        0.311486095
+      ],
+      "fp8": true,
+      "input_fixture": "deterministic signed BF16, not recorded model activations",
+      "prefix": "tensors/model.language_model.layers.56.mlp",
+      "prepared_abort_after_gate_checked": false,
+      "prepared_exact": true,
+      "prepared_submit_and_completion_seconds": [
+        [
+          0.002249323,
+          0.304741903
+        ],
+        [
+          0.003140674,
+          0.298856786
+        ],
+        [
+          0.002110731,
+          0.304736629
+        ],
+        [
+          0.002710214,
+          0.303244992
+        ]
+      ],
+      "prepared_warmup_repetitions": 1,
+      "rows": 128,
+      "stable_addresses": true,
+      "timing_order": "workspace-waits,workspace-one-wait,prepared-stream,control; screening only; prepared excludes preparation/view binding",
+      "variants": [
+        {
+          "all_passed": true,
+          "operator_waits": true,
+          "wall_seconds": [
+            0.307119164,
+            0.307854626,
+            0.304599463
+          ]
+        },
+        {
+          "all_passed": true,
+          "operator_waits": false,
+          "wall_seconds": [
+            0.29867087,
+            0.305150709,
+            0.30502578
+          ]
+        }
+      ],
+      "width": 5120,
+      "workspace_bytes": 60950784
+    },
+    {
+      "abort_after_gate_checked": false,
+      "all_passed": true,
+      "channels": 17408,
+      "compared_buffers": 7,
+      "control_wall_seconds": [
+        1.001081958,
+        0.998211306,
+        0.998540865
+      ],
+      "fp8": true,
+      "input_fixture": "deterministic signed BF16, not recorded model activations",
+      "prefix": "tensors/model.language_model.layers.56.mlp",
+      "prepared_abort_after_gate_checked": false,
+      "prepared_exact": true,
+      "prepared_submit_and_completion_seconds": [
+        [
+          0.013249527,
+          0.989970679
+        ],
+        [
+          0.013599694,
+          0.988188459
+        ],
+        [
+          0.01351386,
+          0.991961682
+        ],
+        [
+          0.015193942,
+          0.987019096
+        ]
+      ],
+      "prepared_warmup_repetitions": 1,
+      "rows": 512,
+      "stable_addresses": true,
+      "timing_order": "workspace-waits,workspace-one-wait,prepared-stream,control; screening only; prepared excludes preparation/view binding",
+      "variants": [
+        {
+          "all_passed": true,
+          "operator_waits": true,
+          "wall_seconds": [
+            1.00134634,
+            0.993358402,
+            0.998407538
+          ]
+        },
+        {
+          "all_passed": true,
+          "operator_waits": false,
+          "wall_seconds": [
+            0.993530853,
+            0.991796544,
+            0.991692054
+          ]
+        }
+      ],
+      "width": 5120,
+      "workspace_bytes": 243800832
+    }
+  ],
+  "device": {
+    "driver_version": 13040,
+    "major": 12,
+    "minor": 0,
+    "name": "NVIDIA GeForce RTX 5090",
+    "ordinal": 0,
+    "total_bytes": 33731248128,
+    "uuid": "GPU-80ded6bd-1a89-2628-3d94-902187dbab1d"
+  },
+  "identity": {
+    "model_id": "qwen3.8-27b:text:nvfp4-fp8:upstream-raw-v1",
+    "weights_id": "sha256:f49713878a072f8c9043060dc0e2f3b28421301e49471bee0c13c7570e59e81e"
+  },
+  "kind": "real-weight-mlp-workspace-trial",
+  "ptx_sha256": "dd54c51a775eb95634b456caa03198e53954646727658de126e4ed5771bae162",
+  "scope": "real checkpoint weights and deterministic signed BF16 input fixtures; not model throughput or quality"
+}
