@@ -81,6 +81,8 @@ logs before continuing. There are at most three distributed repair attempts;
 every edit requires a new complete build and family pass. Both the first full
 family pass and the fresh independent build/family pass must be green on the
 same commit before the hosted publisher can create a branch or PR.
+Runner-capacity, missing, corrupt, or foreign evidence is not source-repair
+input and stops the workflow without starting another session.
 
 ## New upstream model families
 

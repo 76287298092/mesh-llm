@@ -27,6 +27,10 @@ on:
       previous_head:
         type: string
         default: ''
+      previous_feedback:
+        description: Digest-bound failed-family evidence from the preceding distributed attempt
+        type: string
+        default: ''
     outputs:
       green:
         value: ${{ jobs.aggregate.outputs.green }}
@@ -39,9 +43,13 @@ on:
       branch:
         value: ${{ jobs.build.outputs.branch }}
       failure_class:
-        value: ${{ jobs.build.outputs.failure_class }}
+        value: ${{ jobs.aggregate.outputs.failure_class || jobs.build.outputs.failure_class }}
       failure_stage:
-        value: ${{ jobs.build.outputs.failure_stage }}
+        value: ${{ jobs.aggregate.outputs.failure_stage || jobs.build.outputs.failure_stage }}
+      repairable:
+        value: ${{ jobs.aggregate.outputs.repairable }}
+      feedback:
+        value: ${{ jobs.aggregate.outputs.feedback }}
 permissions:
   contents: read
 defaults:
@@ -93,6 +101,12 @@ jobs:
         with:
           name: ${{ inputs.previous_package }}
           path: ${{ runner.temp }}/canary-previous-${{ inputs.pass_id }}
+      - name: Download previous family failure evidence
+        if: inputs.previous_feedback != ''
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ inputs.previous_feedback }}
+          path: ${{ runner.temp }}/canary-feedback-${{ inputs.pass_id }}
       - name: Build exact candidate for distributed certification
         id: build
         env:
@@ -102,6 +116,7 @@ jobs:
           CANARY_PREVIOUS_PACKAGE: ${{ inputs.previous_package != '' && format('{0}/canary-previous-{1}', runner.temp, inputs.pass_id) || '' }}
           CANARY_PREVIOUS_IDENTITY: ${{ inputs.previous_identity }}
           CANARY_CANDIDATE_SHA: ${{ inputs.previous_head }}
+          CANARY_PREVIOUS_FEEDBACK: ${{ inputs.previous_feedback != '' && format('{0}/canary-feedback-{1}', runner.temp, inputs.pass_id) || '' }}
           CANARY_EXPORT_DIR: ${{ runner.temp }}/canary-export-${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.pass_id }}
           CANARY_AGENT_PROVIDER: ${{ vars.LLAMA_CANARY_GOOSE_PROVIDER || 'zai_coding_plan' }}
           CANARY_AGENT_MODEL: ${{ vars.LLAMA_CANARY_GOOSE_MODEL || 'glm-5.3-flash' }}
@@ -296,6 +311,10 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       green: ${{ steps.aggregate.outputs.green }}
+      repairable: ${{ steps.aggregate.outputs.repairable }}
+      failure_class: ${{ steps.aggregate.outputs.failure_class }}
+      failure_stage: ${{ steps.aggregate.outputs.failure_stage }}
+      feedback: llama-family-feedback-${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.pass_id }}-${{ needs.build.outputs.identity }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
@@ -317,6 +336,14 @@ jobs:
           FAMILY_RESULT: ${{ needs.family.result }}
         run: |
           set -euo pipefail
-          test "$FAMILY_RESULT" = success
           python3 scripts/llama-canary-family-evidence.py aggregate --package "$RUNNER_TEMP/aggregate-input" \
-            --identity "$IDENTITY" --evidence "$RUNNER_TEMP/aggregate-evidence"
+            --identity "$IDENTITY" --evidence "$RUNNER_TEMP/aggregate-evidence" \
+            --family-result "$FAMILY_RESULT" --feedback "$RUNNER_TEMP/canary-family-feedback"
+      - name: Upload repairable family failure evidence
+        if: ${{ !cancelled() && steps.aggregate.outputs.repairable == 'true' }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: llama-family-feedback-${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.pass_id }}-${{ needs.build.outputs.identity }}
+          path: ${{ runner.temp }}/canary-family-feedback/
+          if-no-files-found: error
+          retention-days: 14

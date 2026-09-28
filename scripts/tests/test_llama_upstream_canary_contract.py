@@ -269,20 +269,33 @@ class LlamaUpstreamCanaryWorkflowTests(unittest.TestCase):
             self.assertEqual(0, prepared.returncode, prepared.stderr)
             self.assertEqual(prepared_target + "\n", pin.read_text(encoding="utf-8"))
 
-    def test_changed_pin_uses_linear_preflight_candidate_and_verification(self) -> None:
+    def test_changed_pin_uses_three_bounded_distributed_attempts(self) -> None:
         workflow = yaml.safe_load(WORKFLOW.read_text())
         jobs = workflow['jobs']
         self.assertEqual(jobs['preflight']['needs'], ['resolve'])
         preflight_commands = '\n'.join(step.get('run', '') for step in jobs['preflight']['steps'])
         self.assertIn('llama-canary-family-evidence.py preflight', preflight_commands)
         self.assertIn('--root "$CANARY_SOURCE_ROOT"', preflight_commands)
-        candidate, verify = jobs['candidate'], jobs['verification']
-        self.assertEqual(candidate['needs'], ['resolve', 'preflight'])
-        self.assertEqual(candidate['uses'], './.github/workflows/llama-canary-family-pass.yml')
-        self.assertEqual(verify['uses'], candidate['uses'])
-        self.assertEqual(verify['with']['mode'], 'verify-build')
-        self.assertIn("needs.candidate.outputs.green == 'true'", verify['if'])
-        self.assertFalse({'repair-2', 'verify-2', 'repair-3', 'verify-3'} & jobs.keys())
+        repair = jobs['repair_1']
+        self.assertEqual(repair['needs'], ['resolve', 'preflight'])
+        self.assertEqual(repair['uses'], './.github/workflows/llama-canary-family-pass.yml')
+        for attempt in range(1, 4):
+            candidate = jobs[f'repair_{attempt}']
+            verify = jobs[f'verify_{attempt}']
+            select = jobs[f'attempt_{attempt}']
+            self.assertEqual(candidate['with']['pass_id'], f'repair-{attempt}')
+            self.assertEqual(verify['with']['pass_id'], f'verify-{attempt}')
+            self.assertEqual(verify['with']['mode'], 'verify-build')
+            self.assertEqual(verify['uses'], repair['uses'])
+            command = '\n'.join(step.get('run', '') for step in select['steps'])
+            self.assertIn('llama-canary-select-attempt.py attempt', command)
+        for attempt in (2, 3):
+            candidate = jobs[f'repair_{attempt}']
+            self.assertIn("state == 'repairable'", candidate['if'])
+            self.assertEqual(candidate['with']['previous_package'],
+                             f'${{{{ needs.attempt_{attempt - 1}.outputs.resume_package }}}}')
+            self.assertEqual(candidate['with']['previous_feedback'],
+                             f'${{{{ needs.attempt_{attempt - 1}.outputs.resume_feedback }}}}')
         self.assertIn("needs.result.outputs.publish == 'true'", jobs['publish-certified-canary']['if'])
         worker = PASS_WORKFLOW.read_text()
         self.assertIn("CANARY_AGENT_TIMEOUT_SECONDS: '41400'", worker)

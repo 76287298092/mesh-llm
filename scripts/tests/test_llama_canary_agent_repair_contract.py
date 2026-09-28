@@ -257,6 +257,21 @@ run_candidate_gates() {
         self.assertIn("agent developer task exited with status %s", agent)
         self.assertIn('tee -a "$AGENT_LOG"', agent)
 
+    def test_distributed_repair_restores_exact_candidate_and_reads_feedback(self) -> None:
+        restore = self.wrapper[
+            self.wrapper.index("restore_previous_repair_candidate() {") :
+            self.wrapper.index("agent_session_step() {")
+        ]
+        self.assertIn('git bundle verify "$bundle"', restore)
+        self.assertIn('git diff --binary "$BASE_HEAD" "$expected" -- | git apply --index --binary', restore)
+        self.assertIn('git write-tree', restore)
+        self.assertIn('CANARY_PREVIOUS_FEEDBACK', restore)
+        prompt = self.wrapper[
+            self.wrapper.index("agent_prompt() {") :
+            self.wrapper.index("restore_previous_repair_candidate() {")
+        ]
+        self.assertIn('Read the digest-bound family failure summary', prompt)
+
     def test_agent_cannot_change_harness_or_commit(self) -> None:
         guard = self.wrapper[
             self.wrapper.index("assert_agent_control_unchanged() {") : self.wrapper.index("run_prepare() {")
