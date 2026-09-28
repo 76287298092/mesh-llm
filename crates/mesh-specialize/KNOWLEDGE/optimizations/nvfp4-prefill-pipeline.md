@@ -291,3 +291,33 @@ Added `MESH_SPECIALIZE_NVFP4_PROFILE=wide-prefill`, separately named
 integer decode and smaller-batch native dispatch are unchanged. Both ordinary
 and workspace MLP paths already share the profile selector. MTP remains gated
 to baseline. Default remains baseline; full-model qualification is pending.
+
+### Wide full-model comparison, 2026-09-27
+
+`nvfp4-wide-model-1` completed at source/binary `7466ad233`, using the same
+`dd54c51a...` PTX for all schedules. Exact FP8 and attention, MLP workspace on,
+GPU greedy off, split-K off, 8 generated tokens and three repetitions per case.
+This is a fixed-order shared-GPU trial with ComfyUI resident at498MiB, not an
+uncontended matched Ninfer comparison. Ninfer was active before, stopped only
+for this trial and restored active with health HTTP200.
+
+| Input tokens | Baseline prefill tokens/s | Fixed32x32 | Wide32x128 |
+| --- | ---: | ---: | ---: |
+| 128 | 274.6388 | 276.0261 | 290.5204 |
+| 512 | 305.6409 | 306.8449 | 324.1766 |
+
+Wide medians are about5.8% and6.1% above baseline in this bounded trial. All six
+strict profile reports pass whole/token partition, profile/control output/state
+and memory release. The independent comparison script checks profile identities,
+equal PTX identities, all four captured BF16 logit files, complete same-input
+state hashes, and generated tokens across all repetitions. These are exact across
+schedules at both prompt lengths. Full logit bytes remain in ignored trial
+directories on both hosts; committed manifests retain their hashes.
+
+The single instrumented NVFP4 projection event sums are56.8064/52.1716/34.7988ms
+at128 and195.7647/191.3207/101.3638ms at512 for baseline/fixed/wide. These are
+diagnostic event sums, not uninstrumented wall-time attribution. The model still
+spends substantial time in exact FP8, attention and GDN. Decode scheduling was
+unchanged and no decode gain is claimed. Default remains baseline; wider context,
+broader quality, whole-model sanitizer coverage of this profile and matched
+Ninfer serving qualification remain open. No final performance parity claim.
