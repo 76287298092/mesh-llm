@@ -1,7 +1,7 @@
 use std::path::Path;
 
-use model_artifact::ModelIdentity;
 use skippy_cache::{ExactStateIdentityParams, exact_state_identity};
+use skippy_model_artifact::ModelIdentity;
 
 use crate::cli::{FlashAttentionArg, RemoteHandoffArgs};
 

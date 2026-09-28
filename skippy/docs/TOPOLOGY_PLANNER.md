@@ -237,7 +237,7 @@ starting stage servers:
 | `skippy-bench run` | Validates distributed split plans before metrics/server launch. |
 | `skippy-bench local-split-binary` | Validates the single local split before opening the model or starting stage 1. |
 | `skippy-bench local-split-chain-binary` | Validates both local split boundaries before opening the model or starting stage servers. |
-| `skippy-prompt prompt` | Validates local or remote prompt topology before slicing models or starting servers. |
+| `skippy plan-split` | Validates and admits explicit worker endpoints before writing stage configs. |
 
 Known preflight behavior:
 

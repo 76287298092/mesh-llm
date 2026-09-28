@@ -15,6 +15,8 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Command {
+    /// Prompt a running Skippy OpenAI endpoint interactively.
+    Prompt(PromptArgs),
     Serve(ServeArgs),
     ServeBinary(ServeBinaryArgs),
     #[command(name = "serve-openai")]
@@ -35,6 +37,25 @@ pub enum Command {
         #[command(subcommand)]
         command: RuntimeCommand,
     },
+}
+
+#[derive(Parser)]
+pub struct PromptArgs {
+    #[arg(long, default_value = "http://127.0.0.1:9337/v1")]
+    pub endpoint: String,
+    #[arg(
+        long,
+        help = "Model ID; defaults to the first model returned by /models"
+    )]
+    pub model: Option<String>,
+    #[arg(long, default_value_t = 128)]
+    pub max_new_tokens: u32,
+    #[arg(long, help = "Use /completions with each line as a raw prompt")]
+    pub raw: bool,
+    #[arg(long, help = "Disable model thinking through reasoning_effort=none")]
+    pub no_think: bool,
+    #[arg(long)]
+    pub history_path: Option<PathBuf>,
 }
 
 #[derive(Parser)]
@@ -448,6 +469,24 @@ impl From<PlanSplitArgs> for skippy_commands::split::PlanSplitCommand {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn prompt_accepts_a_running_endpoint_without_model_files() {
+        let cli = Cli::try_parse_from([
+            "skippy",
+            "prompt",
+            "--endpoint",
+            "http://127.0.0.1:9337/v1",
+            "--no-think",
+        ])
+        .unwrap();
+        let Command::Prompt(args) = cli.command else {
+            panic!("expected prompt command");
+        };
+        assert_eq!(args.endpoint, "http://127.0.0.1:9337/v1");
+        assert!(args.no_think);
+        assert!(args.model.is_none());
+    }
 
     #[test]
     fn openai_prefill_policy_defaults_to_adaptive_ramp() {

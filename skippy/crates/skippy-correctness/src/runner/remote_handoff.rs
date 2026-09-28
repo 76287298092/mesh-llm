@@ -994,7 +994,7 @@ fn per_connection_report_path(
 fn handle_receiver_connection(
     model: &StageModel,
     args: &RemoteHandoffArgs,
-    model_identity: &model_artifact::ModelIdentity,
+    model_identity: &skippy_model_artifact::ModelIdentity,
     model_load_ms: f64,
     stream: TcpStream,
     report_out: Option<&std::path::Path>,

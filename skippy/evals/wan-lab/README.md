@@ -75,22 +75,21 @@ the lab exits before any containers start.
 
 ## Interactive Prompt
 
-With the lab running in one terminal, attach a `skippy-prompt binary` REPL to
+With the lab running in one terminal, attach a `skippy prompt` REPL to
 stage0 from another terminal:
 
 ```bash
 skippy/evals/wan-lab/prompt.sh
 ```
 
-Extra REPL flags are passed through to `skippy-prompt binary`, for example:
+Extra REPL flags are passed through to `skippy prompt`, for example:
 
 ```bash
 skippy/evals/wan-lab/prompt.sh --max-new-tokens 64 --no-think
 ```
 
 The prompt helper does not start containers or download the model. It attaches
-to the existing `stage0` container and uses the same env files and read-only
-host HF cache mount as `up.sh`.
+to the existing `stage0` container and sends requests to its OpenAI endpoint.
 
 The OpenAI-compatible endpoint is:
 

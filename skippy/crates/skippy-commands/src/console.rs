@@ -43,6 +43,21 @@ pub fn write_json(value: &impl serde::Serialize) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Write streamed interactive output without waiting for a newline.
+pub(crate) fn write_text(text: &str) -> io::Result<()> {
+    let mut output = io::stdout().lock();
+    output.write_all(text.as_bytes())?;
+    output.flush()
+}
+
+pub(crate) fn write_line(text: &str) -> io::Result<()> {
+    writeln!(io::stdout().lock(), "{text}")
+}
+
+pub(crate) fn write_status(message: &str) -> io::Result<()> {
+    writeln!(io::stderr().lock(), "{message}")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

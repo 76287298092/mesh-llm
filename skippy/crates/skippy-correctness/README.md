@@ -115,12 +115,22 @@ skippy-correctness glm-dsa-stage0-trace \
   --ctx-size 1024 \
   --n-gpu-layers 999 \
   --stage-server-bin target/release/skippy \
-  --prompt-bin target/release/skippy-prompt \
   --report-out reports/glm-dsa-stage0-trace.json
 ```
 
-All commands emit JSON, optionally write the same JSON with `--report-out`, and
-exit non-zero on mismatch unless `--allow-mismatch` is set.
+Model parity commands emit JSON, optionally write the same JSON with
+`--report-out`, and exit non-zero on mismatch unless `--allow-mismatch` is set.
+
+`open-ai-cache-reuse` checks repeated and growing chat requests against an
+already running stage-0 OpenAI endpoint. It requires cached prompt tokens
+on a repeated request, the first growing turn, and its repeat:
+
+```bash
+skippy-correctness open-ai-cache-reuse \
+  --base-url http://127.0.0.1:9337/v1 \
+  --model local-model \
+  --prompt-file long-prompt.txt
+```
 
 ## Llama Family Parity Tests
 
@@ -222,7 +232,7 @@ same activation/cache contracts without requiring a monolithic full GGUF.
   `stage.openai_native_mtp_verify` events.
 - `glm-dsa-stage0-trace` runs a package-backed GLM-DSA stage-0 slice twice:
   fused sparse-mask mode and direct sparse-attention mode. It starts a local
-  fake downstream binary stage, drives `skippy-prompt binary`, captures
+  fake downstream binary stage, drives a deterministic stage-boundary request, captures
   `glm_dsa_tensor_trace` / `glm_dsa_op_timing` logs, and emits a JSON report
   with fake-downstream top-k sideband counts plus fused-vs-direct speed ratios.
   This is a diagnostic loop for GLM-DSA fast-path work, not a full-model

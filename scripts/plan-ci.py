@@ -442,7 +442,6 @@ def _make_batches(crates: list[str], bins: int) -> list[dict[str, Any]]:
         "skippy-correctness": 4,
         "mesh-llm-api-server": 3,
         "mesh-llm-system": 3,
-        "skippy-prompt": 3,
     }
     buckets = [{"idx": index, "weight": 0, "crates": []} for index in range(bins)]
     indexed = [

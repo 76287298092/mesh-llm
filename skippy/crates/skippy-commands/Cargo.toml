@@ -13,6 +13,8 @@ hex = "0.4"
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
+reqwest = { version = "0.13", default-features = false, features = ["blocking", "json", "rustls"] }
+rustyline = "18"
 uuid = { version = "1", features = ["v4"] }
 hf-hub = { package = "skippy-hf-hub", path = "../skippy-hf-hub", version = "0.76.1", default-features = false }
 skippy-model-artifact = { path = "../skippy-model-artifact", version = "0.76.1" }

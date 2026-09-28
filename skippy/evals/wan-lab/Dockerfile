@@ -47,7 +47,6 @@ RUN --mount=type=cache,id=mesh-llm-cargo-registry-debian-bookworm-rust-stable-${
     just skippy-wan-lab-build-bins && \
     mkdir -p /out && \
     cp /src/target/release/skippy /out/skippy && \
-    cp /src/target/release/skippy-prompt /out/skippy-prompt && \
     cp /src/target/release/metrics-server /out/metrics-server && \
     cp /src/target/release/skippy-model-package /out/skippy-model-package
 
@@ -72,7 +71,6 @@ RUN --mount=type=cache,id=mesh-llm-apt-lists-debian-bookworm-${TARGETARCH},targe
     tini
 
 COPY --from=builder /out/skippy /usr/local/bin/skippy
-COPY --from=builder /out/skippy-prompt /usr/local/bin/skippy-prompt
 COPY --from=builder /out/metrics-server /usr/local/bin/metrics-server
 COPY --from=builder /out/skippy-model-package /usr/local/bin/skippy-model-package
 COPY skippy/evals/wan-lab/entrypoint.sh /usr/local/bin/skippy-wan-lab

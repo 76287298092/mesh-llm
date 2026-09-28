@@ -85,7 +85,6 @@ WORKSPACE_MEMBERS=(
   "skippy-correctness"
   "llama-spec-bench"
   "skippy-bench"
-  "skippy-prompt"
   "xtask"
 )
 

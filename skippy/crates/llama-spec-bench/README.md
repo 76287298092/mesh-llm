@@ -11,7 +11,7 @@ the measured target and draft costs of the serial diagnostic loop.
 
 This crate runs both models locally through `skippy-runtime`. It is a
 preflight tool for deciding whether a draft model is safe and useful before it
-is wired into mesh-owned stage serving, `skippy-prompt` diagnostics, or
+is wired into mesh-owned stage serving, `skippy-correctness` diagnostics, or
 benchmark launchers.
 The target and draft are opened as complete local models without tensor
 filtering; this keeps draft compatibility focused on tokenizer agreement and

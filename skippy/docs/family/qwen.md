@@ -96,22 +96,18 @@ occupied lab ports, or low disk.
 ## Benchmark Entry Point
 
 All customer-readiness benchmark numbers must go through the chat-completions
-frontend. Use `skippy-serving serve-openai`, backed by the shared
+frontend. Use `skippy serve-openai`, backed by the shared
 `skippy-inference-api` crate, and send benchmark traffic to `/v1/chat/completions`.
 
-Direct `skippy-prompt` or binary protocol runs are allowed for
+Direct `skippy-correctness` or binary protocol runs are allowed for
 correctness isolation, debugging, and preflight checks, but they are not
 headline customer benchmark results. If a direct run is included in a report,
 label it as diagnostic and keep it separate from chat-completions frontend
 numbers.
 
-Future prompt work should converge on the same OpenAI surface. `just prompt`
-may remain the operator-friendly launcher, REPL, and log viewer, but its
-generation path should be able to drive the stage-0 chat-completions endpoint
-instead of maintaining a separate customer-invisible binary request path. This
-keeps prompt diagnostics, benchmark traffic, and customer traffic exercising the
-same parsing, chat-template, error-shaping, streaming, and usage-accounting
-code.
+`skippy prompt` is an operator-facing REPL for the stage-0 OpenAI endpoint.
+It uses the same parsing, chat-template, error-shaping, streaming, and
+usage-accounting path as benchmark and customer traffic.
 
 Chat-completions frontend benchmark requirements:
 

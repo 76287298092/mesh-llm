@@ -96,7 +96,7 @@ separate unless the combined resident set has been intentionally budgeted.
 | --- | --- | --- |
 | Full correctness lanes | Source GGUF opened by `skippy-correctness`. | The full `StageModel` is dropped before staged prompt/spec starts. |
 | Stage materialization | Source GGUF is read by `skippy-package-builder` to write stage artifacts. | The package tool exits before prompt stages launch. |
-| Staged prompt/spec | Local stage artifacts plus optional draft model. The prompt tokenizer uses the first local stage artifact with CPU-only loading. | `skippy-prompt prompt` owns and kills stage/KV/metrics children before returning; corpus modes run one at a time. |
+| Staged prompt/spec | Stage artifacts and optional draft model served through stage-0 OpenAI. | The owning certification harness stops stage and metrics children before returning; corpus modes run one at a time. |
 
 Using the target as its own draft is allowed only when it is useful and the
 combined staged target plus draft memory fits. It is not a default certification
@@ -161,9 +161,9 @@ prompt/spec lifecycle:
 
 ```bash
 bash -n scripts/family-certify.sh
-cargo fmt --check -p skippy-topology -p skippy-package-builder -p skippy-prompt
+cargo fmt --check -p skippy-topology -p skippy-package-builder -p skippy-cli -p skippy-commands
 cargo test -p skippy-topology
 LLAMA_STAGE_BUILD_DIR=.deps/llama-stage.cpp/build-stage-abi-static \
-  cargo build -p skippy-prompt -p skippy-package-builder -p skippy-topology
+  cargo build -p skippy-cli -p skippy-package-builder -p skippy-topology
 git diff --check
 ```

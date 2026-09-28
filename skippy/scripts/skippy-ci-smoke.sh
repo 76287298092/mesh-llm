@@ -327,7 +327,7 @@ import sys
 
 path = sys.argv[1]
 sentence = (
-    "We are validating exact prefix cache reuse in the binary serving path with "
+    "We are validating exact prefix cache reuse in the staged serving path with "
     "a deterministic long prompt, stable wording, and enough repeated context "
     "to cross the restore threshold without depending on model creativity."
 )
@@ -335,14 +335,8 @@ prompt = "Summarize this cache smoke paragraph in one short sentence. " + " ".jo
     f"{i:03d}. {sentence}" for i in range(12)
 )
 with open(path, "w", encoding="utf-8") as handle:
-    handle.write(":noappend\n")
     handle.write(prompt)
     handle.write("\n")
-    handle.write(prompt)
-    handle.write("\n:append\n")
-    handle.write("Reply with exactly the single word OK and then stop.\n")
-    handle.write("Reply with exactly the single word OK again and then stop.\n")
-    handle.write(":quit\n")
 PY
 }
 
@@ -382,7 +376,7 @@ fi
 
 echo "building skippy smoke binaries"
 LLAMA_STAGE_BUILD_DIR="$LLAMA_BUILD_DIR" \
-  cargo build -p skippy-cli -p skippy-correctness -p skippy-package-builder -p skippy-prompt
+  cargo build -p skippy-cli -p skippy-correctness -p skippy-package-builder
 
 DENSE_LAYER_END="$(model_layer_end "$DENSE_MODEL_PATH")"
 RECURRENT_LAYER_END="$(model_layer_end "$RECURRENT_MODEL_PATH")"
@@ -541,7 +535,9 @@ PROMPT_LOG="$WORK_DIR/prompt-stage.log"
 PROMPT_IN="$WORK_DIR/prompt-input.txt"
 PROMPT_OUT="$WORK_DIR/prompt-output.log"
 PROMPT_BIND="127.0.0.1:${PROMPT_PORT}"
-write_stage_config "$PROMPT_CONFIG" "$DENSE_MODEL_ID" "$DENSE_MODEL_PATH" "$DENSE_LAYER_END" "$PROMPT_CTX_SIZE" "$PROMPT_BIND" "resident-kv" "$PROMPT_N_BATCH" "$PROMPT_N_UBATCH" "driver"
+PROMPT_OPENAI_PORT="$(pick_port)"
+PROMPT_OPENAI_URL="http://127.0.0.1:${PROMPT_OPENAI_PORT}/v1"
+write_stage_config "$PROMPT_CONFIG" "$DENSE_MODEL_ID" "$DENSE_MODEL_PATH" "$DENSE_LAYER_END" "$PROMPT_CTX_SIZE" "$PROMPT_BIND" "resident-kv" "$PROMPT_N_BATCH" "$PROMPT_N_UBATCH"
 make_long_prompt_file "$PROMPT_IN"
 
 OPENAI_PORT="$(pick_port)"
@@ -717,11 +713,12 @@ assert_json "$openai_structured_response" '.choices[0].message.role == "assistan
 cleanup
 SERVER_PID=""
 
-echo "smoke: prompt exact-prefix hit and live-session reuse"
+echo "smoke: staged OpenAI repeated-prompt and growing-chat cache reuse"
 LLAMA_STAGE_BUILD_DIR="$LLAMA_BUILD_DIR" \
   "$STAGE_SERVER_BIN" serve-binary \
     --config "$PROMPT_CONFIG" \
     --max-inflight 4 \
+    --openai-bind-addr "127.0.0.1:${PROMPT_OPENAI_PORT}" \
     >"$PROMPT_LOG" 2>&1 &
 SERVER_PID="$!"
 if ! wait_for_tcp "127.0.0.1" "$PROMPT_PORT" "$SERVER_PID"; then
@@ -730,40 +727,32 @@ if ! wait_for_tcp "127.0.0.1" "$PROMPT_PORT" "$SERVER_PID"; then
   exit 1
 fi
 
-set +e
-LLAMA_STAGE_BUILD_DIR="$LLAMA_BUILD_DIR" \
-  run_with_timeout "prompt binary smoke" target/debug/skippy-prompt binary \
-    --model-path "$DENSE_MODEL_PATH" \
-    --tokenizer-model-path "$DENSE_MODEL_PATH" \
-    --tokenizer-load-mode runtime-slice \
-    --tokenizer-layer-start 0 \
-    --tokenizer-layer-end "$DENSE_LAYER_END" \
-    --first-stage-addr "$PROMPT_BIND" \
-    --ctx-size "$PROMPT_CTX_SIZE" \
-    --activation-width 2048 \
-    --prefill-chunk-size "$PROMPT_PREFILL_CHUNK_SIZE" \
-    --max-new-tokens "$PROMPT_MAX_NEW_TOKENS" \
-    --session-id skippy-ci-smoke \
-    --no-think \
-    <"$PROMPT_IN" >"$PROMPT_OUT" 2>&1
-PROMPT_STATUS=$?
-set -e
-if [[ "$PROMPT_STATUS" -ne 0 ]]; then
-  echo "skippy-prompt smoke failed; prompt output follows" >&2
+for _ in $(seq 1 30); do
+  if curl -fsS --max-time 2 "${PROMPT_OPENAI_URL}/models" >/dev/null 2>&1; then
+    break
+  fi
+  if ! kill -0 "$SERVER_PID" >/dev/null 2>&1; then
+    break
+  fi
+  sleep 1
+done
+if ! curl -fsS --max-time 5 "${PROMPT_OPENAI_URL}/models" >/dev/null; then
+  echo "staged OpenAI endpoint did not become ready; stage log follows" >&2
+  sed -n '1,260p' "$PROMPT_LOG" >&2 || true
+  exit 1
+fi
+
+if ! LLAMA_STAGE_BUILD_DIR="$LLAMA_BUILD_DIR" \
+  run_with_timeout "staged cache reuse smoke" target/debug/skippy-correctness open-ai-cache-reuse \
+    --base-url "$PROMPT_OPENAI_URL" \
+    --model "$DENSE_MODEL_ID" \
+    --prompt-file "$PROMPT_IN" \
+    --max-tokens "$PROMPT_MAX_NEW_TOKENS" \
+    >"$PROMPT_OUT" 2>&1; then
+  echo "staged cache reuse smoke failed; output follows" >&2
   sed -n '1,260p' "$PROMPT_OUT" >&2 || true
   echo "stage log follows" >&2
   sed -n '1,260p' "$PROMPT_LOG" >&2 || true
-  exit "$PROMPT_STATUS"
-fi
-
-if ! grep -q 'reuse    exact_prefix=hit' "$PROMPT_OUT"; then
-  echo "expected exact-prefix cache hit in prompt output" >&2
-  sed -n '1,320p' "$PROMPT_OUT" >&2 || true
-  exit 1
-fi
-if ! grep -q 'reuse    live_session=' "$PROMPT_OUT"; then
-  echo "expected live-session reuse stats in prompt output" >&2
-  sed -n '1,320p' "$PROMPT_OUT" >&2 || true
   exit 1
 fi
 cleanup

@@ -1,6 +1,6 @@
 ---
 name: skippy-prompt
-description: Use this skill when running, debugging, or migrating prompt-owned skippy staged serving, including rsyncing mesh-llm source to lab nodes, building host-native skippy runtimes, choosing CUDA/ROCm/Vulkan/Metal/CPU backends, starting stage servers, attaching the binary prompt REPL, prompt history commands, speculative prompt mode, or prompt-owned process lifecycle.
+description: Use this skill when running or debugging interactive Skippy prompts against staged serving, including lab sync, native builds, stage startup, the HTTP prompt REPL, and process lifecycle.
 metadata:
   short-description: Run prompt-owned staged workflows
 ---
@@ -20,12 +20,11 @@ startup, observation, prompt driving, and teardown.
 - Do not bring back standalone `kv-server` or `ngram-pool`.
 - Use `$HOME/tmp` for run roots, source syncs, logs, and bundles. Avoid `/tmp`
   unless the user explicitly asks for it.
-- Public OpenAI compatibility belongs in `skippy-inference-api`, not prompt tooling.
-  Prompt workflows are for development, diagnostics, and reproducible model
-  checks.
-- Do not use `skippy-prompt prompt` as the launcher on this branch. The skill
-  starts `skippy-serving serve-binary` stages directly and uses
-  `skippy-prompt binary` as the interactive client.
+- Public OpenAI compatibility belongs in `skippy-inference-api`. The
+  interactive client uses stage-0's OpenAI endpoint; raw protocol and cache
+  checks belong in `skippy-correctness`.
+- Start `skippy serve-binary` stages directly, enabling
+  `--openai-bind-addr` on stage 0. Attach with `skippy prompt --endpoint`.
 
 ## Launch Workflow
 
@@ -56,8 +55,8 @@ startup, observation, prompt driving, and teardown.
 8. Start final stage first, then upstream stages, ending with local `stage-0`.
    Use foreground TTY SSH for first repro/debug runs and tee logs under
    `$HOME/tmp/skippy-prompt-runs/<run-id>/`.
-9. Wait for readiness of every stage, then attach `skippy-prompt binary` from
-   the launcher to the local stage-0 endpoint.
+9. Wait for readiness of every stage, then attach `skippy prompt --endpoint`
+   from the launcher to the stage-0 OpenAI endpoint.
 10. Keep process handles or SSH sessions observable. Do not report success until
     stage servers are running and a prompt request has been attempted or the user
     explicitly only asked for startup.
@@ -91,8 +90,8 @@ cargo metadata --no-deps --format-version 1 | jq -r '.packages[].name' | sort
 Expected prompt-owned binaries are:
 
 ```text
-skippy-serving
-skippy-prompt
+skippy
+skippy-correctness
 skippy-package-builder
 metrics-server
 ```

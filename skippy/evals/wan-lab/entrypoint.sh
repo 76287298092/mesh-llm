@@ -634,65 +634,24 @@ run_stage() {
 
 run_prompt() {
   require_env STAGE_INDEX
-
-  local stage_index="$STAGE_INDEX"
-  local stage_count="${STAGE_COUNT:-4}"
-  if [[ -n "${MODEL_PACKAGE_REF:-}" ]]; then
-    prepare_hf_layer_package "$MODEL_PACKAGE_REF" "$stage_index" "$stage_count"
-  else
-    require_env MODEL_PATH
-    local layer_count="${LAYER_COUNT:-}"
-    if [[ -z "$layer_count" ]]; then
-      layer_count="$(infer_layer_count "$MODEL_PATH")"
-    fi
-    read -r LAYER_START LAYER_END < <(even_stage_range "$stage_index" "$stage_count" "$layer_count")
-    export LAYER_COUNT="$layer_count"
-    export LAYER_START
-    export LAYER_END
-  fi
-
-  if [[ "$stage_index" != "0" ]]; then
-    log "interactive prompt should be attached from stage0; this is stage ${stage_index}"
+  if [[ "$STAGE_INDEX" != "0" ]]; then
+    log "interactive prompt should be attached from stage0; this is stage ${STAGE_INDEX}"
     exit 64
   fi
 
-  local activation_width="${ACTIVATION_WIDTH:-}"
-  if [[ -z "$activation_width" ]]; then
-    activation_width="$(infer_activation_width "$MODEL_PATH")"
-  fi
-
-  local args=(
-    --model-path "$MODEL_PATH" \
-    --tokenizer-model-path "$MODEL_PATH" \
-    --tokenizer-load-mode "${LOAD_MODE:-runtime-slice}" \
-    --tokenizer-layer-start "${LAYER_START:-0}" \
-    --tokenizer-layer-end "${LAYER_END:-1}" \
-    --activation-width "$activation_width" \
-  )
-  if ! has_cli_arg "--first-stage-addr" "$@"; then
-    args+=(--first-stage-addr "${PROMPT_FIRST_STAGE_ADDR:-127.0.0.1:${STAGE_BIND_PORT:-19000}}")
-  fi
-  if ! has_cli_arg "--ctx-size" "$@"; then
-    args+=(--ctx-size "${CTX_SIZE:-512}")
-  fi
-  if ! has_cli_arg "--activation-wire-dtype" "$@"; then
-    args+=(--activation-wire-dtype "${ACTIVATION_WIRE_DTYPE:-f16}")
-  fi
-  if ! has_cli_arg "--prefill-chunk-size" "$@"; then
-    args+=(--prefill-chunk-size "${PROMPT_PREFILL_CHUNK_SIZE:-${OPENAI_PREFILL_CHUNK_SIZE:-256}}")
+  local args=()
+  if ! has_cli_arg "--endpoint" "$@"; then
+    args+=(--endpoint "${PROMPT_OPENAI_ENDPOINT:-http://127.0.0.1:9337/v1}")
   fi
   if ! has_cli_arg "--max-new-tokens" "$@"; then
     args+=(--max-new-tokens "${PROMPT_MAX_NEW_TOKENS:-${OPENAI_DEFAULT_MAX_TOKENS:-32}}")
-  fi
-  if ! has_cli_arg "--session-id" "$@"; then
-    args+=(--session-id "${PROMPT_SESSION_ID:-skippy-wan-lab}")
   fi
   if ! has_cli_arg "--history-path" "$@"; then
     args+=(--history-path "${PROMPT_HISTORY_PATH:-/tmp/skippy-wan-lab-prompt-history.txt}")
   fi
 
   log "attaching interactive prompt"
-  exec skippy-prompt binary "${args[@]}" "$@"
+  exec skippy prompt "${args[@]}" "$@"
 }
 
 case "${1:-${APP_ROLE:-stage}}" in

@@ -1768,17 +1768,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ctrlc"
-version = "3.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0b1fab2ae45819af2d0731d60f2afe17227ebb1a1538a236da84c93e9a60162"
-dependencies = [
- "dispatch2",
- "nix 0.31.3",
- "windows-sys 0.61.2",
-]
-
-[[package]]
 name = "ctutils"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9160,6 +9149,8 @@ version = "0.76.1"
 dependencies = [
  "anyhow",
  "hex",
+ "reqwest 0.13.5",
+ "rustyline",
  "serde",
  "serde_json",
  "sha2 0.11.0",
@@ -9435,23 +9426,6 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.11.0",
-]
-
-[[package]]
-name = "skippy-prompt"
-version = "0.76.1"
-dependencies = [
- "anyhow",
- "blake3",
- "clap",
- "ctrlc",
- "rustyline",
- "serde_json",
- "skippy-inference-api",
- "skippy-model-artifact",
- "skippy-protocol",
- "skippy-runtime",
- "skippy-topology",
 ]
 
 [[package]]

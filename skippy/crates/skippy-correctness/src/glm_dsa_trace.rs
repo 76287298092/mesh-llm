@@ -252,7 +252,7 @@ fn run_variant(
         &stage_log_path,
     )?);
 
-    let prompt_output = run_prompt(args, &prompt_log_path).context("run skippy-prompt")?;
+    let prompt_output = run_prompt(args, &prompt_log_path).context("run stage boundary driver")?;
     let fake_messages = fake.finish()?;
     let stage_log = fs::read_to_string(&stage_log_path).unwrap_or_default();
     let prompt_log = fs::read_to_string(&prompt_log_path).unwrap_or_default();

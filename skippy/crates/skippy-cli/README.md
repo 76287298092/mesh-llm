@@ -8,6 +8,16 @@ Build with `just skippy-build`. Supply a separately packaged native runtime:
 target/debug/skippy --runtime-bundle /path/to/runtime serve-openai --model-path /path/to/model.gguf
 ```
 
+To prompt an already running stage-0 OpenAI endpoint:
+
+```sh
+skippy prompt --endpoint http://127.0.0.1:9337/v1
+```
+
+The command discovers the first served model by default; pass `--model` to
+select one. `--raw` sends independent completion prompts instead of chat turns,
+and `:reset` clears chat history.
+
 `serve --config stage.json` and `serve-binary --config stage.json` expose the HTTP and binary worker transports. `example-config` writes one JSON document to stdout without loading a runtime. Diagnostics go to stderr.
 
 SIGINT and SIGTERM request shutdown through the service's existing shutdown future. HTTP listeners use Axum graceful shutdown; successful draining of in-flight model requests is a separate acceptance requirement.

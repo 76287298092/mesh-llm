@@ -25,6 +25,19 @@ async fn main() -> Result<()> {
         skippy_api::native_runtime::load_local_native_runtime(&native_options)?;
     }
     match cli.command {
+        Command::Prompt(args) => {
+            tokio::task::spawn_blocking(move || {
+                skippy_commands::prompt::run(skippy_commands::prompt::PromptCommand {
+                    endpoint: args.endpoint,
+                    model: args.model,
+                    max_new_tokens: args.max_new_tokens,
+                    raw: args.raw,
+                    no_think: args.no_think,
+                    history_path: args.history_path,
+                })
+            })
+            .await?
+        }
         Command::Serve(args) => {
             skippy_serving::http::serve_stage_http_with_shutdown(
                 conversion::stage_http_options(args)?,

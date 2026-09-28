@@ -60,7 +60,7 @@ Reviewed capability records live in
 - infer capabilities for reviewed and known dense/recurrent families
 
 Use this crate before `skippy-package-builder`, mesh stage deployment,
-`skippy-prompt`, or `skippy-bench` commits to a runnable stage layout. When new
+`skippy plan-split`, or `skippy-bench` commits to a runnable stage layout. When new
 peers or devices make a better split possible, mesh replans by preparing the
 replacement topology, waiting for readiness, and only then publishing the new
 stage-0 route.

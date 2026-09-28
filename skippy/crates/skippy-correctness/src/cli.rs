@@ -12,6 +12,8 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum CommandKind {
+    /// Verify repeat and growing-chat cache reuse through a running OpenAI endpoint.
+    OpenAiCacheReuse(OpenAiCacheReuseArgs),
     CoreParity(CoreParityArgs),
     SingleStep(SingleStepArgs),
     Chain(ChainArgs),
@@ -24,6 +26,20 @@ pub enum CommandKind {
     GlmDsaStage0Trace(Box<GlmDsaStage0TraceArgs>),
     StageFaParity(StageFaParityArgs),
     KvPageGrowth(KvPageGrowthArgs),
+}
+
+#[derive(Args)]
+pub struct OpenAiCacheReuseArgs {
+    #[arg(long)]
+    pub base_url: String,
+    #[arg(long)]
+    pub model: String,
+    #[arg(long)]
+    pub prompt_file: PathBuf,
+    #[arg(long, default_value_t = 8)]
+    pub max_tokens: u32,
+    #[arg(long, default_value_t = 120)]
+    pub request_timeout_secs: u64,
 }
 
 #[derive(Args)]
@@ -487,8 +503,6 @@ pub struct GlmDsaStage0TraceArgs {
     pub server: ServerArgs,
     #[command(flatten)]
     pub output: OutputArgs,
-    #[arg(long, default_value = "target/debug/skippy-prompt")]
-    pub prompt_bin: PathBuf,
     #[arg(long, default_value = "127.0.0.1:19285")]
     pub stage0_bind_addr: SocketAddr,
     #[arg(long, default_value = "127.0.0.1:19286")]

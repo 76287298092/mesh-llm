@@ -1,6 +1,7 @@
 mod cli;
 mod glm_dsa_trace;
 mod native_mtp_openai;
+mod openai_cache_reuse;
 mod report;
 mod runner;
 mod support;
@@ -39,6 +40,7 @@ fn prepare_model_download_directories() {
 fn main() -> Result<()> {
     prepare_model_download_directories();
     match Cli::parse().command {
+        CommandKind::OpenAiCacheReuse(args) => openai_cache_reuse::run(args),
         CommandKind::CoreParity(args) => core_parity(args),
         CommandKind::SingleStep(args) => single_step(args),
         CommandKind::Chain(args) => chain(args),

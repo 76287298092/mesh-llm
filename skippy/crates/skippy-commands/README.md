@@ -4,4 +4,8 @@ Standalone Skippy command execution and output formatting. Argument parsing live
 
 `models` resolves Hub references, downloads verified artifacts with size/SHA-256 verification and manages the local model cache. `runtime` lists, installs from explicit catalogs, imports and migrates native runtime caches. `split` plans and admits direct GGUF splits against the same release-bound certification roster Mesh uses, publishing stage configs and admission descriptors only after every stage is admitted. `console` installs the standalone diagnostics sink and writes JSON documents.
 
+`prompt` connects to an existing stage-0 OpenAI endpoint and provides an
+interactive chat or raw-completion client. It does not load a native runtime or
+manage stage processes.
+
 Commands are expressed as plain typed actions (`ModelAction`, `RuntimeAction`, `PlanSplitCommand`), deliberately decoupled from Clap. The crate has no dependency on `skippy-serving`, adds no serving options types, and reads only the documented `SKIPPY_*` environment variables through `skippy-config` path policy.
