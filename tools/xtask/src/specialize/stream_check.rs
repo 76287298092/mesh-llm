@@ -13,7 +13,7 @@ use std::{
     time::Instant,
 };
 
-const USAGE: &str = "usage: xtask specialize qwen-stream-check --artifact PATH --tokens COMMA_IDS --ptx PATH --device ORDINAL --output NEW_FILE --decode-steps N";
+const USAGE: &str = "usage: xtask specialize qwen-stream-check --artifact PATH --tokens COMMA_IDS --ptx PATH --device ORDINAL --output NEW_FILE --decode-steps N; MESH_SPECIALIZE_EXECUTION=graph selects exact eager-stream versus full-model graph replay (N >= 2)";
 
 pub(super) fn run(args: &[String]) -> DynResult<()> {
     let [

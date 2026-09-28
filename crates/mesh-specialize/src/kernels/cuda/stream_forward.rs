@@ -19,6 +19,10 @@ pub(super) mod bench;
 pub(in crate::kernels) mod check;
 pub(in crate::kernels) mod chunked_bench;
 mod functions;
+mod graph_check;
+pub(super) mod graph_decode;
+mod graph_drain;
+mod graph_position;
 mod layers;
 mod ops;
 mod plan;
@@ -53,6 +57,7 @@ const ROPE_CHUNK_ROWS: usize = 2048;
 
 pub(super) struct StreamForward<'m, 'w, 'ctx> {
     context: &'ctx Context,
+    module: &'m Module<'ctx>,
     _weights: &'w ResidentWeights<'ctx>,
     kernels: Functions<'m, 'ctx>,
     attention_profile: attention_profile::Profile,
@@ -120,6 +125,7 @@ impl<'m, 'w, 'ctx> StreamForward<'m, 'w, 'ctx> {
         context.synchronize()?;
         Ok(Self {
             context,
+            module,
             _weights: weights,
             kernels,
             attention_profile,
@@ -239,11 +245,22 @@ impl<'m, 'w, 'ctx> StreamForward<'m, 'w, 'ctx> {
         // SAFETY: The token slot lies in the owned arena with max_rows*4 bytes; the
         // previous forward synchronized this stream and no other stream uses the arena.
         unsafe { active.copy_from_host(self.slots.tokens, tokens)? };
+        self.enqueue_layers(active, state, step, None)
+    }
+
+    fn enqueue_layers(
+        &self,
+        active: &ActiveStream<'_, 'ctx>,
+        state: &ResidentState<'_>,
+        step: &Step,
+        position: Option<&graph_position::Position<'m, 'ctx>>,
+    ) -> Result<()> {
         // SAFETY: Every slot address was resolved from an arena plan for max_rows >=
         // step.rows inside `self.arena`; weight addresses come from verified bindings
         // borrowed for 'w; state addresses are checked against their region extents;
         // `forward` synchronizes this stream before returning or releasing anything.
-        let e = unsafe { Enqueue::new(active, &self.kernels) };
+        let mut e = unsafe { Enqueue::new(active, &self.kernels) };
+        e.position = position;
         let (slots, shapes) = (&self.slots, &self.shapes);
         layers::entry(&e, &self.bound, slots, shapes, step.rows)?;
         for layer in &self.bound.layers {

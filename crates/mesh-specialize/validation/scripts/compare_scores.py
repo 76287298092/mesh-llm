@@ -138,9 +138,23 @@ def summarize(rows):
     }
 
 
+def forward_rows(manifest):
+    # Old manifests used one forward per <=512-token window.
+    rows = manifest.get("forward_rows", 512)
+    if type(rows) is not int or not 1 <= rows <= 512:
+        sys.exit("forward_rows must be an integer in 1..=512")
+    return rows
+
+
+def require_forward_schedule(control, candidate):
+    if forward_rows(control) != forward_rows(candidate):
+        sys.exit("forward_rows differs; internal comparisons require the same forward schedule")
+
+
 def compare_internal(control_dir, candidate_dir):
     control_manifest, control = load_dir(control_dir)
     candidate_manifest, candidate = load_dir(candidate_dir)
+    require_forward_schedule(control_manifest, candidate_manifest)
     for key in ("corpus_id", "context_tokens", "stride_tokens"):
         if control_manifest[key] != candidate_manifest[key]:
             sys.exit(f"{key} differs between control and candidate")
@@ -190,10 +204,11 @@ def require_stream_protocol(control, candidate):
         sys.exit(f"{control['id']}: window protocol differs")
 
 
-def determinism(candidate, repeat_dir):
+def determinism(candidate, repeat_dir, candidate_manifest):
     if repeat_dir is None:
         return None
-    _, repeat = load_dir(repeat_dir)
+    repeat_manifest, repeat = load_dir(repeat_dir)
+    require_forward_schedule(candidate_manifest, repeat_manifest)
     if [s["id"] for s, _, _ in candidate] != [s["id"] for s, _, _ in repeat]:
         return False
     return all(a == b for (_, _, a), (_, _, b) in zip(candidate, repeat))
@@ -204,6 +219,7 @@ def full_logit_determinism(candidate_dir, repeat_dir):
         return None
     a = json.loads((Path(candidate_dir) / 'manifest.json').read_text())
     b = json.loads((Path(repeat_dir) / 'manifest.json').read_text())
+    require_forward_schedule(a, b)
     for key in ('corpus_id', 'context_tokens', 'stride_tokens', 'profiles', 'artifact_sha256', 'ptx_sha256'):
         if a.get(key) is None or b.get(key) is None:
             return None
@@ -324,7 +340,7 @@ def main():
     control_manifest, _ = load_dir(args.control)
     if args.candidate:
         overall, domains, manifests, candidate = compare_internal(args.control, args.candidate)
-        identical = determinism(candidate, args.repeat)
+        identical = determinism(candidate, args.repeat, manifests["candidate"])
         full_identical = full_logit_determinism(args.candidate, args.repeat)
         gates = gate_rows(overall, domains, identical, full_identical)
         statuses = {row["status"] for row in gates}
@@ -332,6 +348,7 @@ def main():
             "control": args.control, "candidate": args.candidate, "repeat": args.repeat,
             "control_profiles": manifests["control"].get("profiles"),
             "candidate_profiles": manifests["candidate"].get("profiles"),
+            "forward_rows": forward_rows(manifests["candidate"]),
             "overall": overall, "domains": domains, "gates": gates,
             "verdict": "FAIL" if "FAIL" in statuses else ("INCOMPLETE" if "NOT RUN" in statuses else "PASS"),
         })

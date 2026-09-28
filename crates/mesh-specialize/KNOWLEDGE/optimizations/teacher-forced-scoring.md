@@ -41,12 +41,28 @@ imported): the first window is `[0, min(C, N))` and scores targets
 short-tail, single-window, exact-context and small-stride cases.
 
 Every window allocates a new zeroed `ResidentState` and cursor
-(`Session::new`) and drops it after the forward, so no KV, convolution or GDN
-state carries between windows or streams. The forward is the ordinary
-`forward_detailed(LogitsSelection::Last)` with unchanged arithmetic; the new
-`Model::forward_hidden` returns its final hidden rows (before the final norm)
-and discards the last-row logits. Target `t` is predicted by local row
-`t - 1 - input_begin`.
+(`Session::new`) and drops it after all its forwards, so no KV, convolution or
+GDN state carries between windows or streams. `MESH_SPECIALIZE_SCORE_FORWARD_ROWS`
+is an integer in `1..=512`, default `512`. Invalid, empty, signed, whitespace,
+non-Unicode, and out-of-range values fail before CUDA initialization. Within a
+window, contiguous input chunks of at most this many rows use the **same**
+session and `Model::forward_hidden`. Each call returns all its final BF16 hidden
+rows before the final norm. Synchronous device-to-device copies concatenate
+these rows in input order into one window buffer, then the existing `Scorer`
+runs unchanged. Target `t` is still predicted by local row `t - 1 - input_begin`.
+
+Default `512` retains the original single `forward_hidden` call and avoids the
+extra allocation/copies. Smaller schedules do not extend the 512-token scoring
+context ceiling. Each forward remains an ordinary
+`forward_detailed(LogitsSelection::Last)`, including its discarded last-row logits.
+
+Use `MESH_SPECIALIZE_SCORE_FORWARD_ROWS=1` for same-input ordinary-decode quality
+measurement. The split-decode attention candidate only dispatches at `M<=8`;
+a default 512-row corpus campaign cannot qualify that path. Run both exact control
+and candidate at `forward_rows=1`, with identical token streams, then repeat the
+candidate with full-logit hashing enabled. A different schedule can change
+shape-specific arithmetic, so cross-schedule results are not an internal quality
+gate. No existing failure or threshold is changed by this option.
 
 ## Head and statistics
 
@@ -95,7 +111,7 @@ position in stream order:
 `manifest.json` holds corpus id, context, stride, per-stream and per-window
 scored counts and total/mean NLL (Ninfer report field names), per-domain and
 overall aggregates, FP8/NVFP4/attention profile names, every
-`MESH_SPECIALIZE_*` variable, head chunk rows, the check object, device,
+`MESH_SPECIALIZE_*` variable, `forward_rows`, head chunk rows, the check object, device,
 timing, artifact identity, artifact file sha256 and PTX sha256.
 
 ## Comparator
@@ -115,8 +131,12 @@ The gated KL is the common top-64 intersection plus one remaining-mass bucket,
 a lower bound on full-vocabulary KL. The union-with-imputed-missing-mass estimate
 is informational only. Neither is a full-vocabulary distribution comparison.
 The thresholds in the quality policy are unchanged. The comparator now rejects
-mismatched artifact identity, protocols, domains and malformed probabilities;
-12 stdlib tests cover these contracts and the lower-bound limitation.
+mismatched artifact identity, protocols, domains and malformed probabilities.
+Internal control/candidate comparisons and both repeat checks require identical
+`forward_rows`; a missing legacy field means `512`. Present values must be JSON
+integers in `1..=512` (not booleans, floats, or strings). Even identical compact
+records or full-logit hashes cannot qualify mismatched schedules. Stdlib tests
+cover these contracts and the lower-bound limitation.
 
 Optional full-logit evidence: `MESH_SPECIALIZE_SCORE_LOGITS_HASH=on` downloads
 and SHA-256 hashes every BF16 vocabulary value at each scored position, in
@@ -127,14 +147,51 @@ it cannot retrospectively establish full-logit determinism.
 
 ## Limits
 
-- Context at most 512 (one forward per window); 4,096/2,048 needs chunked
-  prefill. Enforced in the xtask, package and harness.
-- The last-row head and a 496,640 B logit download per window are wasted work
-  kept to avoid touching the forward's execution path.
+- Context remains at most 512, enforced in the xtask, package and harness.
+  This bounded forward-schedule option does not qualify 4,096/2,048 scoring.
+- The last-row head and a 496,640 B logit download per forward chunk are wasted
+  work kept to avoid touching the forward's execution path. At `forward_rows=1`
+  this diagnostic overhead occurs for every input token.
 - Records alone carry derived statistics. Full-logit determinism is NOT RUN
   unless both repeated runs explicitly capture all-vocabulary hashes.
 - Timing covers forward, head, statistics and host transfers; it is not a
   prefill benchmark.
+
+## Forward-schedule validation, September 28
+
+Implemented against the assigned `30658a926` baseline in
+`/Users/ndizazzo/dev/worktrees/ninfer-direct-runtime`. The worker preserved the
+`ModelArtifact` direct Ninfer source, FP32 GDN parameters, FP8 embedding path,
+input-token digests, optional full-logit hashes, head/scorer arithmetic, and
+fixed quality thresholds. No source-loader, stream-forward, or kernel edit.
+
+Worker checks on macOS: `rustfmt --edition 2024 --check` passes for
+`src/kernels/cuda/resident_model_score.rs`; explicit `python3 -m py_compile` of
+both comparator modules passes; `python3 -m unittest test_compare_scores`
+(with `validation/scripts` on `PYTHONPATH`) passes all 17 tests. Rust tests were
+added for all 512 forward bounds, default single-chunk behavior, uneven tails,
+checked byte offsets/overflow, bad environment values, and window-local target
+row mapping without environment mutation. Cargo, Rust test execution, Clippy,
+GPU execution, sanitizers, model quality, and timing were not run by the worker.
+GPU/toolchain/driver measurements for this change: not measured.
+
+Parent regression plan (not yet executed):
+
+1. Run the focused Rust tests, check, and warning-denying Clippy in the supported
+   CUDA host build, plus repository completion checks. No PTX change is needed.
+2. On identical source weights, PTX, profiles, and token streams, compare the
+   pre-change scorer with the new unset option and explicit `=512`. Cover a short
+   stream, a full 512-row window, and overlapping windows with a short target
+   tail. Require byte-identical score records and full-logit hashes with
+   `MESH_SPECIALIZE_SCORE_LOGITS_HASH=on`; input digests, bounds, targets, and
+   counts must match. Timing/environment/new manifest fields need not match.
+3. Exercise `=1`, `=7`, and `=8` with bounded multi-window inputs and memory
+   checking. Verify the same session advances within a window, fresh state is
+   allocated for each window, and stitched rows retain target alignment.
+4. At `=1`, run exact control, split-decode candidate, and candidate repeat on
+   the fixed corpus with full-logit hashes. Apply the unchanged comparator
+   thresholds. Retain failures; neither passing host tests nor the earlier
+   `512`-row campaign qualifies ordinary-decode quality or performance.
 
 ## Assembly sites
 

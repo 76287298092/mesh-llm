@@ -1,6 +1,9 @@
-//! `MESH_SPECIALIZE_EXECUTION=legacy|stream` selection for the model benchmark.
+//! `MESH_SPECIALIZE_EXECUTION=legacy|stream|graph` selection for the model benchmark.
 
-use super::StreamForward;
+use super::{
+    StreamForward,
+    graph_decode::{GraphDecode, ensure_exact},
+};
 use crate::kernels::{
     DecoderConfig,
     cuda::{
@@ -9,7 +12,7 @@ use crate::kernels::{
         resident_weights::ResidentWeights,
     },
 };
-use anyhow::{Result, anyhow, bail};
+use anyhow::{Result, anyhow, bail, ensure};
 use serde_json::{Value, json};
 use std::sync::OnceLock;
 
@@ -17,6 +20,7 @@ use std::sync::OnceLock;
 pub(in crate::kernels::cuda) enum Execution {
     Legacy,
     Stream,
+    Graph,
 }
 
 impl Execution {
@@ -24,6 +28,7 @@ impl Execution {
         match self {
             Self::Legacy => "legacy",
             Self::Stream => "stream",
+            Self::Graph => "graph",
         }
     }
 
@@ -45,13 +50,15 @@ fn parse(value: Option<&str>) -> Result<Execution> {
     match value {
         None | Some("legacy") => Ok(Execution::Legacy),
         Some("stream") => Ok(Execution::Stream),
-        _ => bail!("MESH_SPECIALIZE_EXECUTION must be legacy or stream"),
+        Some("graph") => Ok(Execution::Graph),
+        _ => bail!("MESH_SPECIALIZE_EXECUTION must be legacy, stream or graph"),
     }
 }
 
 /// Selected-token forward through either the legacy model or `StreamForward`.
 pub(in crate::kernels::cuda) struct Runner<'a, 'm, 'w, 'ctx> {
     model: &'a Model<'w, 'ctx>,
+    execution: Execution,
     stream: Option<StreamForward<'m, 'w, 'ctx>>,
 }
 
@@ -64,11 +71,20 @@ impl<'a, 'm, 'w, 'ctx> Runner<'a, 'm, 'w, 'ctx> {
         config: &DecoderConfig,
         max_rows: usize,
     ) -> Result<Self> {
+        if execution == Execution::Graph {
+            ensure_exact(crate::kernels::attention_profile::current()?)?;
+        }
         let stream = match execution {
             Execution::Legacy => None,
-            Execution::Stream => Some(StreamForward::new(weights, module, config, max_rows)?),
+            Execution::Stream | Execution::Graph => {
+                Some(StreamForward::new(weights, module, config, max_rows)?)
+            }
         };
-        Ok(Self { model, stream })
+        Ok(Self {
+            model,
+            execution,
+            stream,
+        })
     }
 
     pub(in crate::kernels::cuda) fn forward_selected(
@@ -78,6 +94,10 @@ impl<'a, 'm, 'w, 'ctx> Runner<'a, 'm, 'w, 'ctx> {
         tokens: &[u32],
         session: &mut Session<'_>,
     ) -> Result<SelectedOutput> {
+        ensure!(
+            self.execution != Execution::Graph || session.cursor.past() == 0,
+            "graph decode requires prepare_decode and replay; eager fallback is forbidden"
+        );
         match &self.stream {
             None => self.model.forward_selected(ctx, module, tokens, session),
             Some(stream) => {
@@ -90,13 +110,76 @@ impl<'a, 'm, 'w, 'ctx> Runner<'a, 'm, 'w, 'ctx> {
         }
     }
 
+    /// Bind once, after prefill and outside every decode timing interval.
+    pub(in crate::kernels::cuda) fn prepare_decode<'s>(
+        &'s mut self,
+        session: &'s mut Session<'ctx>,
+    ) -> Result<DecodeRunner<'s, 'a, 'm, 'w, 'ctx>> {
+        if self.execution == Execution::Graph {
+            let stream = self
+                .stream
+                .as_mut()
+                .ok_or_else(|| anyhow!("graph stream missing"))?;
+            Ok(DecodeRunner::Graph(Box::new(GraphDecode::capture(
+                stream, session,
+            )?)))
+        } else {
+            Ok(DecodeRunner::Eager {
+                runner: self,
+                session,
+            })
+        }
+    }
+
     pub(in crate::kernels::cuda) fn report(&self) -> Value {
         match &self.stream {
             None => json!({"execution": Execution::Legacy.name()}),
             Some(stream) => json!({
-                "execution": Execution::Stream.name(),
+                "execution": self.execution.name(),
                 "stream_forward": stream.report(),
             }),
+        }
+    }
+}
+
+/// Holds the session lease for the complete decode phase, never a foreign session.
+pub(in crate::kernels::cuda) enum DecodeRunner<'s, 'a, 'm, 'w, 'ctx> {
+    Eager {
+        runner: &'s Runner<'a, 'm, 'w, 'ctx>,
+        session: &'s mut Session<'ctx>,
+    },
+    Graph(Box<GraphDecode<'s, 'm, 'w, 'ctx>>),
+}
+
+impl DecodeRunner<'_, '_, '_, '_, '_> {
+    pub(in crate::kernels::cuda) fn is_graph(&self) -> bool {
+        matches!(self, Self::Graph(_))
+    }
+
+    pub(in crate::kernels::cuda) fn forward(
+        &mut self,
+        context: &Context,
+        module: &Module<'_>,
+        token: u32,
+    ) -> Result<SelectedOutput> {
+        match self {
+            Self::Eager { runner, session } => {
+                runner.forward_selected(context, module, &[token], session)
+            }
+            Self::Graph(graph) => {
+                let output = graph.replay(token, false)?;
+                Ok(SelectedOutput {
+                    token: output.token,
+                    past: output.past,
+                })
+            }
+        }
+    }
+
+    pub(in crate::kernels::cuda) fn report(&self) -> Option<Value> {
+        match self {
+            Self::Graph(graph) => Some(graph.report()),
+            Self::Eager { .. } => None,
         }
     }
 }
@@ -110,6 +193,7 @@ mod tests {
         assert_eq!(parse(None).unwrap(), Execution::Legacy);
         assert_eq!(parse(Some("legacy")).unwrap(), Execution::Legacy);
         assert_eq!(parse(Some("stream")).unwrap(), Execution::Stream);
-        assert!(parse(Some("graph")).is_err());
+        assert_eq!(parse(Some("graph")).unwrap(), Execution::Graph);
+        assert!(parse(Some("unknown")).is_err());
     }
 }

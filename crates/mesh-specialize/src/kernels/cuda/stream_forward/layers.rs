@@ -2,6 +2,7 @@
 //! of the arena template in `program.rs`.
 
 use super::{
+    graph_position::past_argument,
     ops::{Args, EPSILON, Enqueue, to_u32},
     program::{NormSlots, Shapes, Slots},
     split_attention::SplitAttention,
@@ -185,8 +186,12 @@ pub(super) fn attention(
             .u32(to_u32(shapes.rotary_dim)?)
             .u32(with_gate)
             .f32(EPSILON);
+        let (function, prepare) = match e.position {
+            Some(position) => (&position.prepare, prepare.ptr(position.past)),
+            None => (&k.attention_qk_prepare, prepare),
+        };
         e.launch(
-            &k.attention_qk_prepare,
+            function,
             [to_u32(rows * heads)?, 1, 1],
             [256, 1, 1],
             prepare,
@@ -197,11 +202,10 @@ pub(super) fn attention(
         .ptrs(&[a.k_prepared[0], a.v.values, key_state, value_state])
         .u32(to_u32(rows)?)
         .u32(to_u32(kvh)?)
-        .u32(to_u32(aw)?)
-        .u32(past)
-        .u32(capacity);
+        .u32(to_u32(aw)?);
+    let append = past_argument(append, e.position.map(|p| p.past), past).u32(capacity);
     e.launch(
-        &k.attention_kv_append,
+        e.position.map_or(&k.attention_kv_append, |p| &p.append),
         [to_u32((rows * kvh * aw).div_ceil(256))?, 1, 1],
         [256, 1, 1],
         append,
@@ -227,12 +231,12 @@ pub(super) fn attention(
             .u32(to_u32(rows)?)
             .u32(to_u32(qh)?)
             .u32(to_u32(kvh)?)
-            .u32(to_u32(aw)?)
-            .u32(past)
+            .u32(to_u32(aw)?);
+        let attend = past_argument(attend, e.position.map(|p| p.past), past)
             .u32(capacity)
             .f32(scale);
         e.launch(
-            &k.causal_attention,
+            e.position.map_or(&k.causal_attention, |p| &p.attention),
             [to_u32(rows * qh)?, 1, 1],
             [256, 1, 1],
             attend,

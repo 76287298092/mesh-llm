@@ -2,7 +2,7 @@
 //! from a freshly allocated, zeroed state and cursor: no KV or recurrent state
 //! carries between windows or streams.
 use super::{
-    driver::{Context, Module},
+    driver::{Buffer, Context, Module},
     resident_model::{Model, Session},
     resident_score::{self, Scorer},
     resident_weights::ResidentWeights,
@@ -18,10 +18,72 @@ use crate::{
 use anyhow::{Context as _, Result, ensure};
 use serde_json::{Map, Value, json};
 use sha2::{Digest, Sha256};
-use std::{collections::BTreeMap, time::Instant};
+use std::{collections::BTreeMap, env::VarError, ops::Range, time::Instant};
 
-/// Current single-forward limit; larger contexts need chunked prefill.
+/// Qualified scoring context ceiling, independent of the forward chunk size.
 pub(in crate::kernels) const MAX_CONTEXT: usize = 512;
+const FORWARD_ROWS_ENV: &str = "MESH_SPECIALIZE_SCORE_FORWARD_ROWS";
+const DEFAULT_FORWARD_ROWS: usize = 512;
+
+struct ForwardChunk {
+    inputs: Range<usize>,
+    byte_offset: usize,
+    bytes: usize,
+}
+
+struct ForwardPlan {
+    bytes: usize,
+    chunks: Vec<ForwardChunk>,
+}
+
+impl ForwardPlan {
+    fn new(rows: usize, width: usize, forward_rows: usize) -> Result<Self> {
+        ensure!(
+            (1..=MAX_CONTEXT).contains(&rows),
+            "scoring window rows must be 1..={MAX_CONTEXT}"
+        );
+        ensure!(
+            (1..=DEFAULT_FORWARD_ROWS).contains(&forward_rows),
+            "{FORWARD_ROWS_ENV} must be an integer in 1..={DEFAULT_FORWARD_ROWS}"
+        );
+        ensure!(width > 0, "scoring hidden width must be positive");
+        let row_bytes = width
+            .checked_mul(2)
+            .context("hidden row byte size overflows")?;
+        let bytes = rows
+            .checked_mul(row_bytes)
+            .context("hidden window byte size overflows")?;
+        let chunks = (0..rows)
+            .step_by(forward_rows)
+            .map(|start| {
+                let end = (start + forward_rows).min(rows);
+                ForwardChunk {
+                    inputs: start..end,
+                    byte_offset: start * row_bytes,
+                    bytes: (end - start) * row_bytes,
+                }
+            })
+            .collect();
+        Ok(Self { bytes, chunks })
+    }
+}
+
+fn parse_forward_rows(value: Result<String, VarError>) -> Result<usize> {
+    match value {
+        Err(VarError::NotPresent) => Ok(DEFAULT_FORWARD_ROWS),
+        Ok(value) if !value.is_empty() && value.bytes().all(|b| b.is_ascii_digit()) => {
+            let rows = value.parse::<usize>().with_context(|| {
+                format!("{FORWARD_ROWS_ENV} must be an integer in 1..={DEFAULT_FORWARD_ROWS}")
+            })?;
+            ensure!(
+                (1..=DEFAULT_FORWARD_ROWS).contains(&rows),
+                "{FORWARD_ROWS_ENV} must be an integer in 1..={DEFAULT_FORWARD_ROWS}"
+            );
+            Ok(rows)
+        }
+        _ => anyhow::bail!("{FORWARD_ROWS_ENV} must be an integer in 1..={DEFAULT_FORWARD_ROWS}"),
+    }
+}
 const MEMORY_RESERVE_BYTES: u64 = 1024 * 1024 * 1024;
 const SCORING_SCRATCH_BYTES: u64 = 512 * 1024 * 1024;
 
@@ -59,6 +121,7 @@ struct Runner<'r, 'm, 'w, 'ctx> {
     config: &'r DecoderConfig,
     check: Option<Value>,
     hash_logits: bool,
+    forward_rows: usize,
 }
 
 pub(in crate::kernels) fn run(
@@ -71,7 +134,9 @@ pub(in crate::kernels) fn run(
     sink: &mut ScoreSink<'_>,
 ) -> Result<Value> {
     let plans = plan(request, config)?;
+    validate_score_execution(std::env::var("MESH_SPECIALIZE_EXECUTION"))?;
     let hash_logits = logit_hash_enabled()?;
+    let forward_rows = parse_forward_rows(std::env::var(FORWARD_ROWS_ENV))?;
     ensure!(
         ptx.contains(".target sm_120a"),
         "scoring requires SM120a PTX"
@@ -100,6 +165,7 @@ pub(in crate::kernels) fn run(
         config,
         check: None,
         hash_logits,
+        forward_rows,
     };
     let started = Instant::now();
     let mut streams = Vec::new();
@@ -133,6 +199,7 @@ pub(in crate::kernels) fn run(
     Ok(json!({
         "schema_version": 1,
         "kind": "resident-teacher-forced-scores",
+        "execution": "legacy",
         "all_passed": check["passed"] == true,
         "corpus_id": request.corpus_id,
         "context_tokens": request.context,
@@ -143,6 +210,7 @@ pub(in crate::kernels) fn run(
         "profiles": profiles()?,
         "environment": environment(),
         "head_chunk_rows": chunk_rows,
+        "forward_rows": forward_rows,
         "full_logit_hash": {"enabled": hash_logits,
             "scope": "SHA-256 of every little-endian BF16 vocabulary value at scored positions, in window order"},
         "device": info,
@@ -159,7 +227,7 @@ pub(in crate::kernels) fn run(
 fn plan<'a>(request: &'a ModelScoreRequest<'a>, config: &DecoderConfig) -> Result<Vec<Plan<'a>>> {
     ensure!(
         (2..=MAX_CONTEXT).contains(&request.context),
-        "context must be 2..={MAX_CONTEXT} until chunked prefill exists (current single-forward limit)"
+        "context must be 2..={MAX_CONTEXT} (qualified scoring context ceiling)"
     );
     ensure!(
         config.capacity == request.context && config.layers.len() == 64,
@@ -189,7 +257,35 @@ fn plan<'a>(request: &'a ModelScoreRequest<'a>, config: &DecoderConfig) -> Resul
     Ok(plans)
 }
 
-impl Runner<'_, '_, '_, '_> {
+impl<'ctx> Runner<'_, '_, '_, 'ctx> {
+    /// Preserve all session state within a window, but never across windows.
+    fn forward_window(&self, inputs: &[u32]) -> Result<Buffer<'ctx>> {
+        let plan = ForwardPlan::new(inputs.len(), self.config.hidden, self.forward_rows)?;
+        let mut session = Session::new(self.context, self.config)?;
+        if plan.chunks.len() == 1 {
+            // Keep the default path unchanged: no extra allocation or copy.
+            return self
+                .model
+                .forward_hidden(self.context, self.module, inputs, &mut session);
+        }
+        let hidden = Buffer::new(self.context, plan.bytes)?;
+        for chunk in plan.chunks {
+            let output = self.model.forward_hidden(
+                self.context,
+                self.module,
+                &inputs[chunk.inputs],
+                &mut session,
+            )?;
+            ensure!(
+                output.len() == chunk.bytes,
+                "forward hidden chunk extent mismatch"
+            );
+            // Synchronous device copy completes before the chunk is dropped.
+            hidden.copy_from_at(chunk.byte_offset, &output, 0, chunk.bytes)?;
+        }
+        Ok(hidden)
+    }
+
     fn score_stream(
         &mut self,
         index: usize,
@@ -238,11 +334,7 @@ impl Runner<'_, '_, '_, '_> {
     ) -> Result<(usize, f64, Vec<u8>)> {
         let inputs = &tokens[window.input_begin..window.input_end];
         let targets = &tokens[window.target_begin..window.target_end];
-        let mut session = Session::new(self.context, self.config)?;
-        let hidden = self
-            .model
-            .forward_hidden(self.context, self.module, inputs, &mut session)?;
-        drop(session);
+        let hidden = self.forward_window(inputs)?;
         let rows = inputs.len();
         if self.check.is_none() {
             self.check = Some(self.scorer.check(
@@ -332,6 +424,16 @@ fn environment() -> Value {
     )
 }
 
+fn validate_score_execution(value: Result<String, VarError>) -> Result<()> {
+    match value {
+        Err(VarError::NotPresent) => Ok(()),
+        Ok(value) if value == "legacy" => Ok(()),
+        _ => anyhow::bail!(
+            "teacher-forced scoring uses legacy execution; unset MESH_SPECIALIZE_EXECUTION or select legacy"
+        ),
+    }
+}
+
 fn logit_hash_enabled() -> Result<bool> {
     match std::env::var("MESH_SPECIALIZE_SCORE_LOGITS_HASH").as_deref() {
         Err(std::env::VarError::NotPresent) | Ok("off") => Ok(false),
@@ -350,7 +452,118 @@ fn token_digest(tokens: &[u32]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::token_digest;
+    use super::{
+        DEFAULT_FORWARD_ROWS, FORWARD_ROWS_ENV, ForwardPlan, VarError, parse_forward_rows,
+        token_digest, validate_score_execution,
+    };
+    use crate::engine::teacher_scoring::plan_windows;
+
+    #[test]
+    fn scoring_does_not_silently_claim_graph_or_stream_execution() {
+        assert!(validate_score_execution(Err(VarError::NotPresent)).is_ok());
+        assert!(validate_score_execution(Ok("legacy".into())).is_ok());
+        for value in ["stream", "graph", "unknown"] {
+            assert!(validate_score_execution(Ok(value.into())).is_err());
+        }
+    }
+
+    #[test]
+    fn forward_rows_defaults_and_bounds() {
+        assert_eq!(parse_forward_rows(Err(VarError::NotPresent)).unwrap(), 512);
+        for rows in 1..=512 {
+            assert_eq!(parse_forward_rows(Ok(rows.to_string())).unwrap(), rows);
+        }
+    }
+
+    #[test]
+    fn forward_rows_rejects_bad_environment_without_mutating_it() {
+        for value in [
+            "",
+            "0",
+            "513",
+            "-1",
+            "+1",
+            "1.0",
+            "1e2",
+            " 1",
+            "1 ",
+            "on",
+            "１",
+            "999999999999999999999999999999999",
+        ] {
+            let error = parse_forward_rows(Ok(value.to_owned())).unwrap_err();
+            assert!(error.to_string().contains(FORWARD_ROWS_ENV));
+        }
+        assert!(parse_forward_rows(Err(VarError::NotUnicode(std::ffi::OsString::new()))).is_err());
+    }
+
+    #[test]
+    fn forward_plan_preserves_default_and_bounds_every_schedule() {
+        for rows in [1, 2, 7, 511, 512] {
+            assert_eq!(
+                ForwardPlan::new(rows, 17, DEFAULT_FORWARD_ROWS)
+                    .unwrap()
+                    .chunks
+                    .len(),
+                1
+            );
+            for forward_rows in 1..=512 {
+                let plan = ForwardPlan::new(rows, 17, forward_rows).unwrap();
+                assert_eq!(plan.bytes, rows * 34);
+                assert_eq!(plan.chunks.len(), rows.div_ceil(forward_rows));
+                let mut next_row = 0;
+                let mut next_byte = 0;
+                for chunk in plan.chunks {
+                    assert_eq!(chunk.inputs.start, next_row);
+                    assert_eq!(chunk.byte_offset, next_byte);
+                    assert!((1..=forward_rows).contains(&chunk.inputs.len()));
+                    assert_eq!(chunk.bytes, chunk.inputs.len() * 34);
+                    next_row = chunk.inputs.end;
+                    next_byte += chunk.bytes;
+                }
+                assert_eq!(next_row, rows);
+                assert_eq!(next_byte, plan.bytes);
+            }
+        }
+    }
+
+    #[test]
+    fn forward_plan_rejects_invalid_extents_and_overflow() {
+        for (rows, width, forward_rows) in [
+            (0, 17, 1),
+            (513, 17, 1),
+            (2, 0, 1),
+            (2, 17, 0),
+            (2, 17, 513),
+            (2, usize::MAX, 1),
+            (512, usize::MAX / 2, 1),
+        ] {
+            assert!(ForwardPlan::new(rows, width, forward_rows).is_err());
+        }
+    }
+
+    #[test]
+    fn chunk_offsets_keep_window_target_rows_and_reset_at_each_window() {
+        let tokens: Vec<_> = (0..700).collect();
+        for forward_rows in [1, 7, 8, 127, 512] {
+            let mut predictions = Vec::new();
+            for window in plan_windows(tokens.len(), 512, 256).unwrap() {
+                let inputs = &tokens[window.input_begin..window.input_end];
+                let plan = ForwardPlan::new(inputs.len(), 1, forward_rows).unwrap();
+                assert_eq!(plan.chunks[0].byte_offset, 0);
+                let mut hidden_rows = vec![usize::MAX; inputs.len()];
+                for chunk in plan.chunks {
+                    let start = chunk.byte_offset / 2;
+                    hidden_rows[start..start + chunk.bytes / 2]
+                        .copy_from_slice(&inputs[chunk.inputs]);
+                }
+                predictions.extend_from_slice(
+                    &hidden_rows[window.first_row()..window.first_row() + window.scored()],
+                );
+            }
+            assert_eq!(predictions, tokens[..tokens.len() - 1]);
+        }
+    }
 
     #[test]
     fn token_hash_covers_unscored_context_and_order() {

@@ -4,7 +4,7 @@ use super::{
     driver::{Context, Module},
     resident_model::{Model, SelectedOutput, Session},
     resident_weights::ResidentWeights,
-    stream_forward::bench::{Execution, Runner},
+    stream_forward::bench::{DecodeRunner, Execution, Runner},
 };
 use crate::{
     artifact::{model_source::ModelArtifact, schema::Object},
@@ -97,7 +97,7 @@ pub(in crate::kernels) fn run(
     memory.record(&context, "after_weights_loaded", None, None)?;
     let model = Model::new(&weights, config)?;
     let execution = Execution::current()?;
-    let runner = Runner::new(
+    let mut runner = Runner::new(
         execution,
         &model,
         &weights,
@@ -108,9 +108,9 @@ pub(in crate::kernels) fn run(
     let warmup = run_warmup(
         &context,
         &module,
-        &runner,
+        &mut runner,
         config,
-        request.tokens[0],
+        request.tokens,
         &mut memory,
     )?;
 
@@ -119,7 +119,7 @@ pub(in crate::kernels) fn run(
         repetitions.push(run_repetition(
             &context,
             &module,
-            &runner,
+            &mut runner,
             config,
             request,
             index + 1,
@@ -150,13 +150,15 @@ pub(in crate::kernels) fn run(
         "attention_profile":crate::kernels::attention_profile::current()?.name(),
         "nvfp4_profile":crate::kernels::nvfp4_profile::current()?.name(),
         "execution": execution_report,
-        "gpu_greedy":super::model_greedy::enabled()?, "mlp_workspace":super::model_workspace::enabled()?, "fp8_split_k":super::resident_fp8_splitk::configured_splits()?,
+        "gpu_greedy": execution != Execution::Legacy || super::model_greedy::enabled()?,
+        "configured_gpu_greedy": super::model_greedy::enabled()?, "mlp_workspace":super::model_workspace::enabled()?, "fp8_split_k":super::resident_fp8_splitk::configured_splits()?,
         "configured_capacity": config.capacity,
         "prompt_token_ids": request.tokens,
         "prompt_tokens": request.tokens.len(),
         "fixed_output_tokens": request.output_tokens,
         "repetition_count": request.repetitions,
         "warmup": warmup,
+        "warmup_protocol_change": "All executions now warm the full requested prompt plus one actual decode on a disposable fresh session; graph mode captures and replays during warmup. Former protocol warmed one token without decode. Timed repetitions still use fresh sessions and unchanged requested output sequences.",
         "repetitions": repetitions,
         "allocation_bytes": {
             "weight_arena_payload": layout.bytes,
@@ -174,7 +176,7 @@ pub(in crate::kernels) fn run(
             "kind": "fixed-length raw-token engineering measurement",
             "eos_termination_ignored": true,
             "prefill_includes_final_logits_and_first_greedy_token": true,
-            "timing_excludes": ["weight loading", "session allocation", "memory sampling", "JIT warmup"],
+            "timing_excludes": ["weight loading", "session allocation", "memory sampling", "JIT warmup", "graph capture and instantiation (separately reported per repetition)"],
             "qualification_claim": false,
             "serving_claim": false,
             "memory_note": "CUDA memory values are checkpoints, not a transient peak measurement.",
@@ -295,39 +297,56 @@ impl MemoryTracker {
 
 #[derive(Serialize)]
 struct Warmup {
-    input_token_id: u32,
+    protocol: &'static str,
+    input_token_ids: Vec<u32>,
+    prefill_output_token_id: u32,
     output_token_id: u32,
     final_cursor_past: usize,
+    decode_steps: usize,
+    graph: Option<Value>,
 }
 
-fn run_warmup(
-    context: &Context,
-    module: &Module<'_>,
-    model: &Runner<'_, '_, '_, '_>,
+fn run_warmup<'ctx>(
+    context: &'ctx Context,
+    module: &Module<'ctx>,
+    model: &mut Runner<'_, '_, '_, 'ctx>,
     config: &DecoderConfig,
-    token: u32,
+    tokens: &[u32],
     memory: &mut MemoryTracker,
 ) -> Result<Warmup> {
     let mut session = Session::new(context, config)?;
     context.synchronize()?;
     memory.record(context, "warmup_session_allocated", None, None)?;
-    let (output, _) = timed_forward(context, module, model, &[token], &mut session)?;
+    let (prefill, _) = timed_forward(context, module, model, tokens, &mut session)?;
+    memory.record(context, "warmup_prefill_completed", None, None)?;
+    let mut decoder = model.prepare_decode(&mut session)?;
+    let (output, _) = timed_decode(context, module, &mut decoder, prefill.token)?;
+    let graph = decoder.report();
+    drop(decoder);
     memory.record(context, "warmup_forward_completed", None, None)?;
     let result = Warmup {
-        input_token_id: token,
+        protocol: "full-requested-prompt-plus-one-actual-decode-v1",
+        input_token_ids: tokens.to_vec(),
+        prefill_output_token_id: prefill.token,
         output_token_id: output.token,
         final_cursor_past: session.cursor.past(),
+        decode_steps: 1,
+        graph,
     };
+    ensure!(
+        result.final_cursor_past == tokens.len() + 1,
+        "warmup cursor mismatch"
+    );
     drop(session);
     context.synchronize()?;
     memory.record(context, "warmup_session_released", None, None)?;
     Ok(result)
 }
 
-fn run_repetition(
-    context: &Context,
-    module: &Module<'_>,
-    model: &Runner<'_, '_, '_, '_>,
+fn run_repetition<'ctx>(
+    context: &'ctx Context,
+    module: &Module<'ctx>,
+    model: &mut Runner<'_, '_, '_, 'ctx>,
     config: &DecoderConfig,
     request: &ModelBenchRequest<'_>,
     repetition: usize,
@@ -342,6 +361,7 @@ fn run_repetition(
         None,
     )?;
 
+    let sequence_start = Instant::now();
     let (prefill, prefill_seconds) =
         timed_forward(context, module, model, request.tokens, &mut session)?;
     memory.record(
@@ -355,10 +375,14 @@ fn run_repetition(
     generated.push(previous_token);
     let prefill_past = prefill.past;
 
+    // Graph setup is outside both prefill and every decode interval. The lease
+    // binds exactly this fresh session until all replay work and graph handles end.
+    let decode_start = Instant::now();
+    let mut decoder = model.prepare_decode(&mut session)?;
+    let decode_setup_seconds = decode_start.elapsed().as_secs_f64();
     let mut decode_interval_seconds = Vec::with_capacity(request.output_tokens - 1);
     for step in 1..request.output_tokens {
-        let decode_input = [previous_token];
-        let (output, seconds) = timed_forward(context, module, model, &decode_input, &mut session)?;
+        let (output, seconds) = timed_decode(context, module, &mut decoder, previous_token)?;
         previous_token = output.token;
         generated.push(previous_token);
         decode_interval_seconds.push(seconds);
@@ -371,6 +395,10 @@ fn run_repetition(
         )?;
     }
 
+    let decode_wall_seconds = decode_start.elapsed().as_secs_f64();
+    let sequence_wall_seconds = sequence_start.elapsed().as_secs_f64();
+    let graph_report = decoder.report();
+    drop(decoder);
     let final_cursor_past = session.cursor.past();
     let expected_final_cursor = request
         .tokens
@@ -392,9 +420,18 @@ fn run_repetition(
         "decode_interval_count": request.output_tokens - 1,
         "decode_total_seconds": decode_seconds,
         "decode_tokens_per_second": rate(request.output_tokens - 1, decode_seconds),
+        "decode_setup_seconds": decode_setup_seconds,
+        "decode_setup_inclusive_seconds": decode_setup_seconds + decode_seconds,
+        "decode_setup_inclusive_tokens_per_second": rate(request.output_tokens - 1, decode_setup_seconds + decode_seconds),
+        "decode_wall_seconds_including_setup": decode_wall_seconds,
+        "decode_wall_tokens_per_second_including_setup": rate(request.output_tokens - 1, decode_wall_seconds),
+        "sequence_wall_seconds": sequence_wall_seconds,
+        "sequence_output_tokens_per_second": rate(request.output_tokens, sequence_wall_seconds),
+        "wall_scope": "Sequence starts before eager prefill; decode wall starts before graph setup; both end after last decode memory checkpoint. Includes per-session capture/instantiate, host loop and memory sampling, excludes session/weight allocation and final graph destruction. Setup-inclusive interval rate excludes memory sampling, wall rate includes it.",
         "generated_token_ids": generated,
         "final_cursor_past": final_cursor_past,
         "cursor_poisoned": session.cursor.is_poisoned(),
+        "graph": graph_report,
     });
 
     drop(session);
@@ -406,6 +443,26 @@ fn run_repetition(
         None,
     )?;
     Ok(report)
+}
+
+fn timed_decode(
+    context: &Context,
+    module: &Module<'_>,
+    decoder: &mut DecodeRunner<'_, '_, '_, '_, '_>,
+    token: u32,
+) -> Result<(SelectedOutput, f64)> {
+    let graph = decoder.is_graph();
+    if !graph {
+        context.synchronize()?;
+    }
+    let start = Instant::now();
+    let forward = decoder.forward(context, module, token);
+    // Graph replay already drains its stream on success and failure. Retain the
+    // original context boundaries for eager measurements, not for graph replay.
+    let synchronization = if graph { Ok(()) } else { context.synchronize() };
+    let seconds = start.elapsed().as_secs_f64();
+    let output = forward.and_then(|output| synchronization.map(|()| output))?;
+    Ok((output, seconds))
 }
 
 fn timed_forward(

@@ -1,0 +1,5701 @@
+{
+  "active_repetition": null,
+  "allocation_note": "one weight arena and one model arena reused across warmup and timed repetitions; a fresh zeroed session per repetition; diagnostic streams and sessions are separate",
+  "argv": [
+    "--artifact",
+    "/data/ai/ninfer/models/qwen3_8_27b_nvfp4.ninfer",
+    "--tokens-file",
+    "/home/ndizazzo/dev/mesh/mesh-llm/target/specialize/reassess-20260927/decode-attention-model-1/pg19-512.tokens.json",
+    "--chunk-size",
+    "512",
+    "--output-tokens",
+    "256",
+    "--repetitions",
+    "2",
+    "--ptx",
+    "/home/ndizazzo/dev/mesh/mesh-llm/target/specialize/reassess-20260927/ptx/direct-9b627a3d6.ptx",
+    "--device",
+    "0",
+    "--output",
+    "/home/ndizazzo/dev/mesh/mesh-llm/target/specialize/reassess-20260927/decode-attention-model-1/pg19-512-exact-r1.json"
+  ],
+  "artifact_path": "/data/ai/ninfer/models/qwen3_8_27b_nvfp4.ninfer",
+  "completed": true,
+  "concurrency": 1,
+  "configured_capacity": 767,
+  "device": {
+    "driver_version": 13040,
+    "major": 12,
+    "minor": 0,
+    "name": "NVIDIA GeForce RTX 5090",
+    "ordinal": 0,
+    "total_bytes": 33731248128,
+    "uuid": "GPU-80ded6bd-1a89-2628-3d94-902187dbab1d"
+  },
+  "device_ordinal": 0,
+  "environment": {
+    "CUDA_VISIBLE_DEVICES": null,
+    "MESH_SPECIALIZE_ATTENTION_PROFILE": {
+      "value": "exact"
+    },
+    "MESH_SPECIALIZE_EXECUTION": null,
+    "MESH_SPECIALIZE_FP8_PROFILE": null,
+    "MESH_SPECIALIZE_FP8_SPLIT_K": null,
+    "MESH_SPECIALIZE_GPU_GREEDY": null,
+    "MESH_SPECIALIZE_MLP_WORKSPACE": null,
+    "MESH_SPECIALIZE_NVFP4_AUDIT": null,
+    "MESH_SPECIALIZE_NVFP4_PROFILE": null
+  },
+  "eos_stopping": false,
+  "executable_path": "/home/ndizazzo/dev/mesh/mesh-llm/target/release/xtask",
+  "executable_sha256": "1d6dcfa6d0a6e879a3d437ddab07737ec252defb3e8645a7bf1bce6e0036ac9d",
+  "execution": "stream",
+  "harness_elapsed_seconds": 80.265512623,
+  "harness_version": "0.76.1",
+  "identity": {
+    "model_id": "qwen3.8-27b:text:ninfer-v3-control-v1",
+    "weights_id": "sha256:74d2c57145e6ff11d1d2faa79594477f9bc903a611af1fb20218189fbbb77d82"
+  },
+  "input_hash_encoding": "concatenated little-endian u32 token IDs",
+  "input_tokens_sha256": "a5fb828071ebbe3d5b6b191e29f05922126ba165f2affd4648b575d516ddd2d3",
+  "kind": "qwen-chunked-benchmark",
+  "memory_admission": {
+    "before_allocations": {
+      "free_bytes": 32749584384,
+      "total_bytes": 33731248128
+    },
+    "before_diagnostics_weights_already_resident": {
+      "free_bytes": 12371558400,
+      "total_bytes": 33731248128
+    },
+    "before_module": {
+      "free_bytes": 32751681536,
+      "total_bytes": 33731248128
+    },
+    "benchmark_arena_bytes": 158339072,
+    "benchmark_attention_workspace_bytes": 0,
+    "benchmark_rope_bytes": 98176,
+    "benchmark_state_bytes": 204210176,
+    "diagnostic_attention_workspace_bytes": 0,
+    "diagnostic_working_bytes": 692068864,
+    "margin_bytes": 536870912,
+    "required_bytes": 21604618752,
+    "weight_bytes": 20375678976
+  },
+  "memory_note": "checked admission plus 512 MiB margin, not a reserved budget or peak measurement; concurrent external GPU allocations can invalidate the free-memory snapshot",
+  "mode": "ordinary",
+  "model_source": {
+    "canonical_tensor_bytes": 20375588160,
+    "canonical_tensors": 1589,
+    "container": "ninfer-single-file-v3",
+    "full_ninfer_arithmetic_parity": false,
+    "source_artifact_id": "19c9ec11085642f1bbe340cd7cf6c207",
+    "source_bytes": 23719715844,
+    "source_dirty": false,
+    "source_sha256": "74d2c57145e6ff11d1d2faa79594477f9bc903a611af1fb20218189fbbb77d82",
+    "startup_verification_seconds": 31.369905756,
+    "stream_buffer_bytes": 65536,
+    "transform_allocation_limit_bytes": 134217728,
+    "transform_total_buffer_limit_bytes": 268435456,
+    "virtual_offsets": true,
+    "whole_file_hash_passes": 2
+  },
+  "output_tokens": 256,
+  "partition_check": {
+    "comparison": "exact BF16 logits, selected token, cursor and SHA256 of every initialized state region",
+    "configured_capacity": 514,
+    "decode_steps": 2,
+    "excluded_from_timing": true,
+    "input_policy": "both decode paths consume the one-shot selected token, even after divergence",
+    "passed": true,
+    "state_scope": "initialized KV prefix only; complete convolution history and recurrent regions; unused KV tail excluded",
+    "status": "completed",
+    "steps": [
+      {
+        "chunked_logits_sha256": "740ba1400003476e4d179196085ca4d356e8e1f883b133a9b35a15063244f699",
+        "chunked_past": 512,
+        "chunked_token": 13962,
+        "input_token_ids": [
+          248045,
+          846,
+          198,
+          17956,
+          1931,
+          539,
+          81249,
+          28442,
+          321,
+          279,
+          7849,
+          42500,
+          198,
+          30058,
+          5961,
+          7659,
+          506,
+          1696,
+          1074,
+          2068,
+          83846,
+          9504,
+          4909,
+          318,
+          1919,
+          999,
+          557,
+          198,
+          8293,
+          1931,
+          494,
+          5167,
+          76409,
+          1801,
+          2420,
+          539,
+          561,
+          198,
+          34499,
+          28732,
+          10052,
+          15256,
+          52682,
+          5946,
+          26467,
+          669,
+          206717,
+          4616,
+          357,
+          177414,
+          80281,
+          15810,
+          13,
+          14200,
+          262,
+          1897,
+          206717,
+          4616,
+          357,
+          177414,
+          80281,
+          15810,
+          271,
+          262,
+          7466,
+          198,
+          262,
+          72614,
+          710,
+          4537,
+          49,
+          10369,
+          417,
+          5052,
+          50,
+          271,
+          262,
+          353,
+          43604,
+          6457,
+          8733,
+          7466,
+          198,
+          262,
+          458,
+          13,
+          380,
+          13,
+          5574,
+          1736,
+          271,
+          262,
+          498,
+          92831,
+          362,
+          60,
+          271,
+          262,
+          15689,
+          44762,
+          198,
+          262,
+          423,
+          13,
+          462,
+          13,
+          423,
+          1966,
+          95630,
+          594,
+          73798,
+          198,
+          262,
+          13578,
+          52067,
+          36693,
+          5370,
+          1358,
+          262,
+          14119,
+          11,
+          220,
+          16,
+          23,
+          24,
+          17,
+          13,
+          198,
+          262,
+          7466,
+          72614,
+          710,
+          4537,
+          49,
+          10369,
+          417,
+          5052,
+          50,
+          13,
+          14200,
+          262,
+          4981,
+          198,
+          262,
+          423,
+          1966,
+          95630,
+          13,
+          14200,
+          84424,
+          353,
+          13,
+          271,
+          16721,
+          20357,
+          13,
+          1358,
+          1,
+          6614,
+          3667,
+          3667,
+          3667,
+          386,
+          7174,
+          1676,
+          386,
+          1676,
+          386,
+          0,
+          3135,
+          3667,
+          3667,
+          3667,
+          386,
+          7174,
+          1676,
+          386,
+          7174,
+          1676,
+          386,
+          1676,
+          386,
+          0,
+          198,
+          6614,
+          3667,
+          3667,
+          3667,
+          386,
+          24927,
+          386,
+          1676,
+          386,
+          7174,
+          1676,
+          386,
+          1676,
+          386,
+          7174,
+          1676,
+          386,
+          1676,
+          386,
+          8687,
+          271,
+          29348,
+          579,
+          421,
+          7285,
+          36811,
+          11059,
+          71095,
+          16677,
+          11,
+          15589,
+          494,
+          780,
+          40919,
+          383,
+          279,
+          53274,
+          198,
+          66,
+          2930,
+          11,
+          321,
+          3221,
+          883,
+          1384,
+          11,
+          780,
+          6213,
+          6669,
+          1724,
+          440,
+          35170,
+          15553,
+          13,
+          271,
+          29348,
+          579,
+          1092,
+          7285,
+          4439,
+          86237,
+          11,
+          852,
+          557,
+          11362,
+          3043,
+          506,
+          1375,
+          11,
+          69360,
+          264,
+          198,
+          12306,
+          314,
+          37695,
+          364,
+          264,
+          2526,
+          7914,
+          1292,
+          6661,
+          852,
+          1000,
+          19020,
+          1318,
+          1070,
+          310,
+          198,
+          12718,
+          780,
+          7303,
+          7948,
+          948,
+          551,
+          3804,
+          974,
+          13255,
+          286,
+          440,
+          780,
+          189147,
+          13,
+          271,
+          6825,
+          3272,
+          353,
+          6408,
+          14426,
+          2019,
+          539,
+          1288,
+          5743,
+          11059,
+          71095,
+          16677,
+          11,
+          28546,
+          685,
+          198,
+          263,
+          279,
+          3136,
+          1284,
+          473,
+          321,
+          338,
+          6448,
+          71276,
+          12922,
+          685,
+          321,
+          1441,
+          279,
+          8329,
+          13,
+          328,
+          3733,
+          198,
+          50054,
+          44747,
+          5442,
+          1149,
+          271,
+          6825,
+          3105,
+          914,
+          6512,
+          1070,
+          1288,
+          1018,
+          86237,
+          13,
+          328,
+          40,
+          7692,
+          488,
+          33461,
+          424,
+          13,
+          22703,
+          9940,
+          198,
+          2829,
+          1495,
+          11,
+          11059,
+          71095,
+          16677,
+          11,
+          321,
+          2645,
+          13,
+          1394,
+          668,
+          381,
+          1546,
+          18647,
+          948,
+          189147,
+          5055,
+          198,
+          4955,
+          11,
+          321,
+          488,
+          1366,
+          413,
+          488,
+          513,
+          18647,
+          488,
+          3172,
+          599,
+          310,
+          708,
+          310,
+          4690,
+          4370,
+          314,
+          198,
+          85739,
+          83048,
+          440,
+          1384,
+          11,
+          321,
+          421,
+          1000,
+          381,
+          2166,
+          3743,
+          383,
+          780,
+          14756,
+          1149,
+          271,
+          1,
+          3742,
+          189147,
+          2098,
+          2019,
+          310,
+          599,
+          264,
+          14756,
+          310,
+          10902,
+          7285,
+          75237,
+          279,
+          2545,
+          198,
+          69,
+          5131,
+          13,
+          328,
+          2939,
+          264,
+          18565,
+          440,
+          49483,
+          303,
+          424,
+          7285,
+          271,
+          55806,
+          1288,
+          18018,
+          86237,
+          13,
+          328,
+          11280,
+          45984,
+          440,
+          49483,
+          383,
+          1070,
+          11,
+          353,
+          1683,
+          1288,
+          1292,
+          198,
+          16336,
+          13,
+          271,
+          29348,
+          579,
+          551,
+          310,
+          599,
+          1330,
+          45984,
+          364,
+          30,
+          353,
+          995,
+          1132,
+          799,
+          1288,
+          1018,
+          11059,
+          71095,
+          16677,
+          13,
+          271,
+          71134,
+          18565,
+          8012,
+          914,
+          381,
+          2330,
+          3213,
+          310,
+          3222,
+          660,
+          279,
+          49483,
+          1288,
+          86237,
+          198,
+          54827,
+          13,
+          271,
+          8917,
+          5437,
+          537,
+          279,
+          20438,
+          3294,
+          303,
+          7472,
+          11,
+          1179,
+          1103,
+          1396,
+          6725,
+          3542,
+          13,
+          248046,
+          198,
+          248045,
+          74455,
+          198,
+          248068,
+          271,
+          248069,
+          271
+        ],
+        "logits_equal": true,
+        "one_shot_logits_sha256": "740ba1400003476e4d179196085ca4d356e8e1f883b133a9b35a15063244f699",
+        "one_shot_past": 512,
+        "one_shot_token": 13962,
+        "passed": true,
+        "state": {
+          "chunked": {
+            "layers.00.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "20bfdce212210652c81b0a9051f67b3eebfa3bd3e82a747c0345f731cb52b394"
+            },
+            "layers.00.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "268bea17113cff85a52f948f83e8ab991562b888520b5b2ad3e0dfe361b4ed93"
+            },
+            "layers.01.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "2d06569f7a5817d79b3bec0aed52b59eafc49b857cdcc1b4e7d8e1fc94ac2f1e"
+            },
+            "layers.01.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "897d00f77a967eafaa690195116438b4b2482b6abe0bd9dfd409526b5bacf169"
+            },
+            "layers.02.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "f12590b325bd899df319fb6529bb7a8db91283550278dfc22bf5427aca79968f"
+            },
+            "layers.02.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "a14d06c16401a88cffbc828d9a11bf71d4cd1b7346b344502f3c3afe9b795c19"
+            },
+            "layers.03.attention.k": {
+              "bytes_hashed": 1048576,
+              "sha256": "500040a9c32dedb6662df784b4c98c22a8b5e4915c2b1bfbd95dadcce9968e14"
+            },
+            "layers.03.attention.v": {
+              "bytes_hashed": 1048576,
+              "sha256": "f6d32e37799ce923d20e1fd432423621abb3f37e2e4ffee242e9722e9280613b"
+            },
+            "layers.04.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "ed231db29a49fddd86e59ea681ffdb4fa5d22612dde4d7820a81e530671db85e"
+            },
+            "layers.04.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "f559f5b88ad93c8fce56c52f1a0c897dc83efe5b1c0af92711087f1af8964f08"
+            },
+            "layers.05.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "bbf26fd04d39fc4175ea41652560a94575188d48615e0c6ea517176fdfe2f525"
+            },
+            "layers.05.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "921796f6202c439bc50a059f7a322e022ce15d7c4bc26efc66bd8cca75ca9a1a"
+            },
+            "layers.06.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "7ed06981dc35d7409e9c63ae8870d4f21b50115295231e102dac0c69ebaaa231"
+            },
+            "layers.06.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "00c0128156d64d9a10f9d4378d735ac62888dff610f079d4df965661864144a6"
+            },
+            "layers.07.attention.k": {
+              "bytes_hashed": 1048576,
+              "sha256": "aa1db91b143248a3f4f476cb6c3bea64f382db92e7325e8f2033e3d19015c252"
+            },
+            "layers.07.attention.v": {
+              "bytes_hashed": 1048576,
+              "sha256": "80763f8c89abd539b0e80dac6d263539c8d5b7778b8cad9ebf04253e6e823649"
+            },
+            "layers.08.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "d07cc30096cd1bd66e13df5dd1d5b6970f5e73da2297dfe912ed39cdbd317939"
+            },
+            "layers.08.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "d3b5f0b587fc54489d5c392b9768c0c85c45d31612bc9bd82906a6bc98ef93af"
+            },
+            "layers.09.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "0f52c96e323bb6ca2f1d82159d8ad2f7dd55878edeae46e57be9bcf6e05e5767"
+            },
+            "layers.09.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "1bad76918be57294105d3e5ede60477fe109b62b98bc0ee4f91e4c359dff07b1"
+            },
+            "layers.10.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "915a4640bac959e19d5d6b1ba876446c8ace76c304f1ce3da26b8a5a0ddb3bb4"
+            },
+            "layers.10.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "e2e6224d827e29f9c09d0f139312efb4b94b90436b5e86cb711ce41ad8f0a194"
+            },
+            "layers.11.attention.k": {
+              "bytes_hashed": 1048576,
+              "sha256": "95e03ea923dc69ffc8677713ac52de4ac41c4695ee89059ed302ff5112c79671"
+            },
+            "layers.11.attention.v": {
+              "bytes_hashed": 1048576,
+              "sha256": "792d0a59c54dbc6d1c43a48f2588d324194203c06d99effc2ece882af98ece5f"
+            },
+            "layers.12.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "5fb16ba2cb101ce515c5e0e5081c32838554354e1753bb56a6d5e1882043eec2"
+            },
+            "layers.12.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "503ee2fa7b7999b69715d8d6b60c595448e221b3a9f3ed78d3cf1edff4be244f"
+            },
+            "layers.13.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "f2e634d6087c52eb9a110697f636f52c59134e37063c253ca106f12de6baa44a"
+            },
+            "layers.13.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "8d9a33291c1bd0124c1d93e0ff3f7b8d931a95eb40769e527781cc9a311e3ee4"
+            },
+            "layers.14.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "cec5455c15f8fcddb2f6c7196b759468046548603d17068f2ab0914d7a4b638e"
+            },
+            "layers.14.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "1b19b5ec22b9b26b6bbb31650c82a56f791933688222c003d993181efe79c12d"
+            },
+            "layers.15.attention.k": {
+              "bytes_hashed": 1048576,
+              "sha256": "a98a85245f891c23f97fd8d9f742493b24301dccec753de8acaf3f6431777578"
+            },
+            "layers.15.attention.v": {
+              "bytes_hashed": 1048576,
+              "sha256": "afac7b5d2afc888a973bef87da5bd4a603ca70f73f9f806d2f5fa537caefb4e4"
+            },
+            "layers.16.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "7c2ec78b9a762b98c7134b2661cc79adb54f0f5e57cc6cdc2117d7b74952308f"
+            },
+            "layers.16.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "d4a12bbf652b6ea3f0b65fcf5d4dfaa599579c71f85e5c02dd8c6c32d3c7d0a4"
+            },
+            "layers.17.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "32defa9ccdbd6f5750978d2c57460f9b077c90bfe6105f0fbdc5227fdf2c9215"
+            },
+            "layers.17.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "ea669570f587b736cb2b6c38c9d75b84fa84d16d8a4b83be3093b65bd0408e69"
+            },
+            "layers.18.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "76c1452e2577252471c6db814fea3f54eb4c056a8ff0809270cd42ba81306dff"
+            },
+            "layers.18.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "8614f75ac95e5ff95482e753558732d8b7599922f54ba53c7d4bcbe3896ad255"
+            },
+            "layers.19.attention.k": {
+              "bytes_hashed": 1048576,
+              "sha256": "b2f293c4ce1a542f9fbc33900b5e415799ba50c8bf3d682d3b42d00bec877b6e"
+            },
+            "layers.19.attention.v": {
+              "bytes_hashed": 1048576,
+              "sha256": "b70e9c1bef8bd42b6cc1346c4851f8aafb61ed1cd546f5ab3c71f86e34406598"
+            },
+            "layers.20.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "c2da329beea2ba29116dd363a31f17b2774c3ab08f4bb83f671a022b5328da24"
+            },
+            "layers.20.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "a5ae4b60e2845df47a27ff0bcd8e28539ed759690cec22f68b081b97ce2fc899"
+            },
+            "layers.21.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "b6b15fdd01f8563cb0b9e65cf35d9d2cb56b2ea35d7e346fd5e3d7e6b112df54"
+            },
+            "layers.21.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "4f0a55804462d9a067d6ad89b72054c53a9b0013f5cd018295ca1df0175b40a1"
+            },
+            "layers.22.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "9c3d09de970e9dc0e0d06573559f4e45394a012b835f12e4a7e10efaf5a1e2fb"
+            },
+            "layers.22.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "5e1d63d201a7ab108548cf528284307e8b9fff44ecba70ed7be1bd1946070be9"
+            },
+            "layers.23.attention.k": {
+              "bytes_hashed": 1048576,
+              "sha256": "ad1e4d02bcf45cca3337722b1a22c8fe76359281e7c0c5608eae52fd72b862da"
+            },
+            "layers.23.attention.v": {
+              "bytes_hashed": 1048576,
+              "sha256": "4bd83e93a63905327e3460f261111a943dd88521ad142882600d6106846d0f3c"
+            },
+            "layers.24.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "00dbcb4f0ee5032a504792fe7fcceaf07ae26b8f08507ff33ee499d937b22e04"
+            },
+            "layers.24.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "5231202b81d3a3ff19ac9634a0a9b4045114c51b7c2c0fe6e020df78a2f5e6a5"
+            },
+            "layers.25.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "8f576eec8fbe8cf7bc7f2040e9b75575e81b6d8f70c34a0bece9e2e8cfcdc034"
+            },
+            "layers.25.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "f34de5af3c069b0bf13b74216e3474225d4a741fa06c3d7e83781ec280d2255b"
+            },
+            "layers.26.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "25b391a94025b6c7cc045ad60a6aca6d0fb400c6a85118915f209ba7f63a0c32"
+            },
+            "layers.26.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "b9683288289c5afa5789c6c437583da80368a67423ac1236a6e6064aff019e6a"
+            },
+            "layers.27.attention.k": {
+              "bytes_hashed": 1048576,
+              "sha256": "04b49d1e8633e663983cc9f5f59701c75d38b152bac4fafffd0d513cbf2ff7bc"
+            },
+            "layers.27.attention.v": {
+              "bytes_hashed": 1048576,
+              "sha256": "272ccd5373083ca8d3a8171be56e7022b3e7d7306c3c91438f66bf7a0344ad7c"
+            },
+            "layers.28.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "09ec63a96bd15798206fe7afd4f407695149215cf6972b7270eeffecc9898dfd"
+            },
+            "layers.28.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "ae4825bd0d62161798e323e7396f112b47ded1b4bf07071fee3cfc353d500d04"
+            },
+            "layers.29.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "370227a0d0f9d77dcca36bf0c48ab91171a1f8e43a06dcc29756f884e1dea666"
+            },
+            "layers.29.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "1c13cd9ad90a2e444d9700370365e70e67c8f26a973125c59640808b5c364cee"
+            },
+            "layers.30.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "0427592f69b4d4baf64de6564e56bbfbc60a2527a0458689f081d6f33acc0bf5"
+            },
+            "layers.30.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "ed6d18dbac309764367c21dd11cd12c0a877e7fcdd85a329dfc29b1a3e730664"
+            },
+            "layers.31.attention.k": {
+              "bytes_hashed": 1048576,
+              "sha256": "702754deba3653d6931d8ae69ddf049cd0aaea47faec875f2ce9659c8008af1d"
+            },
+            "layers.31.attention.v": {
+              "bytes_hashed": 1048576,
+              "sha256": "a33090812c4c9bb3ee631098fe2b4b1207ed65e38798ed4533c1b3272cea575e"
+            },
+            "layers.32.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "eee3ee0f21197b0906101465a91b1ba1a463cfc018517128057e22d17b980a05"
+            },
+            "layers.32.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "67c27e54e4ccc78b6a8e8074a5864568cae06865fca4481f51e13844c879a8ce"
+            },
+            "layers.33.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "2ca9a3b2b850ae6f1f0173dacb10d5aa91b4a3a465fdf49e0bdbe6b9cc661196"
+            },
+            "layers.33.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "163cbc3616dce797c88709af955f2d7f319f0263a802bf5dacac765f0f588e75"
+            },
+            "layers.34.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "8f102fe59cdef9aa6f9fe99c6aa0db83480aa0f89646912f7efa9b05cbffa78e"
+            },
+            "layers.34.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "2e452999e9540aaa49a16b1100ee8e3724a88cbcbce552d191c56d84b2b8e9f9"
+            },
+            "layers.35.attention.k": {
+              "bytes_hashed": 1048576,
+              "sha256": "6b159ead167dd977d60c336e92c466d168c4014c02237aed18a52e0e3a0fc3d6"
+            },
+            "layers.35.attention.v": {
+              "bytes_hashed": 1048576,
+              "sha256": "6abe7605ba403aa81a5039b5b4400a0161d27100660c162cce5509ac2a621e2b"
+            },
+            "layers.36.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "fd73f9be16561eef1e98a26c3c870a960d0af503266e7d756736418239386b55"
+            },
+            "layers.36.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "79a47c22ebb67109c78f7378ec71064020f769acd44e817066632df23300c5a3"
+            },
+            "layers.37.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "45962a7d4312abe67aff5be3a8e025271fd4aeafd0b2075ae68441961575179a"
+            },
+            "layers.37.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "47a4e23ddff80505de053f3ecab06e846b1a36775bbefd54574123434023a41e"
+            },
+            "layers.38.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "4ddf4ede4e180396d4ee5b833d3f4619bd41536085ec10740383c79e510151f1"
+            },
+            "layers.38.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "06b8715b6c29b2d604d04ac63402034ba8f4505e5131ad16019860f3105c0ea6"
+            },
+            "layers.39.attention.k": {
+              "bytes_hashed": 1048576,
+              "sha256": "9ff345554e978b032dc9072d1e4287e3a28452a0c28171b51fc0b0760c41d322"
+            },
+            "layers.39.attention.v": {
+              "bytes_hashed": 1048576,
+              "sha256": "cc445314cc9e3034ab91aa129230df9f257858a0f41813b8796416d50986fe67"
+            },
+            "layers.40.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "ee3f717a6ff0de28ee1c7408ba1149bc0d5c1a6ba82a4d645e37222cc0e272ca"
+            },
+            "layers.40.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "7e78a6e831ba06c5097e14c89689f59ae1f6300d24b0cfd4ed5cfaeaecf0998d"
+            },
+            "layers.41.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "8e9761047a49bb44e2a202b114e30abb5989a86dd2b6d0b9fe9df90eaffd9a81"
+            },
+            "layers.41.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "8fb40137df165666f36feb6e083820e7374161d0bdfd561cfcc82ac8d6a5f39c"
+            },
+            "layers.42.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "805968c6f30f1caad56935e356150c0f83580c8376078a549e8561421190f3c7"
+            },
+            "layers.42.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "bbbdd64e6f96eddfe5b57fd521b19540bebfe453a6820c72e16bdf0eea6fc0cf"
+            },
+            "layers.43.attention.k": {
+              "bytes_hashed": 1048576,
+              "sha256": "03eac7c0ad08f6ad6dfdc22adafbe75d1b0a806cd04de27257a0ec0893186158"
+            },
+            "layers.43.attention.v": {
+              "bytes_hashed": 1048576,
+              "sha256": "33ce85ab2a3ed372ab1ea554437ad48f2d202bca2f04c74a826a70315441ffb1"
+            },
+            "layers.44.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "c6396b3b32543d71f1829ecc36cd76ebfd6593d3bd32dabb7a5cd476506dde37"
+            },
+            "layers.44.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "ae5de1513902107fccf2e5fabbb89f1d33ba8b100bad9b88c12e40f239678240"
+            },
+            "layers.45.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "d32f3a2541dfa69170ec8fa28e198b619a492478a587c8d0ea112239b14b1f56"
+            },
+            "layers.45.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "b2d5ee4e455c1f2439bdb316f8a7ff3bf8c6c0aad7930592b1fcff35ca42f682"
+            },
+            "layers.46.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "d0b8a0f5cd4c5bbb0f2d8bcd992999aee6c07924af2f60380293a01f7497760c"
+            },
+            "layers.46.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "6beeb91461584fc46a7d5d53bc773cdf32e08ad6d9d494cbc912ef77d88499bf"
+            },
+            "layers.47.attention.k": {
+              "bytes_hashed": 1048576,
+              "sha256": "2dc6dfff1c9114747c8f52dcbdf07690c321629c1822d9aa9b19e367f2b0cd9b"
+            },
+            "layers.47.attention.v": {
+              "bytes_hashed": 1048576,
+              "sha256": "de581d18f2f54b872d98922440281906bdf5bdb4cd1c73ab004c06d23fa3a9df"
+            },
+            "layers.48.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "596408b73d52188d79e978339ff248c4562a79ddb02684775b63c88652556df3"
+            },
+            "layers.48.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "d822905f62df4f52ad4af80c4a1c1dea327ccfee80cd7993ca761d7d9466432c"
+            },
+            "layers.49.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "7c0ae2a221ae7432a1b7dfbfc9be52760252838cc78550ce9feb9e930a535ae9"
+            },
+            "layers.49.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "2d3244267d091a1bdfcc796dab013b55b4f4a567f4b213ed6c716cb506f32efa"
+            },
+            "layers.50.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "0afdba85d62575950bfa937db5bf916b47a93599e7061f45df9846893d80c343"
+            },
+            "layers.50.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "a4eef3ee1bc04b854d725bae90903cfa047452882ecdc523c4095f461323016b"
+            },
+            "layers.51.attention.k": {
+              "bytes_hashed": 1048576,
+              "sha256": "ccb04fa83d311e7fcec468a24ea0726a8d9a4491986652a8307ed67ad0d19217"
+            },
+            "layers.51.attention.v": {
+              "bytes_hashed": 1048576,
+              "sha256": "3708384ac80055f6ecee366e712355f5d38a8c8b66d521971f57becbcffc4fe9"
+            },
+            "layers.52.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "81d62572d04cd9f469835d786256e6d38e179fba70d38e20c10938a4e866e9d4"
+            },
+            "layers.52.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "a2bbf7314897c5d5134ff79a9d9de82c1027bb832440bc5c6cca8e607d89c9a4"
+            },
+            "layers.53.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "14057bebb9fb5078964a8c361c7812cefbd3b2c7cd9f21e705e355f5411221e2"
+            },
+            "layers.53.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "8a29213bdaaaf4fa9fd8e4bef4932c902e2f5a383ccfef6f0d1f974779e654e8"
+            },
+            "layers.54.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "3030a3c552bbbd4e23efc4a20ebbd5102115f23561561c9a166a668b5a0dc986"
+            },
+            "layers.54.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "e46b9ad500c7edf0f9a442602b731caacb9d06e8ba9e922cfa724dc9f7808411"
+            },
+            "layers.55.attention.k": {
+              "bytes_hashed": 1048576,
+              "sha256": "afa17c7540cd66cec1c62fc6b0280893c76049ecbe66b52ed65bb082e2599619"
+            },
+            "layers.55.attention.v": {
+              "bytes_hashed": 1048576,
+              "sha256": "8c295e56b3739fa492d77c9c32c7009c5c628b5f58036ddf7d1baf1474917ce8"
+            },
+            "layers.56.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "6b24d3b2b8949b9af0f66124c0e66cc96d47de17b5730cdf04a00b0e29da9cf7"
+            },
+            "layers.56.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "44f688845c54fe8a5ed060cdc43460a123c73d67ae43c16ec9ff4c0446f61c76"
+            },
+            "layers.57.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "8f1f793b70a2858230a3c4b719837029f60474e31bf458e3f6340335b47ab76e"
+            },
+            "layers.57.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "afc92759179d43356a3874c287d2f79db15bb25563be5f03f055c1e5b4d3dc0c"
+            },
+            "layers.58.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "79038c383eb6641e1463c047c03275055f23831ad2cd5f2a4572e0b3c320250c"
+            },
+            "layers.58.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "5ebf8dabe891423abcff6d39ba5cd6f2ecb355fa52006c8e22fbf1bfdb95e890"
+            },
+            "layers.59.attention.k": {
+              "bytes_hashed": 1048576,
+              "sha256": "404fa55672094ce826a6ec6454dcb54f257bfe8ce9ac5c7ff81755320828a32a"
+            },
+            "layers.59.attention.v": {
+              "bytes_hashed": 1048576,
+              "sha256": "9283e08a369b99f7e5876b936e186d91150bddd9f1e8e063ef450afcf07d4739"
+            },
+            "layers.60.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "095ab633e64fe25e51d843825c421a804445dab373f2b4dbd9ac110f1b8f3730"
+            },
+            "layers.60.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "516ddfa61c64979b461c75f248fdc32f57635034073d0cb5d948db543084eaf7"
+            },
+            "layers.61.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "a5f2fcfc436736d74a479b7ee366710d74f34a65270093fe0550c870ec50fee9"
+            },
+            "layers.61.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "07458aba537822b0737fc6a1b35b4e896ef3534265900ad70141e9efc792d648"
+            },
+            "layers.62.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "ecb9d098cbd821ff5acae3570e63cac647b589b9491aaaca591ef1073643f2ec"
+            },
+            "layers.62.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "0ed631e275230085dafa07e0001d7bd567ff19e5895a9e085dd5d64c6c174cfe"
+            },
+            "layers.63.attention.k": {
+              "bytes_hashed": 1048576,
+              "sha256": "aac739deb93011541ac71e8b692d37505735fcd348192994f74e7559dcf24e7c"
+            },
+            "layers.63.attention.v": {
+              "bytes_hashed": 1048576,
+              "sha256": "61c6d3de6808825160522083881f3953c341d33d6747fc8ad502589eaffc2161"
+            }
+          },
+          "equal": true,
+          "mismatched_regions": [],
+          "one_shot": {
+            "layers.00.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "20bfdce212210652c81b0a9051f67b3eebfa3bd3e82a747c0345f731cb52b394"
+            },
+            "layers.00.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "268bea17113cff85a52f948f83e8ab991562b888520b5b2ad3e0dfe361b4ed93"
+            },
+            "layers.01.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "2d06569f7a5817d79b3bec0aed52b59eafc49b857cdcc1b4e7d8e1fc94ac2f1e"
+            },
+            "layers.01.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "897d00f77a967eafaa690195116438b4b2482b6abe0bd9dfd409526b5bacf169"
+            },
+            "layers.02.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "f12590b325bd899df319fb6529bb7a8db91283550278dfc22bf5427aca79968f"
+            },
+            "layers.02.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "a14d06c16401a88cffbc828d9a11bf71d4cd1b7346b344502f3c3afe9b795c19"
+            },
+            "layers.03.attention.k": {
+              "bytes_hashed": 1048576,
+              "sha256": "500040a9c32dedb6662df784b4c98c22a8b5e4915c2b1bfbd95dadcce9968e14"
+            },
+            "layers.03.attention.v": {
+              "bytes_hashed": 1048576,
+              "sha256": "f6d32e37799ce923d20e1fd432423621abb3f37e2e4ffee242e9722e9280613b"
+            },
+            "layers.04.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "ed231db29a49fddd86e59ea681ffdb4fa5d22612dde4d7820a81e530671db85e"
+            },
+            "layers.04.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "f559f5b88ad93c8fce56c52f1a0c897dc83efe5b1c0af92711087f1af8964f08"
+            },
+            "layers.05.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "bbf26fd04d39fc4175ea41652560a94575188d48615e0c6ea517176fdfe2f525"
+            },
+            "layers.05.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "921796f6202c439bc50a059f7a322e022ce15d7c4bc26efc66bd8cca75ca9a1a"
+            },
+            "layers.06.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "7ed06981dc35d7409e9c63ae8870d4f21b50115295231e102dac0c69ebaaa231"
+            },
+            "layers.06.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "00c0128156d64d9a10f9d4378d735ac62888dff610f079d4df965661864144a6"
+            },
+            "layers.07.attention.k": {
+              "bytes_hashed": 1048576,
+              "sha256": "aa1db91b143248a3f4f476cb6c3bea64f382db92e7325e8f2033e3d19015c252"
+            },
+            "layers.07.attention.v": {
+              "bytes_hashed": 1048576,
+              "sha256": "80763f8c89abd539b0e80dac6d263539c8d5b7778b8cad9ebf04253e6e823649"
+            },
+            "layers.08.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "d07cc30096cd1bd66e13df5dd1d5b6970f5e73da2297dfe912ed39cdbd317939"
+            },
+            "layers.08.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "d3b5f0b587fc54489d5c392b9768c0c85c45d31612bc9bd82906a6bc98ef93af"
+            },
+            "layers.09.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "0f52c96e323bb6ca2f1d82159d8ad2f7dd55878edeae46e57be9bcf6e05e5767"
+            },
+            "layers.09.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "1bad76918be57294105d3e5ede60477fe109b62b98bc0ee4f91e4c359dff07b1"
+            },
+            "layers.10.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "915a4640bac959e19d5d6b1ba876446c8ace76c304f1ce3da26b8a5a0ddb3bb4"
+            },
+            "layers.10.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "e2e6224d827e29f9c09d0f139312efb4b94b90436b5e86cb711ce41ad8f0a194"
+            },
+            "layers.11.attention.k": {
+              "bytes_hashed": 1048576,
+              "sha256": "95e03ea923dc69ffc8677713ac52de4ac41c4695ee89059ed302ff5112c79671"
+            },
+            "layers.11.attention.v": {
+              "bytes_hashed": 1048576,
+              "sha256": "792d0a59c54dbc6d1c43a48f2588d324194203c06d99effc2ece882af98ece5f"
+            },
+            "layers.12.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "5fb16ba2cb101ce515c5e0e5081c32838554354e1753bb56a6d5e1882043eec2"
+            },
+            "layers.12.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "503ee2fa7b7999b69715d8d6b60c595448e221b3a9f3ed78d3cf1edff4be244f"
+            },
+            "layers.13.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "f2e634d6087c52eb9a110697f636f52c59134e37063c253ca106f12de6baa44a"
+            },
+            "layers.13.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "8d9a33291c1bd0124c1d93e0ff3f7b8d931a95eb40769e527781cc9a311e3ee4"
+            },
+            "layers.14.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "cec5455c15f8fcddb2f6c7196b759468046548603d17068f2ab0914d7a4b638e"
+            },
+            "layers.14.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "1b19b5ec22b9b26b6bbb31650c82a56f791933688222c003d993181efe79c12d"
+            },
+            "layers.15.attention.k": {
+              "bytes_hashed": 1048576,
+              "sha256": "a98a85245f891c23f97fd8d9f742493b24301dccec753de8acaf3f6431777578"
+            },
+            "layers.15.attention.v": {
+              "bytes_hashed": 1048576,
+              "sha256": "afac7b5d2afc888a973bef87da5bd4a603ca70f73f9f806d2f5fa537caefb4e4"
+            },
+            "layers.16.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "7c2ec78b9a762b98c7134b2661cc79adb54f0f5e57cc6cdc2117d7b74952308f"
+            },
+            "layers.16.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "d4a12bbf652b6ea3f0b65fcf5d4dfaa599579c71f85e5c02dd8c6c32d3c7d0a4"
+            },
+            "layers.17.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "32defa9ccdbd6f5750978d2c57460f9b077c90bfe6105f0fbdc5227fdf2c9215"
+            },
+            "layers.17.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "ea669570f587b736cb2b6c38c9d75b84fa84d16d8a4b83be3093b65bd0408e69"
+            },
+            "layers.18.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "76c1452e2577252471c6db814fea3f54eb4c056a8ff0809270cd42ba81306dff"
+            },
+            "layers.18.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "8614f75ac95e5ff95482e753558732d8b7599922f54ba53c7d4bcbe3896ad255"
+            },
+            "layers.19.attention.k": {
+              "bytes_hashed": 1048576,
+              "sha256": "b2f293c4ce1a542f9fbc33900b5e415799ba50c8bf3d682d3b42d00bec877b6e"
+            },
+            "layers.19.attention.v": {
+              "bytes_hashed": 1048576,
+              "sha256": "b70e9c1bef8bd42b6cc1346c4851f8aafb61ed1cd546f5ab3c71f86e34406598"
+            },
+            "layers.20.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "c2da329beea2ba29116dd363a31f17b2774c3ab08f4bb83f671a022b5328da24"
+            },
+            "layers.20.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "a5ae4b60e2845df47a27ff0bcd8e28539ed759690cec22f68b081b97ce2fc899"
+            },
+            "layers.21.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "b6b15fdd01f8563cb0b9e65cf35d9d2cb56b2ea35d7e346fd5e3d7e6b112df54"
+            },
+            "layers.21.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "4f0a55804462d9a067d6ad89b72054c53a9b0013f5cd018295ca1df0175b40a1"
+            },
+            "layers.22.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "9c3d09de970e9dc0e0d06573559f4e45394a012b835f12e4a7e10efaf5a1e2fb"
+            },
+            "layers.22.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "5e1d63d201a7ab108548cf528284307e8b9fff44ecba70ed7be1bd1946070be9"
+            },
+            "layers.23.attention.k": {
+              "bytes_hashed": 1048576,
+              "sha256": "ad1e4d02bcf45cca3337722b1a22c8fe76359281e7c0c5608eae52fd72b862da"
+            },
+            "layers.23.attention.v": {
+              "bytes_hashed": 1048576,
+              "sha256": "4bd83e93a63905327e3460f261111a943dd88521ad142882600d6106846d0f3c"
+            },
+            "layers.24.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "00dbcb4f0ee5032a504792fe7fcceaf07ae26b8f08507ff33ee499d937b22e04"
+            },
+            "layers.24.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "5231202b81d3a3ff19ac9634a0a9b4045114c51b7c2c0fe6e020df78a2f5e6a5"
+            },
+            "layers.25.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "8f576eec8fbe8cf7bc7f2040e9b75575e81b6d8f70c34a0bece9e2e8cfcdc034"
+            },
+            "layers.25.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "f34de5af3c069b0bf13b74216e3474225d4a741fa06c3d7e83781ec280d2255b"
+            },
+            "layers.26.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "25b391a94025b6c7cc045ad60a6aca6d0fb400c6a85118915f209ba7f63a0c32"
+            },
+            "layers.26.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "b9683288289c5afa5789c6c437583da80368a67423ac1236a6e6064aff019e6a"
+            },
+            "layers.27.attention.k": {
+              "bytes_hashed": 1048576,
+              "sha256": "04b49d1e8633e663983cc9f5f59701c75d38b152bac4fafffd0d513cbf2ff7bc"
+            },
+            "layers.27.attention.v": {
+              "bytes_hashed": 1048576,
+              "sha256": "272ccd5373083ca8d3a8171be56e7022b3e7d7306c3c91438f66bf7a0344ad7c"
+            },
+            "layers.28.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "09ec63a96bd15798206fe7afd4f407695149215cf6972b7270eeffecc9898dfd"
+            },
+            "layers.28.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "ae4825bd0d62161798e323e7396f112b47ded1b4bf07071fee3cfc353d500d04"
+            },
+            "layers.29.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "370227a0d0f9d77dcca36bf0c48ab91171a1f8e43a06dcc29756f884e1dea666"
+            },
+            "layers.29.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "1c13cd9ad90a2e444d9700370365e70e67c8f26a973125c59640808b5c364cee"
+            },
+            "layers.30.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "0427592f69b4d4baf64de6564e56bbfbc60a2527a0458689f081d6f33acc0bf5"
+            },
+            "layers.30.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "ed6d18dbac309764367c21dd11cd12c0a877e7fcdd85a329dfc29b1a3e730664"
+            },
+            "layers.31.attention.k": {
+              "bytes_hashed": 1048576,
+              "sha256": "702754deba3653d6931d8ae69ddf049cd0aaea47faec875f2ce9659c8008af1d"
+            },
+            "layers.31.attention.v": {
+              "bytes_hashed": 1048576,
+              "sha256": "a33090812c4c9bb3ee631098fe2b4b1207ed65e38798ed4533c1b3272cea575e"
+            },
+            "layers.32.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "eee3ee0f21197b0906101465a91b1ba1a463cfc018517128057e22d17b980a05"
+            },
+            "layers.32.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "67c27e54e4ccc78b6a8e8074a5864568cae06865fca4481f51e13844c879a8ce"
+            },
+            "layers.33.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "2ca9a3b2b850ae6f1f0173dacb10d5aa91b4a3a465fdf49e0bdbe6b9cc661196"
+            },
+            "layers.33.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "163cbc3616dce797c88709af955f2d7f319f0263a802bf5dacac765f0f588e75"
+            },
+            "layers.34.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "8f102fe59cdef9aa6f9fe99c6aa0db83480aa0f89646912f7efa9b05cbffa78e"
+            },
+            "layers.34.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "2e452999e9540aaa49a16b1100ee8e3724a88cbcbce552d191c56d84b2b8e9f9"
+            },
+            "layers.35.attention.k": {
+              "bytes_hashed": 1048576,
+              "sha256": "6b159ead167dd977d60c336e92c466d168c4014c02237aed18a52e0e3a0fc3d6"
+            },
+            "layers.35.attention.v": {
+              "bytes_hashed": 1048576,
+              "sha256": "6abe7605ba403aa81a5039b5b4400a0161d27100660c162cce5509ac2a621e2b"
+            },
+            "layers.36.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "fd73f9be16561eef1e98a26c3c870a960d0af503266e7d756736418239386b55"
+            },
+            "layers.36.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "79a47c22ebb67109c78f7378ec71064020f769acd44e817066632df23300c5a3"
+            },
+            "layers.37.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "45962a7d4312abe67aff5be3a8e025271fd4aeafd0b2075ae68441961575179a"
+            },
+            "layers.37.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "47a4e23ddff80505de053f3ecab06e846b1a36775bbefd54574123434023a41e"
+            },
+            "layers.38.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "4ddf4ede4e180396d4ee5b833d3f4619bd41536085ec10740383c79e510151f1"
+            },
+            "layers.38.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "06b8715b6c29b2d604d04ac63402034ba8f4505e5131ad16019860f3105c0ea6"
+            },
+            "layers.39.attention.k": {
+              "bytes_hashed": 1048576,
+              "sha256": "9ff345554e978b032dc9072d1e4287e3a28452a0c28171b51fc0b0760c41d322"
+            },
+            "layers.39.attention.v": {
+              "bytes_hashed": 1048576,
+              "sha256": "cc445314cc9e3034ab91aa129230df9f257858a0f41813b8796416d50986fe67"
+            },
+            "layers.40.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "ee3f717a6ff0de28ee1c7408ba1149bc0d5c1a6ba82a4d645e37222cc0e272ca"
+            },
+            "layers.40.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "7e78a6e831ba06c5097e14c89689f59ae1f6300d24b0cfd4ed5cfaeaecf0998d"
+            },
+            "layers.41.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "8e9761047a49bb44e2a202b114e30abb5989a86dd2b6d0b9fe9df90eaffd9a81"
+            },
+            "layers.41.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "8fb40137df165666f36feb6e083820e7374161d0bdfd561cfcc82ac8d6a5f39c"
+            },
+            "layers.42.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "805968c6f30f1caad56935e356150c0f83580c8376078a549e8561421190f3c7"
+            },
+            "layers.42.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "bbbdd64e6f96eddfe5b57fd521b19540bebfe453a6820c72e16bdf0eea6fc0cf"
+            },
+            "layers.43.attention.k": {
+              "bytes_hashed": 1048576,
+              "sha256": "03eac7c0ad08f6ad6dfdc22adafbe75d1b0a806cd04de27257a0ec0893186158"
+            },
+            "layers.43.attention.v": {
+              "bytes_hashed": 1048576,
+              "sha256": "33ce85ab2a3ed372ab1ea554437ad48f2d202bca2f04c74a826a70315441ffb1"
+            },
+            "layers.44.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "c6396b3b32543d71f1829ecc36cd76ebfd6593d3bd32dabb7a5cd476506dde37"
+            },
+            "layers.44.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "ae5de1513902107fccf2e5fabbb89f1d33ba8b100bad9b88c12e40f239678240"
+            },
+            "layers.45.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "d32f3a2541dfa69170ec8fa28e198b619a492478a587c8d0ea112239b14b1f56"
+            },
+            "layers.45.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "b2d5ee4e455c1f2439bdb316f8a7ff3bf8c6c0aad7930592b1fcff35ca42f682"
+            },
+            "layers.46.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "d0b8a0f5cd4c5bbb0f2d8bcd992999aee6c07924af2f60380293a01f7497760c"
+            },
+            "layers.46.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "6beeb91461584fc46a7d5d53bc773cdf32e08ad6d9d494cbc912ef77d88499bf"
+            },
+            "layers.47.attention.k": {
+              "bytes_hashed": 1048576,
+              "sha256": "2dc6dfff1c9114747c8f52dcbdf07690c321629c1822d9aa9b19e367f2b0cd9b"
+            },
+            "layers.47.attention.v": {
+              "bytes_hashed": 1048576,
+              "sha256": "de581d18f2f54b872d98922440281906bdf5bdb4cd1c73ab004c06d23fa3a9df"
+            },
+            "layers.48.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "596408b73d52188d79e978339ff248c4562a79ddb02684775b63c88652556df3"
+            },
+            "layers.48.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "d822905f62df4f52ad4af80c4a1c1dea327ccfee80cd7993ca761d7d9466432c"
+            },
+            "layers.49.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "7c0ae2a221ae7432a1b7dfbfc9be52760252838cc78550ce9feb9e930a535ae9"
+            },
+            "layers.49.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "2d3244267d091a1bdfcc796dab013b55b4f4a567f4b213ed6c716cb506f32efa"
+            },
+            "layers.50.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "0afdba85d62575950bfa937db5bf916b47a93599e7061f45df9846893d80c343"
+            },
+            "layers.50.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "a4eef3ee1bc04b854d725bae90903cfa047452882ecdc523c4095f461323016b"
+            },
+            "layers.51.attention.k": {
+              "bytes_hashed": 1048576,
+              "sha256": "ccb04fa83d311e7fcec468a24ea0726a8d9a4491986652a8307ed67ad0d19217"
+            },
+            "layers.51.attention.v": {
+              "bytes_hashed": 1048576,
+              "sha256": "3708384ac80055f6ecee366e712355f5d38a8c8b66d521971f57becbcffc4fe9"
+            },
+            "layers.52.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "81d62572d04cd9f469835d786256e6d38e179fba70d38e20c10938a4e866e9d4"
+            },
+            "layers.52.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "a2bbf7314897c5d5134ff79a9d9de82c1027bb832440bc5c6cca8e607d89c9a4"
+            },
+            "layers.53.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "14057bebb9fb5078964a8c361c7812cefbd3b2c7cd9f21e705e355f5411221e2"
+            },
+            "layers.53.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "8a29213bdaaaf4fa9fd8e4bef4932c902e2f5a383ccfef6f0d1f974779e654e8"
+            },
+            "layers.54.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "3030a3c552bbbd4e23efc4a20ebbd5102115f23561561c9a166a668b5a0dc986"
+            },
+            "layers.54.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "e46b9ad500c7edf0f9a442602b731caacb9d06e8ba9e922cfa724dc9f7808411"
+            },
+            "layers.55.attention.k": {
+              "bytes_hashed": 1048576,
+              "sha256": "afa17c7540cd66cec1c62fc6b0280893c76049ecbe66b52ed65bb082e2599619"
+            },
+            "layers.55.attention.v": {
+              "bytes_hashed": 1048576,
+              "sha256": "8c295e56b3739fa492d77c9c32c7009c5c628b5f58036ddf7d1baf1474917ce8"
+            },
+            "layers.56.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "6b24d3b2b8949b9af0f66124c0e66cc96d47de17b5730cdf04a00b0e29da9cf7"
+            },
+            "layers.56.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "44f688845c54fe8a5ed060cdc43460a123c73d67ae43c16ec9ff4c0446f61c76"
+            },
+            "layers.57.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "8f1f793b70a2858230a3c4b719837029f60474e31bf458e3f6340335b47ab76e"
+            },
+            "layers.57.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "afc92759179d43356a3874c287d2f79db15bb25563be5f03f055c1e5b4d3dc0c"
+            },
+            "layers.58.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "79038c383eb6641e1463c047c03275055f23831ad2cd5f2a4572e0b3c320250c"
+            },
+            "layers.58.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "5ebf8dabe891423abcff6d39ba5cd6f2ecb355fa52006c8e22fbf1bfdb95e890"
+            },
+            "layers.59.attention.k": {
+              "bytes_hashed": 1048576,
+              "sha256": "404fa55672094ce826a6ec6454dcb54f257bfe8ce9ac5c7ff81755320828a32a"
+            },
+            "layers.59.attention.v": {
+              "bytes_hashed": 1048576,
+              "sha256": "9283e08a369b99f7e5876b936e186d91150bddd9f1e8e063ef450afcf07d4739"
+            },
+            "layers.60.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "095ab633e64fe25e51d843825c421a804445dab373f2b4dbd9ac110f1b8f3730"
+            },
+            "layers.60.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "516ddfa61c64979b461c75f248fdc32f57635034073d0cb5d948db543084eaf7"
+            },
+            "layers.61.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "a5f2fcfc436736d74a479b7ee366710d74f34a65270093fe0550c870ec50fee9"
+            },
+            "layers.61.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "07458aba537822b0737fc6a1b35b4e896ef3534265900ad70141e9efc792d648"
+            },
+            "layers.62.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "ecb9d098cbd821ff5acae3570e63cac647b589b9491aaaca591ef1073643f2ec"
+            },
+            "layers.62.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "0ed631e275230085dafa07e0001d7bd567ff19e5895a9e085dd5d64c6c174cfe"
+            },
+            "layers.63.attention.k": {
+              "bytes_hashed": 1048576,
+              "sha256": "aac739deb93011541ac71e8b692d37505735fcd348192994f74e7559dcf24e7c"
+            },
+            "layers.63.attention.v": {
+              "bytes_hashed": 1048576,
+              "sha256": "61c6d3de6808825160522083881f3953c341d33d6747fc8ad502589eaffc2161"
+            }
+          }
+        },
+        "step": 0,
+        "token_equal": true
+      },
+      {
+        "chunked_logits_sha256": "88c1c8fc1a5551c09277bcc73cf2d8202c94fdd0a44c2800355c20b6653e5fc3",
+        "chunked_past": 513,
+        "chunked_token": 60552,
+        "input_token_ids": [
+          13962
+        ],
+        "logits_equal": true,
+        "one_shot_logits_sha256": "88c1c8fc1a5551c09277bcc73cf2d8202c94fdd0a44c2800355c20b6653e5fc3",
+        "one_shot_past": 513,
+        "one_shot_token": 60552,
+        "passed": true,
+        "state": {
+          "chunked": {
+            "layers.00.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "c02bd2a81ddce6fc7bc6f9752579c6ffca70ba5ed867c44f6141826322d2cc6c"
+            },
+            "layers.00.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "ad73155414d280ba0c075cabe5078e3427f29223d741138f9d6c1d5859f35912"
+            },
+            "layers.01.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "013f392f3b0dd54ad6cde453690700b4fcc4f5aa9d368d345b3f07b7e71d610d"
+            },
+            "layers.01.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "d39c349a329267690cfac88b444a903bb53cabea922e55e3e80a12f62ceb82ae"
+            },
+            "layers.02.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "3604cebc300a2fadf72b099ffcf84adfc8e06a462ee946827d0369b360f1d3e1"
+            },
+            "layers.02.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "e953b841b272bfb97eb000d021666987a422f41aa45d147bafe7c5ef704a62fc"
+            },
+            "layers.03.attention.k": {
+              "bytes_hashed": 1050624,
+              "sha256": "30c4066d12194cd22bec088a714115a4e250c1f0735cee35fcce349a5dd083e6"
+            },
+            "layers.03.attention.v": {
+              "bytes_hashed": 1050624,
+              "sha256": "a35686259766f87270ae76ba572e56b14f0867641576ca298e19be748792ba2c"
+            },
+            "layers.04.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "a958746abdabbf2664afec25bcebd60be364024973bae199ee274ff75658b4a4"
+            },
+            "layers.04.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "ef0ecf9241c615081eec565a61b534f9659c3509b62ea1e11f56fbcefdfcd2d7"
+            },
+            "layers.05.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "b55ce5276b63d749a6b73a2d32e37b948361e24fbfb919ea55fe445d5f487f0c"
+            },
+            "layers.05.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "95531d0afa16c6fcb15afad5614978247feaafb2b6eb6fefc914e71325df7bf6"
+            },
+            "layers.06.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "bce67e1729a339c8449bdff74b90794d8af049f72936978f488942ecd5460d68"
+            },
+            "layers.06.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "c2e6c81458a09850eae1b6045e2d1f7a3dcb335788e1c1b5727f024ff17cd8ef"
+            },
+            "layers.07.attention.k": {
+              "bytes_hashed": 1050624,
+              "sha256": "99b8b35c5c94e871998d2734d4da681a38e2c32edca1b7864cd4bf0adeb92581"
+            },
+            "layers.07.attention.v": {
+              "bytes_hashed": 1050624,
+              "sha256": "24af8b5d6d43a0f333547131d51985da706d4462a53efa3b8001466dacda6225"
+            },
+            "layers.08.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "5a582ae9811e7b3101ffe4b5baa67cc9007d0177090bc2764388e2cebd0d4d0f"
+            },
+            "layers.08.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "c25d839e9933b3329d4eb1d14f6efcae7a442af229a7bb393816c17baa1a1842"
+            },
+            "layers.09.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "4b422edd1bd5dbc1e540ef5c02110eab0ac9fbc7a07fe0c019307f6e7acfed4b"
+            },
+            "layers.09.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "74a6b429670621b9594d102d3f8a48b60426dfa509afa9a59b3212d5dc806f98"
+            },
+            "layers.10.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "fb0448d5fc26f92eeb12f9fa810406c1d3c6536e926b9a9cbe019edbb501673e"
+            },
+            "layers.10.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "a4a92585d83dd758ccfb096398810f03e37654b80be313d2716142e3ca9afabd"
+            },
+            "layers.11.attention.k": {
+              "bytes_hashed": 1050624,
+              "sha256": "5aee78158332523b567329619cf295b30f4966f509f1f24995add62a1e8fd80f"
+            },
+            "layers.11.attention.v": {
+              "bytes_hashed": 1050624,
+              "sha256": "a56571e44b2d1579cef0f9ea34d52c293942541d6c76bdb7af9ffa05543bc62b"
+            },
+            "layers.12.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "39d577a6362da353ca1af2e953bf0714d8a81d185feea52998b2352df836ebe9"
+            },
+            "layers.12.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "65a7bb7d704cc1b50fa9823c0c01a921bd18d525af15c4508079fcd9b0066c3e"
+            },
+            "layers.13.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "3903f674b288128b5e8d18760d708ae07b1d557a65001efe077fd7360ee76b35"
+            },
+            "layers.13.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "40c2b393d1c3481e9055ee7640db762d3dc0dfe35787d756216f314b78f0634f"
+            },
+            "layers.14.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "c7f2c383a4a3d61dba9c4458f6b26114a1cd86e9b82d60cafa5ad8e08fea9aee"
+            },
+            "layers.14.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "5c05edb4c42a699641860a0ac6f5851947c6e9432faf1d05567fc4b03f5f96bc"
+            },
+            "layers.15.attention.k": {
+              "bytes_hashed": 1050624,
+              "sha256": "9dfc75bc861f04cb3ede353e73edb337f2072187d18fed0079af5b79f245b2f4"
+            },
+            "layers.15.attention.v": {
+              "bytes_hashed": 1050624,
+              "sha256": "87ceff39139bf7bf679e6e9d8abf7df243d09d82372a2dd0abdf52a46055cb83"
+            },
+            "layers.16.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "cd00974c31b3b6e90f1bc355150b9fc71bbf77382d4b67ed21dac85c7555264a"
+            },
+            "layers.16.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "2c12f24464f6ca290b3ca3350b346117327eb7fc4b707eb7966ebea21c51c942"
+            },
+            "layers.17.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "2b10982efba84f46c1268c7d984e5ec4f214b4440382e43bf99e2117b056f21c"
+            },
+            "layers.17.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "b8e75fc96e04b929cbb5242357a3d69b91967d1163859843ccbf9e3d02493ed1"
+            },
+            "layers.18.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "95f6e29a7e69cdb4bbe1c400ab7c4eb3f2597423734f2ac08d43bade74da70b9"
+            },
+            "layers.18.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "d4da5caef1dfa5b66c2cc8d71aee67c9aa12a7027f01b606e9b5208a20194b63"
+            },
+            "layers.19.attention.k": {
+              "bytes_hashed": 1050624,
+              "sha256": "cfa49baedf2a9aa583aaf79594a4608b80f5eb778cc709aba47a859239a6dab7"
+            },
+            "layers.19.attention.v": {
+              "bytes_hashed": 1050624,
+              "sha256": "a131b611748d3d82dbb62f3aeb78b5212bfb6013d7b919e9e20e5d936b0d1c6c"
+            },
+            "layers.20.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "7afafb4362f2588a75518772f3274311c4d5dd0a3a70776d1191ecb2303a32af"
+            },
+            "layers.20.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "d5f8103e2bc0c6b7041ccebdba9447e70ade74a8396b57f0a6e0421311f4f522"
+            },
+            "layers.21.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "eb59c0d6b97920b9a3088749c1535eb548f6b5d8295e899f95bc1c2c74a51a3d"
+            },
+            "layers.21.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "a0a4ed3a14e35965e394ebeea73e2756fa01397cf47bf91969ea057d81e6595e"
+            },
+            "layers.22.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "7efa67570bc59503b9d916cf92cb543148d0b9e1e33de4e6fbfb612e1496cc83"
+            },
+            "layers.22.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "b66d29b77d899f08c2b2dcd93572e9b05e96cbaa018196a5e4334ea7da16bb94"
+            },
+            "layers.23.attention.k": {
+              "bytes_hashed": 1050624,
+              "sha256": "b39df5e8b521f062470e04a8dd28971cd32e026463189ffbfb50eeb0afd19039"
+            },
+            "layers.23.attention.v": {
+              "bytes_hashed": 1050624,
+              "sha256": "3f4e4d6aebf174277506402b8eaa2aaaa4a3030a089502cf4379f57259f9e5d8"
+            },
+            "layers.24.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "0545c1e024a4c6cebcedf313c450634f7c24ddb109058eeb82b898f15fc14bd5"
+            },
+            "layers.24.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "e0b768299c91d5a4de3fed4b5e6cb7e7d9501e6b3bf9ef3e80db40c997e2c5f7"
+            },
+            "layers.25.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "167954742f627eaa2f7583cfefaac518ea2395bac51fd8062a64c888e44d58e8"
+            },
+            "layers.25.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "aef2ddbd612a1a3c29373af798e8193481b537b190f77891ec12804efc514a49"
+            },
+            "layers.26.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "74d860b8703b4d1d3da2f24bef6b9e2eea28402d16315f704a8c4482c7de0597"
+            },
+            "layers.26.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "143cd7a02ba113cc926fbbf387988d4bf6cc89b7c8ce0be26df944a9122c7ebb"
+            },
+            "layers.27.attention.k": {
+              "bytes_hashed": 1050624,
+              "sha256": "c6a1b4e851932e39cf6cd3e2e189f366cc9414115c3163b0bc5812a2f569dd53"
+            },
+            "layers.27.attention.v": {
+              "bytes_hashed": 1050624,
+              "sha256": "72142e34a0a80f17bb699399cc1eabe2486aeb9c38c39ea1084812b7f4cbc0e0"
+            },
+            "layers.28.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "1bbd15e5c618c2fd0ce4f321063e3efe08cdc1789345d5ce4f7c5e577c636cca"
+            },
+            "layers.28.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "c9f3b2c27d8296747f97525ef90785ce61583ef6e5aa035a5a938bea91670973"
+            },
+            "layers.29.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "65e826be5bd668effa1cd981babd60e20dcb51dd2a4ddf3cb4879702eb26088a"
+            },
+            "layers.29.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "053836676a0002a50ad1b6ace7c0d7948efd1beeb26c2a76e887a1d0204e8e09"
+            },
+            "layers.30.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "4dc5e6d4a4b0b1a5533930db807566916ea805733ab8b45664b3b6fddc3aa47d"
+            },
+            "layers.30.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "d04369fa949e2ce5ef0e28342e21a9479c38595b1e82a88546b1783207b21c57"
+            },
+            "layers.31.attention.k": {
+              "bytes_hashed": 1050624,
+              "sha256": "7c78976a05f9021683a2ddf1905306faf25afad39d297b7b6611dabee491abf8"
+            },
+            "layers.31.attention.v": {
+              "bytes_hashed": 1050624,
+              "sha256": "f849c55353081a6477fca2d49ee9271ed650beebfaeafedb5be4cb3223c86c2c"
+            },
+            "layers.32.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "b16b08f7c992d492e525ce3f2967f32cc526cd9b54e1ea6267cf29558db83b89"
+            },
+            "layers.32.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "ed53a7e351c8b5c040c5be777586a177c15335be8a54f5ffa2806d9ea1950cca"
+            },
+            "layers.33.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "e7d150e222e2e8fef51e262026effb14cade5af48658dac11982025270e52733"
+            },
+            "layers.33.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "0496cb0936a1a79a6bf07016696c7d86e46a8dc616966e43deeb7f1e2b223895"
+            },
+            "layers.34.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "08f64fbfb5f3fd9ea7eeba20ff52fdaeca8c91123ef6004b18953b6d7efc0932"
+            },
+            "layers.34.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "0ef8169621e8e06d0fb248b09c2926ce4609a4b4b2aa8a1a19c4268dfd4c9993"
+            },
+            "layers.35.attention.k": {
+              "bytes_hashed": 1050624,
+              "sha256": "8e5192b14c70f99fb9f523bd1b5dd764f1051c686d5acb0278ab33ebc2ca8524"
+            },
+            "layers.35.attention.v": {
+              "bytes_hashed": 1050624,
+              "sha256": "f3ffaf91588d0bc791f2e6b2f9aa373a0d071deb65aa272b369282fd04358721"
+            },
+            "layers.36.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "448d009f55d6812a5576c54d409119c6856773809df85f6512456ebb9303393c"
+            },
+            "layers.36.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "91f58de1cbed4b7dede6d87202fd506d214c79ad8e8f24f8d9a4da04593c0e7f"
+            },
+            "layers.37.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "85965201bdbcbd75cae1f75cc16dce4c2d570b17c28ec043cf35edff757dcf43"
+            },
+            "layers.37.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "5938c0e76edf8094352f4f92d3684d49f65710527f3ee0b71c3dabafd7bcc119"
+            },
+            "layers.38.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "7b10defdb38087058811e707c67e0501f7cead3c9e01aa3178ab1846015f9876"
+            },
+            "layers.38.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "f5d218a58223593fbbebfcb6e6ad1c2ead97b87fa545e93dc8d3131841c76c00"
+            },
+            "layers.39.attention.k": {
+              "bytes_hashed": 1050624,
+              "sha256": "cbdba8930a6055a7f674fe752d0731fcd4eb8dd9cf1c276aac2b1e8d8df1ca00"
+            },
+            "layers.39.attention.v": {
+              "bytes_hashed": 1050624,
+              "sha256": "daddfed2aa67205f09cfebf71623a001299e571f23eb3f99d389f88c424cc8cb"
+            },
+            "layers.40.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "632bbd83cc0f62a1bc031e0a9c18c7794e2ce692fdb31d974747f7119f187911"
+            },
+            "layers.40.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "27d3e8d6e9d619c76072d0b1db5fa0e912ec7ce2ea9a8b05cabff71187ef1846"
+            },
+            "layers.41.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "1e3259ab7f6f13f943344dc696a5f5362c2b8d5a60c09a19764f11add403c1ab"
+            },
+            "layers.41.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "8070a192779bcec9132389b5edaa91b67f4f81002e76563093958b381b6c9afb"
+            },
+            "layers.42.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "ef52a55ef986f1c8f9069b7e4f8d95acc9613a6d37f8ed95dd41c341d0fc1c93"
+            },
+            "layers.42.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "ada18be6304db46d3cb032a081f83773a7f9290d4a6aaee27c4bf7ff8d503833"
+            },
+            "layers.43.attention.k": {
+              "bytes_hashed": 1050624,
+              "sha256": "95bd3ae9c1ae745d6d6a9982847397df00ed96a1b16452f8ed05ea0353ae447b"
+            },
+            "layers.43.attention.v": {
+              "bytes_hashed": 1050624,
+              "sha256": "ebc2d82dab05c7983a11f31780ab77dc32518c5cce115b0096e9657a915284a1"
+            },
+            "layers.44.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "0921fcd6356f0aa042b66f6f8528c6fc67a920bd944f28b18eedf1b3db0ee96f"
+            },
+            "layers.44.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "078a3d5ea48af2a5e1b7a7b854544a3fc97c40f2c1a0634da1637c4624d3aee9"
+            },
+            "layers.45.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "6df9e64744ec8198fbb993f55c50dddc55947fd366929dbcf3937748dd77a25d"
+            },
+            "layers.45.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "ba0538610a84611e856fe9a79be6e693ca2caa353c7bf24ec272f645b3ac2494"
+            },
+            "layers.46.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "27a3469c7f2f3a71bf3fba181d16bae2100608614075b3b848ef17dd37ba7a2e"
+            },
+            "layers.46.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "5f6828075e8cc4ba49cb76319fd9ce7167d22bdbf48f1251a393ed66ea611d9f"
+            },
+            "layers.47.attention.k": {
+              "bytes_hashed": 1050624,
+              "sha256": "b33a6c6a94c759337868119639f567ddd0a219427718be6ceb55470f80b624b7"
+            },
+            "layers.47.attention.v": {
+              "bytes_hashed": 1050624,
+              "sha256": "55b17e75a67b9a88b88704f1ba8cfa9702357ddd6f4b9280c96dcc7fcd9efa7f"
+            },
+            "layers.48.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "f23e42f809571f79a6db1bf44e6a5861900991cffa137d2e9f509d729a8cb408"
+            },
+            "layers.48.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "0056f819f82f42c33eb96aa8a4a2534a0815cb6ccedab69769f5587de953d255"
+            },
+            "layers.49.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "7d5f67ab339b76ea933be32968cf7e763669da129b2febad74fbf8cf15250ef2"
+            },
+            "layers.49.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "a5728174afb4155adb66091ad4564aa2d0854fe572493e3260713037bda0e4ee"
+            },
+            "layers.50.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "751a73d8f52a09ddc6d1fe7d4c786e5269ab04faea9b1f90908f30d6681ed3f3"
+            },
+            "layers.50.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "56813ea0069a5de225b9a8f73991806b4fafb0b16e6dda5868f400d090b1369e"
+            },
+            "layers.51.attention.k": {
+              "bytes_hashed": 1050624,
+              "sha256": "8edcbe546bebf8a9250864e6db963f7b3f0ec06f6f2a2bdc430b79b741c37e14"
+            },
+            "layers.51.attention.v": {
+              "bytes_hashed": 1050624,
+              "sha256": "54b29644d97a3e1e406f36483bbaaae8228868e3f553def983895f6f08155a4f"
+            },
+            "layers.52.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "bc9f9b87a6cc94bf1699dae0fbffb511410591e3b2b597d81cbda7b0b01c0e29"
+            },
+            "layers.52.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "22569d570f8dbdc98429f6b105185d6f19f61caf28429a486931aad6af66fbec"
+            },
+            "layers.53.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "98b4095a099f5f0d3f04c746f92034824064da01b15a8670d852e4b6981dce18"
+            },
+            "layers.53.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "586af9b5c8597e06b3b12d0e6106e995c42e7ec55730aaf9cdbb42dbdc510f23"
+            },
+            "layers.54.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "4d20d4ea3405f6584879acf01426b838561c20b024aa79b2a67c458b32e79c2b"
+            },
+            "layers.54.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "c57e0d8433717d3d1c59998329be93e4599006b4a575c5b5629de71f26d86183"
+            },
+            "layers.55.attention.k": {
+              "bytes_hashed": 1050624,
+              "sha256": "468966c668bc6a67069dd9d2d4dde3237f84b5718e2475845311e40c6a2844cb"
+            },
+            "layers.55.attention.v": {
+              "bytes_hashed": 1050624,
+              "sha256": "dea08dee55f4d9d12277d92d30dc691c9756dd14dca80dde19aa71afaaa70d0d"
+            },
+            "layers.56.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "052167ecdc803e67a939e9500ba6b15e0accfc7ba36cf5d3e3f4af72845ef57b"
+            },
+            "layers.56.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "59442878fefffc51a03fc9541391911f04c0447b82131daefca7968033df420a"
+            },
+            "layers.57.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "d2a19bee7ca58a76e635cfda0aecf3256f73aea09ff9eecaff12fb4b4495b42c"
+            },
+            "layers.57.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "aa6e6acbfc46034b695525c3331833d738de793cab812b8df457ab93e80ac38d"
+            },
+            "layers.58.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "f997863a9ca65bc11c6a86d0a32803eb9942bbfc1a87a657dddeb97eca0cdc54"
+            },
+            "layers.58.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "53f6cb1006408cbf652e12686dae710e3b3d50e4e6639b25fdc8d7e2dd442a22"
+            },
+            "layers.59.attention.k": {
+              "bytes_hashed": 1050624,
+              "sha256": "c4cba3b51a9a5546c8d89c10112ccd1a165b166351637dcefdc9c3763ca6515b"
+            },
+            "layers.59.attention.v": {
+              "bytes_hashed": 1050624,
+              "sha256": "eb5ca469f7a98590fa23221425e52667955a8e33b5aa2fc3a3b8fbf385410b9c"
+            },
+            "layers.60.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "31f41f540e22eb9b27d6212104eae408d6c2dd944364fac0977dba622e98d4ee"
+            },
+            "layers.60.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "6fe308329e2c6a69584b679dd1349a32fca1730ee69ede864d6e31ff4005b63c"
+            },
+            "layers.61.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "b42fd9612fa206242767fcfda2702cb2d83082c67ea86b4158a65a7174ae12a2"
+            },
+            "layers.61.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "662cdbbbca45b77659c16bf19379e43b9a9086b05f72f66c2a5c7a0181a281e7"
+            },
+            "layers.62.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "4d495671fe164acf5a7fa6ead22c5a311c72a6f91933fd993808bd280b122e9e"
+            },
+            "layers.62.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "49c081da41fb865376dbf5acd757168b7a4a8577e1944ebec61f9617a2c8b1c7"
+            },
+            "layers.63.attention.k": {
+              "bytes_hashed": 1050624,
+              "sha256": "5913345ab84dacd7fbcaf7d4a8c8c762a39d89c165ea5c7a67e5e028a390315c"
+            },
+            "layers.63.attention.v": {
+              "bytes_hashed": 1050624,
+              "sha256": "dfbc61d415ea53a76ca4a6bc24cf97f6533c5c7981266fb415a3cd91b11cb298"
+            }
+          },
+          "equal": true,
+          "mismatched_regions": [],
+          "one_shot": {
+            "layers.00.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "c02bd2a81ddce6fc7bc6f9752579c6ffca70ba5ed867c44f6141826322d2cc6c"
+            },
+            "layers.00.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "ad73155414d280ba0c075cabe5078e3427f29223d741138f9d6c1d5859f35912"
+            },
+            "layers.01.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "013f392f3b0dd54ad6cde453690700b4fcc4f5aa9d368d345b3f07b7e71d610d"
+            },
+            "layers.01.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "d39c349a329267690cfac88b444a903bb53cabea922e55e3e80a12f62ceb82ae"
+            },
+            "layers.02.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "3604cebc300a2fadf72b099ffcf84adfc8e06a462ee946827d0369b360f1d3e1"
+            },
+            "layers.02.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "e953b841b272bfb97eb000d021666987a422f41aa45d147bafe7c5ef704a62fc"
+            },
+            "layers.03.attention.k": {
+              "bytes_hashed": 1050624,
+              "sha256": "30c4066d12194cd22bec088a714115a4e250c1f0735cee35fcce349a5dd083e6"
+            },
+            "layers.03.attention.v": {
+              "bytes_hashed": 1050624,
+              "sha256": "a35686259766f87270ae76ba572e56b14f0867641576ca298e19be748792ba2c"
+            },
+            "layers.04.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "a958746abdabbf2664afec25bcebd60be364024973bae199ee274ff75658b4a4"
+            },
+            "layers.04.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "ef0ecf9241c615081eec565a61b534f9659c3509b62ea1e11f56fbcefdfcd2d7"
+            },
+            "layers.05.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "b55ce5276b63d749a6b73a2d32e37b948361e24fbfb919ea55fe445d5f487f0c"
+            },
+            "layers.05.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "95531d0afa16c6fcb15afad5614978247feaafb2b6eb6fefc914e71325df7bf6"
+            },
+            "layers.06.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "bce67e1729a339c8449bdff74b90794d8af049f72936978f488942ecd5460d68"
+            },
+            "layers.06.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "c2e6c81458a09850eae1b6045e2d1f7a3dcb335788e1c1b5727f024ff17cd8ef"
+            },
+            "layers.07.attention.k": {
+              "bytes_hashed": 1050624,
+              "sha256": "99b8b35c5c94e871998d2734d4da681a38e2c32edca1b7864cd4bf0adeb92581"
+            },
+            "layers.07.attention.v": {
+              "bytes_hashed": 1050624,
+              "sha256": "24af8b5d6d43a0f333547131d51985da706d4462a53efa3b8001466dacda6225"
+            },
+            "layers.08.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "5a582ae9811e7b3101ffe4b5baa67cc9007d0177090bc2764388e2cebd0d4d0f"
+            },
+            "layers.08.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "c25d839e9933b3329d4eb1d14f6efcae7a442af229a7bb393816c17baa1a1842"
+            },
+            "layers.09.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "4b422edd1bd5dbc1e540ef5c02110eab0ac9fbc7a07fe0c019307f6e7acfed4b"
+            },
+            "layers.09.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "74a6b429670621b9594d102d3f8a48b60426dfa509afa9a59b3212d5dc806f98"
+            },
+            "layers.10.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "fb0448d5fc26f92eeb12f9fa810406c1d3c6536e926b9a9cbe019edbb501673e"
+            },
+            "layers.10.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "a4a92585d83dd758ccfb096398810f03e37654b80be313d2716142e3ca9afabd"
+            },
+            "layers.11.attention.k": {
+              "bytes_hashed": 1050624,
+              "sha256": "5aee78158332523b567329619cf295b30f4966f509f1f24995add62a1e8fd80f"
+            },
+            "layers.11.attention.v": {
+              "bytes_hashed": 1050624,
+              "sha256": "a56571e44b2d1579cef0f9ea34d52c293942541d6c76bdb7af9ffa05543bc62b"
+            },
+            "layers.12.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "39d577a6362da353ca1af2e953bf0714d8a81d185feea52998b2352df836ebe9"
+            },
+            "layers.12.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "65a7bb7d704cc1b50fa9823c0c01a921bd18d525af15c4508079fcd9b0066c3e"
+            },
+            "layers.13.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "3903f674b288128b5e8d18760d708ae07b1d557a65001efe077fd7360ee76b35"
+            },
+            "layers.13.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "40c2b393d1c3481e9055ee7640db762d3dc0dfe35787d756216f314b78f0634f"
+            },
+            "layers.14.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "c7f2c383a4a3d61dba9c4458f6b26114a1cd86e9b82d60cafa5ad8e08fea9aee"
+            },
+            "layers.14.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "5c05edb4c42a699641860a0ac6f5851947c6e9432faf1d05567fc4b03f5f96bc"
+            },
+            "layers.15.attention.k": {
+              "bytes_hashed": 1050624,
+              "sha256": "9dfc75bc861f04cb3ede353e73edb337f2072187d18fed0079af5b79f245b2f4"
+            },
+            "layers.15.attention.v": {
+              "bytes_hashed": 1050624,
+              "sha256": "87ceff39139bf7bf679e6e9d8abf7df243d09d82372a2dd0abdf52a46055cb83"
+            },
+            "layers.16.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "cd00974c31b3b6e90f1bc355150b9fc71bbf77382d4b67ed21dac85c7555264a"
+            },
+            "layers.16.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "2c12f24464f6ca290b3ca3350b346117327eb7fc4b707eb7966ebea21c51c942"
+            },
+            "layers.17.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "2b10982efba84f46c1268c7d984e5ec4f214b4440382e43bf99e2117b056f21c"
+            },
+            "layers.17.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "b8e75fc96e04b929cbb5242357a3d69b91967d1163859843ccbf9e3d02493ed1"
+            },
+            "layers.18.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "95f6e29a7e69cdb4bbe1c400ab7c4eb3f2597423734f2ac08d43bade74da70b9"
+            },
+            "layers.18.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "d4da5caef1dfa5b66c2cc8d71aee67c9aa12a7027f01b606e9b5208a20194b63"
+            },
+            "layers.19.attention.k": {
+              "bytes_hashed": 1050624,
+              "sha256": "cfa49baedf2a9aa583aaf79594a4608b80f5eb778cc709aba47a859239a6dab7"
+            },
+            "layers.19.attention.v": {
+              "bytes_hashed": 1050624,
+              "sha256": "a131b611748d3d82dbb62f3aeb78b5212bfb6013d7b919e9e20e5d936b0d1c6c"
+            },
+            "layers.20.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "7afafb4362f2588a75518772f3274311c4d5dd0a3a70776d1191ecb2303a32af"
+            },
+            "layers.20.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "d5f8103e2bc0c6b7041ccebdba9447e70ade74a8396b57f0a6e0421311f4f522"
+            },
+            "layers.21.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "eb59c0d6b97920b9a3088749c1535eb548f6b5d8295e899f95bc1c2c74a51a3d"
+            },
+            "layers.21.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "a0a4ed3a14e35965e394ebeea73e2756fa01397cf47bf91969ea057d81e6595e"
+            },
+            "layers.22.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "7efa67570bc59503b9d916cf92cb543148d0b9e1e33de4e6fbfb612e1496cc83"
+            },
+            "layers.22.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "b66d29b77d899f08c2b2dcd93572e9b05e96cbaa018196a5e4334ea7da16bb94"
+            },
+            "layers.23.attention.k": {
+              "bytes_hashed": 1050624,
+              "sha256": "b39df5e8b521f062470e04a8dd28971cd32e026463189ffbfb50eeb0afd19039"
+            },
+            "layers.23.attention.v": {
+              "bytes_hashed": 1050624,
+              "sha256": "3f4e4d6aebf174277506402b8eaa2aaaa4a3030a089502cf4379f57259f9e5d8"
+            },
+            "layers.24.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "0545c1e024a4c6cebcedf313c450634f7c24ddb109058eeb82b898f15fc14bd5"
+            },
+            "layers.24.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "e0b768299c91d5a4de3fed4b5e6cb7e7d9501e6b3bf9ef3e80db40c997e2c5f7"
+            },
+            "layers.25.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "167954742f627eaa2f7583cfefaac518ea2395bac51fd8062a64c888e44d58e8"
+            },
+            "layers.25.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "aef2ddbd612a1a3c29373af798e8193481b537b190f77891ec12804efc514a49"
+            },
+            "layers.26.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "74d860b8703b4d1d3da2f24bef6b9e2eea28402d16315f704a8c4482c7de0597"
+            },
+            "layers.26.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "143cd7a02ba113cc926fbbf387988d4bf6cc89b7c8ce0be26df944a9122c7ebb"
+            },
+            "layers.27.attention.k": {
+              "bytes_hashed": 1050624,
+              "sha256": "c6a1b4e851932e39cf6cd3e2e189f366cc9414115c3163b0bc5812a2f569dd53"
+            },
+            "layers.27.attention.v": {
+              "bytes_hashed": 1050624,
+              "sha256": "72142e34a0a80f17bb699399cc1eabe2486aeb9c38c39ea1084812b7f4cbc0e0"
+            },
+            "layers.28.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "1bbd15e5c618c2fd0ce4f321063e3efe08cdc1789345d5ce4f7c5e577c636cca"
+            },
+            "layers.28.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "c9f3b2c27d8296747f97525ef90785ce61583ef6e5aa035a5a938bea91670973"
+            },
+            "layers.29.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "65e826be5bd668effa1cd981babd60e20dcb51dd2a4ddf3cb4879702eb26088a"
+            },
+            "layers.29.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "053836676a0002a50ad1b6ace7c0d7948efd1beeb26c2a76e887a1d0204e8e09"
+            },
+            "layers.30.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "4dc5e6d4a4b0b1a5533930db807566916ea805733ab8b45664b3b6fddc3aa47d"
+            },
+            "layers.30.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "d04369fa949e2ce5ef0e28342e21a9479c38595b1e82a88546b1783207b21c57"
+            },
+            "layers.31.attention.k": {
+              "bytes_hashed": 1050624,
+              "sha256": "7c78976a05f9021683a2ddf1905306faf25afad39d297b7b6611dabee491abf8"
+            },
+            "layers.31.attention.v": {
+              "bytes_hashed": 1050624,
+              "sha256": "f849c55353081a6477fca2d49ee9271ed650beebfaeafedb5be4cb3223c86c2c"
+            },
+            "layers.32.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "b16b08f7c992d492e525ce3f2967f32cc526cd9b54e1ea6267cf29558db83b89"
+            },
+            "layers.32.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "ed53a7e351c8b5c040c5be777586a177c15335be8a54f5ffa2806d9ea1950cca"
+            },
+            "layers.33.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "e7d150e222e2e8fef51e262026effb14cade5af48658dac11982025270e52733"
+            },
+            "layers.33.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "0496cb0936a1a79a6bf07016696c7d86e46a8dc616966e43deeb7f1e2b223895"
+            },
+            "layers.34.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "08f64fbfb5f3fd9ea7eeba20ff52fdaeca8c91123ef6004b18953b6d7efc0932"
+            },
+            "layers.34.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "0ef8169621e8e06d0fb248b09c2926ce4609a4b4b2aa8a1a19c4268dfd4c9993"
+            },
+            "layers.35.attention.k": {
+              "bytes_hashed": 1050624,
+              "sha256": "8e5192b14c70f99fb9f523bd1b5dd764f1051c686d5acb0278ab33ebc2ca8524"
+            },
+            "layers.35.attention.v": {
+              "bytes_hashed": 1050624,
+              "sha256": "f3ffaf91588d0bc791f2e6b2f9aa373a0d071deb65aa272b369282fd04358721"
+            },
+            "layers.36.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "448d009f55d6812a5576c54d409119c6856773809df85f6512456ebb9303393c"
+            },
+            "layers.36.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "91f58de1cbed4b7dede6d87202fd506d214c79ad8e8f24f8d9a4da04593c0e7f"
+            },
+            "layers.37.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "85965201bdbcbd75cae1f75cc16dce4c2d570b17c28ec043cf35edff757dcf43"
+            },
+            "layers.37.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "5938c0e76edf8094352f4f92d3684d49f65710527f3ee0b71c3dabafd7bcc119"
+            },
+            "layers.38.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "7b10defdb38087058811e707c67e0501f7cead3c9e01aa3178ab1846015f9876"
+            },
+            "layers.38.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "f5d218a58223593fbbebfcb6e6ad1c2ead97b87fa545e93dc8d3131841c76c00"
+            },
+            "layers.39.attention.k": {
+              "bytes_hashed": 1050624,
+              "sha256": "cbdba8930a6055a7f674fe752d0731fcd4eb8dd9cf1c276aac2b1e8d8df1ca00"
+            },
+            "layers.39.attention.v": {
+              "bytes_hashed": 1050624,
+              "sha256": "daddfed2aa67205f09cfebf71623a001299e571f23eb3f99d389f88c424cc8cb"
+            },
+            "layers.40.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "632bbd83cc0f62a1bc031e0a9c18c7794e2ce692fdb31d974747f7119f187911"
+            },
+            "layers.40.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "27d3e8d6e9d619c76072d0b1db5fa0e912ec7ce2ea9a8b05cabff71187ef1846"
+            },
+            "layers.41.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "1e3259ab7f6f13f943344dc696a5f5362c2b8d5a60c09a19764f11add403c1ab"
+            },
+            "layers.41.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "8070a192779bcec9132389b5edaa91b67f4f81002e76563093958b381b6c9afb"
+            },
+            "layers.42.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "ef52a55ef986f1c8f9069b7e4f8d95acc9613a6d37f8ed95dd41c341d0fc1c93"
+            },
+            "layers.42.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "ada18be6304db46d3cb032a081f83773a7f9290d4a6aaee27c4bf7ff8d503833"
+            },
+            "layers.43.attention.k": {
+              "bytes_hashed": 1050624,
+              "sha256": "95bd3ae9c1ae745d6d6a9982847397df00ed96a1b16452f8ed05ea0353ae447b"
+            },
+            "layers.43.attention.v": {
+              "bytes_hashed": 1050624,
+              "sha256": "ebc2d82dab05c7983a11f31780ab77dc32518c5cce115b0096e9657a915284a1"
+            },
+            "layers.44.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "0921fcd6356f0aa042b66f6f8528c6fc67a920bd944f28b18eedf1b3db0ee96f"
+            },
+            "layers.44.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "078a3d5ea48af2a5e1b7a7b854544a3fc97c40f2c1a0634da1637c4624d3aee9"
+            },
+            "layers.45.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "6df9e64744ec8198fbb993f55c50dddc55947fd366929dbcf3937748dd77a25d"
+            },
+            "layers.45.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "ba0538610a84611e856fe9a79be6e693ca2caa353c7bf24ec272f645b3ac2494"
+            },
+            "layers.46.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "27a3469c7f2f3a71bf3fba181d16bae2100608614075b3b848ef17dd37ba7a2e"
+            },
+            "layers.46.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "5f6828075e8cc4ba49cb76319fd9ce7167d22bdbf48f1251a393ed66ea611d9f"
+            },
+            "layers.47.attention.k": {
+              "bytes_hashed": 1050624,
+              "sha256": "b33a6c6a94c759337868119639f567ddd0a219427718be6ceb55470f80b624b7"
+            },
+            "layers.47.attention.v": {
+              "bytes_hashed": 1050624,
+              "sha256": "55b17e75a67b9a88b88704f1ba8cfa9702357ddd6f4b9280c96dcc7fcd9efa7f"
+            },
+            "layers.48.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "f23e42f809571f79a6db1bf44e6a5861900991cffa137d2e9f509d729a8cb408"
+            },
+            "layers.48.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "0056f819f82f42c33eb96aa8a4a2534a0815cb6ccedab69769f5587de953d255"
+            },
+            "layers.49.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "7d5f67ab339b76ea933be32968cf7e763669da129b2febad74fbf8cf15250ef2"
+            },
+            "layers.49.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "a5728174afb4155adb66091ad4564aa2d0854fe572493e3260713037bda0e4ee"
+            },
+            "layers.50.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "751a73d8f52a09ddc6d1fe7d4c786e5269ab04faea9b1f90908f30d6681ed3f3"
+            },
+            "layers.50.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "56813ea0069a5de225b9a8f73991806b4fafb0b16e6dda5868f400d090b1369e"
+            },
+            "layers.51.attention.k": {
+              "bytes_hashed": 1050624,
+              "sha256": "8edcbe546bebf8a9250864e6db963f7b3f0ec06f6f2a2bdc430b79b741c37e14"
+            },
+            "layers.51.attention.v": {
+              "bytes_hashed": 1050624,
+              "sha256": "54b29644d97a3e1e406f36483bbaaae8228868e3f553def983895f6f08155a4f"
+            },
+            "layers.52.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "bc9f9b87a6cc94bf1699dae0fbffb511410591e3b2b597d81cbda7b0b01c0e29"
+            },
+            "layers.52.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "22569d570f8dbdc98429f6b105185d6f19f61caf28429a486931aad6af66fbec"
+            },
+            "layers.53.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "98b4095a099f5f0d3f04c746f92034824064da01b15a8670d852e4b6981dce18"
+            },
+            "layers.53.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "586af9b5c8597e06b3b12d0e6106e995c42e7ec55730aaf9cdbb42dbdc510f23"
+            },
+            "layers.54.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "4d20d4ea3405f6584879acf01426b838561c20b024aa79b2a67c458b32e79c2b"
+            },
+            "layers.54.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "c57e0d8433717d3d1c59998329be93e4599006b4a575c5b5629de71f26d86183"
+            },
+            "layers.55.attention.k": {
+              "bytes_hashed": 1050624,
+              "sha256": "468966c668bc6a67069dd9d2d4dde3237f84b5718e2475845311e40c6a2844cb"
+            },
+            "layers.55.attention.v": {
+              "bytes_hashed": 1050624,
+              "sha256": "dea08dee55f4d9d12277d92d30dc691c9756dd14dca80dde19aa71afaaa70d0d"
+            },
+            "layers.56.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "052167ecdc803e67a939e9500ba6b15e0accfc7ba36cf5d3e3f4af72845ef57b"
+            },
+            "layers.56.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "59442878fefffc51a03fc9541391911f04c0447b82131daefca7968033df420a"
+            },
+            "layers.57.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "d2a19bee7ca58a76e635cfda0aecf3256f73aea09ff9eecaff12fb4b4495b42c"
+            },
+            "layers.57.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "aa6e6acbfc46034b695525c3331833d738de793cab812b8df457ab93e80ac38d"
+            },
+            "layers.58.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "f997863a9ca65bc11c6a86d0a32803eb9942bbfc1a87a657dddeb97eca0cdc54"
+            },
+            "layers.58.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "53f6cb1006408cbf652e12686dae710e3b3d50e4e6639b25fdc8d7e2dd442a22"
+            },
+            "layers.59.attention.k": {
+              "bytes_hashed": 1050624,
+              "sha256": "c4cba3b51a9a5546c8d89c10112ccd1a165b166351637dcefdc9c3763ca6515b"
+            },
+            "layers.59.attention.v": {
+              "bytes_hashed": 1050624,
+              "sha256": "eb5ca469f7a98590fa23221425e52667955a8e33b5aa2fc3a3b8fbf385410b9c"
+            },
+            "layers.60.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "31f41f540e22eb9b27d6212104eae408d6c2dd944364fac0977dba622e98d4ee"
+            },
+            "layers.60.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "6fe308329e2c6a69584b679dd1349a32fca1730ee69ede864d6e31ff4005b63c"
+            },
+            "layers.61.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "b42fd9612fa206242767fcfda2702cb2d83082c67ea86b4158a65a7174ae12a2"
+            },
+            "layers.61.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "662cdbbbca45b77659c16bf19379e43b9a9086b05f72f66c2a5c7a0181a281e7"
+            },
+            "layers.62.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "4d495671fe164acf5a7fa6ead22c5a311c72a6f91933fd993808bd280b122e9e"
+            },
+            "layers.62.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "49c081da41fb865376dbf5acd757168b7a4a8577e1944ebec61f9617a2c8b1c7"
+            },
+            "layers.63.attention.k": {
+              "bytes_hashed": 1050624,
+              "sha256": "5913345ab84dacd7fbcaf7d4a8c8c762a39d89c165ea5c7a67e5e028a390315c"
+            },
+            "layers.63.attention.v": {
+              "bytes_hashed": 1050624,
+              "sha256": "dfbc61d415ea53a76ca4a6bc24cf97f6533c5c7981266fb415a3cd91b11cb298"
+            }
+          }
+        },
+        "step": 1,
+        "token_equal": true
+      },
+      {
+        "chunked_logits_sha256": "eccdb5b5842f082939db295b9182e702e36cfc2a5940187e7a65f76ec0db9eae",
+        "chunked_past": 514,
+        "chunked_token": 20858,
+        "input_token_ids": [
+          60552
+        ],
+        "logits_equal": true,
+        "one_shot_logits_sha256": "eccdb5b5842f082939db295b9182e702e36cfc2a5940187e7a65f76ec0db9eae",
+        "one_shot_past": 514,
+        "one_shot_token": 20858,
+        "passed": true,
+        "state": {
+          "chunked": {
+            "layers.00.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "7c8905bb160016d997bb1b3c80f00166cd25880bfba419bb16d3e66f9b21aee8"
+            },
+            "layers.00.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "4f57d07a23436be6f58aa9da3b276ba7ce944efc79fd1374320fb2d139364033"
+            },
+            "layers.01.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "826f1d09d8bbc8d6701a8f2a1e323bd72b67462fa1bd806e167637458719a5e1"
+            },
+            "layers.01.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "a8fbde1344d229ff976f02b07dbc2a85e7e233f21236ef141231cd51609ea215"
+            },
+            "layers.02.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "0e7002de40f68fd5c3a97983ed143d3efc38feb77b2279a98289e7565b3e9999"
+            },
+            "layers.02.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "e83c3380071266a2f342d2f8a764016a9cd2e3d757fa3e82a8e86cda26b6955f"
+            },
+            "layers.03.attention.k": {
+              "bytes_hashed": 1052672,
+              "sha256": "24b2881257adf9f07f7970092eb913e8fa7488cc075519997de3d5942067b88a"
+            },
+            "layers.03.attention.v": {
+              "bytes_hashed": 1052672,
+              "sha256": "c13212c5236d8a8add04c5c8faa8f17bb0b669e63c1fdaf62462eb38b3c988ad"
+            },
+            "layers.04.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "6b4dc61c4346a1b7156e34e5c77d782c952de45123b0c018c34df5777a5f6864"
+            },
+            "layers.04.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "046e26ad661bea1c9da6258fb920ddaef070d678afd6b783f793c57af52ab3b9"
+            },
+            "layers.05.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "21d4a370e57cffb4a7a045f53e426905cc7358a4ddda808e36d31f735806ef2c"
+            },
+            "layers.05.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "1aeac3d92bc439015a65faaabee98a691d670fe3a7dc5b39b7fe1f94ea5b19aa"
+            },
+            "layers.06.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "bd772fbe1459abeee449078de23932760f01240a9c90efaa127ab7199184a9b2"
+            },
+            "layers.06.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "b0d1558c302f4c5036ddfa770ec4903f86156eacd0a4bf639f731207dad72cf5"
+            },
+            "layers.07.attention.k": {
+              "bytes_hashed": 1052672,
+              "sha256": "c82d4c201f2c1647d359c9a1d83bebb1cb5b2624f3bccf7e99e97275afb165f9"
+            },
+            "layers.07.attention.v": {
+              "bytes_hashed": 1052672,
+              "sha256": "f0255932a03e8b8387d9d8407e9253668d48e495295303c1f07ac94268918398"
+            },
+            "layers.08.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "ca06b17967d318fba9345a97657e4f4f4dcadf58f697b2bc2fff5bbbfe9224d3"
+            },
+            "layers.08.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "e686b0f72109a02ea93d4523ff7d68fa29fa260b9b3a11845502a6cd1c1c6e9d"
+            },
+            "layers.09.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "96d445a450b7e14221ab7a9991435b08f59031190918c145f2342d423ede8f34"
+            },
+            "layers.09.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "eb39fc7d7632fa979c2f26772d1ebd0f64321410d70ed2df621bbd1ab0413233"
+            },
+            "layers.10.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "2fe9046964daa9dd39f1101773e302fbb045f0d836f709615f6686005bf6bc77"
+            },
+            "layers.10.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "ce26d5310a2ec346b4212d4315704439b083987e5285efe0011a170daae031c0"
+            },
+            "layers.11.attention.k": {
+              "bytes_hashed": 1052672,
+              "sha256": "05e5a16094774e3885b0365c864fcd20f47a9aae5376cfa6ef635713b8df6feb"
+            },
+            "layers.11.attention.v": {
+              "bytes_hashed": 1052672,
+              "sha256": "0be5e50685790a03e951907f5b25db41550e6e723602fa5813ac52cd608b1866"
+            },
+            "layers.12.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "59054dc1b0c287e02967c4427735a186f9463ef80cf80047bb3f9dbe7fc82a4c"
+            },
+            "layers.12.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "b25dff4760c85439147ddd34c8e266784c82085ce4246e22f43064929e9f6033"
+            },
+            "layers.13.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "90f1fc73ff8599eb0b067acab0ee8641652fabe55727e7868810dbaa63974f10"
+            },
+            "layers.13.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "060bab548bd52f2a0019e4e340f554bd228bc46aa5f972b65a86310f14cb2dc8"
+            },
+            "layers.14.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "097b593741b578bcd4afba6299eff582a0b6f593252b709eabaacaf7ca364137"
+            },
+            "layers.14.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "ee647995489e8299119847bf3fda84dd2b7fa2e2f5572698487de1ee9eb4e754"
+            },
+            "layers.15.attention.k": {
+              "bytes_hashed": 1052672,
+              "sha256": "3f60cdb28169b2af55d13eaca8bd9da3b150b254d5517d9230a6c1c3088131b9"
+            },
+            "layers.15.attention.v": {
+              "bytes_hashed": 1052672,
+              "sha256": "b6e57f1b35a8f8b0bf258590990cc1c1941972f884bf140d337db0465f023aee"
+            },
+            "layers.16.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "1e6b1ce9232986b5aacd82d466705d3eb59881ebea097b24267d7aa590bafac6"
+            },
+            "layers.16.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "fdd33b35a1bdfc703a755918a04b00c45b001cb9d96b053e1a39688a10410794"
+            },
+            "layers.17.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "c6d92ed2a3eac78bb78ece573a322457c62f39b3c0d377461445efc0bc5f1d7a"
+            },
+            "layers.17.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "afed2b02de822dce4428f4e5f41f0da9e86babff8102ebe64e1ed7258cb1b0b0"
+            },
+            "layers.18.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "df94c9ccd369260eff719a8ffe8ac330d5b9f000ef80b27f4bd61e1966023c9b"
+            },
+            "layers.18.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "d9cbeec9528b15503e1014007f5cca4d6463b2479126af487c036ed908990d49"
+            },
+            "layers.19.attention.k": {
+              "bytes_hashed": 1052672,
+              "sha256": "a04e3e711f2bb97d088b3057ede5e0d104983c4547287052a1ee7dfc54d1afb6"
+            },
+            "layers.19.attention.v": {
+              "bytes_hashed": 1052672,
+              "sha256": "4de1c0e63c8eb4f5007fa9a8965634fe903201a183a7d3fcbcf76d14fb7ba257"
+            },
+            "layers.20.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "ac2e6df857a14fd77039fa4358d09d756b8a82357f535b462fd369aaf5aa06a5"
+            },
+            "layers.20.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "246a24169553e3b18a15cce8c59a9656f08cb058100ca000238ec229fe8d9f6d"
+            },
+            "layers.21.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "d6e09620e4bc60327f1a16113906746fdee3ed9732f8a492315f72dec8f1c035"
+            },
+            "layers.21.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "04e7c94dfc1f81e811ac71d6df169a2ce5f5b1ba4d3084b596d2ac9dd7048a1a"
+            },
+            "layers.22.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "4166081bd9e599480a3f132333de734f18e5f80102fe4afe3c7042d8a9a041d5"
+            },
+            "layers.22.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "02e5b202364e88995c8bcb826637c39eafc9952ecf6da2af6a9d109f234cb85d"
+            },
+            "layers.23.attention.k": {
+              "bytes_hashed": 1052672,
+              "sha256": "039a09153faf4042aac0cdc9a97f729d61183f9a3de19a82e0a5b261d4aed798"
+            },
+            "layers.23.attention.v": {
+              "bytes_hashed": 1052672,
+              "sha256": "bc7c2db228ebe26894fe1b3727784635b977f67b873e87763d75eeee78d2f19a"
+            },
+            "layers.24.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "4973b140b84a9b5d8c09ecc4a1880fb8fb0b78f94cb21f0c464f424948905752"
+            },
+            "layers.24.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "f45b3e36431c0a24d6a8d1535841f9eac4ee29d084288d282dc5cd439a554987"
+            },
+            "layers.25.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "4677cb5d0bc24e69909e493c8620d7365547fb9833295ba7e80bfbaef762ce28"
+            },
+            "layers.25.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "2f2288e2fe8fa59b81458a042aa739481b2f55cbc04ace8d82db80f4390c2f27"
+            },
+            "layers.26.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "86f03ce3a050d105c8c6341b4cbc5bfad089099da7e0178ca1c053bfe34acc88"
+            },
+            "layers.26.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "ddc0549c6047b05f346a4b0b488cc5e2d08f28b0476f1d3948d29515b0c6d234"
+            },
+            "layers.27.attention.k": {
+              "bytes_hashed": 1052672,
+              "sha256": "bca90659d712d5cbe68177e9929ad7c7c96d80dc452fad58b5a2839a12a1e0e8"
+            },
+            "layers.27.attention.v": {
+              "bytes_hashed": 1052672,
+              "sha256": "bf7ef73ae267a14fd72b8523bbe6dffe5bf1a38b69302a4d40a27b9446ffd12c"
+            },
+            "layers.28.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "a67e02243246eff83c57bc22ebee2fea7d334b4c3628388a20b95f5e55e38057"
+            },
+            "layers.28.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "6460b3ccd3238104dd0e6d81607b436d39c689f430cdbb81fb26f97df20207f0"
+            },
+            "layers.29.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "d76d52ff528901587779facd7563587106396570837db0a055fd3704d782718c"
+            },
+            "layers.29.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "bcc752ee877abe10b2c057c15c0904ba9c4129f579f489e13c9df87862d5650c"
+            },
+            "layers.30.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "77388b244444309c2b87ae402598fbc31f156db37dffe8304ae48e10a2340fb0"
+            },
+            "layers.30.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "b6d3dc4204cfac5f52710fcd186582d3363a0e97b2d7888cad3ea6488738b689"
+            },
+            "layers.31.attention.k": {
+              "bytes_hashed": 1052672,
+              "sha256": "4a58b39d300a0fa233024295ef4b34b42bd5a466bb7a336f2072f6d18f0f1dd1"
+            },
+            "layers.31.attention.v": {
+              "bytes_hashed": 1052672,
+              "sha256": "0fcddc160f252ae5f229e20a9f3e69ffea2ac052b622699d6c7508cff3e991cf"
+            },
+            "layers.32.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "dfe842783f16c762c003e7c6924c0ef0a51c5b9f1d14e8bddc75446f97fe9a60"
+            },
+            "layers.32.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "2d46eb54d712480c6f6aac5b09d15800fe9c02dcf47b92fa0d3ca45bf6a43c27"
+            },
+            "layers.33.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "fa7238a93768444f37c973fb25338b16b2d7daca2125ab85a5fa1cdf469c05a9"
+            },
+            "layers.33.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "006c978f690719a306b3d4892511f531f04e7df4eb385d94f480d45f86949d60"
+            },
+            "layers.34.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "8a6487dea9577b0f27510f33566b85a45db432e4c8c8dbe19f1633edc70cfd3a"
+            },
+            "layers.34.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "afd08311ef6b814a69c87e34dffbb4ba77b185da23034ea760794a42341ab220"
+            },
+            "layers.35.attention.k": {
+              "bytes_hashed": 1052672,
+              "sha256": "d904e3332e3cf80e2d6cc9be914ee0bcb80a3506e6976f257ab4a0ac671cb8f1"
+            },
+            "layers.35.attention.v": {
+              "bytes_hashed": 1052672,
+              "sha256": "0be974f4f224477ed8bea7065ebf8f63ccc69fa4a494e5e5c81eccf3ddd99f75"
+            },
+            "layers.36.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "ac2dfb2fbd6b88845c2534f93f5823624c69e9e84e788c82bc8e6310e0009531"
+            },
+            "layers.36.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "3a6074e568c57685dc6be601a7af2742c5fe85709a46b3ac95d907d149575c20"
+            },
+            "layers.37.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "26f247e0462600ebd71c9c0f13d93bc8215a2c04c630bed4fd65c0b499bd5f3f"
+            },
+            "layers.37.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "b3103d42c554b8c205c727546eac4b770d718fe09edcf52d2171a1e670a1b667"
+            },
+            "layers.38.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "15c7a7bbe066b7218d1b97207a86539e740ce4bbc867c3c6267e2c18510e85c8"
+            },
+            "layers.38.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "0f4a38ad5c9450f90fb9bf09b3ddd50d57b151fb3d992eb51616368e9aa9d071"
+            },
+            "layers.39.attention.k": {
+              "bytes_hashed": 1052672,
+              "sha256": "52de0d32ac0031fb24fb868d0df8eb9719bacb0c6f9f0455a6c5eb5267d38e95"
+            },
+            "layers.39.attention.v": {
+              "bytes_hashed": 1052672,
+              "sha256": "4872b5be8d63de881263f099720b918124fc4aa6fb5a95789280c5cc7fec4547"
+            },
+            "layers.40.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "882a704627409cab9d3b347b75818f20437e6c33cd78800cd8a96ab9de83a7c4"
+            },
+            "layers.40.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "3e82002590d4fea488cec2b270c3ed6daf4f1e52b34cc2e9b79d8be846da40c7"
+            },
+            "layers.41.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "6d5da8751be3933f678ef8bc90af3c7ddd448b6309d2794cbc8805b3d1b2852c"
+            },
+            "layers.41.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "f9ac2e81c8fb1c699c8c8ab1463afbfcfad8babdd3c85cf4dd6016ff55f1f7f2"
+            },
+            "layers.42.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "e0df45f93301812658c818312b774483428bc25ba7c36746e6c367d676c53c08"
+            },
+            "layers.42.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "cb145bbe14e2b5fd8d05bece71d6d786b1cebf82578a2a41809bf6fd1150b183"
+            },
+            "layers.43.attention.k": {
+              "bytes_hashed": 1052672,
+              "sha256": "4abf076ec66e735bc180dd3b4dc1b208eb141a1c0d5cf5c6092c1518e0fe210b"
+            },
+            "layers.43.attention.v": {
+              "bytes_hashed": 1052672,
+              "sha256": "18f8d1c0f4d58c9fac1f51614bce9be5bd16b6fb3a04096f88240dc1082728fa"
+            },
+            "layers.44.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "ddb2cb85fbb08abd4742bb87ec2cf44ab0bb42f455115917435d630e3ad512f5"
+            },
+            "layers.44.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "eacf87fba7643997e1e0c25a83d289d5987fbfbd71d5635c9ce7d8dfc0e84398"
+            },
+            "layers.45.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "bea3cedaf7f146fd01a174968b6ca2f88f2beb1839b073ddd7ecee155a596924"
+            },
+            "layers.45.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "a06f46abdadb18b2c3272132327e71117c2da9db700185099ceb9676d556c434"
+            },
+            "layers.46.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "0418865adf78355862cb0a7e9a2c87debe61d0f85532771879644ad96df7f80f"
+            },
+            "layers.46.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "7df31af890c0a34f4718e581bc49c103bbedaaecb54e4e002a51ae3af01fffd9"
+            },
+            "layers.47.attention.k": {
+              "bytes_hashed": 1052672,
+              "sha256": "b9291ec79609ee0d2423f63fb51b75555f4a03a4d651e87446012d4deee31b7a"
+            },
+            "layers.47.attention.v": {
+              "bytes_hashed": 1052672,
+              "sha256": "9256c3c3f53b9d492dbc90b72a3f82b2550469c482a48b9a028f0599d960b4b0"
+            },
+            "layers.48.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "63a7a7efd48ae2232841e6ed7d4a133463d9eab0e4674ca2a9c018e035648ac3"
+            },
+            "layers.48.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "b7c90e4491aef91915b20d38515d236d5d8b549207b88cbdf6db7430beeb81c3"
+            },
+            "layers.49.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "a4ccab2e49ae2a8b776f9e2f1c244ec97d935cbbc899f83b91786ae30ca797d7"
+            },
+            "layers.49.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "72cbf4ff2d12a5d52e7aaf8baec4d8f1d7cd75504bf4c86235ea7b770a46ae57"
+            },
+            "layers.50.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "1193273ffa5a417f33a081af96a60e014f34f05838181d6d9d4d4416e2aa1799"
+            },
+            "layers.50.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "cf08f46e2d98211b03cbcfb4c683beb9df393694dcc0a8eba23ed84efb140723"
+            },
+            "layers.51.attention.k": {
+              "bytes_hashed": 1052672,
+              "sha256": "104b4a899e7f79d11a4f1e73718ac9350c6157f5b76b9ebdd8514d7ddb282907"
+            },
+            "layers.51.attention.v": {
+              "bytes_hashed": 1052672,
+              "sha256": "d9943781a077956142225ba2f80a1655eb38a35dfbedb817d5342a76713a5397"
+            },
+            "layers.52.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "101710cf37243385dbf3d6eb466cc509fc82954787a11d539fdfa14f97125000"
+            },
+            "layers.52.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "65714c662a11ae93f24389060637ef34d2b010db3b7bcec85ae1ce06590f496d"
+            },
+            "layers.53.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "760b8d6041a3e57708a29849fa4a5751da84bd0c09c2e630fb2ea2f98b1d42a9"
+            },
+            "layers.53.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "e366f432ab6191e9899a68e0c9b64144d8405d4349b36d8588ea51e8efd70b2e"
+            },
+            "layers.54.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "97675075b01686172984bf1e21a50141bb5dfb875631194277ac5d5f63386f3e"
+            },
+            "layers.54.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "c344991798fc8b94d5046cb9ccdb06b7ea71b8dcef7f600d961aa86b23e01243"
+            },
+            "layers.55.attention.k": {
+              "bytes_hashed": 1052672,
+              "sha256": "8514fc6ba492550f80acc6eee0f4395ba0d45b2caee00f511c70e3e3fd6fdfa9"
+            },
+            "layers.55.attention.v": {
+              "bytes_hashed": 1052672,
+              "sha256": "85c8041fbe81d088a2aabff73aadcf04ae7746d4fef78d68b2236ba0bb207e57"
+            },
+            "layers.56.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "67674c0d701f52e9f1dd73da5a48f4616d567cb5fedfa485b947d595abce5857"
+            },
+            "layers.56.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "36ab06b406c4e13d348e51f994eb116d4c9789eca9d0006af4a61ae635ebe06a"
+            },
+            "layers.57.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "f9a01e80c18a3f309ac988c1a90e50a959600fadeeb15da9fea3e749c23ed83f"
+            },
+            "layers.57.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "252d9a8cbe62d90d27bc8d83a2aee49367c91272f0f5468f013fc55f4b6a6dc8"
+            },
+            "layers.58.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "b9f8b35765d41d10db1083e2080210a99df0c5ae1493727f55172a1091310b0b"
+            },
+            "layers.58.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "7cbc71367ed79d6fc14868d9d0057aa2af74981cb059e3a56bc27546b45c94a5"
+            },
+            "layers.59.attention.k": {
+              "bytes_hashed": 1052672,
+              "sha256": "31bbb0dfdc5e89550f6ea096a97da932747315507d0dd16ebbdb8cb6f6254025"
+            },
+            "layers.59.attention.v": {
+              "bytes_hashed": 1052672,
+              "sha256": "78db806448761fcaa64d7561371c4c73cfa027fd0d540ba3f8fdc7a6b156eb89"
+            },
+            "layers.60.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "dd5823348e7efbb336379d50e7176b80da3ae3c04f1f615e6a184982a12256bb"
+            },
+            "layers.60.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "0fe1ba78940ba150dee2d4234575fd8caf406bd3b4f7bde6dc3d31a4c95027f6"
+            },
+            "layers.61.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "f38cbe9286e8624310ac396fbedae5b71d0a3f915d8d9a5804dea2e04fd63dd2"
+            },
+            "layers.61.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "9e6f2d4e3a71282394a3083750b4dc86e03cfde49f921e685707a58b1bf89afa"
+            },
+            "layers.62.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "1bd97b95cd2ee0e2057628a1122db4d2ab4e96d0a2c8d87bd8dde1bdca1a3691"
+            },
+            "layers.62.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "c01bd9f3b051fc34eb146621a2fb828e06aeef9d0278513784a947eac634b5ab"
+            },
+            "layers.63.attention.k": {
+              "bytes_hashed": 1052672,
+              "sha256": "15868db8b467c3d6ac875daebd310ae35abeb4221e8dee46a0250743320e8915"
+            },
+            "layers.63.attention.v": {
+              "bytes_hashed": 1052672,
+              "sha256": "ebe4ebaed9c0d3b7dbb11a4fb10ab3bdae02c0ebd7e861dcddc99c351a94ff54"
+            }
+          },
+          "equal": true,
+          "mismatched_regions": [],
+          "one_shot": {
+            "layers.00.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "7c8905bb160016d997bb1b3c80f00166cd25880bfba419bb16d3e66f9b21aee8"
+            },
+            "layers.00.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "4f57d07a23436be6f58aa9da3b276ba7ce944efc79fd1374320fb2d139364033"
+            },
+            "layers.01.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "826f1d09d8bbc8d6701a8f2a1e323bd72b67462fa1bd806e167637458719a5e1"
+            },
+            "layers.01.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "a8fbde1344d229ff976f02b07dbc2a85e7e233f21236ef141231cd51609ea215"
+            },
+            "layers.02.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "0e7002de40f68fd5c3a97983ed143d3efc38feb77b2279a98289e7565b3e9999"
+            },
+            "layers.02.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "e83c3380071266a2f342d2f8a764016a9cd2e3d757fa3e82a8e86cda26b6955f"
+            },
+            "layers.03.attention.k": {
+              "bytes_hashed": 1052672,
+              "sha256": "24b2881257adf9f07f7970092eb913e8fa7488cc075519997de3d5942067b88a"
+            },
+            "layers.03.attention.v": {
+              "bytes_hashed": 1052672,
+              "sha256": "c13212c5236d8a8add04c5c8faa8f17bb0b669e63c1fdaf62462eb38b3c988ad"
+            },
+            "layers.04.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "6b4dc61c4346a1b7156e34e5c77d782c952de45123b0c018c34df5777a5f6864"
+            },
+            "layers.04.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "046e26ad661bea1c9da6258fb920ddaef070d678afd6b783f793c57af52ab3b9"
+            },
+            "layers.05.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "21d4a370e57cffb4a7a045f53e426905cc7358a4ddda808e36d31f735806ef2c"
+            },
+            "layers.05.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "1aeac3d92bc439015a65faaabee98a691d670fe3a7dc5b39b7fe1f94ea5b19aa"
+            },
+            "layers.06.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "bd772fbe1459abeee449078de23932760f01240a9c90efaa127ab7199184a9b2"
+            },
+            "layers.06.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "b0d1558c302f4c5036ddfa770ec4903f86156eacd0a4bf639f731207dad72cf5"
+            },
+            "layers.07.attention.k": {
+              "bytes_hashed": 1052672,
+              "sha256": "c82d4c201f2c1647d359c9a1d83bebb1cb5b2624f3bccf7e99e97275afb165f9"
+            },
+            "layers.07.attention.v": {
+              "bytes_hashed": 1052672,
+              "sha256": "f0255932a03e8b8387d9d8407e9253668d48e495295303c1f07ac94268918398"
+            },
+            "layers.08.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "ca06b17967d318fba9345a97657e4f4f4dcadf58f697b2bc2fff5bbbfe9224d3"
+            },
+            "layers.08.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "e686b0f72109a02ea93d4523ff7d68fa29fa260b9b3a11845502a6cd1c1c6e9d"
+            },
+            "layers.09.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "96d445a450b7e14221ab7a9991435b08f59031190918c145f2342d423ede8f34"
+            },
+            "layers.09.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "eb39fc7d7632fa979c2f26772d1ebd0f64321410d70ed2df621bbd1ab0413233"
+            },
+            "layers.10.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "2fe9046964daa9dd39f1101773e302fbb045f0d836f709615f6686005bf6bc77"
+            },
+            "layers.10.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "ce26d5310a2ec346b4212d4315704439b083987e5285efe0011a170daae031c0"
+            },
+            "layers.11.attention.k": {
+              "bytes_hashed": 1052672,
+              "sha256": "05e5a16094774e3885b0365c864fcd20f47a9aae5376cfa6ef635713b8df6feb"
+            },
+            "layers.11.attention.v": {
+              "bytes_hashed": 1052672,
+              "sha256": "0be5e50685790a03e951907f5b25db41550e6e723602fa5813ac52cd608b1866"
+            },
+            "layers.12.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "59054dc1b0c287e02967c4427735a186f9463ef80cf80047bb3f9dbe7fc82a4c"
+            },
+            "layers.12.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "b25dff4760c85439147ddd34c8e266784c82085ce4246e22f43064929e9f6033"
+            },
+            "layers.13.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "90f1fc73ff8599eb0b067acab0ee8641652fabe55727e7868810dbaa63974f10"
+            },
+            "layers.13.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "060bab548bd52f2a0019e4e340f554bd228bc46aa5f972b65a86310f14cb2dc8"
+            },
+            "layers.14.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "097b593741b578bcd4afba6299eff582a0b6f593252b709eabaacaf7ca364137"
+            },
+            "layers.14.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "ee647995489e8299119847bf3fda84dd2b7fa2e2f5572698487de1ee9eb4e754"
+            },
+            "layers.15.attention.k": {
+              "bytes_hashed": 1052672,
+              "sha256": "3f60cdb28169b2af55d13eaca8bd9da3b150b254d5517d9230a6c1c3088131b9"
+            },
+            "layers.15.attention.v": {
+              "bytes_hashed": 1052672,
+              "sha256": "b6e57f1b35a8f8b0bf258590990cc1c1941972f884bf140d337db0465f023aee"
+            },
+            "layers.16.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "1e6b1ce9232986b5aacd82d466705d3eb59881ebea097b24267d7aa590bafac6"
+            },
+            "layers.16.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "fdd33b35a1bdfc703a755918a04b00c45b001cb9d96b053e1a39688a10410794"
+            },
+            "layers.17.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "c6d92ed2a3eac78bb78ece573a322457c62f39b3c0d377461445efc0bc5f1d7a"
+            },
+            "layers.17.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "afed2b02de822dce4428f4e5f41f0da9e86babff8102ebe64e1ed7258cb1b0b0"
+            },
+            "layers.18.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "df94c9ccd369260eff719a8ffe8ac330d5b9f000ef80b27f4bd61e1966023c9b"
+            },
+            "layers.18.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "d9cbeec9528b15503e1014007f5cca4d6463b2479126af487c036ed908990d49"
+            },
+            "layers.19.attention.k": {
+              "bytes_hashed": 1052672,
+              "sha256": "a04e3e711f2bb97d088b3057ede5e0d104983c4547287052a1ee7dfc54d1afb6"
+            },
+            "layers.19.attention.v": {
+              "bytes_hashed": 1052672,
+              "sha256": "4de1c0e63c8eb4f5007fa9a8965634fe903201a183a7d3fcbcf76d14fb7ba257"
+            },
+            "layers.20.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "ac2e6df857a14fd77039fa4358d09d756b8a82357f535b462fd369aaf5aa06a5"
+            },
+            "layers.20.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "246a24169553e3b18a15cce8c59a9656f08cb058100ca000238ec229fe8d9f6d"
+            },
+            "layers.21.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "d6e09620e4bc60327f1a16113906746fdee3ed9732f8a492315f72dec8f1c035"
+            },
+            "layers.21.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "04e7c94dfc1f81e811ac71d6df169a2ce5f5b1ba4d3084b596d2ac9dd7048a1a"
+            },
+            "layers.22.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "4166081bd9e599480a3f132333de734f18e5f80102fe4afe3c7042d8a9a041d5"
+            },
+            "layers.22.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "02e5b202364e88995c8bcb826637c39eafc9952ecf6da2af6a9d109f234cb85d"
+            },
+            "layers.23.attention.k": {
+              "bytes_hashed": 1052672,
+              "sha256": "039a09153faf4042aac0cdc9a97f729d61183f9a3de19a82e0a5b261d4aed798"
+            },
+            "layers.23.attention.v": {
+              "bytes_hashed": 1052672,
+              "sha256": "bc7c2db228ebe26894fe1b3727784635b977f67b873e87763d75eeee78d2f19a"
+            },
+            "layers.24.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "4973b140b84a9b5d8c09ecc4a1880fb8fb0b78f94cb21f0c464f424948905752"
+            },
+            "layers.24.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "f45b3e36431c0a24d6a8d1535841f9eac4ee29d084288d282dc5cd439a554987"
+            },
+            "layers.25.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "4677cb5d0bc24e69909e493c8620d7365547fb9833295ba7e80bfbaef762ce28"
+            },
+            "layers.25.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "2f2288e2fe8fa59b81458a042aa739481b2f55cbc04ace8d82db80f4390c2f27"
+            },
+            "layers.26.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "86f03ce3a050d105c8c6341b4cbc5bfad089099da7e0178ca1c053bfe34acc88"
+            },
+            "layers.26.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "ddc0549c6047b05f346a4b0b488cc5e2d08f28b0476f1d3948d29515b0c6d234"
+            },
+            "layers.27.attention.k": {
+              "bytes_hashed": 1052672,
+              "sha256": "bca90659d712d5cbe68177e9929ad7c7c96d80dc452fad58b5a2839a12a1e0e8"
+            },
+            "layers.27.attention.v": {
+              "bytes_hashed": 1052672,
+              "sha256": "bf7ef73ae267a14fd72b8523bbe6dffe5bf1a38b69302a4d40a27b9446ffd12c"
+            },
+            "layers.28.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "a67e02243246eff83c57bc22ebee2fea7d334b4c3628388a20b95f5e55e38057"
+            },
+            "layers.28.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "6460b3ccd3238104dd0e6d81607b436d39c689f430cdbb81fb26f97df20207f0"
+            },
+            "layers.29.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "d76d52ff528901587779facd7563587106396570837db0a055fd3704d782718c"
+            },
+            "layers.29.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "bcc752ee877abe10b2c057c15c0904ba9c4129f579f489e13c9df87862d5650c"
+            },
+            "layers.30.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "77388b244444309c2b87ae402598fbc31f156db37dffe8304ae48e10a2340fb0"
+            },
+            "layers.30.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "b6d3dc4204cfac5f52710fcd186582d3363a0e97b2d7888cad3ea6488738b689"
+            },
+            "layers.31.attention.k": {
+              "bytes_hashed": 1052672,
+              "sha256": "4a58b39d300a0fa233024295ef4b34b42bd5a466bb7a336f2072f6d18f0f1dd1"
+            },
+            "layers.31.attention.v": {
+              "bytes_hashed": 1052672,
+              "sha256": "0fcddc160f252ae5f229e20a9f3e69ffea2ac052b622699d6c7508cff3e991cf"
+            },
+            "layers.32.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "dfe842783f16c762c003e7c6924c0ef0a51c5b9f1d14e8bddc75446f97fe9a60"
+            },
+            "layers.32.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "2d46eb54d712480c6f6aac5b09d15800fe9c02dcf47b92fa0d3ca45bf6a43c27"
+            },
+            "layers.33.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "fa7238a93768444f37c973fb25338b16b2d7daca2125ab85a5fa1cdf469c05a9"
+            },
+            "layers.33.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "006c978f690719a306b3d4892511f531f04e7df4eb385d94f480d45f86949d60"
+            },
+            "layers.34.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "8a6487dea9577b0f27510f33566b85a45db432e4c8c8dbe19f1633edc70cfd3a"
+            },
+            "layers.34.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "afd08311ef6b814a69c87e34dffbb4ba77b185da23034ea760794a42341ab220"
+            },
+            "layers.35.attention.k": {
+              "bytes_hashed": 1052672,
+              "sha256": "d904e3332e3cf80e2d6cc9be914ee0bcb80a3506e6976f257ab4a0ac671cb8f1"
+            },
+            "layers.35.attention.v": {
+              "bytes_hashed": 1052672,
+              "sha256": "0be974f4f224477ed8bea7065ebf8f63ccc69fa4a494e5e5c81eccf3ddd99f75"
+            },
+            "layers.36.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "ac2dfb2fbd6b88845c2534f93f5823624c69e9e84e788c82bc8e6310e0009531"
+            },
+            "layers.36.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "3a6074e568c57685dc6be601a7af2742c5fe85709a46b3ac95d907d149575c20"
+            },
+            "layers.37.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "26f247e0462600ebd71c9c0f13d93bc8215a2c04c630bed4fd65c0b499bd5f3f"
+            },
+            "layers.37.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "b3103d42c554b8c205c727546eac4b770d718fe09edcf52d2171a1e670a1b667"
+            },
+            "layers.38.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "15c7a7bbe066b7218d1b97207a86539e740ce4bbc867c3c6267e2c18510e85c8"
+            },
+            "layers.38.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "0f4a38ad5c9450f90fb9bf09b3ddd50d57b151fb3d992eb51616368e9aa9d071"
+            },
+            "layers.39.attention.k": {
+              "bytes_hashed": 1052672,
+              "sha256": "52de0d32ac0031fb24fb868d0df8eb9719bacb0c6f9f0455a6c5eb5267d38e95"
+            },
+            "layers.39.attention.v": {
+              "bytes_hashed": 1052672,
+              "sha256": "4872b5be8d63de881263f099720b918124fc4aa6fb5a95789280c5cc7fec4547"
+            },
+            "layers.40.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "882a704627409cab9d3b347b75818f20437e6c33cd78800cd8a96ab9de83a7c4"
+            },
+            "layers.40.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "3e82002590d4fea488cec2b270c3ed6daf4f1e52b34cc2e9b79d8be846da40c7"
+            },
+            "layers.41.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "6d5da8751be3933f678ef8bc90af3c7ddd448b6309d2794cbc8805b3d1b2852c"
+            },
+            "layers.41.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "f9ac2e81c8fb1c699c8c8ab1463afbfcfad8babdd3c85cf4dd6016ff55f1f7f2"
+            },
+            "layers.42.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "e0df45f93301812658c818312b774483428bc25ba7c36746e6c367d676c53c08"
+            },
+            "layers.42.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "cb145bbe14e2b5fd8d05bece71d6d786b1cebf82578a2a41809bf6fd1150b183"
+            },
+            "layers.43.attention.k": {
+              "bytes_hashed": 1052672,
+              "sha256": "4abf076ec66e735bc180dd3b4dc1b208eb141a1c0d5cf5c6092c1518e0fe210b"
+            },
+            "layers.43.attention.v": {
+              "bytes_hashed": 1052672,
+              "sha256": "18f8d1c0f4d58c9fac1f51614bce9be5bd16b6fb3a04096f88240dc1082728fa"
+            },
+            "layers.44.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "ddb2cb85fbb08abd4742bb87ec2cf44ab0bb42f455115917435d630e3ad512f5"
+            },
+            "layers.44.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "eacf87fba7643997e1e0c25a83d289d5987fbfbd71d5635c9ce7d8dfc0e84398"
+            },
+            "layers.45.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "bea3cedaf7f146fd01a174968b6ca2f88f2beb1839b073ddd7ecee155a596924"
+            },
+            "layers.45.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "a06f46abdadb18b2c3272132327e71117c2da9db700185099ceb9676d556c434"
+            },
+            "layers.46.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "0418865adf78355862cb0a7e9a2c87debe61d0f85532771879644ad96df7f80f"
+            },
+            "layers.46.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "7df31af890c0a34f4718e581bc49c103bbedaaecb54e4e002a51ae3af01fffd9"
+            },
+            "layers.47.attention.k": {
+              "bytes_hashed": 1052672,
+              "sha256": "b9291ec79609ee0d2423f63fb51b75555f4a03a4d651e87446012d4deee31b7a"
+            },
+            "layers.47.attention.v": {
+              "bytes_hashed": 1052672,
+              "sha256": "9256c3c3f53b9d492dbc90b72a3f82b2550469c482a48b9a028f0599d960b4b0"
+            },
+            "layers.48.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "63a7a7efd48ae2232841e6ed7d4a133463d9eab0e4674ca2a9c018e035648ac3"
+            },
+            "layers.48.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "b7c90e4491aef91915b20d38515d236d5d8b549207b88cbdf6db7430beeb81c3"
+            },
+            "layers.49.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "a4ccab2e49ae2a8b776f9e2f1c244ec97d935cbbc899f83b91786ae30ca797d7"
+            },
+            "layers.49.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "72cbf4ff2d12a5d52e7aaf8baec4d8f1d7cd75504bf4c86235ea7b770a46ae57"
+            },
+            "layers.50.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "1193273ffa5a417f33a081af96a60e014f34f05838181d6d9d4d4416e2aa1799"
+            },
+            "layers.50.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "cf08f46e2d98211b03cbcfb4c683beb9df393694dcc0a8eba23ed84efb140723"
+            },
+            "layers.51.attention.k": {
+              "bytes_hashed": 1052672,
+              "sha256": "104b4a899e7f79d11a4f1e73718ac9350c6157f5b76b9ebdd8514d7ddb282907"
+            },
+            "layers.51.attention.v": {
+              "bytes_hashed": 1052672,
+              "sha256": "d9943781a077956142225ba2f80a1655eb38a35dfbedb817d5342a76713a5397"
+            },
+            "layers.52.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "101710cf37243385dbf3d6eb466cc509fc82954787a11d539fdfa14f97125000"
+            },
+            "layers.52.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "65714c662a11ae93f24389060637ef34d2b010db3b7bcec85ae1ce06590f496d"
+            },
+            "layers.53.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "760b8d6041a3e57708a29849fa4a5751da84bd0c09c2e630fb2ea2f98b1d42a9"
+            },
+            "layers.53.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "e366f432ab6191e9899a68e0c9b64144d8405d4349b36d8588ea51e8efd70b2e"
+            },
+            "layers.54.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "97675075b01686172984bf1e21a50141bb5dfb875631194277ac5d5f63386f3e"
+            },
+            "layers.54.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "c344991798fc8b94d5046cb9ccdb06b7ea71b8dcef7f600d961aa86b23e01243"
+            },
+            "layers.55.attention.k": {
+              "bytes_hashed": 1052672,
+              "sha256": "8514fc6ba492550f80acc6eee0f4395ba0d45b2caee00f511c70e3e3fd6fdfa9"
+            },
+            "layers.55.attention.v": {
+              "bytes_hashed": 1052672,
+              "sha256": "85c8041fbe81d088a2aabff73aadcf04ae7746d4fef78d68b2236ba0bb207e57"
+            },
+            "layers.56.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "67674c0d701f52e9f1dd73da5a48f4616d567cb5fedfa485b947d595abce5857"
+            },
+            "layers.56.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "36ab06b406c4e13d348e51f994eb116d4c9789eca9d0006af4a61ae635ebe06a"
+            },
+            "layers.57.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "f9a01e80c18a3f309ac988c1a90e50a959600fadeeb15da9fea3e749c23ed83f"
+            },
+            "layers.57.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "252d9a8cbe62d90d27bc8d83a2aee49367c91272f0f5468f013fc55f4b6a6dc8"
+            },
+            "layers.58.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "b9f8b35765d41d10db1083e2080210a99df0c5ae1493727f55172a1091310b0b"
+            },
+            "layers.58.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "7cbc71367ed79d6fc14868d9d0057aa2af74981cb059e3a56bc27546b45c94a5"
+            },
+            "layers.59.attention.k": {
+              "bytes_hashed": 1052672,
+              "sha256": "31bbb0dfdc5e89550f6ea096a97da932747315507d0dd16ebbdb8cb6f6254025"
+            },
+            "layers.59.attention.v": {
+              "bytes_hashed": 1052672,
+              "sha256": "78db806448761fcaa64d7561371c4c73cfa027fd0d540ba3f8fdc7a6b156eb89"
+            },
+            "layers.60.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "dd5823348e7efbb336379d50e7176b80da3ae3c04f1f615e6a184982a12256bb"
+            },
+            "layers.60.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "0fe1ba78940ba150dee2d4234575fd8caf406bd3b4f7bde6dc3d31a4c95027f6"
+            },
+            "layers.61.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "f38cbe9286e8624310ac396fbedae5b71d0a3f915d8d9a5804dea2e04fd63dd2"
+            },
+            "layers.61.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "9e6f2d4e3a71282394a3083750b4dc86e03cfde49f921e685707a58b1bf89afa"
+            },
+            "layers.62.gdn.history": {
+              "bytes_hashed": 61440,
+              "sha256": "1bd97b95cd2ee0e2057628a1122db4d2ab4e96d0a2c8d87bd8dde1bdca1a3691"
+            },
+            "layers.62.gdn.recurrent": {
+              "bytes_hashed": 3145728,
+              "sha256": "c01bd9f3b051fc34eb146621a2fb828e06aeef9d0278513784a947eac634b5ab"
+            },
+            "layers.63.attention.k": {
+              "bytes_hashed": 1052672,
+              "sha256": "15868db8b467c3d6ac875daebd310ae35abeb4221e8dee46a0250743320e8915"
+            },
+            "layers.63.attention.v": {
+              "bytes_hashed": 1052672,
+              "sha256": "ebe4ebaed9c0d3b7dbb11a4fb10ab3bdae02c0ebd7e861dcddc99c351a94ff54"
+            }
+          }
+        },
+        "step": 2,
+        "token_equal": true
+      }
+    ]
+  },
+  "phase": "complete",
+  "plan": {
+    "capacity": 767,
+    "chunk_size": 512,
+    "chunks": [
+      {
+        "end": 512,
+        "start": 0
+      }
+    ],
+    "max_rows": 512,
+    "output_tokens": 256,
+    "prompt_tokens": 512
+  },
+  "prefill_note": "one session across all chunks; every chunk computes a last-row vocabulary head and greedy selection, wasted and discarded on non-final chunks; only final prefill selection is output token 0",
+  "prefix_reuse": false,
+  "profiles": {
+    "attention": "bf16-fp64-v1",
+    "execution": "stream",
+    "fp8": "exact-a8-v1",
+    "fp8_split_k": false,
+    "gpu_greedy": true,
+    "mlp_workspace": false,
+    "nvfp4": "nvfp4-native-prefill-integer-decode-v1",
+    "nvfp4_audit": false
+  },
+  "prompt_token_ids": [
+    248045,
+    846,
+    198,
+    17956,
+    1931,
+    539,
+    81249,
+    28442,
+    321,
+    279,
+    7849,
+    42500,
+    198,
+    30058,
+    5961,
+    7659,
+    506,
+    1696,
+    1074,
+    2068,
+    83846,
+    9504,
+    4909,
+    318,
+    1919,
+    999,
+    557,
+    198,
+    8293,
+    1931,
+    494,
+    5167,
+    76409,
+    1801,
+    2420,
+    539,
+    561,
+    198,
+    34499,
+    28732,
+    10052,
+    15256,
+    52682,
+    5946,
+    26467,
+    669,
+    206717,
+    4616,
+    357,
+    177414,
+    80281,
+    15810,
+    13,
+    14200,
+    262,
+    1897,
+    206717,
+    4616,
+    357,
+    177414,
+    80281,
+    15810,
+    271,
+    262,
+    7466,
+    198,
+    262,
+    72614,
+    710,
+    4537,
+    49,
+    10369,
+    417,
+    5052,
+    50,
+    271,
+    262,
+    353,
+    43604,
+    6457,
+    8733,
+    7466,
+    198,
+    262,
+    458,
+    13,
+    380,
+    13,
+    5574,
+    1736,
+    271,
+    262,
+    498,
+    92831,
+    362,
+    60,
+    271,
+    262,
+    15689,
+    44762,
+    198,
+    262,
+    423,
+    13,
+    462,
+    13,
+    423,
+    1966,
+    95630,
+    594,
+    73798,
+    198,
+    262,
+    13578,
+    52067,
+    36693,
+    5370,
+    1358,
+    262,
+    14119,
+    11,
+    220,
+    16,
+    23,
+    24,
+    17,
+    13,
+    198,
+    262,
+    7466,
+    72614,
+    710,
+    4537,
+    49,
+    10369,
+    417,
+    5052,
+    50,
+    13,
+    14200,
+    262,
+    4981,
+    198,
+    262,
+    423,
+    1966,
+    95630,
+    13,
+    14200,
+    84424,
+    353,
+    13,
+    271,
+    16721,
+    20357,
+    13,
+    1358,
+    1,
+    6614,
+    3667,
+    3667,
+    3667,
+    386,
+    7174,
+    1676,
+    386,
+    1676,
+    386,
+    0,
+    3135,
+    3667,
+    3667,
+    3667,
+    386,
+    7174,
+    1676,
+    386,
+    7174,
+    1676,
+    386,
+    1676,
+    386,
+    0,
+    198,
+    6614,
+    3667,
+    3667,
+    3667,
+    386,
+    24927,
+    386,
+    1676,
+    386,
+    7174,
+    1676,
+    386,
+    1676,
+    386,
+    7174,
+    1676,
+    386,
+    1676,
+    386,
+    8687,
+    271,
+    29348,
+    579,
+    421,
+    7285,
+    36811,
+    11059,
+    71095,
+    16677,
+    11,
+    15589,
+    494,
+    780,
+    40919,
+    383,
+    279,
+    53274,
+    198,
+    66,
+    2930,
+    11,
+    321,
+    3221,
+    883,
+    1384,
+    11,
+    780,
+    6213,
+    6669,
+    1724,
+    440,
+    35170,
+    15553,
+    13,
+    271,
+    29348,
+    579,
+    1092,
+    7285,
+    4439,
+    86237,
+    11,
+    852,
+    557,
+    11362,
+    3043,
+    506,
+    1375,
+    11,
+    69360,
+    264,
+    198,
+    12306,
+    314,
+    37695,
+    364,
+    264,
+    2526,
+    7914,
+    1292,
+    6661,
+    852,
+    1000,
+    19020,
+    1318,
+    1070,
+    310,
+    198,
+    12718,
+    780,
+    7303,
+    7948,
+    948,
+    551,
+    3804,
+    974,
+    13255,
+    286,
+    440,
+    780,
+    189147,
+    13,
+    271,
+    6825,
+    3272,
+    353,
+    6408,
+    14426,
+    2019,
+    539,
+    1288,
+    5743,
+    11059,
+    71095,
+    16677,
+    11,
+    28546,
+    685,
+    198,
+    263,
+    279,
+    3136,
+    1284,
+    473,
+    321,
+    338,
+    6448,
+    71276,
+    12922,
+    685,
+    321,
+    1441,
+    279,
+    8329,
+    13,
+    328,
+    3733,
+    198,
+    50054,
+    44747,
+    5442,
+    1149,
+    271,
+    6825,
+    3105,
+    914,
+    6512,
+    1070,
+    1288,
+    1018,
+    86237,
+    13,
+    328,
+    40,
+    7692,
+    488,
+    33461,
+    424,
+    13,
+    22703,
+    9940,
+    198,
+    2829,
+    1495,
+    11,
+    11059,
+    71095,
+    16677,
+    11,
+    321,
+    2645,
+    13,
+    1394,
+    668,
+    381,
+    1546,
+    18647,
+    948,
+    189147,
+    5055,
+    198,
+    4955,
+    11,
+    321,
+    488,
+    1366,
+    413,
+    488,
+    513,
+    18647,
+    488,
+    3172,
+    599,
+    310,
+    708,
+    310,
+    4690,
+    4370,
+    314,
+    198,
+    85739,
+    83048,
+    440,
+    1384,
+    11,
+    321,
+    421,
+    1000,
+    381,
+    2166,
+    3743,
+    383,
+    780,
+    14756,
+    1149,
+    271,
+    1,
+    3742,
+    189147,
+    2098,
+    2019,
+    310,
+    599,
+    264,
+    14756,
+    310,
+    10902,
+    7285,
+    75237,
+    279,
+    2545,
+    198,
+    69,
+    5131,
+    13,
+    328,
+    2939,
+    264,
+    18565,
+    440,
+    49483,
+    303,
+    424,
+    7285,
+    271,
+    55806,
+    1288,
+    18018,
+    86237,
+    13,
+    328,
+    11280,
+    45984,
+    440,
+    49483,
+    383,
+    1070,
+    11,
+    353,
+    1683,
+    1288,
+    1292,
+    198,
+    16336,
+    13,
+    271,
+    29348,
+    579,
+    551,
+    310,
+    599,
+    1330,
+    45984,
+    364,
+    30,
+    353,
+    995,
+    1132,
+    799,
+    1288,
+    1018,
+    11059,
+    71095,
+    16677,
+    13,
+    271,
+    71134,
+    18565,
+    8012,
+    914,
+    381,
+    2330,
+    3213,
+    310,
+    3222,
+    660,
+    279,
+    49483,
+    1288,
+    86237,
+    198,
+    54827,
+    13,
+    271,
+    8917,
+    5437,
+    537,
+    279,
+    20438,
+    3294,
+    303,
+    7472,
+    11,
+    1179,
+    1103,
+    1396,
+    6725,
+    3542,
+    13,
+    248046,
+    198,
+    248045,
+    74455,
+    198,
+    248068,
+    271,
+    248069,
+    271
+  ],
+  "prompt_tokens": 512,
+  "ptx_path": "/home/ndizazzo/dev/mesh/mesh-llm/target/specialize/reassess-20260927/ptx/direct-9b627a3d6.ptx",
+  "ptx_sha256": "fc91792b98e57945200ab46f4e48b23316b6337c4fea718e1a1d16b946071b11",
+  "recipe_sha256": "2f59230005d4487e4affa61f9b8e750b9f37a68b6f13671409788b34a4a3e5f7",
+  "repetitions": [
+    {
+      "chunks": [
+        {
+          "end_row": 512,
+          "end_seconds": 1.561437925,
+          "past_after": 512,
+          "past_before": 0,
+          "rows": 512,
+          "seconds": 1.56143766,
+          "start_row": 0,
+          "start_seconds": 2.65e-7
+        }
+      ],
+      "decode_interval_count": 255,
+      "decode_intervals_seconds": [
+        0.049947621,
+        0.050060722,
+        0.049721342,
+        0.049760844,
+        0.049835929,
+        0.049851623,
+        0.049883026,
+        0.04993156,
+        0.049965481,
+        0.050009173,
+        0.050053829,
+        0.050388448,
+        0.05014243,
+        0.050170484,
+        0.050225809,
+        0.050272819,
+        0.050300106,
+        0.050333244,
+        0.05038924,
+        0.050423371,
+        0.050474322,
+        0.050796187,
+        0.050567723,
+        0.050613498,
+        0.050640004,
+        0.050675723,
+        0.050721893,
+        0.050769487,
+        0.050821177,
+        0.05085554,
+        0.051253634,
+        0.050933555,
+        0.051001968,
+        0.051038173,
+        0.051050952,
+        0.05108885,
+        0.051162562,
+        0.051186244,
+        0.051239975,
+        0.05128384,
+        0.051679296,
+        0.051357971,
+        0.051412449,
+        0.051460902,
+        0.051481948,
+        0.05151833,
+        0.051563468,
+        0.051628607,
+        0.051635166,
+        0.051707905,
+        0.052008853,
+        0.051807439,
+        0.05183653,
+        0.051869998,
+        0.05192248,
+        0.05196495,
+        0.05199849,
+        0.052052933,
+        0.052087835,
+        0.052435383,
+        0.052163244,
+        0.05220963,
+        0.052266173,
+        0.052305188,
+        0.052361207,
+        0.05239595,
+        0.0524215,
+        0.052465707,
+        0.052512244,
+        0.052810448,
+        0.052590483,
+        0.052644461,
+        0.052682489,
+        0.05272516,
+        0.052774776,
+        0.05280097,
+        0.052840052,
+        0.052902534,
+        0.053333284,
+        0.05299979,
+        0.053045535,
+        0.053057343,
+        0.053127307,
+        0.053138718,
+        0.053222294,
+        0.053253926,
+        0.053299732,
+        0.053337579,
+        0.053652989,
+        0.053416355,
+        0.053449715,
+        0.053502707,
+        0.053524588,
+        0.053590151,
+        0.053626501,
+        0.053675366,
+        0.053702804,
+        0.0540396,
+        0.053807887,
+        0.053837651,
+        0.05387284,
+        0.053914107,
+        0.053975248,
+        0.05399767,
+        0.054055061,
+        0.054081615,
+        0.054446997,
+        0.054184129,
+        0.054231593,
+        0.05426898,
+        0.054292189,
+        0.054331535,
+        0.054365551,
+        0.054425978,
+        0.054447262,
+        0.054507777,
+        0.054838642,
+        0.054583706,
+        0.054652192,
+        0.054690043,
+        0.054708102,
+        0.054766717,
+        0.054819168,
+        0.054848777,
+        0.054892788,
+        0.055237131,
+        0.054994623,
+        0.055003764,
+        0.055066055,
+        0.055087156,
+        0.055166246,
+        0.055203053,
+        0.055222358,
+        0.055287305,
+        0.055614366,
+        0.055362675,
+        0.05540206,
+        0.05543886,
+        0.05549816,
+        0.055530875,
+        0.055576116,
+        0.055609945,
+        0.055664882,
+        0.0559623,
+        0.055744126,
+        0.055790723,
+        0.055832506,
+        0.055863879,
+        0.055909346,
+        0.055955403,
+        0.056011662,
+        0.056060022,
+        0.056424189,
+        0.056125903,
+        0.056174239,
+        0.056214651,
+        0.056240886,
+        0.056298987,
+        0.056354583,
+        0.056369748,
+        0.056416926,
+        0.05681729,
+        0.056516204,
+        0.056542778,
+        0.05658793,
+        0.056644448,
+        0.056677078,
+        0.056723898,
+        0.056774619,
+        0.057078847,
+        0.056865356,
+        0.056892226,
+        0.057099022,
+        0.056975392,
+        0.057025199,
+        0.057076135,
+        0.057101621,
+        0.057152013,
+        0.057469319,
+        0.057240612,
+        0.057294088,
+        0.057288231,
+        0.057355409,
+        0.057421315,
+        0.057414094,
+        0.05747918,
+        0.057534439,
+        0.057857751,
+        0.057631651,
+        0.057686365,
+        0.057711553,
+        0.057736888,
+        0.057782798,
+        0.057820469,
+        0.057876115,
+        0.057901044,
+        0.058243496,
+        0.058007353,
+        0.058049262,
+        0.058088965,
+        0.05812902,
+        0.058164342,
+        0.058217453,
+        0.058258138,
+        0.058567004,
+        0.058329302,
+        0.058370285,
+        0.058419333,
+        0.058457635,
+        0.058527413,
+        0.058569211,
+        0.058601165,
+        0.058626872,
+        0.058949227,
+        0.058720237,
+        0.058756316,
+        0.058796316,
+        0.05884677,
+        0.058869968,
+        0.058952625,
+        0.058984112,
+        0.059309238,
+        0.059055372,
+        0.059085615,
+        0.059132519,
+        0.059185417,
+        0.059234025,
+        0.059261618,
+        0.059327667,
+        0.059359367,
+        0.059680244,
+        0.05943696,
+        0.059488029,
+        0.059538504,
+        0.05958483,
+        0.059638531,
+        0.059664452,
+        0.059691696,
+        0.060009933,
+        0.059781892,
+        0.059841007,
+        0.059878044,
+        0.059883247,
+        0.059931485,
+        0.0600072,
+        0.060036096,
+        0.06042037,
+        0.060130738,
+        0.060162014,
+        0.060211067,
+        0.060263207,
+        0.060290239,
+        0.060327692,
+        0.060365647,
+        0.060419533
+      ],
+      "decode_sum_seconds": 14.03988844699999,
+      "decode_tokens_per_second": 18.162537470480245,
+      "decode_wall_seconds": 14.039896586,
+      "final_past": 767,
+      "generated_token_ids": [
+        13962,
+        60552,
+        20858,
+        271,
+        760,
+        20438,
+        11690,
+        440,
+        5492,
+        19528,
+        18290,
+        279,
+        1414,
+        557,
+        8677,
+        539,
+        81249,
+        28442,
+        321,
+        279,
+        7849,
+        42500,
+        35764,
+        5961,
+        7659,
+        11,
+        39754,
+        494,
+        5167,
+        3766,
+        539,
+        561,
+        7779,
+        28732,
+        10052,
+        15256,
+        52682,
+        13,
+        1049,
+        1179,
+        17855,
+        279,
+        2192,
+        2081,
+        364,
+        279,
+        2236,
+        348,
+        623,
+        9232,
+        440,
+        264,
+        54365,
+        50665,
+        9,
+        539,
+        3629,
+        84593,
+        16419,
+        82,
+        11,
+        34482,
+        539,
+        458,
+        13,
+        380,
+        13,
+        72618,
+        11,
+        4501,
+        303,
+        1478,
+        4121,
+        539,
+        423,
+        13,
+        462,
+        13,
+        24119,
+        594,
+        11501,
+        303,
+        220,
+        16,
+        23,
+        24,
+        17,
+        318,
+        5886,
+        52067,
+        36693,
+        5370,
+        553,
+        561,
+        6704,
+        369,
+        5467,
+        539,
+        3629,
+        84593,
+        16419,
+        82,
+        11,
+        321,
+        279,
+        2236,
+        369,
+        11886,
+        310,
+        328,
+        75299,
+        598,
+        1149,
+        271,
+        760,
+        18641,
+        11690,
+        303,
+        15128,
+        353,
+        11,
+        24062,
+        328,
+        760,
+        4980,
+        1149,
+        561,
+        5918,
+        15417,
+        440,
+        279,
+        4950,
+        314,
+        264,
+        22472,
+        5442,
+        264,
+        27163,
+        20569,
+        24439,
+        3376,
+        6614,
+        3667,
+        3667,
+        3667,
+        386,
+        7174,
+        1676,
+        386,
+        1676,
+        386,
+        1076,
+        1764,
+        357,
+        3777,
+        7914,
+        6725,
+        11059,
+        71095,
+        16677,
+        59489,
+        685,
+        494,
+        780,
+        5894,
+        383,
+        264,
+        53274,
+        25313,
+        11,
+        85661,
+        321,
+        95645,
+        539,
+        279,
+        11639,
+        13,
+        1216,
+        16561,
+        780,
+        6351,
+        11,
+        852,
+        369,
+        11362,
+        13643,
+        69360,
+        37695,
+        364,
+        264,
+        2526,
+        7914,
+        852,
+        668,
+        4970,
+        708,
+        13255,
+        286,
+        440,
+        780,
+        6764,
+        11,
+        413,
+        1292,
+        6408,
+        14426,
+        11946,
+        539,
+        13,
+        271,
+        44,
+        12721,
+        44938,
+        10461,
+        866,
+        44747,
+        11,
+        21861,
+        421,
+        11059,
+        71095,
+        16677,
+        33461,
+        279,
+        4950,
+        13,
+        2838,
+        66640,
+        1384,
+        310,
+        9940,
+        1142,
+        1441,
+        321,
+        2645,
+        11,
+        24228,
+        421,
+        551,
+        668,
+        381,
+        1546,
+        18647,
+        948,
+        780,
+        6764,
+        4523,
+        2046,
+        13,
+        2838,
+        46438,
+        1384,
+        421,
+        413,
+        551,
+        369
+      ],
+      "prefill_sum_seconds": 1.56143766,
+      "prefill_tokens_per_second": 327.9027394517168,
+      "prefill_wall_seconds": 1.5614386169999999,
+      "sequence_wall_seconds": 15.601335564
+    },
+    {
+      "chunks": [
+        {
+          "end_row": 512,
+          "end_seconds": 1.5618709530000001,
+          "past_after": 512,
+          "past_before": 0,
+          "rows": 512,
+          "seconds": 1.561870826,
+          "start_row": 0,
+          "start_seconds": 1.27e-7
+        }
+      ],
+      "decode_interval_count": 255,
+      "decode_intervals_seconds": [
+        0.049907977,
+        0.049672329,
+        0.049732497,
+        0.04976532,
+        0.049798488,
+        0.049836578,
+        0.049892257,
+        0.049924162,
+        0.050271226,
+        0.050005605,
+        0.050025287,
+        0.05009469,
+        0.05012646,
+        0.050162311,
+        0.050210932,
+        0.050415207,
+        0.050297949,
+        0.050344384,
+        0.050682751,
+        0.050429802,
+        0.050477308,
+        0.050527115,
+        0.050563527,
+        0.050592499,
+        0.05066881,
+        0.050673208,
+        0.050739015,
+        0.050785821,
+        0.051092692,
+        0.050871301,
+        0.050922586,
+        0.050946705,
+        0.050968913,
+        0.051034674,
+        0.051065363,
+        0.05108795,
+        0.051245891,
+        0.051215625,
+        0.051537438,
+        0.051292233,
+        0.051333792,
+        0.051352579,
+        0.051434233,
+        0.051464831,
+        0.051489101,
+        0.051536436,
+        0.051566478,
+        0.051616692,
+        0.05204394,
+        0.05173387,
+        0.051754776,
+        0.051796401,
+        0.051836845,
+        0.051890045,
+        0.051925519,
+        0.051948189,
+        0.05198941,
+        0.052426936,
+        0.05208734,
+        0.052126303,
+        0.052179193,
+        0.052208973,
+        0.052255684,
+        0.052302858,
+        0.052327732,
+        0.052374788,
+        0.052436644,
+        0.052741435,
+        0.052522569,
+        0.052538893,
+        0.052622751,
+        0.052648262,
+        0.052670669,
+        0.052717109,
+        0.052767495,
+        0.052819609,
+        0.053208153,
+        0.052879534,
+        0.052943234,
+        0.052959562,
+        0.053012662,
+        0.053063378,
+        0.053106756,
+        0.053140441,
+        0.053182678,
+        0.053224422,
+        0.053556672,
+        0.053317484,
+        0.053359923,
+        0.053372623,
+        0.053456695,
+        0.053507586,
+        0.053531159,
+        0.053593733,
+        0.053598954,
+        0.053917001,
+        0.053699944,
+        0.053733524,
+        0.053786203,
+        0.053821046,
+        0.053860656,
+        0.053918771,
+        0.053951845,
+        0.054001802,
+        0.054432102,
+        0.054096495,
+        0.054122202,
+        0.054181644,
+        0.054223783,
+        0.054246335,
+        0.054271678,
+        0.054361119,
+        0.054384307,
+        0.054437557,
+        0.054755709,
+        0.054512986,
+        0.054553127,
+        0.05459931,
+        0.054652394,
+        0.054679595,
+        0.054714845,
+        0.05476719,
+        0.054802624,
+        0.055133268,
+        0.054910041,
+        0.054938943,
+        0.054969181,
+        0.055021138,
+        0.055059478,
+        0.05509726,
+        0.055164528,
+        0.055192639,
+        0.055583981,
+        0.055278401,
+        0.055308531,
+        0.055355575,
+        0.055393782,
+        0.055439391,
+        0.055484616,
+        0.05553423,
+        0.055564336,
+        0.055889851,
+        0.055634802,
+        0.055697268,
+        0.055749187,
+        0.055789303,
+        0.055837703,
+        0.055877571,
+        0.055922214,
+        0.055971252,
+        0.056451093,
+        0.056053864,
+        0.056073084,
+        0.056118672,
+        0.056172691,
+        0.056213202,
+        0.056275546,
+        0.056300993,
+        0.056342596,
+        0.056653175,
+        0.05641273,
+        0.056439951,
+        0.056493503,
+        0.056567136,
+        0.056588578,
+        0.056627312,
+        0.056671235,
+        0.056715315,
+        0.05705281,
+        0.056798367,
+        0.056849786,
+        0.056878737,
+        0.056921096,
+        0.056969485,
+        0.057015236,
+        0.057056455,
+        0.057476922,
+        0.05714737,
+        0.057190155,
+        0.057228561,
+        0.057255937,
+        0.057298201,
+        0.057361438,
+        0.057404807,
+        0.05743661,
+        0.05774415,
+        0.057529763,
+        0.057568301,
+        0.057598812,
+        0.057626108,
+        0.057680139,
+        0.057725671,
+        0.057788773,
+        0.057809214,
+        0.058154747,
+        0.05793021,
+        0.057961772,
+        0.058001118,
+        0.058030083,
+        0.058073009,
+        0.05813995,
+        0.05816074,
+        0.058479078,
+        0.058261137,
+        0.058304025,
+        0.058324011,
+        0.058388209,
+        0.058446941,
+        0.058458521,
+        0.05851466,
+        0.058545461,
+        0.058888467,
+        0.058641071,
+        0.058663976,
+        0.058734454,
+        0.058784777,
+        0.058795688,
+        0.058824112,
+        0.058890613,
+        0.059204832,
+        0.05895274,
+        0.058989159,
+        0.059075396,
+        0.059089844,
+        0.0591187,
+        0.059167545,
+        0.059210166,
+        0.059276167,
+        0.059596132,
+        0.059358161,
+        0.059386369,
+        0.059417073,
+        0.059473893,
+        0.059505921,
+        0.059538293,
+        0.059612193,
+        0.059985443,
+        0.059711029,
+        0.059720408,
+        0.059788137,
+        0.059826005,
+        0.059878909,
+        0.059902271,
+        0.059949753,
+        0.059990892,
+        0.060314957,
+        0.060093085,
+        0.060087712,
+        0.060163466,
+        0.060187803,
+        0.060240404,
+        0.060280922,
+        0.06033209,
+        0.060641835,
+        0.060407197
+      ],
+      "decode_sum_seconds": 14.039148491,
+      "decode_tokens_per_second": 18.1634947563573,
+      "decode_wall_seconds": 14.039156262,
+      "final_past": 767,
+      "generated_token_ids": [
+        13962,
+        60552,
+        20858,
+        271,
+        760,
+        20438,
+        11690,
+        440,
+        5492,
+        19528,
+        18290,
+        279,
+        1414,
+        557,
+        8677,
+        539,
+        81249,
+        28442,
+        321,
+        279,
+        7849,
+        42500,
+        35764,
+        5961,
+        7659,
+        11,
+        39754,
+        494,
+        5167,
+        3766,
+        539,
+        561,
+        7779,
+        28732,
+        10052,
+        15256,
+        52682,
+        13,
+        1049,
+        1179,
+        17855,
+        279,
+        2192,
+        2081,
+        364,
+        279,
+        2236,
+        348,
+        623,
+        9232,
+        440,
+        264,
+        54365,
+        50665,
+        9,
+        539,
+        3629,
+        84593,
+        16419,
+        82,
+        11,
+        34482,
+        539,
+        458,
+        13,
+        380,
+        13,
+        72618,
+        11,
+        4501,
+        303,
+        1478,
+        4121,
+        539,
+        423,
+        13,
+        462,
+        13,
+        24119,
+        594,
+        11501,
+        303,
+        220,
+        16,
+        23,
+        24,
+        17,
+        318,
+        5886,
+        52067,
+        36693,
+        5370,
+        553,
+        561,
+        6704,
+        369,
+        5467,
+        539,
+        3629,
+        84593,
+        16419,
+        82,
+        11,
+        321,
+        279,
+        2236,
+        369,
+        11886,
+        310,
+        328,
+        75299,
+        598,
+        1149,
+        271,
+        760,
+        18641,
+        11690,
+        303,
+        15128,
+        353,
+        11,
+        24062,
+        328,
+        760,
+        4980,
+        1149,
+        561,
+        5918,
+        15417,
+        440,
+        279,
+        4950,
+        314,
+        264,
+        22472,
+        5442,
+        264,
+        27163,
+        20569,
+        24439,
+        3376,
+        6614,
+        3667,
+        3667,
+        3667,
+        386,
+        7174,
+        1676,
+        386,
+        1676,
+        386,
+        1076,
+        1764,
+        357,
+        3777,
+        7914,
+        6725,
+        11059,
+        71095,
+        16677,
+        59489,
+        685,
+        494,
+        780,
+        5894,
+        383,
+        264,
+        53274,
+        25313,
+        11,
+        85661,
+        321,
+        95645,
+        539,
+        279,
+        11639,
+        13,
+        1216,
+        16561,
+        780,
+        6351,
+        11,
+        852,
+        369,
+        11362,
+        13643,
+        69360,
+        37695,
+        364,
+        264,
+        2526,
+        7914,
+        852,
+        668,
+        4970,
+        708,
+        13255,
+        286,
+        440,
+        780,
+        6764,
+        11,
+        413,
+        1292,
+        6408,
+        14426,
+        11946,
+        539,
+        13,
+        271,
+        44,
+        12721,
+        44938,
+        10461,
+        866,
+        44747,
+        11,
+        21861,
+        421,
+        11059,
+        71095,
+        16677,
+        33461,
+        279,
+        4950,
+        13,
+        2838,
+        66640,
+        1384,
+        310,
+        9940,
+        1142,
+        1441,
+        321,
+        2645,
+        11,
+        24228,
+        421,
+        551,
+        668,
+        381,
+        1546,
+        18647,
+        948,
+        780,
+        6764,
+        4523,
+        2046,
+        13,
+        2838,
+        46438,
+        1384,
+        421,
+        413,
+        551,
+        369
+      ],
+      "prefill_sum_seconds": 1.561870826,
+      "prefill_tokens_per_second": 327.8118993399167,
+      "prefill_wall_seconds": 1.561871308,
+      "sequence_wall_seconds": 15.601027952
+    }
+  ],
+  "requested_repetitions": 2,
+  "schema_version": 1,
+  "scope": "fixed-output raw token IDs, no EOS stopping, no tokenization, no serving or quality qualification",
+  "source_checkpoint": {
+    "repository": "Neroued/ninfer:artifact",
+    "revision": "74d2c57145e6ff11d1d2faa79594477f9bc903a611af1fb20218189fbbb77d82"
+  },
+  "source_revision": "not captured; record parent qualification revision alongside executable_sha256",
+  "status": "completed",
+  "stream_forward": {
+    "arena_bytes": 158339072,
+    "arena_peak_live_bytes": 158339072,
+    "attention_profile": "bf16-fp64-v1",
+    "attention_workspace_bytes": 0,
+    "kernels": [
+      "fp8_embedding_gather",
+      "embedding_norm_bf16",
+      "residual_norm_bf16",
+      "residual_add_bf16",
+      "fp8_quantize_bf16",
+      "fp8_linear_exact",
+      "fp8_linear_exact4",
+      "fp8_verify_exact",
+      "fp8_prefill_exact",
+      "nvfp4_quantize_bf16",
+      "nvfp4_decode_exact",
+      "nvfp4_linear",
+      "bf16_linear_decode",
+      "causal_conv4_bf16",
+      "gdn_qk_norm",
+      "gdn_gates",
+      "gdn_gates_f32_params",
+      "gdn_recurrent",
+      "gdn_gated_rms_norm",
+      "attention_qk_prepare",
+      "attention_kv_append",
+      "causal_attention_bf16",
+      "attention_gate_bf16",
+      "mlp_silu_product",
+      "greedy_bf16_tiles",
+      "greedy_bf16_finish"
+    ],
+    "max_rows": 512,
+    "per_forward_host_transfers": [
+      "token IDs: stream-ordered pageable HtoD, 4 bytes per row",
+      "selection: 16-byte DtoH after one stream synchronize",
+      "logits: optional diagnostic DtoH of vocabulary*2 bytes"
+    ],
+    "rope_positions": 767,
+    "rope_table_bytes": 98176,
+    "split_attention": null,
+    "weight_representations": {
+      "dispatch": "verified logical tensor dtype, independent of source container",
+      "embedding": "fp8_e4m3 + bf16 row scale",
+      "embedding_norm_input": "bf16",
+      "full_ninfer_arithmetic_parity": false,
+      "gdn_parameters": [
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 0
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 1
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 2
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 4
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 5
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 6
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 8
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 9
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 10
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 12
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 13
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 14
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 16
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 17
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 18
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 20
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 21
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 22
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 24
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 25
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 26
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 28
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 29
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 30
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 32
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 33
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 34
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 36
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 37
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 38
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 40
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 41
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 42
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 44
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 45
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 46
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 48
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 49
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 50
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 52
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 53
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 54
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 56
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 57
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 58
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 60
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 61
+        },
+        {
+          "a_log_dt_bias": "f32",
+          "beta": "bf16",
+          "layer": 62
+        }
+      ]
+    }
+  },
+  "timing_note": "host wall intervals include token upload, sequential forward, stream synchronization, greedy selection and readback; no diagnostic logits or state hashing; session initialization and warmup excluded",
+  "tokens_file": "/home/ndizazzo/dev/mesh/mesh-llm/target/specialize/reassess-20260927/decode-attention-model-1/pg19-512.tokens.json",
+  "tokens_file_sha256": "f1a36896bbb93566c775893e7895610637aa3f87c407c5b4c788337bb86cb64a",
+  "warmup": {
+    "chunks": 1,
+    "completed": true,
+    "excluded_from_measurements": true,
+    "output_tokens": 2,
+    "prompt_tokens": 512,
+    "sequence_wall_seconds": 1.6092286580000001
+  }
+}

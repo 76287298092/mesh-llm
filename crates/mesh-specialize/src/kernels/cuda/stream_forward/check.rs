@@ -35,6 +35,9 @@ pub(in crate::kernels) fn run(
     request: &StreamCheckRequest<'_>,
 ) -> Result<Value> {
     validate_request(config, request)?;
+    if super::bench::Execution::current()? == super::bench::Execution::Graph {
+        return super::graph_check::run(ptx, device, artifact, objects, config, request);
+    }
     ensure!(
         ptx.contains(".target sm_120a"),
         "stream check requires SM120a PTX"
@@ -216,7 +219,7 @@ impl Harness<'_, '_, '_, '_> {
     }
 }
 
-fn logit_sha256(logits: &[u16]) -> String {
+pub(super) fn logit_sha256(logits: &[u16]) -> String {
     let mut hash = Sha256::new();
     for word in logits {
         hash.update(word.to_le_bytes());
@@ -224,7 +227,7 @@ fn logit_sha256(logits: &[u16]) -> String {
     hex::encode(hash.finalize())
 }
 
-fn region_hashes(state: &ResidentState<'_>) -> Result<Vec<(String, String)>> {
+pub(super) fn region_hashes(state: &ResidentState<'_>) -> Result<Vec<(String, String)>> {
     let mut hashes = Vec::with_capacity(state.layout().regions.len());
     for region in &state.layout().regions {
         let length = usize::try_from(region.length)
@@ -248,7 +251,7 @@ fn region_kind(name: &str) -> &'static str {
     }
 }
 
-fn kinds_equal(mismatched: &[&str]) -> Value {
+pub(super) fn kinds_equal(mismatched: &[&str]) -> Value {
     let equal = |kind: &str| !mismatched.iter().any(|name| region_kind(name) == kind);
     json!({
         "kv": equal("kv"),
@@ -258,7 +261,7 @@ fn kinds_equal(mismatched: &[&str]) -> Value {
     })
 }
 
-fn to_map(hashes: &[(String, String)]) -> Value {
+pub(super) fn to_map(hashes: &[(String, String)]) -> Value {
     Value::Object(
         hashes
             .iter()

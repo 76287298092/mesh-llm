@@ -249,6 +249,33 @@ pub unsafe extern "ptx-kernel" fn attention_qk_prepare(
     with_gate: u32,
     epsilon: f32,
 ) {
+    // SAFETY: The entry's contract is exactly the shared body's contract.
+    unsafe {
+        prepare_body(
+            input, weight, cos, sin, output, normalized, unrounded, gate, rows, heads, width,
+            rotary_dim, with_gate, epsilon,
+        );
+    }
+}
+
+/// Shared exact body; callers uphold `attention_qk_prepare`'s contract.
+#[inline(always)]
+pub(super) unsafe fn prepare_body(
+    input: *const u16,
+    weight: *const u16,
+    cos: *const u16,
+    sin: *const u16,
+    output: *mut u16,
+    normalized: *mut u16,
+    unrounded: *mut f32,
+    gate: *mut u16,
+    rows: u32,
+    heads: u32,
+    width: u32,
+    rotary_dim: u32,
+    with_gate: u32,
+    epsilon: f32,
+) {
     let (block, thread) = block_and_thread();
     if block >= rows * heads {
         return;

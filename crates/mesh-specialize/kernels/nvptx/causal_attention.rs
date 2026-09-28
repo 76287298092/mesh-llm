@@ -217,6 +217,27 @@ pub unsafe extern "ptx-kernel" fn attention_kv_append(
     past: u32,
     capacity: u32,
 ) {
+    // SAFETY: The entry's contract is exactly the shared body's contract.
+    unsafe {
+        append_body(
+            k, v, cache_k, cache_v, rows, kv_heads, width, past, capacity,
+        );
+    }
+}
+
+/// Shared exact append body; callers uphold `attention_kv_append`'s contract.
+#[inline(always)]
+pub(super) unsafe fn append_body(
+    k: *const u16,
+    v: *const u16,
+    cache_k: *mut u16,
+    cache_v: *mut u16,
+    rows: u32,
+    kv_heads: u32,
+    width: u32,
+    past: u32,
+    capacity: u32,
+) {
     if rows == 0
         || rows > 2048
         || kv_heads == 0
@@ -275,6 +296,41 @@ pub unsafe extern "ptx-kernel" fn attention_kv_append(
 /// writable output ranges, which must also be disjoint from each other.
 #[unsafe(no_mangle)]
 pub unsafe extern "ptx-kernel" fn causal_attention_bf16(
+    q: *const u16,
+    cache_k: *const u16,
+    cache_v: *const u16,
+    output: *mut u16,
+    unrounded: *mut f32,
+    rows: u32,
+    query_heads: u32,
+    kv_heads: u32,
+    width: u32,
+    past: u32,
+    capacity: u32,
+    scale: f32,
+) {
+    // SAFETY: The entry's contract is exactly the shared body's contract.
+    unsafe {
+        attention_body(
+            q,
+            cache_k,
+            cache_v,
+            output,
+            unrounded,
+            rows,
+            query_heads,
+            kv_heads,
+            width,
+            past,
+            capacity,
+            scale,
+        );
+    }
+}
+
+/// Shared exact FP64 body; callers uphold `causal_attention_bf16`'s contract.
+#[inline(always)]
+pub(super) unsafe fn attention_body(
     q: *const u16,
     cache_k: *const u16,
     cache_v: *const u16,

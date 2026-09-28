@@ -196,6 +196,8 @@ pub fn model_benchmark(
 
 /// Legacy versus stream forward equivalence request: prefill `tokens`, then
 /// `decode_steps` greedy decode steps from identical zeroed sessions.
+/// `MESH_SPECIALIZE_EXECUTION=graph` instead compares exact eager stream versus
+/// actual whole-model graph replay and requires at least two decode steps.
 pub struct StreamCheckRequest<'a> {
     pub tokens: &'a [u32],
     pub decode_steps: usize,

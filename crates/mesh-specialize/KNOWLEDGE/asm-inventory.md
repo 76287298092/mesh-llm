@@ -42,6 +42,19 @@ failed attempts in a findings/dead-ends entry before promoting these rows.
 | `kernels/nvptx/fp8_linear.rs:fp8_linear_wide` | Existing E4M3 MMA/layout with explicit FP32/FP64 conversions and FP64 sums between K32 tiles | SM120a | Unchanged logical f64 projection and independent whole attention-layer oracle | Refined projections pass fixed complete-layer budgets and cancellation/tail fixtures; all sanitizers clean; performance cost unmeasured; see [full attention layer](findings/full-attention-layer.md) |
 | `kernels/nvptx/fp8_linear_rounding.rs` | FP64-to-FP32 RNE conversion and rounded FP32 scale multiplies after exact scalar FP64 recomputation of BF16-ambiguous projections | SM120a | Unchanged logical f64 reference; cancellation/midpoint fixture and whole-layer gates | Cancellation fixture and fixed complete-layer budgets pass; all sanitizers clean; see [full attention layer](findings/full-attention-layer.md) |
 
+## Device-position exact graph entries
+
+| Source symbol | Instructions / reused sites | Reference | Status |
+| --- | --- | --- | --- |
+| `graph_position.rs:attention_qk_prepare_position` | No new inline assembly; device u32 load and BF16 pointer offset, then `attention_prepare::prepare_body` reuses CTA/thread reads, shared reduction/barriers, rounded FP32 operations and BF16 RNE listed above | `reference/graph_position.rs` base/compact positional tables and independent `reference/attention_prepare.rs` norm/RoPE/gate oracle | Source only; PTX, device equivalence and sanitizers pending |
+| `graph_position.rs:attention_kv_append_position` | No new inline assembly; device u32 load then `causal_attention::append_body` reuses CTA/thread reads and guarded BF16 copies | `reference/graph_position.rs` nonzero/final-position append and poison-tail checks; independent causal-attention append reference | Source only; qualification pending |
+| `graph_position.rs:causal_attention_bf16_position` | No new inline assembly; device u32 load then `causal_attention::attention_body` reuses original FP64 arithmetic, shared/shuffle reduction, barriers and conversion sites | Independent logical FP64 GQA/softmax reference; full-model eager-stream versus graph token/logit/all-state comparison hook | Source only; qualification pending; see [stream graph scope](optimizations/stream-forward.md#whole-model-exact-graph-implementation-2026-09-28) |
+
+The original entry symbols call these same extracted bodies, with their original
+by-value position and sliced RoPE arguments. This is an arithmetic-preserving
+source refactor, not a claim that compiler emission or runtime results are equal.
+Required target remains SM120a. Parent must regenerate PTX and run both controls.
+
 ## Exact FP8 decode
 
 | Source | Instructions | Reference | Status |
@@ -270,6 +283,21 @@ Independent FP64 oracle semantics are unchanged. No PTX/GPU evidence yet.
 logical FP64 oracle: `reference/bf16_ab_decode_fp32.rs`. ABI and admission
 contracts: [BF16 A/B candidate](optimizations/decode-a16-pack.md). Rust PTX
 compilation and host checks pass locally; GPU results are pending.
+
+## BF16 paired A/B FP64 candidate (unqualified)
+
+`kernels/nvptx/bf16_ab_decode_fp64.rs` adds eleven inline-asm sites:
+`coordinates` (tid/CTA reads), `load8` (`ld.global.v4.u32`), `widen`
+(`cvt.f64.f32`), `fma` (`fma.rn.f64`), `add` (`add.rn.f64`), `shuffle`
+(full-mask `shfl.sync.bfly.b32`, applied to both FP64 words), `shared_base`
+(32-byte aligned shared declaration/address), `store_partial`/`load_partial`
+(`st.shared.f64`/`ld.shared.f64`), `narrow` (`cvt.rn.f32.f64`), and the
+kernel's `bar.sync 0`. Independent oracle remains
+`reference/bf16_ab_decode_fp32.rs`; the extended trial requires exact FP32/BF16
+bits against that oracle and the unchanged control on all bounded fixtures.
+Per-site evidence and reassociation limits are in
+[the FP64 section](optimizations/decode-a16-pack.md#paired-fp64-continuation).
+PTX/JIT, GPU, sanitizer, and actual-model qualification are pending.
 
 ## Native encoded embedding and F32 GDN parameters
 

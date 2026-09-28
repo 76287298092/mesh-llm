@@ -2,7 +2,8 @@
 
 Status: limited model-equivalence and timing evidence for an opt-in (2026-09-28, issue 1393), source
 `ab33f730e`, PTX SHA256 `04f03b9b…`. Default remains `legacy`. Bounded sanitizer checks now pass with the scope below; graph capture
-is still pending.
+qualification is still pending. Full-row exact graph capture/replay is now implemented
+in the unvalidated working tree; the measurements below are eager-stream evidence only.
 
 ## Qualification, 2026-09-28
 
@@ -136,7 +137,7 @@ bytes (for example 65,664 B at capacity 513, 32 MiB at 262,144).
 
 ## Hooks
 
-- `MESH_SPECIALIZE_EXECUTION=legacy|stream` (default legacy) selects the path in
+- `MESH_SPECIALIZE_EXECUTION=legacy|stream|graph` (default legacy) selects the path in
   `qwen-model-bench`; the report gains an `execution` object with the arena size.
   The stream arena is sized for the prompt length.
 - `xtask specialize qwen-stream-check --artifact P --tokens IDS --ptx P --device N
@@ -178,3 +179,104 @@ bound instrumentation memory: zero errors/warnings. Synccheck used default
 scheduling and reported zero errors. These short instrumented checks do not
 cover the complete 106/512-input timing trials or prove arbitrary-context safety.
 Both services were restored to their initial active states after each trial.
+
+## Whole-model exact graph implementation, 2026-09-28
+
+Status: source implementation only, based on the supplied parent HEAD `30658a926`.
+No Cargo, PTX compilation, CUDA execution, sanitizer, or throughput result was run
+by this worker. Parent owns validation. Device/driver/toolchain/clocks for this
+change: not measured. Existing eager-stream evidence above does not qualify it.
+
+`MESH_SPECIALIZE_EXECUTION=graph` now prefills eagerly on StreamForward, then
+captures one entire M=1 forward, including embedding, all layers, final vocabulary
+projection, and GPU greedy. Capture records kernels and stream-ordered DtoD copies
+but must not execute them. The token upload, position upload, result readback,
+optional full-logit readback, validation, and cursor commit remain outside capture.
+No per-token graph instantiation or node parameter updates are used.
+
+`GraphDecode::capture(&mut StreamForward, &mut Session)` returns an exclusive
+lease. It cannot accept another session on replay. The lease prevents eager arena
+reuse and state release while the graph exists; StreamForward's module/function
+and weight borrows retain those owners as well. The device u32 position remains
+allocated through graph destruction. Drop drains first, destroys the executable
+and graph, then releases the position and owner borrows. Pageable token/position
+bytes have their own tested completion guard, so an early return or unwind drains
+before releasing upload storage. Failed replay transactions poison the cursor and
+do not advance its committed position. Capture failures poison the bound session.
+
+The intentionally fatal prototype policy is: a failed stream drain attempts a
+context drain. If the context drain completes, return the original error and keep
+the cursor poisoned. If both fail, log both errors and exit **this harness process**
+with status70 without unwinding any CUDA owners. No undocumented fatal-CUDA-error
+semantics are assumed. No external process or service is controlled by this path.
+
+### Position ABI and arithmetic boundary
+
+Three entries in `kernels/nvptx/graph_position.rs` delegate to unchanged shared
+exact bodies extracted from the original entries. No new inline assembly is added.
+
+- `attention_qk_prepare_position`: original eight-pointer/five-u32/FP32-epsilon
+  ABI, followed by a fifteenth argument `*const u32 past`. Cos/sin now address
+  table bases; the wrapper offsets each by `*past * rotary_dim/2` BF16 elements.
+- `attention_kv_append_position`: original four-pointer/three-u32 arguments,
+  then `*const u32 past` **instead of** the original by-value past, then capacity.
+- `causal_attention_bf16_position`: original five-pointer/four-u32 arguments,
+  then `*const u32 past` **instead of** by-value past, capacity, and FP32 scale.
+
+All three use the original grids/blocks with rows fixed at1. The host validates
+capacity before replay. A same-stream HtoD updates position and token before the
+single graph launch. Q/K preparation keeps every rounding boundary and gate copy;
+KV remains BF16 token-major; causal attention retains its exact FP64 reduction
+and softmax body. The assembly inventory records these reused sites explicitly.
+
+Graph rejects SplitDecode and all other nonexact arithmetic. Existing stream
+SplitAttention remains available and unchanged. FP8 embedding and F32 GDN weights
+are source formats, not arithmetic profiles: their existing consumers and dtype
+bindings are reused in the captured full-row path.
+
+### Cost scope and qualification hook
+
+`qwen-model-bench` captures once for each fresh, eagerly prefilled repetition.
+`repetitions[].graph.capture_seconds` and `instantiate_seconds` are recorded outside
+both prefill and decode intervals. Setup does not hide a replay. The report also
+records full `decode_setup_seconds` (allocation, handle resolution, capture,
+instantiation, and setup drain), a setup-inclusive decode interval rate, and real
+decode/sequence wall makespans and rates including per-session setup. The wall
+boundaries include host-loop and memory-checkpoint overhead; interval sums exclude
+those checkpoints. Thus replay-only throughput cannot hide the first-request
+capture cost. Each measured decode includes the two small HtoD uploads, one graph launch, one stream completion,
+and selection readback. Warmup protocol has explicitly changed for **all three
+executions**: full requested prompt plus one actual decode on a disposable fresh
+session. Graph warmup captures and actually replays once. Every timed repetition
+still starts with a fresh session, captures a new session-bound graph, and includes
+its first replay in the timed interval list. The report labels the new protocol
+and records warmup graph replay count separately. Timed generated sequences are
+unchanged. Driver-internal allocation/JIT work is not instrumented. The absence of explicit per-token device allocation/free is
+**source-derived**, not a measured allocation counter. The benchmark now reports
+actual GPU greedy for stream/graph and separately retains the configured flag.
+
+Run the separate equivalence mode with the existing command and argument order:
+
+```text
+MESH_SPECIALIZE_EXECUTION=graph xtask specialize qwen-stream-check --artifact P --tokens IDS --ptx P --device N --output NEW_FILE --decode-steps N
+```
+
+Use at least two decode steps. This mode compares exact eager stream to actual
+full-model graph replay from identical fresh sessions and input tokens. It retains
+full resident-weight readback diagnostics. It checks selected tokens, CPU greedy
+agreement, **complete BF16 logits**, committed cursor, and SHA256 of **all bytes of
+all state regions**, including unused KV suffix. A separate before/after capture
+snapshot checks that capture/instantiation did not execute or advance anything.
+The report requires the successful actual replay count to equal requested decode
+steps; a residual-only probe cannot satisfy this gate. Default qwen-stream-check
+continues to compare legacy versus stream.
+
+Host tests added: u64 position-ABI packing and scalar order, poisoned replay cursor,
+exact-only profile rejection, complete-output/state comparison, mock successful/
+failed/unwinding completion before host-storage release, and double-drain fatal
+policy. `reference/graph_position.rs` independently checks base/compact RoPE,
+Q gates, nonzero/final KV append addresses, and causal-prefix versus poisoned-tail
+attention at positions0/1/7/16/32. These are host contracts, not device qualification.
+Parent still needs serial check/Clippy/tests, Just PTX generation, graph equivalence
+on real weights (including direct Ninfer source formats), all three sanitizers,
+matched timings, and allocation/resource-release evidence. No speedup is claimed.

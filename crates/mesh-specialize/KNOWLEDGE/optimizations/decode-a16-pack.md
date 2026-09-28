@@ -129,3 +129,149 @@ claimed from source inspection alone.
 
 Durable rule: removing FP64 changes arithmetic; operator error bounds do not
 certify gate sensitivity, model quality, MTP equivalence, or serving performance.
+
+## Paired FP64 continuation
+
+Status: implemented for parent compilation, unqualified, 2026-09-28. Parent
+supplied source context `30658a926`; the worker did not run Git to verify it.
+New device source is `kernels/nvptx/bf16_ab_decode_fp64.rs`. The existing FP32
+candidate, `bf16_linear_decode` control, and resident/default dispatch remain
+unchanged. No graph, stream-forward, model-score, or model-source changes.
+GPU architecture target is SM120. Driver, clocks, JIT resources, GPU numerical
+results, sanitizers, and model performance are not measured by this worker.
+No before/after speedup is established. Parent retains the build/GPU slots.
+Direct `rustfmt --edition 2024 --config skip_children=true` and its `--check`
+pass on the new kernel, extended trial, and module registry. Their lengths are
+239, 541, and 131 lines respectively. No Cargo, PTX compilation, tests, Git,
+SSH, or GPU execution was performed by this worker.
+
+### Schedule and ABI
+
+```text
+bf16_ab_decode_fp64(
+  input: *const u16, weights_a: *const u16, weights_b: *const u16,
+  output_a: *mut u16, output_b: *mut u16,
+  raw_a: *mut f32, raw_b: *mut f32,
+  n: u32, k: u32)
+```
+
+Exactly the same nine arguments and M1 shape contract as the paired FP32
+candidate: grid `[n,2,1]`, block `[128,1,1]`, dynamic shared zero, N1..256,
+K8..32768 divisible by eight. The three BF16 input bases are 16-byte aligned,
+with extents K, N*K, N*K. Output extents are N BF16, N BF16, N FP32, N FP32,
+all naturally aligned. All seven buffers are disjoint and live through completion.
+The host checks dimensions, extents, address arithmetic, finite input values,
+and finite FP32/BF16 output values.
+
+One CTA owns one head/projection, giving 96 CTAs at N48 instead of two launches
+of 12 CTAs. This changes parallelism, not the GPU's FP64 throughput. Each thread
+loads eight adjacent BF16 activations and weights with `ld.global.v4.u32`, widens
+them exactly, and updates four independent FP64 FMA chains. K5120 gives ten
+FMAs per chain. Two FP64 local adds per contribution's path combine the chains;
+a paired-word shuffle reduces each warp. Four FP64 warp totals use 32 bytes of
+static shared memory, one CTA barrier, and a final FP64 warp reduction. Lane zero
+casts once to FP32 with `cvt.rn.f32.f64` and stores that raw result plus the same
+RNE BF16 encoding as the control. No FP32 accumulation, atomics, or global scratch.
+JIT register/shared/local statistics must confirm the source-level expectations.
+
+### Precision bounds and cancellation limits
+
+Every finite BF16 product is exact in FP64: at most 16 significand bits, with
+product magnitudes inside FP64's normal range. FMA therefore does not introduce
+a product-rounding difference from the control's separate FP64 multiply/add.
+Summation order still changes. FP64 has only 53 significand bits; large exponent
+spreads can lose small terms, and cancellation can expose those losses. Neither
+FP32 nor BF16 bit identity is guaranteed for arbitrary finite BF16 inputs.
+
+A sufficient exact-sum condition is that every product is an integer multiple
+of some `q=2^e` and `sum(abs(products))/q < 2^53`. Then every partial sum in any
+of these schedules is exactly representable in FP64. This condition holds for
+the deliberately bounded fixtures, but is not assumed for actual model inputs.
+
+Outside that sufficient condition, a conservative pre-cast absolute error bound
+for the candidate is `gamma_d * sum(abs(products))`, with
+`d=2*ceil(K/1024)+12`, `gamma_d=d*2^-53/(1-d*2^-53)`. This counts chain FMAs,
+two local adds, and two five-stage warp reductions, including zero partners.
+The sequential oracle has its own `gamma_K` bound; their pre-cast difference is
+bounded by the sum of these envelopes. Comparing stored FP32 values also needs
+the two cast-rounding errors, including gradual underflow, and BF16 comparison
+needs both BF16 rounding errors. No relative-error or one-BF16-ULP guarantee
+survives arbitrary near-zero cancellation or an output at a rounding boundary.
+These analytical bounds are explanatory only: the new FP64 fixture gate uses
+zero tolerance, not a widened envelope.
+
+### Extended bounded trial and gates
+
+The existing `bf16-ab-decode-check` command now emits schema version 2 with
+separate `fp32` and `fp64` results in each case and separate top-level
+`fp32_all_passed` / `fp64_all_passed` flags. Both candidates run against the
+unchanged two-launch FP64 control and the unchanged independent sequential
+oracle in `reference/bf16_ab_decode_fp32.rs`. The eight original fixtures and
+their seeds remain, with two additional N48/K5120 cases:
+
+- Large cancellation: repeating `[2^20, r, -2^20, r]`, where
+  `r=(head+1)*2^-16`, activation one, with opposite-signed A/B matrices.
+  Each row's exact residue is `2560*r` for A and its negative for B.
+- Bounded magnitude range: signed BF16 values with all eight significand bits
+  and exponents -5..5. Products lie on a `2^-24` lattice, and their absolute
+  sum in lattice units stays below `2^53`.
+
+FP64 and the control require raw-FP32 and BF16 bit identity against the oracle
+for every case, including the original seeded fixtures. FP64 additionally
+requires direct bit identity with control outputs. FP32 keeps its original
+exact-dyadic and analytical-error gates. Differences are counted separately for
+raw and BF16 values; up to eight failed output bit patterns per projection are
+retained in JSON. Numerical failures return report data with `all_passed=false`;
+they are not discarded or used to loosen the gate.
+
+All four outputs of both candidates and their controls start as NaN poison with
+16-byte prefix/suffix guards. The harness checks first and repeated-run guards,
+re-poisons before repeats, checks candidate and control determinism, and verifies
+finite output plus BF16 RNE consistency. Guard bytes cannot detect all reads or
+out-of-allocation writes; memcheck/racecheck/synccheck remain required.
+Host tests cover guard detection, strict raw-bit rejection despite equal BF16,
+NaN/extent rejection, hand-computed cancellation residues, and the magnitude
+fixture's exact-lattice bound. Tests are authored, not run by this worker.
+
+Reports include JIT log and registers/static-shared/local bytes for all three
+symbols. Timing stays at three warmups and three CUDA-event batches of ten A/B
+pairs per kernel/control. Fixed order is FP32, control, FP64, control for each
+fixture. Only event times and logical byte counts are reported in schema 2;
+the former logical GB/s estimate is removed. These weights are cache-resident
+in the repeated trial, and event batches include host submission gaps. This
+is neither a DRAM-bandwidth measurement nor a whole-model throughput claim.
+
+Parent reproduction uses the existing command after building updated PTX:
+
+```text
+cargo xtask specialize bf16-ab-decode-check --ptx PATH --device 0 --output NEW_FILE
+```
+
+The existing command wrapper retains JSON/PTX identity evidence without
+overwriting prior reports. Parent must compile/type-check and run the host
+tests, inspect emitted PTX/JIT for the intended vector loads/four FP64 chains/
+resources, run the bounded trial and all three sanitizers, then separately
+qualify same-input actual-model A/B, full-model state/logits, and timings.
+No resident integration or model qualification is supplied here.
+
+### FP64 assembly sites and reference gates
+
+All eleven inline-assembly sites are registered in `KNOWLEDGE/asm-inventory.md`.
+
+| Site | Instructions | Required evidence |
+| --- | --- | --- |
+| `coordinates` | special-register `mov.u32` | N1/N3/N48 coverage of both projections |
+| `load8` | `ld.global.v4.u32` | Oracle values, K8/K24/K1032 tails, alignment, memcheck |
+| `widen` | `cvt.f64.f32` | Independent decoded BF16 products, emitted no-FTZ conversion |
+| `fma` | `fma.rn.f64` | Exact bounded fixtures, inspect four live chains |
+| `add` | `add.rn.f64` | Cancellation and bounded-magnitude oracle comparisons |
+| `shuffle` | full-mask `shfl.sync.bfly.b32`, low/high halves | Both FP64 reductions, all-lane participation |
+| `shared_base` | `.shared .align 8 .b8 [32]`, address `mov.u32` | JIT static-shared size, slot bounds |
+| `store_partial` | `st.shared.f64` | One writer per warp slot, racecheck |
+| `load_partial` | `ld.shared.f64` | Four initialized slots after barrier, racecheck |
+| `narrow` | `cvt.rn.f32.f64` | Exact raw bits plus BF16 RNE of those bits |
+| kernel barrier | `bar.sync 0` | Uniform guards, synccheck |
+
+Durable rule: retaining FP64 permits a different parallel schedule, not a
+universal bit-identity claim. Keep strict bounded failures and actual-model
+qualification separate from microkernel timing.

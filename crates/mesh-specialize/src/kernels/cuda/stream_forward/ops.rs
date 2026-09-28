@@ -6,6 +6,7 @@
 
 use super::{
     functions::Functions,
+    graph_position::Position,
     program::{NormSlots, ProjectionSlots},
     weights::{Arithmetic, ProjectionWeights},
 };
@@ -99,6 +100,7 @@ pub(super) fn nvfp4_schedule(rows: usize) -> (bool, usize, usize, u32) {
 pub(super) struct Enqueue<'a, 's, 'm, 'ctx> {
     active: &'a ActiveStream<'s, 'ctx>,
     pub(super) kernels: &'a Functions<'m, 'ctx>,
+    pub(super) position: Option<&'a Position<'m, 'ctx>>,
 }
 
 impl<'a, 's, 'm, 'ctx> Enqueue<'a, 's, 'm, 'ctx> {
@@ -112,7 +114,11 @@ impl<'a, 's, 'm, 'ctx> Enqueue<'a, 's, 'm, 'ctx> {
         active: &'a ActiveStream<'s, 'ctx>,
         kernels: &'a Functions<'m, 'ctx>,
     ) -> Self {
-        Self { active, kernels }
+        Self {
+            active,
+            kernels,
+            position: None,
+        }
     }
 
     pub(super) fn launch(
@@ -185,7 +191,13 @@ impl<'a, 's, 'm, 'ctx> Enqueue<'a, 's, 'm, 'ctx> {
         )
     }
 
-    pub(super) fn residual_add(&self, left: u64, right: u64, output: u64, count: usize) -> Result<()> {
+    pub(super) fn residual_add(
+        &self,
+        left: u64,
+        right: u64,
+        output: u64,
+        count: usize,
+    ) -> Result<()> {
         let count = to_u32(count)?;
         let args = Args::new().ptrs(&[left, right, output]).u32(count);
         self.launch(
@@ -219,7 +231,13 @@ impl<'a, 's, 'm, 'ctx> Enqueue<'a, 's, 'm, 'ctx> {
     }
 
     /// `mlp_silu_product`: outputs `[values, silu, activated, raw]`.
-    pub(super) fn silu_product(&self, gate: u64, up: u64, outputs: [u64; 4], count: usize) -> Result<()> {
+    pub(super) fn silu_product(
+        &self,
+        gate: u64,
+        up: u64,
+        outputs: [u64; 4],
+        count: usize,
+    ) -> Result<()> {
         let count = to_u32(count)?;
         let args = Args::new().ptrs(&[gate, up]).ptrs(&outputs).u32(count);
         self.launch(
@@ -291,7 +309,10 @@ impl<'a, 's, 'm, 'ctx> Enqueue<'a, 's, 'm, 'ctx> {
         rows: usize,
         [input_scale, factor]: [f32; 2],
     ) -> Result<()> {
-        ensure!(s.effective != 0, "NVFP4 projection lacks an effective-scale slot");
+        ensure!(
+            s.effective != 0,
+            "NVFP4 projection lacks an effective-scale slot"
+        );
         let groups = rows * w.width / 16;
         let quantize = Args::new()
             .ptrs(&[input, s.codes, s.scales, s.effective])
@@ -325,13 +346,29 @@ impl<'a, 's, 'm, 'ctx> Enqueue<'a, 's, 'm, 'ctx> {
     }
 
     /// `greedy_bf16_tiles` then `greedy_bf16_finish` into a 16-byte result.
-    pub(super) fn greedy(&self, logits: u64, partials: u64, result: u64, vocabulary: usize) -> Result<()> {
+    pub(super) fn greedy(
+        &self,
+        logits: u64,
+        partials: u64,
+        result: u64,
+        vocabulary: usize,
+    ) -> Result<()> {
         let vocabulary = to_u32(vocabulary)?;
         let tiles = vocabulary.div_ceil(1024);
         let tile_args = Args::new().ptrs(&[logits, partials]).u32(vocabulary);
-        self.launch(&self.kernels.greedy_tiles, [tiles, 1, 1], [128, 1, 1], tile_args)?;
+        self.launch(
+            &self.kernels.greedy_tiles,
+            [tiles, 1, 1],
+            [128, 1, 1],
+            tile_args,
+        )?;
         let finish_args = Args::new().ptrs(&[partials, result]).u32(tiles);
-        self.launch(&self.kernels.greedy_finish, [1, 1, 1], [128, 1, 1], finish_args)
+        self.launch(
+            &self.kernels.greedy_finish,
+            [1, 1, 1],
+            [128, 1, 1],
+            finish_args,
+        )
     }
 }
 
@@ -358,10 +395,33 @@ mod tests {
     }
 
     #[test]
+    fn position_abi_retains_full_device_address_and_scalar_order() {
+        use super::super::graph_position::past_argument;
+        let address = 0x1234_5678_9abc_def0;
+        let initial = || Args::new().ptr(11).ptr(22).u32(1).u32(8);
+        let eager = past_argument(initial(), None, 17).u32(64);
+        let graph = past_argument(initial(), Some(address), 17).u32(64);
+        assert_eq!(&eager.storage[..4], &graph.storage[..4]);
+        assert_eq!(eager.storage[4], 17);
+        assert_eq!(graph.storage[4], address);
+        assert_eq!(eager.storage[5], graph.storage[5]);
+        assert_eq!(graph.len, eager.len);
+        let prepare = (0..14)
+            .fold(Args::new(), |args, i| args.u32(i))
+            .ptr(address);
+        assert_eq!(prepare.len, 15);
+        assert_eq!(prepare.storage[14], address);
+        assert!(!prepare.overflow);
+    }
+
+    #[test]
     fn scalar_arguments_occupy_low_bytes_and_overflow_is_tracked() {
         let args = Args::new().ptr(7).u32(0xdead_beef).f32(1.5);
         assert_eq!(args.len, 3);
-        assert_eq!(args.storage[1].to_le_bytes()[..4], 0xdead_beef_u32.to_le_bytes());
+        assert_eq!(
+            args.storage[1].to_le_bytes()[..4],
+            0xdead_beef_u32.to_le_bytes()
+        );
         assert_eq!(args.storage[2], u64::from(1.5_f32.to_bits()));
         let full = (0..=MAX_ARGS).fold(Args::new(), |args, value| args.ptr(value as u64));
         assert!(full.overflow);

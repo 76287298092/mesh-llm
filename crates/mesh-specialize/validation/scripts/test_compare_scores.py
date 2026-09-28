@@ -21,7 +21,70 @@ def stream():
     }
 
 
+def write_score_dir(path, extra=None):
+    path.mkdir()
+    item = dict(stream(), records='s.scores.bin', input_tokens_sha256='input',
+                full_logits_sha256='logits')
+    manifest = {'all_passed': True, 'streams': [item],
+                'corpus_id': 'test', 'context_tokens': 5, 'stride_tokens': 2,
+                'artifact_sha256': 'artifact', 'identity': {'weights': 'same'},
+                'profiles': {}, 'ptx_sha256': 'ptx', 'full_logit_hash': {'enabled': True}}
+    manifest.update(extra or {})
+    (path / 'manifest.json').write_text(json.dumps(manifest))
+    (path / 's.scores.bin').write_bytes(scores.RECORD.pack(*record()) * 4)
+    return path
+
+
 class ScoreComparisonTests(unittest.TestCase):
+    def test_forward_rows_defaults_to_legacy_schedule(self):
+        self.assertEqual(scores.forward_rows({}), 512)
+        scores.require_forward_schedule({}, {'forward_rows': 512})
+        scores.require_forward_schedule({'forward_rows': 1}, {'forward_rows': 1})
+        for value in range(1, 513):
+            self.assertEqual(scores.forward_rows({'forward_rows': value}), value)
+
+    def test_forward_rows_rejects_invalid_manifest_values(self):
+        for value in (None, True, False, 0, -1, 513, 1.0, '1', [], {}):
+            with self.subTest(value=value), self.assertRaisesRegex(SystemExit, 'forward_rows'):
+                scores.forward_rows({'forward_rows': value})
+
+    def test_internal_comparison_requires_same_schedule(self):
+        for left, right, valid in (
+            ({}, {}, True), ({}, {'forward_rows': 512}, True),
+            ({'forward_rows': 1}, {'forward_rows': 1}, True),
+            ({}, {'forward_rows': 1}, False),
+            ({'forward_rows': 8}, {'forward_rows': 7}, False),
+            ({'forward_rows': 1}, {'forward_rows': None}, False),
+        ):
+            with self.subTest(left=left, right=right), tempfile.TemporaryDirectory() as tmp:
+                a = write_score_dir(Path(tmp) / 'a', left)
+                b = write_score_dir(Path(tmp) / 'b', right)
+                if valid:
+                    overall, _, _, _ = scores.compare_internal(a, b)
+                    self.assertEqual(overall['top1_agreement'], 1)
+                else:
+                    with self.assertRaisesRegex(SystemExit, 'forward_rows'):
+                        scores.compare_internal(a, b)
+
+    def test_repeat_checks_reject_mismatched_schedule_even_with_equal_bytes_and_hashes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            a = write_score_dir(Path(tmp) / 'a', {'forward_rows': 1})
+            b = write_score_dir(Path(tmp) / 'b', {'forward_rows': 512})
+            manifest, candidate = scores.load_dir(a)
+            with self.assertRaisesRegex(SystemExit, 'forward_rows'):
+                scores.determinism(candidate, b, manifest)
+            with self.assertRaisesRegex(SystemExit, 'forward_rows'):
+                scores.full_logit_determinism(a, b)
+
+    def test_repeat_accepts_old_missing_schedule_as_512(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            a = write_score_dir(Path(tmp) / 'a')
+            b = write_score_dir(Path(tmp) / 'b', {'forward_rows': 512})
+            manifest, candidate = scores.load_dir(a)
+            self.assertIs(scores.determinism(candidate, b, manifest), True)
+            self.assertIs(scores.full_logit_determinism(a, b), True)
+
+
     def test_same_distribution_has_zero_kl(self):
         union, coarse = scores.position_kl(record(), record())
         self.assertAlmostEqual(union, 0.0)

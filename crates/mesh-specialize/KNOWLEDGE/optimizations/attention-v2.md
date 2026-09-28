@@ -285,3 +285,23 @@ exercise this decode-only profile. Quality requires teacher-forced incremental
 inputs (or explicitly bounded M<=8 chunks) on identical contexts, evaluated under
 the unchanged quality-gates.md thresholds. No current prefill scoring or unrelated
 stream sanitizer evidence establishes split-decode quality, safety or speed.
+
+
+## First whole-model ablation, September 28
+
+At fd500c885 with PTXfc91792b..., 13 operator cases pass normal/memcheck/racecheck/
+synccheck; racecheck uses forced synchronization and one worker. The selected
+source is the exact pinned native Ninfer artifact, BF16KV, default FP8/NVFP4.
+Balanced AB/BA whole-model trials use full-prompt warmup and two repetitions per
+invocation, four samples per profile/prompt,256 fixed outputs. All within-profile
+one-chunk equivalence checks pass. This is not cross-profile quality admission.
+
+| Prompt | Exact median decode tok/s | Split median decode tok/s |
+| --- | ---: | ---: |
+|106 inputs|26.469|35.524|
+|512 inputs|18.167|35.503|
+
+Same-input incremental decode scoring is being added because ordinary512-row
+scoring only exercises this profile's unchanged prefill fallback. No default
+change or quality promotion. Evidence: evidence/reassess-20260928/decode-attention-check-1
+and decode-attention-model-1. Both services restored after the trials.
