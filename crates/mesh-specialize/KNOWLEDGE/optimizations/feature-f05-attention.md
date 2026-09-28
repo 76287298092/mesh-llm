@@ -173,3 +173,13 @@ last-row hidden drift is layer25; earlier rows were not captured. Preserve the
 failure and investigate possible downstream NVFP4 multirow-native/single-row
 integer arithmetic differences on identical inputs before attributing the failure
 to attention or relaxing any gate. See failure-summary.json and evidence README.
+
+Parent added optional `MESH_SPECIALIZE_PARTITION_AUDIT=1` to model-profile.
+It downloads every BF16 layer output and records SHA256 per logical row for
+whole-prefix and token submissions. The report lists every differing row by
+layer, with the first differing pair of hashes. It never feeds model outputs
+or changes arithmetic, and rejects incomplete/overfull diagnostic capture.
+The ordinary last-row drift report and strict partition gates remain intact.
+This is diagnostic instrumentation, not a performance measurement. Host tests
+cover submission-independent row hashing, earlier-row localization, and invalid
+capture extents;269 host tests pass. Real-model localization is pending.

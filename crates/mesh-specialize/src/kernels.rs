@@ -2,6 +2,8 @@
 
 pub mod attention_profile;
 pub mod fp8_profile;
+#[cfg(any(test, target_os = "linux"))]
+mod partition_audit;
 
 pub enum DecoderBlockKind {
     Gdn,

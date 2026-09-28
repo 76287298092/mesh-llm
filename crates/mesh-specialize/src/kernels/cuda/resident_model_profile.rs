@@ -119,6 +119,11 @@ pub(in crate::kernels) fn run(
         true,
         teacher_token,
     )?;
+    let row_audit = match (&control.row_audit, &partitioned.row_audit) {
+        (Some(a), Some(b)) => Some(a.compare(b)?),
+        (None, None) => None,
+        _ => anyhow::bail!("partition audit enablement changed during trial"),
+    };
     let logit_dump = super::resident_logit_dump::write(
         tokens,
         teacher_token,
@@ -167,6 +172,7 @@ pub(in crate::kernels) fn run(
         kernel_profile: _,
         prefill_kernel_profile: _,
         layer_tails: _,
+        row_audit: _,
     } = control;
     let DecodeRun {
         prefill_logits: profiled_prefill_logits,
@@ -179,6 +185,7 @@ pub(in crate::kernels) fn run(
         kernel_profile,
         prefill_kernel_profile,
         layer_tails: _,
+        row_audit: _,
     } = profiled;
     let prefill_exact = control_prefill_logits == profiled_prefill_logits
         && control_prefill_token == profiled_prefill_token
@@ -233,6 +240,7 @@ pub(in crate::kernels) fn run(
         "resulting_past": resulting_past,
         "logit_dump":logit_dump,
         "exact_prefill_logits": prefill_exact,
+        "partition_row_audit":row_audit,
         "whole_vs_token_partition": partition,
         "whole_vs_token_partition_exact": partition_exact,
         "exact_output_and_state": exact_output_and_state,
@@ -258,6 +266,7 @@ pub(in crate::kernels) fn run(
 }
 
 struct DecodeRun {
+    row_audit: Option<crate::kernels::partition_audit::Rows>,
     layer_tails: Vec<Vec<u16>>,
     prefill_logits: Vec<u16>,
     prefill_token: u32,
@@ -392,7 +401,26 @@ fn run_unprofiled(
 ) -> Result<DecodeRun> {
     let mut session = Session::new(context, config)?;
     let mut layer_tails = Vec::new();
-    let mut observer = |_layer: usize, buffer: &Buffer<'_>| -> Result<()> {
+    let mut row_audit = match std::env::var("MESH_SPECIALIZE_PARTITION_AUDIT") {
+        Err(std::env::VarError::NotPresent) => None,
+        Ok(value) if value == "1" => Some(crate::kernels::partition_audit::Rows::new(
+            config.layers.len(),
+            tokens.len(),
+            config.hidden * 2,
+        )?),
+        _ => anyhow::bail!("MESH_SPECIALIZE_PARTITION_AUDIT must be absent or1"),
+    };
+    let audit_enabled = row_audit.is_some();
+    let record_tail = std::cell::Cell::new(true);
+    let mut observer = |layer: usize, buffer: &Buffer<'_>| -> Result<()> {
+        if let Some(audit) = row_audit.as_mut() {
+            let mut all = vec![0; buffer.len()];
+            buffer.download(&mut all)?;
+            audit.record(layer, &all)?;
+        }
+        if !record_tail.get() {
+            return Ok(());
+        }
         let bytes = config
             .hidden
             .checked_mul(2)
@@ -412,7 +440,8 @@ fn run_unprofiled(
     let (prefill_logits, prefill_token, prefill_past) = if token_prefill {
         let mut last = None;
         for (index, &token) in tokens.iter().enumerate() {
-            let watch = if index + 1 == tokens.len() {
+            record_tail.set(index + 1 == tokens.len());
+            let watch = if audit_enabled || record_tail.get() {
                 Some(&mut observer as &mut super::resident_model::Observer<'_>)
             } else {
                 None
@@ -441,6 +470,7 @@ fn run_unprofiled(
     context.synchronize()?;
     Ok(DecodeRun {
         layer_tails,
+        row_audit,
         prefill_logits,
         prefill_token,
         prefill_past,
@@ -480,6 +510,7 @@ fn run_profiled(
     context.synchronize()?;
     Ok(DecodeRun {
         layer_tails: Vec::new(),
+        row_audit: None,
         prefill_logits,
         prefill_token,
         prefill_past,
