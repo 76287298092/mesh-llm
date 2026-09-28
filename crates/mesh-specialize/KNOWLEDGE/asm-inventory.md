@@ -236,3 +236,8 @@ oracle under identical admission bounds. `nvfp4_pipeline_trial.rs` compares both
 CTA schedules against that oracle and requires raw/BF16 bit identity with native
 `nvfp4_linear`, including N120/128/136 tails. Compilation, GPU resources and
 sanitisers remain pending for this new symbol; prior tiled evidence does not qualify it.
+
+Wide follow-up: `evidence/iterate-20260927/nvfp4-pipeline-check-3` at
+`475c1b35f` passes33 cases and all three sanitizers with zero errors/hazards.
+JIT:62 registers,11520 shared bytes,0 local bytes. Raw/BF16 native-baseline
+identity holds for tested fixtures; this does not establish model throughput.

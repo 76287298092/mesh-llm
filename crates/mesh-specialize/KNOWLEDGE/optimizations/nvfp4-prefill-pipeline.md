@@ -272,3 +272,22 @@ This is compiler evidence only; JIT resources and GPU checks remain pending.
 Prior PTXs and full-model evidence are preserved. Remote preflight found Ninfer
 active and ComfyUI resident at 498 MiB; the next trial must restore the service
 if it stops it.
+
+### Wide operator qualification and separate model profile
+
+`nvfp4-pipeline-check-3` at source `475c1b35f` passes all 33 cases in normal,
+memcheck, racecheck and synccheck execution. All sanitizer summaries report zero
+errors/hazards. Wide and tiled outputs match the native baseline in raw FP32 and
+BF16 bits. Maximum wide raw error against independent FP64, scaled by maximum
+oracle magnitude, is 8.729596730380663e-6 under the unchanged 1e-4 limit.
+JIT resources for wide are 62 registers, 11,520 shared bytes, zero local bytes.
+Linux Clippy and Just release tool build pass. Ninfer was active before this
+trial; the bounded stop was restored with health HTTP200. ComfyUI remained
+resident at 498 MiB. This operator trial measures no performance.
+
+Added `MESH_SPECIALIZE_NVFP4_PROFILE=wide-prefill`, separately named
+`nvfp4-tiled128-prefill-integer-decode-v1`. It uses the existing admission of
+16..512 rows, N divisible by8 and K divisible by64, each <=32768. One-row
+integer decode and smaller-batch native dispatch are unchanged. Both ordinary
+and workspace MLP paths already share the profile selector. MTP remains gated
+to baseline. Default remains baseline; full-model qualification is pending.
