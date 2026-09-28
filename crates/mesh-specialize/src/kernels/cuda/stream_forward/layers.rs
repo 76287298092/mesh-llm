@@ -7,6 +7,7 @@ use super::{
     ops::{Args, EPSILON, Enqueue, to_u32},
     program::{NormSlots, Shapes, Slots},
     split_attention::SplitAttention,
+    staged_attention::StagedAttention,
     weights::{AttentionWeights, GdnWeights, MlpWeights, ModelWeights},
 };
 use crate::kernels::cuda::resident_state::ResidentState;
@@ -19,6 +20,12 @@ pub(super) struct Step {
     pub(super) capacity: usize,
     pub(super) cos: u64,
     pub(super) sin: u64,
+}
+
+/// Explicit multi-launch attention schedules, mutually exclusive by profile.
+pub(super) struct AttentionSchedules<'a, 'm, 'ctx> {
+    pub(super) split: Option<&'a SplitAttention<'m, 'ctx>>,
+    pub(super) staged: Option<&'a StagedAttention<'m, 'ctx>>,
 }
 
 /// Embedding gather plus first norm; the residual output becomes `hidden`.
@@ -165,7 +172,7 @@ pub(super) fn attention(
     shapes: &Shapes,
     state: &ResidentState<'_>,
     step: &Step,
-    split: Option<&SplitAttention<'_, '_>>,
+    schedules: AttentionSchedules<'_, '_, '_>,
 ) -> Result<()> {
     let a = &s.attention;
     let k = e.kernels;
@@ -176,6 +183,14 @@ pub(super) fn attention(
         shapes.kv_heads,
         shapes.attention_width,
     );
+    anyhow::ensure!(
+        schedules.staged.is_none() || e.position.is_none(),
+        "staged-fp64 attention has no qualified graph position variant"
+    );
+    let staged = schedules.staged.filter(|_| rows == 1);
+    if let Some(staged) = staged {
+        staged.plan(step)?;
+    }
     let unrolled = k.causal_attention_unrolled.as_ref();
     anyhow::ensure!(
         unrolled.is_none() || e.position.is_none(),
@@ -240,7 +255,19 @@ pub(super) fn attention(
         [256, 1, 1],
         append,
     )?;
-    if let Some(split) = split.filter(|_| rows <= 8) {
+    if let Some(staged) = staged {
+        staged.enqueue(
+            e,
+            [
+                a.q_prepared[0],
+                key_state,
+                value_state,
+                a.output[0],
+                a.output[1],
+            ],
+            step,
+        )?;
+    } else if let Some(split) = schedules.split.filter(|_| rows <= 8) {
         split.enqueue(
             e,
             [

@@ -240,6 +240,11 @@ fn attention_workspace_bytes(
     rows: usize,
     profile: attention_profile::Profile,
 ) -> Result<u64> {
+    if profile.uses_staged(1) {
+        let plan =
+            crate::kernels::attention_staged_plan::Plan::new([1, 24, 4, 256, 0, config.capacity])?;
+        return Ok(u64::try_from(plan.workspace_bytes)?);
+    }
     if profile != attention_profile::Profile::SplitDecode {
         return Ok(0);
     }

@@ -257,6 +257,7 @@ mod tests {
             Profile::OnlineAudit,
             Profile::WarpFp64,
             Profile::UnrolledFp64,
+            Profile::StagedFp64,
         ] {
             assert!(ensure_exact(profile).is_err());
         }

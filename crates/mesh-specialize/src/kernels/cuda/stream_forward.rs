@@ -29,6 +29,7 @@ mod ops;
 mod plan;
 mod program;
 mod split_attention;
+mod staged_attention;
 mod weights;
 
 use super::{
@@ -55,6 +56,7 @@ use plan::ArenaPlan;
 use program::{MAX_ROWS, Shapes, Slots, forward_program};
 use serde_json::{Value, json};
 use split_attention::SplitAttention;
+use staged_attention::StagedAttention;
 use weights::{Block, ModelWeights};
 
 const ROPE_CHUNK_ROWS: usize = 2048;
@@ -66,6 +68,7 @@ pub(super) struct StreamForward<'m, 'w, 'ctx> {
     kernels: Functions<'m, 'ctx>,
     attention_profile: attention_profile::Profile,
     split_attention: Option<SplitAttention<'m, 'ctx>>,
+    staged_attention: Option<StagedAttention<'m, 'ctx>>,
     ab_schedule: ab_profile::Schedule,
     paired_ab: Option<PairedAb<'m, 'ctx>>,
     stream: Stream<'ctx>,
@@ -118,6 +121,10 @@ impl<'m, 'w, 'ctx> StreamForward<'m, 'w, 'ctx> {
         let split_attention = (attention_profile == attention_profile::Profile::SplitDecode)
             .then(|| SplitAttention::new(context, module, &shapes, max_rows, config.capacity))
             .transpose()?;
+        let staged_attention = attention_profile
+            .uses_staged(1)
+            .then(|| StagedAttention::new(context, module, &shapes, config.capacity))
+            .transpose()?;
         let bound = ModelWeights::bind(weights, config)?;
         let mut specs = forward_program(&shapes, max_rows)?;
         let paired_ab = PairedAb::new(ab_schedule, module, &shapes, &mut specs)?;
@@ -141,6 +148,7 @@ impl<'m, 'w, 'ctx> StreamForward<'m, 'w, 'ctx> {
             kernels,
             attention_profile,
             split_attention,
+            staged_attention,
             ab_schedule,
             paired_ab,
             stream,
@@ -165,8 +173,10 @@ impl<'m, 'w, 'ctx> StreamForward<'m, 'w, 'ctx> {
             "attention_warp_fp64_handle_resolved": self.kernels.causal_attention_warp.is_some(),
             "attention_unrolled_fp64_handle_resolved": self.kernels.causal_attention_unrolled.is_some(),
             "fp8_decode_schedule": self.kernels.fp8_decode_report(),
-            "attention_workspace_bytes": self.split_attention.as_ref().map_or(0, SplitAttention::workspace_bytes),
+            "attention_workspace_bytes": self.split_attention.as_ref().map_or(0, SplitAttention::workspace_bytes)
+                + self.staged_attention.as_ref().map_or(0, StagedAttention::workspace_bytes),
             "split_attention": self.split_attention.as_ref().map(SplitAttention::report),
+            "staged_attention": self.staged_attention.as_ref().map(StagedAttention::report),
             "ab_schedule": self.ab_schedule.name(),
             "ab_decode": self.ab_schedule.report(1, self.shapes.gdn_value_heads, self.shapes.hidden),
             "ab_max_rows": self.ab_schedule.report(self.max_rows, self.shapes.gdn_value_heads, self.shapes.hidden),
@@ -228,6 +238,9 @@ impl<'m, 'w, 'ctx> StreamForward<'m, 'w, 'ctx> {
         };
         if let Some(split) = self.split_attention.as_ref().filter(|_| step.rows <= 8) {
             split.plan(&step)?;
+        }
+        if let Some(staged) = self.staged_attention.as_ref().filter(|_| step.rows == 1) {
+            staged.plan(&step)?;
         }
         let active = self.stream.enter()?;
         let enqueued = self.enqueue(&active, &token_bytes, &session.state, &step);
@@ -302,7 +315,10 @@ impl<'m, 'w, 'ctx> StreamForward<'m, 'w, 'ctx> {
                         shapes,
                         state,
                         step,
-                        self.split_attention.as_ref(),
+                        layers::AttentionSchedules {
+                            split: self.split_attention.as_ref(),
+                            staged: self.staged_attention.as_ref(),
+                        },
                     )?;
                 }
             }
@@ -427,7 +443,7 @@ fn ensure_supported_profiles() -> Result<attention_profile::Profile> {
     let attention = attention_profile::current()?;
     ensure!(
         attention.supports_stream(),
-        "stream execution requires MESH_SPECIALIZE_ATTENTION_PROFILE=exact, split-decode, warp-fp64, or unrolled-fp64 (found {})",
+        "stream execution requires MESH_SPECIALIZE_ATTENTION_PROFILE=exact, split-decode, warp-fp64, unrolled-fp64, or staged-fp64 (found {})",
         attention.name()
     );
     ensure!(

@@ -72,6 +72,15 @@ thread-coordinate read to select four independent N tiles per CTA. Qualified
 results are recorded in the decode projection optimization entry.
 
 
+## Three-stage FP64 attention
+
+| Source symbol | Instructions / reused sites | Reference | Status |
+| --- | --- | --- | --- |
+| `attention_staged_fp64.rs:coordinates` | `%ctaid.x`, `%ctaid.y`, `%tid.x`, `%ntid.x` reads; score grid[length,24], scan grid24, value grid[24,4] | Pure fixed-geometry/overflow/workspace-prefix tests in `attention_staged_plan` | Unqualified, SM120a; [contract](findings/attention-staged-fp64.md) |
+| `attention_staged_scores_fp64` | Reuses warp local-tree and paired-word DOWN/IDX FP64 shuffles; rounded multiply and exact BF16 decode; no CTA barrier | Original attention raw FP32/BF16 bits, existing independent FP64 oracle, wide-exponent fixture | Unqualified; one score per head/key, no split/reassociated dot |
+| `attention_staged_coefficients_fp64` | Lane-zero-only ascending scan, existing explicit rounded FP64 arithmetic and unrolled exponential; f64 global stores to disjoint alpha/beta/norm regions | Strict original-control output bits; initialized-prefix/suffix and long/short/poison reuse checks | Unqualified; normalizer never parallel-associated |
+| `attention_staged_values_fp64` | Ascending-key FP64 accumulator, separate rounded mul/add/div and original output conversions; f64 coefficient loads | Same strict control/oracle gates; three stages on one stream, guards/repeats/readback | Unqualified; no per-key CTA barrier or duplicated exponentials |
+
 ## Isolated unrolled exponential
 
 | Source symbol | Instructions / reused sites | Reference | Status |

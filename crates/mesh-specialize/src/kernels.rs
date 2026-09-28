@@ -732,8 +732,20 @@ pub fn bf16_ab_decode_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json
     }
 }
 
+pub mod attention_staged_plan;
 pub mod attention_v2_plan;
 pub mod attention_warp_plan;
+
+/// Qualify the three-stage M=1 schedule; defaults to short cases and no timing.
+pub fn attention_staged_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::attention_staged_trial::run(ptx, device);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device);
+        anyhow::bail!("Staged FP64 attention qualification requires Linux")
+    }
+}
 
 /// Qualify isolated exponential delivery against original attention bits and FP64 oracle.
 pub fn attention_unrolled_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json::Value> {

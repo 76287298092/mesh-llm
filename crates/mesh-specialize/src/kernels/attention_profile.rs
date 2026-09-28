@@ -13,6 +13,8 @@ pub enum Profile {
     WarpFp64,
     /// Original CTA schedule for all rows, with exact-order unrolled exponential.
     UnrolledFp64,
+    /// Three exact-order FP64 stages for M=1; original baseline for larger chunks.
+    StagedFp64,
 }
 impl Profile {
     pub fn name(self) -> &'static str {
@@ -23,16 +25,19 @@ impl Profile {
             Self::SplitDecode => "bf16-split-decode-fp32-exact-prefill-v1",
             Self::WarpFp64 => "bf16-warp-fp64-exact-order-v1",
             Self::UnrolledFp64 => "bf16-unrolled-fp64-exact-order-v1",
+            Self::StagedFp64 => "bf16-staged-fp64-exact-order-v1",
         }
     }
-    /// Fallback kernel. Callers handle `uses_split(rows)` and M=1 warp dispatch separately.
+    /// Fallback kernel. Callers first handle split/staged multi-launch schedules.
     pub fn kernel(self) -> &'static str {
         match self {
             Self::Online => "attention_online_bf16",
             Self::UnrolledFp64 => "causal_attention_unrolled_fp64",
-            Self::Exact | Self::OnlineAudit | Self::SplitDecode | Self::WarpFp64 => {
-                "causal_attention_bf16"
-            }
+            Self::Exact
+            | Self::OnlineAudit
+            | Self::SplitDecode
+            | Self::WarpFp64
+            | Self::StagedFp64 => "causal_attention_bf16",
         }
     }
     pub fn uses_warp(self, rows: usize) -> bool {
@@ -45,13 +50,20 @@ impl Profile {
             self.kernel()
         }
     }
+    pub fn uses_staged(self, rows: usize) -> bool {
+        self == Self::StagedFp64 && rows == 1
+    }
     pub fn uses_split(self, rows: usize) -> bool {
         self == Self::SplitDecode && (1..=8).contains(&rows)
     }
     pub fn supports_stream(self) -> bool {
         matches!(
             self,
-            Self::Exact | Self::SplitDecode | Self::WarpFp64 | Self::UnrolledFp64
+            Self::Exact
+                | Self::SplitDecode
+                | Self::WarpFp64
+                | Self::UnrolledFp64
+                | Self::StagedFp64
         )
     }
     pub fn is_audit(self) -> bool {
@@ -66,8 +78,9 @@ fn parse(value: Option<&str>) -> Result<Profile> {
         Some("split-decode") => Ok(Profile::SplitDecode),
         Some("warp-fp64") => Ok(Profile::WarpFp64),
         Some("unrolled-fp64") => Ok(Profile::UnrolledFp64),
+        Some("staged-fp64") => Ok(Profile::StagedFp64),
         _ => bail!(
-            "MESH_SPECIALIZE_ATTENTION_PROFILE must be exact, online, online-audit, split-decode, warp-fp64, or unrolled-fp64"
+            "MESH_SPECIALIZE_ATTENTION_PROFILE must be exact, online, online-audit, split-decode, warp-fp64, unrolled-fp64, or staged-fp64"
         ),
     }
 }
@@ -167,7 +180,31 @@ mod tests {
     }
 
     #[test]
-    fn stream_admits_exact_split_decode_warp_or_unrolled() {
+    fn staged_is_explicit_single_row_and_preserves_all_other_profiles() {
+        let profile = parse(Some("staged-fp64")).unwrap();
+        assert_eq!(profile.name(), "bf16-staged-fp64-exact-order-v1");
+        assert!(profile.uses_staged(1));
+        for rows in [0, 2, 5, 17, 128, 512, 2048] {
+            assert!(!profile.uses_staged(rows));
+            assert_eq!(profile.kernel_for_rows(rows), "causal_attention_bf16");
+        }
+        for old in [
+            Profile::Exact,
+            Profile::Online,
+            Profile::OnlineAudit,
+            Profile::SplitDecode,
+            Profile::WarpFp64,
+            Profile::UnrolledFp64,
+        ] {
+            assert!(!old.uses_staged(1));
+        }
+        assert!(!profile.uses_warp(1) && !profile.uses_split(1) && !profile.is_audit());
+        assert_eq!(parse(None).unwrap(), Profile::Exact);
+    }
+
+    #[test]
+    fn stream_admits_exact_split_decode_warp_unrolled_or_staged() {
+        assert!(Profile::StagedFp64.supports_stream());
         assert!(Profile::UnrolledFp64.supports_stream());
         assert!(Profile::WarpFp64.supports_stream());
         assert!(Profile::Exact.supports_stream());

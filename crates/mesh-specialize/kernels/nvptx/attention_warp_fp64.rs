@@ -27,7 +27,7 @@ fn coordinates() -> (u32, u32, u32) {
 
 /// Original tree strides 128, 64, 32, then shuffle strides 16 through 1.
 #[inline(always)]
-fn local_tree(p: [f64; 8]) -> f64 {
+pub(super) fn local_tree(p: [f64; 8]) -> f64 {
     add_rn(
         add_rn(add_rn(p[0], p[4]), add_rn(p[2], p[6])),
         add_rn(add_rn(p[1], p[5]), add_rn(p[3], p[7])),
@@ -36,7 +36,7 @@ fn local_tree(p: [f64; 8]) -> f64 {
 
 #[allow(named_asm_labels)]
 #[inline(always)]
-fn warp_dot(local: f64) -> f64 {
+pub(super) fn warp_dot(local: f64) -> f64 {
     let result: f64;
     // SAFETY: All 32 lanes execute both word shuffles uniformly. The full-warp
     // mask and clamp match the control reduction. Broadcast lane zero's result.
