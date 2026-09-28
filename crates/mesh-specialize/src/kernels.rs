@@ -589,3 +589,14 @@ pub fn a16_head_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json::Valu
         anyhow::bail!("A16 head qualification requires Linux")
     }
 }
+
+/// Compare the tiled NVFP4 pipeline against independent arithmetic and native control.
+pub fn nvfp4_pipeline_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::nvfp4_pipeline_trial::run(ptx, device);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device);
+        anyhow::bail!("NVFP4 pipeline qualification requires Linux")
+    }
+}

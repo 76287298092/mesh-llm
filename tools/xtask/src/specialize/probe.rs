@@ -93,3 +93,7 @@ pub(super) fn greedy(args: &[String]) -> DynResult<()> {
 pub(super) fn a16_head(args: &[String]) -> DynResult<()> {
     run_probe(args, mesh_specialize::kernels::a16_head_trial)
 }
+
+pub(super) fn nvfp4_pipeline(args: &[String]) -> DynResult<()> {
+    run_probe(args, mesh_specialize::kernels::nvfp4_pipeline_trial)
+}

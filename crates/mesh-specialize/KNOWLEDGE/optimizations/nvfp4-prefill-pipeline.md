@@ -99,3 +99,32 @@ Both expected entry symbols are present. PTX declares local storage,40bytes for
 A16 and144bytes for NVFP4; these are virtual PTX declarations, not measured JIT
 register/spill/resource usage. GPU qualification and resident integration remain
 pending. Existing baseline PTX remains retained separately.
+
+## Bounded operator trial source
+
+Added `src/kernels/cuda/nvfp4_pipeline_trial.rs` against parent-provided HEAD
+`2e5f77d2f`. The worker ran only rustfmt, not Cargo, CUDA, or remote commands.
+The parent reported host tests, Clippy and PTX compilation of the earlier
+candidate; this new trial still needs parent registration, build and execution.
+
+`run(ptx, device)` loads both symbols and records device, JIT log and resources
+for each. Nineteen deterministic cases total 11,302,912 scalar products, below
+the enforced 25-million-product budget. The shape list includes M1,17,31,32,33,
+128,512 and N8,24,32,40, with K64,128,192 and selected small-M/N K5120 and
+K17408 cases. One-hot K192 inputs expose every E2M1 code across 16 columns.
+Dense signed dyadic cases have exactly represented sums and scales; general
+cases vary finite E4M3 scales over rows and 16-value groups. K192 and long-K
+cases exercise shared-slot reuse. Both symbols receive the same uploaded
+codes/scales and factor 1.0. CPU oracle Matrix globals are both exactly 1.0.
+
+Frozen admission requires finite outputs and stored BF16 equal to RNE of raw
+FP32 for both symbols. Exact cases require raw/BF16 bit equality with the scalar
+oracle. General cases require BF16 normalized L2 at most 0.01 and raw maximum
+absolute error divided by max of 1 and maximum absolute oracle value at most
+1e-4. Every case additionally requires candidate raw/BF16 bit equality with the
+old native kernel. The JSON preserves numerical failures as `all_passed:false`,
+including comparison counts, mismatch counts and errors. Nonfinite output
+invalidates a case and its error metrics are null. CUDA/API failures return
+errors; failed launches explicitly drain before buffers drop. Outputs begin as
+quiet NaN poison. This is operator qualification source without timing or model
+claims, and does not resolve the existing native-versus-integer arithmetic audit.
