@@ -381,9 +381,9 @@ struct RunQuantWindowArgs {
 
 #[derive(Debug, Parser, Clone)]
 struct QuantRunnerArgs {
-    #[arg(long, value_enum, default_value_t = BackendKind::LlamaApi)]
+    #[arg(long, value_enum, default_value_t = BackendKind::SkippyAbi)]
     backend: BackendKind,
-    /// Optional dynamic llama.cpp runtime libraries for development builds.
+    /// Optional Skippy native runtime libraries for dynamic builds.
     ///
     /// The normal skippy-quantize build statically links the pinned llama.cpp
     /// quantization ABI and does not require this flag.
@@ -625,20 +625,6 @@ pub(crate) fn prepare_quant_runner(runner: QuantRunnerArgs) -> Result<QuantRunne
     Ok(runner)
 }
 
-pub(crate) fn quant_backend_path(runner: &QuantRunnerArgs) -> Option<&Path> {
-    match runner.backend {
-        BackendKind::LlamaApi => runner
-            .native_runtime_libraries
-            .first()
-            .map(PathBuf::as_path),
-        BackendKind::NativeRust => None,
-        BackendKind::SkippyAbi => runner
-            .native_runtime_libraries
-            .first()
-            .map(PathBuf::as_path),
-    }
-}
-
 fn init_quant(args: InitQuantArgs) -> Result<()> {
     let manifest = quant_manifest_from_args(&args)?;
     write_manifest(&args.manifest, &manifest)
@@ -655,7 +641,7 @@ fn quant_job(args: QuantJobArgs) -> Result<()> {
             Some((&args.init.source, &args.init.source_prefix)),
             None,
             runner.backend,
-            quant_backend_path(&runner),
+            &runner.native_runtime_libraries,
             args.run.json,
         );
     }
@@ -880,7 +866,7 @@ fn convert_job(args: ConvertJobArgs) -> Result<()> {
             None,
             None,
             runner.backend,
-            None,
+            &[],
             args.run.json,
         );
     }
@@ -1006,7 +992,7 @@ pub(crate) fn run_convert_window_once_with_manifest(
         BackendKind::NativeRust => {
             build_native_convert_command(&runner, manifest, &output_prefix, window)
         }
-        BackendKind::LlamaApi | BackendKind::SkippyAbi => {
+        BackendKind::SkippyAbi => {
             unreachable!("unsupported convert backend checked earlier")
         }
     };
@@ -1083,7 +1069,7 @@ pub(crate) fn run_convert_window_once_with_manifest(
         BackendKind::NativeRust => {
             run_native_convert(&runner, manifest, window, &plan.output_prefix)?
         }
-        BackendKind::LlamaApi | BackendKind::SkippyAbi => {
+        BackendKind::SkippyAbi => {
             unreachable!("unsupported convert backend checked earlier")
         }
     };
@@ -1239,7 +1225,7 @@ pub(crate) fn run_quant_window_once_with_manifest(
     );
     let output_prefix = output_root.join(format!("{}.gguf", manifest.output_basename));
     let command = match runner.backend {
-        BackendKind::LlamaApi | BackendKind::SkippyAbi => build_native_quantize_command(
+        BackendKind::SkippyAbi => build_native_quantize_command(
             &runner,
             manifest,
             &staged_first_shard,
@@ -1312,7 +1298,7 @@ pub(crate) fn run_quant_window_once_with_manifest(
     event_reporter.record("native quantization started")?;
     event_reporter.write_now()?;
     let status = match runner.backend {
-        BackendKind::LlamaApi | BackendKind::SkippyAbi => run_native_quantize(
+        BackendKind::SkippyAbi => run_native_quantize(
             &runner,
             manifest,
             &plan.staged_first_shard,

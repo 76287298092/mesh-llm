@@ -29,7 +29,7 @@ struct JobPreflight {
     requested_window: Option<ProgressWindow>,
     next_requested_window: Option<ProgressWindow>,
     backend_kind: String,
-    backend_path: Option<PathBuf>,
+    backend_paths: Vec<PathBuf>,
     backend_ready: bool,
     backend_error: Option<String>,
 }
@@ -46,7 +46,7 @@ pub fn run_job_preflight(
     source_split: Option<(&Path, &str)>,
     requested_window: Option<SplitWindow>,
     backend_kind: BackendKind,
-    backend_path: Option<&Path>,
+    backend_paths: &[PathBuf],
     json: bool,
 ) -> Result<()> {
     ensure_backend_supported(manifest.kind, backend_kind)?;
@@ -63,7 +63,7 @@ pub fn run_job_preflight(
     let next_requested_window = requested_window.and_then(|requested| {
         next_missing_window_in_range(&target_progress.missing_ranges, requested)
     });
-    let backend_check = check_backend_ready(backend_kind, backend_path);
+    let backend_check = check_backend_ready(backend_kind, backend_paths);
     let report = JobPreflight {
         kind: manifest.kind,
         manifest_path: manifest_path.to_path_buf(),
@@ -90,7 +90,7 @@ pub fn run_job_preflight(
         requested_window: requested_window.map(ProgressWindow::from),
         next_requested_window: next_requested_window.map(ProgressWindow::from),
         backend_kind: backend_kind.as_str().to_string(),
-        backend_path: backend_path.map(Path::to_path_buf),
+        backend_paths: backend_paths.to_vec(),
         backend_ready: backend_check.ready,
         backend_error: backend_check.error,
     };
@@ -103,9 +103,15 @@ pub fn run_job_preflight(
         report.backend_ready,
         "backend is not ready for {}: {} ({})",
         backend_kind.as_str(),
-        backend_path
-            .map(|path| path.display().to_string())
-            .unwrap_or_else(|| "<missing>".to_string()),
+        if backend_paths.is_empty() {
+            "<missing>".to_string()
+        } else {
+            backend_paths
+                .iter()
+                .map(|path| path.display().to_string())
+                .collect::<Vec<_>>()
+                .join(", ")
+        },
         report
             .backend_error
             .as_deref()
@@ -122,10 +128,9 @@ struct BackendReady {
     error: Option<String>,
 }
 
-fn check_backend_ready(backend_kind: BackendKind, backend_path: Option<&Path>) -> BackendReady {
+fn check_backend_ready(backend_kind: BackendKind, backend_paths: &[PathBuf]) -> BackendReady {
     match backend_kind {
-        BackendKind::LlamaApi => check_llama_quant_runtime_ready(backend_path),
-        BackendKind::SkippyAbi => check_skippy_runtime_ready(backend_path),
+        BackendKind::SkippyAbi => check_skippy_runtime_ready(backend_paths),
         BackendKind::NativeRust => BackendReady {
             ready: true,
             error: None,
@@ -133,43 +138,20 @@ fn check_backend_ready(backend_kind: BackendKind, backend_path: Option<&Path>) -
     }
 }
 
-fn check_llama_quant_runtime_ready(backend_path: Option<&Path>) -> BackendReady {
-    check_runtime_ready(
-        backend_path,
-        llama_quant_ffi::native_runtime_loaded,
-        |libraries| unsafe { llama_quant_ffi::load_native_runtime_libraries(libraries) },
-    )
-}
-
-fn check_skippy_runtime_ready(backend_path: Option<&Path>) -> BackendReady {
-    check_runtime_ready(
-        backend_path,
-        skippy_ffi::native_runtime_loaded,
-        |libraries| unsafe { skippy_ffi::load_native_runtime_libraries(libraries) },
-    )
-}
-
-fn check_runtime_ready<LoadError>(
-    backend_path: Option<&Path>,
-    loaded: impl Fn() -> bool,
-    load: impl FnOnce(&[PathBuf; 1]) -> Result<(), LoadError>,
-) -> BackendReady
-where
-    LoadError: std::fmt::Display,
-{
-    if loaded() {
+fn check_skippy_runtime_ready(backend_paths: &[PathBuf]) -> BackendReady {
+    if skippy_ffi::native_runtime_loaded() {
         return BackendReady {
             ready: true,
             error: None,
         };
     }
-    let Some(path) = backend_path else {
+    if backend_paths.is_empty() {
         return BackendReady {
             ready: false,
             error: Some("native runtime library path is missing".to_string()),
         };
-    };
-    if !path.is_file() {
+    }
+    if let Some(path) = backend_paths.iter().find(|path| !path.is_file()) {
         return BackendReady {
             ready: false,
             error: Some(format!(
@@ -178,8 +160,7 @@ where
             )),
         };
     }
-    let libraries = [path.to_path_buf()];
-    match load(&libraries) {
+    match unsafe { skippy_ffi::load_native_runtime_libraries(backend_paths) } {
         Ok(()) => BackendReady {
             ready: true,
             error: None,
@@ -305,21 +286,30 @@ mod tests {
 
     #[test]
     fn native_rust_backend_is_ready_without_path() {
-        let ready = check_backend_ready(BackendKind::NativeRust, None);
+        let ready = check_backend_ready(BackendKind::NativeRust, &[]);
 
         assert!(ready.ready);
         assert!(ready.error.is_none());
     }
 
     #[test]
+    #[cfg(feature = "dynamic-skippy-runtime")]
     fn native_runtime_backend_rejects_missing_or_invalid_library() {
-        let missing = check_backend_ready(BackendKind::SkippyAbi, None);
+        let missing = check_backend_ready(BackendKind::SkippyAbi, &[]);
         let executable = std::env::current_exe().unwrap();
-        let invalid_library = check_backend_ready(BackendKind::SkippyAbi, Some(&executable));
+        let invalid_library = check_backend_ready(BackendKind::SkippyAbi, &[executable]);
 
         assert!(!missing.ready);
         assert!(missing.error.unwrap().contains("missing"));
         assert!(!invalid_library.ready);
         assert!(invalid_library.error.is_some());
+    }
+
+    #[test]
+    #[cfg(not(feature = "dynamic-skippy-runtime"))]
+    fn linked_native_runtime_is_ready_without_path() {
+        let ready = check_backend_ready(BackendKind::SkippyAbi, &[]);
+        assert!(ready.ready);
+        assert!(ready.error.is_none());
     }
 }

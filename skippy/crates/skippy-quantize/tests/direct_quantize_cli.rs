@@ -31,7 +31,7 @@ fn direct_quantize_preflight_reports_requested_window_for_native_backends() {
         .args([
             "quantize",
             "--backend",
-            "llama-api",
+            "skippy-abi",
             "--preflight-only",
             "--json",
             "--keep-split",
@@ -78,7 +78,7 @@ fn direct_quantize_preflight_supports_current_directory_no_output_shape() {
         .args([
             "quantize",
             "--backend",
-            "llama-api",
+            "skippy-abi",
             "--preflight-only",
             "--json",
             "model.gguf",
@@ -91,8 +91,11 @@ fn direct_quantize_preflight_supports_current_directory_no_output_shape() {
     let report: serde_json::Value = serde_json::from_str(&stdout)
         .unwrap_or_else(|err| panic!("parse preflight JSON: {err}\n{stdout}"));
 
-    assert_eq!(report["backend_kind"], "llama-api");
-    assert_eq!(report["backend_ready"], true);
+    assert_eq!(report["backend_kind"], "skippy-abi");
+    assert_eq!(
+        report["backend_ready"],
+        !cfg!(feature = "dynamic-skippy-runtime")
+    );
     assert_eq!(report["source_complete"], true);
     assert_eq!(report["expected_source_shards"], 1);
     assert_eq!(report["next_window"]["first_split"], 1);
@@ -119,7 +122,7 @@ fn direct_quantize_preflight_accepts_base_quant_with_tensor_file() {
         .args([
             "quantize",
             "--backend",
-            "llama-api",
+            "skippy-abi",
             "--tensor-type-file",
             "tensor-types.txt",
             "--preflight-only",
@@ -155,7 +158,7 @@ fn direct_quantize_preflight_rejects_profile_quant_label() {
         .args([
             "quantize",
             "--backend",
-            "llama-api",
+            "skippy-abi",
             "--preflight-only",
             "--json",
             "model.gguf",

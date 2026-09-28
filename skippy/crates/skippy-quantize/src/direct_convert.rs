@@ -98,7 +98,7 @@ pub(crate) fn run_direct_convert(args: DirectConvertArgs) -> Result<()> {
             None,
             None,
             runner.backend,
-            None,
+            &[],
             args.json,
         );
     }

@@ -7,7 +7,7 @@ The script has two independent checks:
   convert_hf_to_gguf.py and with `skippy-quantize convert`, then compare GGUF
   tensor names, shapes, types, and payload bytes.
 * quantization: quantize a BF16/FP16 GGUF with standalone `llama-quantize` and
-  with `skippy-quantize quantize --backend llama-api` for every requested quant
+  with `skippy-quantize quantize --backend skippy-abi` for every requested quant
   mode, then require byte-identical split outputs.
 
 It intentionally records failures instead of stopping at the first unsupported
@@ -255,7 +255,7 @@ def run_quant(
         str(args.skippy_quantize),
         "quantize",
         "--backend",
-        "llama-api",
+        "skippy-abi",
         "--no-stage-source",
         "--no-verify-on-complete",
         "--work-dir",

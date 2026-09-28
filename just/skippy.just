@@ -43,7 +43,7 @@ skippy-quantize-release-build:
     @just with-lld cargo build --release --locked -p skippy-quantize
 
 # Build skippy-quantize as a standalone quantization binary with the pinned
-# llama.cpp quantization ABI linked into the executable.
+# Skippy native ABI linked into the executable.
 [unix]
 skippy-quantize-standalone-build backend="cpu":
     scripts/prepare-llama.sh pinned

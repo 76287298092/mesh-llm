@@ -60,7 +60,7 @@ common_args=(
   --tensor-type-file "$recipe"
   --window-size 1
   --manifest "$manifest"
-  --backend llama-api
+  --backend skippy-abi
   --work-dir "$work_dir"
   --spool-dir "$spool_dir"
   --record-dir "$record_dir"

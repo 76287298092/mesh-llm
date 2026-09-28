@@ -11,7 +11,7 @@ use crate::types::QuantSpec;
 use crate::verify::print_verify_on_complete;
 use crate::{
     InitQuantArgs, QuantRunnerArgs, RunQuantArgs, RunQuantWindowArgs, VerifyLoadArgs,
-    prepare_quant_runner, quant_backend_path, quant_manifest_from_args, run_quant_unlocked,
+    prepare_quant_runner, quant_manifest_from_args, run_quant_unlocked,
     run_quant_window_once_with_manifest,
 };
 
@@ -96,7 +96,7 @@ pub(crate) fn run_direct_quantize(args: DirectQuantizeArgs) -> Result<()> {
             Some((&manifest_args.source, &manifest_args.source_prefix)),
             window_override,
             runner.backend,
-            quant_backend_path(&runner),
+            &runner.native_runtime_libraries,
             args.json,
         );
     }
@@ -427,7 +427,7 @@ mod tests {
         let args = DirectQuantizeArgs::try_parse_from([
             "skippy-quantize quantize",
             "--backend",
-            "llama-api",
+            "skippy-abi",
             "--keep-split",
             "--first-split",
             "3",
@@ -444,11 +444,23 @@ mod tests {
     }
 
     #[test]
+    fn rejects_retired_llama_api_backend() {
+        let result = DirectQuantizeArgs::try_parse_from([
+            "skippy-quantize quantize",
+            "--backend",
+            "llama-api",
+            "/repo/model.gguf",
+            "Q4_K",
+        ]);
+        assert!(result.is_err());
+    }
+
+    #[test]
     fn manual_split_window_rejects_first_or_last_without_keep_split() {
         let args = DirectQuantizeArgs::try_parse_from([
             "skippy-quantize quantize",
             "--backend",
-            "llama-api",
+            "skippy-abi",
             "--last-split",
             "3",
             "/repo/model-00001-of-00005.gguf",
@@ -471,7 +483,7 @@ mod tests {
         let args = DirectQuantizeArgs::try_parse_from([
             "skippy-quantize quantize",
             "--backend",
-            "llama-api",
+            "skippy-abi",
             "--keep-split",
             "--first-split",
             "4",

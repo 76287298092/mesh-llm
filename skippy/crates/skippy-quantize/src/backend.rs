@@ -19,7 +19,6 @@ pub struct BackendArgs {
 #[derive(Debug, Serialize)]
 pub struct BackendCapabilities {
     pub native_rust: NativeRustCapabilities,
-    pub llama_api: LlamaApiCapabilities,
     pub skippy_abi: SkippyAbiCapabilities,
 }
 
@@ -29,14 +28,6 @@ pub struct NativeRustCapabilities {
     pub llama_quantize: bool,
     pub resumable_windows: bool,
     pub low_residency_streaming: bool,
-    pub reason: String,
-}
-
-#[derive(Debug, Serialize)]
-pub struct LlamaApiCapabilities {
-    pub convert_hf_to_gguf: bool,
-    pub llama_quantize: bool,
-    pub runtime_loaded: bool,
     pub reason: String,
 }
 
@@ -53,16 +44,6 @@ pub struct SkippyAbiCapabilities {
 
 pub fn capabilities(skippy_runtime_libraries: &[PathBuf]) -> BackendCapabilities {
     let skippy_abi = skippy_abi_capabilities(skippy_runtime_libraries);
-    let llama_api = LlamaApiCapabilities {
-        convert_hf_to_gguf: false,
-        llama_quantize: llama_quant_ffi::native_runtime_loaded(),
-        runtime_loaded: llama_quant_ffi::native_runtime_loaded(),
-        reason: if llama_quant_ffi::native_runtime_loaded() {
-            "linked or loaded llama quant runtime exposes llama_model_quantize".to_string()
-        } else {
-            "no linked llama quant runtime and no native runtime library was loaded for llama API probing".to_string()
-        },
-    };
     BackendCapabilities {
         native_rust: NativeRustCapabilities {
             convert_hf_to_gguf: true,
@@ -71,7 +52,6 @@ pub fn capabilities(skippy_runtime_libraries: &[PathBuf]) -> BackendCapabilities
             low_residency_streaming: true,
             reason: "Rust SafeTensors-to-GGUF writer streams tensor payloads and materializes one split window per run".to_string(),
         },
-        llama_api,
         skippy_abi,
     }
 }
@@ -89,14 +69,6 @@ pub fn run_backends(args: BackendArgs) -> Result<()> {
             "native-rust: resumable_windows={} low_residency_streaming={}",
             capabilities.native_rust.resumable_windows,
             capabilities.native_rust.low_residency_streaming
-        ));
-        print_success(format!(
-            "llama-api quantization: {}",
-            bool_word(capabilities.llama_api.llama_quantize)
-        ));
-        print_info(format!(
-            "llama-api runtime: {}",
-            bool_word(capabilities.llama_api.runtime_loaded)
         ));
         if capabilities.skippy_abi.runtime_loaded {
             print_success("skippy-abi runtime loaded");
@@ -167,7 +139,6 @@ fn skippy_abi_reason(runtime_loaded: bool, feature_mask: Option<u64>) -> String 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum BackendKind {
     NativeRust,
-    LlamaApi,
     SkippyAbi,
 }
 
@@ -175,7 +146,6 @@ impl BackendKind {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::NativeRust => "native-rust",
-            Self::LlamaApi => "llama-api",
             Self::SkippyAbi => "skippy-abi",
         }
     }
@@ -193,7 +163,7 @@ pub fn ensure_convert_backend(kind: BackendKind) -> Result<()> {
 
 pub fn ensure_quant_backend(kind: BackendKind) -> Result<()> {
     ensure!(
-        matches!(kind, BackendKind::LlamaApi | BackendKind::SkippyAbi),
+        matches!(kind, BackendKind::SkippyAbi),
         "backend {} cannot quantize GGUFs yet: {}",
         kind.as_str(),
         capabilities(&[]).skippy_abi.reason
@@ -237,16 +207,27 @@ mod tests {
     #[test]
     fn reports_current_backend_capabilities() {
         let capabilities = capabilities(&[]);
+        assert!(
+            serde_json::to_value(&capabilities)
+                .unwrap()
+                .get("llama_api")
+                .is_none()
+        );
         assert!(capabilities.native_rust.convert_hf_to_gguf);
         assert!(!capabilities.native_rust.llama_quantize);
-        assert!(!capabilities.llama_api.convert_hf_to_gguf);
-        assert!(capabilities.llama_api.llama_quantize);
-        assert!(capabilities.llama_api.runtime_loaded);
         assert!(!capabilities.skippy_abi.convert_hf_to_gguf);
-        assert!(!capabilities.skippy_abi.llama_quantize);
-        assert!(!capabilities.skippy_abi.runtime_loaded);
-        assert_eq!(capabilities.skippy_abi.feature_mask, None);
-        assert!(!capabilities.skippy_abi.model_introspection);
+        assert_eq!(
+            capabilities.skippy_abi.runtime_loaded,
+            !cfg!(feature = "dynamic-skippy-runtime")
+        );
+        assert_eq!(
+            capabilities.skippy_abi.llama_quantize,
+            capabilities.skippy_abi.runtime_loaded
+        );
+        assert_eq!(
+            capabilities.skippy_abi.feature_mask.is_some(),
+            capabilities.skippy_abi.runtime_loaded
+        );
         assert_eq!(capabilities.skippy_abi.load_error, None);
         assert!(capabilities.skippy_abi.reason.contains("Skippy"));
     }
