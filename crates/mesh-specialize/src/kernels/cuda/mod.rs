@@ -28,6 +28,8 @@ mod launch_profile;
 mod mlp_prepared_chain;
 mod mlp_prepared_projection;
 mod mlp_workspace_views;
+pub(super) mod nvfp4_decode_prmt_entry;
+mod nvfp4_decode_prmt_trial;
 mod nvfp4_exact_trial;
 pub(super) mod projections;
 pub(super) mod residency;

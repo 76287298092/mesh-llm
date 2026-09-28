@@ -4,6 +4,7 @@ pub mod ab_schedule;
 pub mod attention_profile;
 pub mod fp8_decode_schedule;
 pub mod fp8_profile;
+pub mod nvfp4_decode_schedule;
 pub mod nvfp4_profile;
 #[cfg(any(test, target_os = "linux"))]
 mod partition_audit;
@@ -691,6 +692,32 @@ pub fn nvfp4_pipeline_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json
     {
         let _ = (ptx, device);
         anyhow::bail!("NVFP4 pipeline qualification requires Linux")
+    }
+}
+
+/// Check the PRMT expansion candidate against unchanged decode and the independent oracle.
+pub fn nvfp4_prmt_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::nvfp4_decode_prmt_entry::synthetic(ptx, device);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device);
+        anyhow::bail!("NVFP4 PRMT qualification requires Linux")
+    }
+}
+
+/// Check verified layer-zero MLP weights without the legacy whole-model CPU reference.
+pub fn nvfp4_prmt_real_trial(
+    artifact: &std::path::Path,
+    ptx: &str,
+    device: i32,
+) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::nvfp4_decode_prmt_entry::real(artifact, ptx, device);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (artifact, ptx, device);
+        anyhow::bail!("NVFP4 PRMT real-weight qualification requires Linux")
     }
 }
 

@@ -127,7 +127,7 @@ impl<'m, 'ctx> Functions<'m, 'ctx> {
             fp8_verify_exact: get("fp8_verify_exact")?,
             fp8_prefill_exact: get("fp8_prefill_exact")?,
             nvfp4_quantize: get("nvfp4_quantize_bf16")?,
-            nvfp4_decode_exact: get("nvfp4_decode_exact")?,
+            nvfp4_decode_exact: get(crate::kernels::nvfp4_decode_schedule::current()?.kernel())?,
             nvfp4_linear: get("nvfp4_linear")?,
             bf16_linear_decode: get("bf16_linear_decode")?,
             causal_conv4: get("causal_conv4_bf16")?,

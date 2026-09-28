@@ -43,6 +43,8 @@ pub mod reference;
 #[path = "../reference/nvfp4_quantize.rs"]
 pub mod nvfp4_quantize_reference;
 
+#[path = "../reference/nvfp4_decode_prmt.rs"]
+pub mod nvfp4_decode_prmt_reference;
 #[path = "../reference/nvfp4_linear.rs"]
 pub mod nvfp4_linear_reference;
 

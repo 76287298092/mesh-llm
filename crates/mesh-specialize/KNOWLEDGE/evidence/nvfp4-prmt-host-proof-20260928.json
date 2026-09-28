@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "status": "implemented and registered; host semantic proof only; GPU and whole-model qualification pending",
+  "date": "2026-09-28",
+  "coordinator_checkpoint_reported": "aac74c4c5",
+  "revision_independently_verified": false,
+  "constraints": "No Cargo, Git, SSH, GPU, or delegation performed. Existing KB files and prefill kernels untouched.",
+  "baseline_ptx_sha256": "e95e42c8b2c43e0ef391b1469340d853505668b62976f5c99ca3b9f4b04c26a0",
+  "baseline_kernel_source_sha256": "a6beeaf9177d67477256bc4fd3033a77cb5b0c436a937546ad97a3834ee9bf81",
+  "source_sha256": {
+    "kernels/nvptx/nvfp4_decode_prmt.rs": "39d135647f12e420dbdc7bc6b0668b4aad0ef8035e396ba4ea7f2b2ed1660164",
+    "reference/nvfp4_decode_prmt.rs": "0df60d0b6e4e5366e2580a1703c460763b4ee007ac01883f2b5ec3505b72a8e9",
+    "src/kernels/cuda/nvfp4_decode_prmt_trial.rs": "51f5e97fbf3758ac14478729413354b2c2f11f9563b2d195674888e21226ef51",
+    "src/kernels/nvfp4_decode_schedule.rs": "cdc83b8ac45ad50b45a08f68bfabc659492c4f2b9c94d65f6f5f4e3db0632948",
+    "src/kernels/cuda/nvfp4_decode_prmt_entry.rs": "71b7e0cda7f8d124428a69116ceee590d6471ae585438c9469afde3b243f2d14",
+    "../../tools/xtask/src/specialize/nvfp4_prmt.rs": "f095139684f19a5607ae1ce4893c7940830f09692d08f0dd95620963d357cf6b"
+  },
+  "baseline_static_ptx_sites": {
+    "shr.u64": 32,
+    "dp4a.s32.s32": 4,
+    "prmt.b32": 0,
+    "ld.global.b32": 4,
+    "qualification": "Static PTX sites, not SASS instructions or measured latency. Scalar matches already became a 64-bit register LUT."
+  },
+  "candidate_abi": {
+    "symbol": "nvfp4_decode_exact_prmt",
+    "arguments_in_order": ["a:*const u8", "w:*const u8", "sa:*const u8", "sw:*const u8", "out:*mut u16", "unrounded:*mut f32", "m:u32", "n:u32", "k:u32", "global_factor:f32"],
+    "grid": "[ceil(n/4),1,1]",
+    "block": [128,1,1],
+    "dynamic_shared_bytes": 0,
+    "domain": "m=1; n=1..32768; k=16..32768, multiple of 16; packed low-nibble-first A/W, four-byte aligned; unsigned scales 0..126; six disjoint live buffers; positive finite global factor"
+  },
+  "proof": {
+    "independent_python_semantic_check_passed": true,
+    "four_nibble_controls": 65536,
+    "halfword_and_hostile_neighbour_combinations": 524288,
+    "explicit_negative_zero_neighbour_cases": 192,
+    "counterexample_without_zero_sign_suppression": "control 0x8888 incorrectly gives 0x01010100; corrected algorithm gives zero",
+    "argument": "LUT bytes give unsigned magnitudes 0,1,2,3,4,6,8,12. A nibble-local OR marks nonzero low-three-bit magnitude. Only nonzero negative codes select sign replication. PRMT of 0x80 bytes yields 0x80 or 0xff; low-bit isolation and multiplication by 255 produce independent per-byte masks. Complement(m)+1 for m=1..12 lies in 244..255, so packed addition cannot carry across bytes. Positive and signed-zero bytes add zero.",
+    "source_comparison_passed": "Kernel body, group loads, group-dot DP4A sequence and coordinate helper match unchanged control exactly. Only pack helper and exported name differ in executable source.",
+    "rust_tests_executed": false,
+    "rust_formatting": "rustfmt 1.9.0-stable, edition 2024; new files formatted, shared edits checked without rewriting unrelated code"
+  },
+  "trial_matrix_prepared_not_executed": {
+    "synthetic_fixtures": 253,
+    "synthetic_unique_outputs": 1065802,
+    "exhaustive_gpu_weight_controls": "2 batches x 32768 controls x 16 one-hot basis positions. All four weight pack calls observed independently.",
+    "gpu_activation_control_coverage": "Not exhaustive four-nibble controls. All 16 scalar code pairs and irregular/signed-zero fixtures; shared pack helper exhaustively modeled on host.",
+    "scale_pairs": 16129,
+    "tail_n": [1,3,4,5,13,17,33],
+    "k": [16,32,48,80,496,512,528,1024,5120,17408,32768],
+    "extrema": "K32768, maximum finite scales and magnitudes, positive/negative/cancelling rows, negative zero and negative-zero neighbours",
+    "real_weights": "Verified resident layer-zero gate_proj N17408/K5120 and down_proj N5120/K17408; source tensor metadata and hashes emitted. No imported kernel code or new container parser.",
+    "real_activation": "Deterministic synthetic BF16, existing independent quantizer, actual input global scale. Not claimed to be a captured model activation.",
+    "control_comparison": "All raw FP32 and BF16 bits, every synthetic and real output",
+    "fp64_oracle": "Existing nvfp4_linear_reference. All synthetic outputs; 257 evenly spaced channels per real shape, including first and last. Exact sampled indices emitted. Both unchanged control and candidate must match.",
+    "guards_and_repeats": "64-byte input/output guards; three different candidate poison patterns; control/candidate recheck after optional timing; full input payload immutability checks; finite FP32/BF16 checks",
+    "largest_real_case_extra_device_bytes": 50243136,
+    "timing": "Opt-in only, three warmups each and five alternating-order single-launch event samples per kernel. Operators only, never model throughput.",
+    "required_parent_gates": ["Rust tests and Clippy", "NVPTX compile and candidate PTX/SASS inspection", "GPU component comparisons", "memcheck", "racecheck", "synccheck", "actual artifact whole-model identity and state checks", "repeated before/after whole-model timings"]
+  },
+  "bounded_entrypoints": {
+    "synthetic": "xtask specialize nvfp4-prmt-check --ptx PATH --device ORDINAL --output NEW_FILE",
+    "real": "xtask specialize nvfp4-prmt-real-check --artifact PATH --ptx PATH --device ORDINAL --output NEW_FILE",
+    "trial_environment_required": false,
+    "native_source_path": "ModelArtifact::open -> schedule::text_objects -> layer-zero MLP filter -> ResidentWeights::load and verify -> run_real. No conversion or whole-model CPU reference.",
+    "residency_cap_bytes": 167772160,
+    "required_additional_free_headroom_bytes": 134217728,
+    "report_writer": "Existing xtask probe writer: exclusive create, PTX SHA256, persistent errors, unsuccessful report gives nonzero exit",
+    "legacy_hook_limit": "qwen-model-check retains the opt-in hook for legacy mspec only; native sources must use the explicit real-check command",
+    "validation": "Six parent-reported reference style lints fixed; targeted formatting/static checks pass. Parent must rerun Linux Clippy and compile the new entrypoints."
+  },
+  "opt_ins": {
+    "MESH_SPECIALIZE_NVFP4_DECODE_SCHEDULE": "baseline (default) or prmt; legacy, workspace, prepared, and stream decode only",
+    "MESH_SPECIALIZE_NVFP4_DECODE_TRIAL": "1 enables the legacy mspec model-check hook; default false. Not needed for explicit standalone commands, which also support native artifacts.",
+    "MESH_SPECIALIZE_NVFP4_DECODE_TRIAL_TIMING": "1 enables bounded real operator timing; default false"
+  },
+  "asm_inventory_pending_parent_merge": [
+    {"site":"kernels/nvptx/nvfp4_decode_prmt.rs:pack_e2m1x4", "instructions":"two generic prmt.b32 per expansion; eight calls per group imply sixteen PRMT sites if fully inlined", "reference":"reference/nvfp4_decode_prmt.rs logical signed table and exhaustive semantic proof", "status":"source only, emitted candidate assembly not inspected"},
+    {"site":"kernels/nvptx/nvfp4_decode_prmt.rs:lane_warp_tile", "instructions":"mov.u32 laneid/tid.x/ctaid.x", "reference":"unchanged baseline ownership and tail rules", "status":"copied unchanged"},
+    {"site":"kernels/nvptx/nvfp4_decode_prmt.rs:dp4a_s32", "instructions":"dp4a.s32.s32", "reference":"existing independent FP64 oracle, same four-call integer dot", "status":"copied unchanged"},
+    {"site":"inherited fp8_linear_exact and nvfp4_linear helpers", "instructions":"integer scaling/reduction, i64 conversion, FP32 multiplies, BF16 store", "reference":"existing independent NVFP4 linear oracle", "status":"unchanged, no new arithmetic sites"}
+  ],
+  "candidate_gpu_resources": null,
+  "candidate_gpu_timing": null,
+  "whole_model_timing": null,
+  "claimed_speedup": null
+}

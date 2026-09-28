@@ -11,6 +11,7 @@ mod model_profile;
 mod model_score;
 mod mtp;
 mod ninfer_inspect;
+mod nvfp4_prmt;
 mod observations;
 mod probe;
 mod stream_check;
@@ -45,6 +46,8 @@ pub(crate) fn run(args: &[String]) -> DynResult<()> {
         [command, rest @ ..] if command == "baseline" => baseline::run(rest),
         [command, rest @ ..] if command == "baseline-plan" => fixtures::run(rest),
         [command, rest @ ..] if command == "nvfp4-probe" => probe::run(rest),
+        [command, rest @ ..] if command == "nvfp4-prmt-check" => nvfp4_prmt::synthetic(rest),
+        [command, rest @ ..] if command == "nvfp4-prmt-real-check" => nvfp4_prmt::real(rest),
         [command, rest @ ..] if command == "attention-v2-check" => probe::attention_v2(rest),
         [command, rest @ ..] if command == "attention-warp-check" => probe::attention_warp(rest),
         [command, rest @ ..] if command == "feature-attention-check" => {

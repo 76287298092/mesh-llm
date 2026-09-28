@@ -105,6 +105,19 @@ pub(in crate::kernels) fn run(
         "insufficient model trial memory"
     );
     let weights = ResidentWeights::load(&context, artifact, objects)?;
+    let nvfp4_prmt_real = if super::nvfp4_decode_prmt_trial::enabled()? {
+        let mut report = super::nvfp4_decode_prmt_trial::run_real(&context, &module, &weights)?;
+        report["entrypoint_scope"] = json!(
+            "legacy mspec model-check hook only; native sources use nvfp4-prmt-real-check without a whole-model CPU reference"
+        );
+        if report["all_passed"] != true {
+            return Ok(json!({"all_passed":false,"full_model_executed":false,
+                "nvfp4_exact_probe":nvfp4_exact_probe,"nvfp4_prmt_real":report}));
+        }
+        report
+    } else {
+        Value::Null
+    };
     if let Some(diagnostic) = &reference.diagnostic {
         let mut report = super::resident_layer_diagnostic::run(
             &context,
@@ -116,6 +129,7 @@ pub(in crate::kernels) fn run(
         )?;
         report["activation_probe"] = activation_probe;
         report["bf16_probe"] = bf16_probe;
+        report["nvfp4_prmt_real"] = nvfp4_prmt_real;
         return Ok(report);
     }
     let model = Model::new(&weights, config)?;
@@ -185,6 +199,9 @@ pub(in crate::kernels) fn run(
     Ok(
         json!({"schema_version":1,"kind":"qwen-resident-full-model-correctness","device":info,"tokens":reference.tokens,"layers":layers,"logits":logits,"activation_probe":activation_probe,"bf16_probe":bf16_probe,"fp8_exact_probe":fp8_exact_probe,"nvfp4_tail_probes":nvfp4_tail_probes,"nvfp4_exact_probe":nvfp4_exact_probe,"attention_probes":attention_probes,
         "selected_token":output.token,"reference_token":expected_token,"greedy_token_exact":output.token==expected_token,
+        "nvfp4_prmt_real":nvfp4_prmt_real,
+        "nvfp4_decode_schedule":crate::kernels::nvfp4_decode_schedule::current()?.name(),
+        "nvfp4_decode_kernel":crate::kernels::nvfp4_decode_schedule::current()?.kernel(),
         "whole_vs_token_logits_and_state_bit_exact":partition_exact,"prefix_committed_correctly":prefix_correct,"failed_session_reuse_rejected":poison_rejected,
         "all_passed":layers.iter().all(|r|r["all_passed"]==true)&&logits["all_passed"]==true&&output.token==expected_token&&partition_exact&&prefix_correct&&poison_rejected&&after.0>=before.0,
         "full_model_executed":true,"model_layers_executed":config.layers.len(),"weight_arena_bytes":layout.bytes,"state_arena_bytes":config.state_layout.bytes,

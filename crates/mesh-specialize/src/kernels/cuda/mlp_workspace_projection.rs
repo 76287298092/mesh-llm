@@ -100,11 +100,11 @@ impl Binding<'_, '_> {
             Arithmetic::Fp8 if rows >= 4 => ("fp8_linear_exact4", 4, 4, 128, None),
             Arithmetic::Fp8 => ("fp8_linear_exact", 1, 4, 128, None),
             Arithmetic::Nvfp4 { factor, .. } => {
-                let s = crate::kernels::nvfp4_profile::current()?.schedule(
+                let s = crate::kernels::nvfp4_decode_schedule::projection(
                     rows,
                     self.channels,
                     self.width,
-                );
+                )?;
                 (
                     s.kernel,
                     s.tile_rows,

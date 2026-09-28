@@ -119,6 +119,7 @@ mod nvfp4_quantize;
 
 mod nvfp4_decode;
 mod nvfp4_decode_exact;
+mod nvfp4_decode_prmt;
 mod nvfp4_linear;
 mod nvfp4_prefill_tiled;
 mod nvfp4_prefill_wide;

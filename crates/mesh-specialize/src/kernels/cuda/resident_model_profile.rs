@@ -199,6 +199,8 @@ pub(in crate::kernels) fn run(
     let mut report = json!({
         "attention_profile":crate::kernels::attention_profile::current()?.name(),
         "nvfp4_profile":crate::kernels::nvfp4_profile::current()?.name(),
+        "nvfp4_decode_schedule":crate::kernels::nvfp4_decode_schedule::current()?.name(),
+        "nvfp4_decode_kernel":crate::kernels::nvfp4_decode_schedule::current()?.kernel(),
         "attention_audit":attention_audit,
         "nvfp4_projection_audit":nvfp4_audit,
         "gpu_selection_check": gpu_selection_check,

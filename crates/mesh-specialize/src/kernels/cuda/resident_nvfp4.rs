@@ -105,7 +105,7 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
         let channels_u32 = u32::try_from(self.channels)?;
         let quantize = module.function("nvfp4_quantize_bf16")?;
         let schedule =
-            crate::kernels::nvfp4_profile::current()?.schedule(rows, self.channels, self.width);
+            crate::kernels::nvfp4_decode_schedule::projection(rows, self.channels, self.width)?;
         let linear = module.function(schedule.kernel)?;
         let activation = ActivationBuffers::new(context, &extents)?;
         let output = Buffer::new(context, extents.output_bytes)?;

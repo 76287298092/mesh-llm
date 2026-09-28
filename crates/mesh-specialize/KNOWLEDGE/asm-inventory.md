@@ -331,3 +331,15 @@ order, round-before-norm boundary, alias contract and the nine-case harness.
 Host tests and Rust PTX compilation pass; GPU qualification is pending.
 
 Native-consumer qualification update: direct-source-1 and native-final-checks-1 pass all nine parameter cases, same-source model checks and three sanitizers. Racecheck used forced synchronization. All1589 canonical source and GPU tensor hashes match independent evidence; old raw-mspec33-step regression also passes. See optimizations/direct-ninfer-source.md for bounds and source/PTX pins.
+
+## Exact NVFP4 PRMT decode candidate
+
+`nvfp4_decode_exact_prmt` changes only E2M1 packed expansion in the existing
+integer-group-dot schedule. Two generic `prmt.b32` instructions per expansion;
+coordinate reads and four DP4A group instructions retain the control contract.
+Integer scale/reduction and FP32/BF16 epilogue use existing inventoried helpers.
+Independent reference/proof: `reference/nvfp4_decode_prmt.rs`; 65,536 controls,
+524,288 halfword/neighbour combinations and explicit negative-zero cases.
+Exact ABI, bounds and proof hashes are in evidence/nvfp4-prmt-host-proof-20260928.json.
+Host tests, Linux-target Clippy and Just PTX compilation pass; GPU/resource/model
+qualification is pending. Default remains baseline.

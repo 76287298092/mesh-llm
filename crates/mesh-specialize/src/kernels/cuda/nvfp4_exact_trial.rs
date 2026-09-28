@@ -31,6 +31,9 @@ impl CaseCounts {
 }
 
 pub(super) fn run(ctx: &Context, module: &Module<'_>) -> Result<Value> {
+    if super::nvfp4_decode_prmt_trial::enabled()? {
+        return super::nvfp4_decode_prmt_trial::run(ctx, module);
+    }
     let mut code_counts = CaseCounts::default();
     let weights = (0..16_u8)
         .flat_map(|code| [code | (code << 4); 8])

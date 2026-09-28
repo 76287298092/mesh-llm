@@ -73,11 +73,14 @@ impl<'module, 'w, 'ctx> Prepared<'module, 'w, 'ctx> {
         } else {
             nvfp4_profile::Profile::Baseline
         };
-        let plan = Plan::new(
+        let mut plan = Plan::new(
             [rows, binding.channels, binding.width],
             quantization,
             profile,
         )?;
+        if rows == 1 && plan.linear == crate::kernels::nvfp4_decode_schedule::BASELINE_KERNEL {
+            plan.linear = crate::kernels::nvfp4_decode_schedule::current()?.kernel();
+        }
         Ok(Self {
             context: ctx,
             _owner: binding.owner,

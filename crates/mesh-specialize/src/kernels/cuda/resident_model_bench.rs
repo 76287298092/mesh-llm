@@ -149,6 +149,8 @@ pub(in crate::kernels) fn run(
         "arithmetic_profile": crate::kernels::fp8_profile::current()?.name(),
         "attention_profile":crate::kernels::attention_profile::current()?.name(),
         "nvfp4_profile":crate::kernels::nvfp4_profile::current()?.name(),
+        "nvfp4_decode_schedule":crate::kernels::nvfp4_decode_schedule::current()?.name(),
+        "nvfp4_decode_kernel":crate::kernels::nvfp4_decode_schedule::current()?.kernel(),
         "ab_schedule":crate::kernels::ab_schedule::current()?.name(),
         "ab_prompt_shape":crate::kernels::ab_schedule::current()?.report(request.tokens.len(), config.gdn_shape.value_heads, config.gdn_shape.hidden),
         "ab_decode_shape":crate::kernels::ab_schedule::current()?.report(1, config.gdn_shape.value_heads, config.gdn_shape.hidden),
