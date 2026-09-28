@@ -161,3 +161,8 @@ fn requirement_state_reads_coherent_snapshot() {
 fn concurrent_requirement_state_installs_do_not_overwrite() {
     assert_concurrent_requirement_state_installs_do_not_overwrite();
 }
+
+#[test]
+fn private_reset_retires_old_members_and_invites() {
+    assert_private_reset_retires_old_members_and_invites();
+}
