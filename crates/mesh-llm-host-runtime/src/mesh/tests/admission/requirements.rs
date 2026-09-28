@@ -1473,3 +1473,99 @@ fn write_genesis_policy(home: &std::path::Path, signed: &crate::SignedMeshGenesi
     )
     .expect("write policy");
 }
+
+/// Tray "Reset settings" proof: retiring the four private mesh-state files while
+/// KEEPING the owner key yields a new mesh; old members and old invites are rejected,
+/// a fresh invite from the same owner admits a new node.
+pub(crate) fn assert_private_reset_retires_old_members_and_invites() {
+    let temp = tempfile::tempdir().expect("temp home");
+    let _home = HomeGuard::set(temp.path());
+    let mesh_dir = temp.path().join(".mesh-llm");
+    std::fs::create_dir_all(&mesh_dir).expect("mesh dir");
+    let origin = node_with_requirement_owner(requirement_policy_without_release_attestation());
+    let owner = requirement_policy_owner();
+
+    let old = origin.load_or_create_signed_genesis_policy().expect("old policy");
+    for name in ["mesh-id", "last-mesh", "mesh-adopted-membership.json"] {
+        std::fs::write(mesh_dir.join(name), b"old-state").expect("seed state");
+    }
+    std::thread::sleep(std::time::Duration::from_millis(5));
+    // The tray's retire(): exactly these four files.
+    for name in ["mesh-id", "mesh-genesis-policy.json", "mesh-adopted-membership.json", "last-mesh"] {
+        std::fs::remove_file(mesh_dir.join(name)).expect("retire");
+    }
+    let new = origin.load_or_create_signed_genesis_policy().expect("new policy");
+
+    let old_id = old.policy.policy_derived_mesh_id().unwrap();
+    let old_hash = old.policy.canonical_hash_hex().unwrap();
+    let new_id = new.policy.policy_derived_mesh_id().unwrap();
+    let new_hash = new.policy.canonical_hash_hex().unwrap();
+    eprintln!("RESET-PROOF old mesh_id={old_id} hash={old_hash}");
+    eprintln!("RESET-PROOF new mesh_id={new_id} hash={new_hash}");
+    assert_eq!(old.policy.origin_owner_id, new.policy.origin_owner_id, "owner preserved");
+    assert_ne!(old_id, new_id, "(a) reset must produce a new mesh id");
+    assert_ne!(old_hash, new_hash);
+
+    let runtime = tokio::runtime::Runtime::new().expect("tokio runtime");
+    runtime.block_on(async {
+        let host = make_test_node(super::super::NodeRole::Host { http_port: 9337 })
+            .await
+            .expect("host");
+        configure_requirement_node(&host, &new.policy, None).await.expect("host policy");
+
+        // (b) old member presenting old-mesh admission is rejected.
+        let old_member = requirement_peer_announcement(
+            0x71,
+            &old.policy,
+            None,
+            Some(direct_proof_for_announcement(0x71, &old_id, &old_hash, None)),
+        );
+        host.add_peer(old_member.addr.id, old_member.addr.clone(), &old_member, Some(NODE_PROTOCOL_GENERATION)).await;
+        // control: a member of the NEW mesh with the same shape is admitted.
+        let new_member = requirement_peer_announcement(
+            0x72,
+            &new.policy,
+            None,
+            Some(direct_proof_for_announcement(0x72, &new_id, &new_hash, None)),
+        );
+        host.add_peer(new_member.addr.id, new_member.addr.clone(), &new_member, Some(NODE_PROTOCOL_GENERATION)).await;
+        let peers = host.state.lock().await.peers.clone();
+        let old_admitted = is_peer_admitted(&peers, &old_member.addr.id);
+        let new_admitted = is_peer_admitted(&peers, &new_member.addr.id);
+        let reasons: Vec<_> = host.recent_mesh_requirement_rejections().await.into_iter().map(|r| r.reason).collect();
+        eprintln!("RESET-PROOF old_member_admitted={old_admitted} new_member_admitted={new_admitted} rejections={reasons:?}");
+        assert!(!old_admitted, "(b) old member must not enter the new mesh");
+        assert!(new_admitted, "control: new-mesh member admitted");
+        assert!(reasons.contains(&crate::MeshRequirementRejectReason::MeshPolicyMismatch));
+
+        // (c) real join over the wire: old invite fails, fresh invite succeeds.
+        host.start_accepting();
+        let addr = serde_json::to_vec(&host.endpoint_addr_for_advertisement()).unwrap();
+        let old_invite = super::super::encode_signed_bootstrap_token(
+            &crate::SignedBootstrapToken::sign(vec![addr], &old, Some(current_time_unix_ms() + 60_000), &owner)
+                .expect("old invite"),
+        );
+        let stale = make_test_node_with_requirements(super::super::NodeRole::Worker, new.policy.requirements.clone())
+            .await
+            .expect("stale joiner");
+        stale.start_accepting();
+        let stale_result = tokio::time::timeout(std::time::Duration::from_secs(10), stale.join(&old_invite)).await;
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+        let host_peers = host.state.lock().await.peers.clone();
+        let stale_admitted = is_peer_admitted(&host_peers, &stale.id());
+        eprintln!("RESET-PROOF old_invite_join={:?} host_admitted_stale={stale_admitted}", stale_result.as_ref().map(|r| r.as_ref().map(|_| ()).map_err(|e| e.to_string())));
+        assert!(!stale_admitted, "(c) invite minted before reset must not admit to the new mesh");
+
+        let fresh = make_test_node_with_requirements(super::super::NodeRole::Worker, new.policy.requirements.clone())
+            .await
+            .expect("fresh joiner");
+        fresh.start_accepting();
+        let new_invite = host.invite_token().await;
+        let fresh_result = tokio::time::timeout(std::time::Duration::from_secs(10), fresh.join(&new_invite)).await;
+        eprintln!("RESET-PROOF new_invite_join={:?}", fresh_result.as_ref().map(|r| r.as_ref().map(|_| ()).map_err(|e| e.to_string())));
+        wait_for_peer(&host, fresh.id()).await;
+        let fresh_admitted = is_peer_admitted(&host.state.lock().await.peers.clone(), &fresh.id());
+        eprintln!("RESET-PROOF host_admitted_fresh={fresh_admitted}");
+        assert!(fresh_admitted, "(c) fresh invite admits a new node");
+    });
+}
