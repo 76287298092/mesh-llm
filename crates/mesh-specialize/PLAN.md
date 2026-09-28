@@ -503,3 +503,13 @@ All arithmetic differences listed in `KNOWLEDGE/findings/ninfer-import-contract.
 remain explicit. No direct-file model correctness or throughput is established
 by the host checks alone. Shared-GPU claims and earlier invalid host-overhead/
 converter-provenance inferences were corrected in the knowledge entries.
+
+## Worktree recovery, September 28
+
+Archive cleanup removed the managed ninfer-performance checkout during this session.
+Snapshot 81e7f0eb20cb6c08e20aa30bb571842f2b3e2a47 preserved all 12 pending files
+on parent 9b627a3d61629132625b9a7c985f70d6beffa351. They were restored byte-for-byte
+as uncommitted changes at /Users/ndizazzo/dev/worktrees/ninfer-direct-runtime,
+on the same codex/issue-1393-feasibility branch. The primary checkout was not
+modified. Carrack retained the tested commit and raw qualification evidence.
+Use this new local path; the managed ninfer-performance path is now stale.

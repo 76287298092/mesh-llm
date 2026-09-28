@@ -47,6 +47,15 @@ pub(in crate::kernels) fn run(
     );
     let module = Module::load(&context, ptx)?;
     let weights = ResidentWeights::load(&context, artifact, objects)?;
+    // Diagnostic-only: verify transport/layout before either executor uses the
+    // weights. This is outside per-step timings and not in the benchmark path.
+    let weight_readback = weights.verify()?;
+    if weight_readback.iter().any(|item| item["matches"] != true) {
+        return Ok(
+            json!({"all_passed": false, "kind": "stream-forward-weight-readback-failure",
+            "weight_readback": weight_readback}),
+        );
+    }
     let model = Model::new(&weights, config)?;
     let stream = StreamForward::new(&weights, &module, config, request.tokens.len())?;
     let harness = Harness {
@@ -78,6 +87,8 @@ pub(in crate::kernels) fn run(
         "nvfp4_profile": nvfp4_profile::current()?.name(),
         "legacy_gpu_greedy": crate::kernels::cuda::model_greedy::enabled()?,
         "stream_forward": stream.report(),
+        "weight_readback": weight_readback,
+        "weight_readback_scope": "All resident tensor bytes; excluded from forward timings",
         "configured_capacity": config.capacity,
         "prompt_token_ids": request.tokens,
         "prompt_tokens": request.tokens.len(),

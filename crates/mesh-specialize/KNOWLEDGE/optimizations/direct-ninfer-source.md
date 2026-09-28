@@ -140,3 +140,25 @@ opening, device qualification, and subsequent evidence. Source revision: current
 uncommitted parent worktree; not queried. GPU driver/toolchain/clocks and
 performance before/after: not measured. No arithmetic parity, speedup, quality,
 long-context, or production-serving claim is made.
+
+## First direct-file qualification, September 28
+
+At `9b627a3d6`, independent Rust inspection matches all 845 selected physical
+object hashes against the official-reader export. Nine synthetic GPU parameter
+cases pass. Both 106-input/two-decode-step and 512-input/two-decode-step same-source
+legacy/stream checks pass complete state and BF16-logit identity. Three repetitions
+of 256 fixed outputs measure stream decode26.48/18.16 tok/s, respectively; these
+are not Ninfer throughput parity. No EOS token occurs in those generated runs.
+
+The 49,148-position, four-domain 512/256 scoring campaign passes its sampled
+independent scorer/head checks. Native-file control mean NLL1.62073568 versus
+Ninfer BF16-KV1.620777 is a corpus-level comparison, not full arithmetic parity.
+Both services were restored. Raw evidence: target/specialize/reassess-20260927/
+direct-source-1 on Carrack; compact durable evidence follows after qualification.
+
+Follow-up diagnostics add independent NumPy canonical-plane hashing and complete
+GPU resident-weight readback before stream-check execution. These do not change
+inference arithmetic or timed benchmark execution. `ninfer-inspect --canonical`
+exposes the virtual tensor hashes for cross-checking. Tests cover the reference
+transformations independently. Full canonical cross-check/readback and bounded
+native-file sanitizers are still pending at this checkpoint.
