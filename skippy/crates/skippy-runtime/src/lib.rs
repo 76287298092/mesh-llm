@@ -24,7 +24,9 @@ mod session;
 mod stage_planning;
 mod types;
 
-pub use activation::{DecodeFrameBatchRequest, IterationBatchPhase, IterationBatchRequest};
+pub use activation::{
+    DecodeFrameBatchRequest, IterationBatchPhase, IterationBatchRequest, PartialBatchExecution,
+};
 pub use capability_probe::{CapabilityReport, probe_capabilities};
 pub use checkpoint::{CheckpointQuantization, is_safetensors_checkpoint};
 pub use config::{
@@ -46,7 +48,9 @@ pub use logging::{
     write_native_log_note,
 };
 pub use media::{SpeechAudio, SpeechOutputFormat, SpeechSynthesisConfig};
-pub use native::{ModelWorkload, PoolingType, StageModel, StageModelReader, WorkloadInfo};
+pub use native::{
+    ModelWorkload, PoolingType, StageModel, StageModelReader, SystemOneReadSlot, WorkloadInfo,
+};
 pub use native_mtp::NativeMtpDraft;
 pub use native_test_evidence::write_evidence_marker;
 pub use ngram::{Cache as NgramCache, NGRAM_CACHE_MAX_NGRAM};
@@ -78,8 +82,8 @@ pub use types::{
     ChatTemplateMessage, ChatTemplateOptions, DecodeFrameBatchOutput, DrySamplingConfig,
     GenerationSignalWindow, IterationBatchOutput, IterationSample, LoadedModelCapability,
     LogitBias, MAX_LOGIT_BIAS, MediaInput, MediaPrefill, MediaPrefillChunkFrame, MediaPrefillFrame,
-    ModelStateKind, RuntimeKvPage, RuntimeKvPageDesc, SamplingConfig, TensorInfo, TokenSignal,
-    XtcSamplingConfig,
+    ModelStateKind, ReasoningBudget, RuntimeKvPage, RuntimeKvPageDesc, SamplingConfig, TensorInfo,
+    TokenSignal, XtcSamplingConfig,
 };
 
 #[cfg(feature = "dynamic-native-runtime")]

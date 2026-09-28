@@ -22,6 +22,7 @@ pub(super) async fn maybe_discover_join_candidates(
     options: &mut RuntimeOptions,
     has_startup_models: bool,
     auto_join_candidates: &mut Vec<(String, Option<String>)>,
+    host_ram_offload: bool,
 ) -> Result<()> {
     // Ask the resolver rather than `options.join`: a token that lives only in
     // a file is still a configured token, and discovery must not run over it.
@@ -37,7 +38,10 @@ pub(super) async fn maybe_discover_join_candidates(
         options.mesh_name = Some(name.clone());
     }
 
-    let my_vram_gb = mesh::detect_vram_bytes_capped(options.max_vram) as f64 / 1e9;
+    // Plan the model a new mesh starts with on what this node can hold without
+    // spilling into RAM, the same budget as the local fit and the capacity
+    // the node advertises, unless the owner opted into host-RAM offload.
+    let my_vram_gb = mesh::detect_local_fit_bytes(options.max_vram, host_ram_offload) as f64 / 1e9;
     let target_name = options.mesh_name.clone();
 
     match options.mesh_discovery_mode {
@@ -933,17 +937,32 @@ pub(crate) async fn run_plugin_mcp(options: &RuntimeOptions) -> Result<()> {
     join_mesh_for_mcp(options, &node).await?;
 
     let (plugin_mesh_tx, plugin_mesh_rx) = tokio::sync::mpsc::channel(256);
-    let plugin_manager =
-        plugin::PluginManager::start(&resolved_plugins, plugin_host_mode(options), plugin_mesh_tx)
-            .await?;
+    #[cfg(feature = "payments")]
+    let in_process = crate::network::payments::in_process_plugins(&node);
+    #[cfg(not(feature = "payments"))]
+    let in_process = plugin::InProcessPlugins::default();
+    let plugin_manager = plugin::PluginManager::start_with_in_process(
+        &resolved_plugins,
+        plugin_host_mode(options),
+        plugin_mesh_tx,
+        in_process,
+    )
+    .await?;
     node.set_plugin_manager(plugin_manager.clone()).await;
+    #[cfg(feature = "payments")]
+    crate::network::payments::spawn_payment_recovery(&node).await;
     node.start_plugin_channel_forwarder(plugin_mesh_rx);
 
     if plugin_manager.list().await.is_empty() {
         tracing::warn!("No plugins are enabled for MCP exposure");
     }
 
-    plugin::mcp::run_mcp_server(plugin_manager).await
+    let serving = plugin::mcp::run_mcp_server(plugin_manager).await;
+    // The recovery loop holds a `Node` clone, so stop it here rather than
+    // leaving it to poll behind a runtime that has already returned.
+    #[cfg(feature = "payments")]
+    node.shutdown_payment_recovery().await;
+    serving
 }
 
 pub use super::discovery::nostr_relays;

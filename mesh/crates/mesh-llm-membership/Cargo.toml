@@ -19,6 +19,7 @@ host-io = ["mesh-llm-identity/host-io", "dep:rand", "dep:dirs", "dep:tokio"]
 # client) never observe the env-var override in production code. Implies
 # `host-io` because `identity_persistence` is feature-gated behind it.
 test-support = ["host-io"]
+payments = ["dep:mesh-llm-payments-types"]
 
 [dependencies]
 # Neutral Mesh identity/routing primitives — no Skippy, no host-runtime.
@@ -28,6 +29,7 @@ mesh-llm-identity = { path = "../mesh-llm-identity", version = "0.76.1", default
 mesh-llm-protocol = { path = "../mesh-llm-protocol", version = "0.76.1" }
 mesh-llm-routing = { path = "../mesh-llm-routing", version = "0.76.1" }
 mesh-llm-types = { path = "../mesh-llm-types", version = "0.76.1" }
+mesh-llm-payments-types = { path = "../mesh-llm-payments-types", version = "0.76.1", optional = true }
 
 iroh = { version = "1.0.3", default-features = false, features = ["metrics", "fast-apple-datapath", "portmapper", "tls-aws-lc-rs"] }
 

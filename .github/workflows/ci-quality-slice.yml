@@ -290,15 +290,49 @@ jobs:
           allow_native_github_cache: ${{ needs.runner_policy.outputs.allow_native_github_cache }}
       - name: Resolve protected Clippy package names
         id: packages
-        uses: Mesh-LLM/mesh-llm/.github/actions/resolve-cargo-packages@38d63b2f6e27998034fdf0452150c7cc081fe921 # product-layout compatibility helpers
+        uses: Mesh-LLM/mesh-llm/.github/actions/resolve-cargo-packages@196eba4c21f9b445d0bf11f7938f87e799dd7c8c # product-layout compatibility helpers
         with:
           # Switch with the protected workspace package rename, not PR source.
           generation: current
           crates: ${{ toJson(matrix.batch.crates) }}
           batches: ${{ inputs.clippy_matrix }}
+      - name: Resolve planned batch crates against the checked-out workspace
+        id: resolve_batch_crates
+        env:
+          PLANNED_BATCH_CRATES: ${{ steps.packages.outputs.crates }}
+        run: |
+          set -euo pipefail
+          # The protected planner names these packages in its own generation, so
+          # the translation step above has already mapped them to this revision's
+          # owners. Filtering here matches renamed owners too, because workspace
+          # membership is decided by the tree that is actually checked out.
+          # The batch is planned from the default branch's crate inventory while
+          # this job builds the revision under test. A branch that predates a
+          # workspace member added on the default branch would otherwise abort
+          # the whole batch with "package ID specification <crate> did not match
+          # any packages". Workspace discovery belongs to Cargo metadata, not a
+          # workflow-maintained allowlist, so resolve the planned batch against
+          # the tree that is actually checked out exactly once. The build step
+          # below consumes this resolved list so skip decisions cannot drift.
+          mapfile -t requested < <(jq -r '.[]' <<<"$PLANNED_BATCH_CRATES")
+          crates=("${requested[@]}")
+          if [[ "${#requested[@]}" -gt 0 ]] && cargo metadata --no-deps --format-version 1 > "$RUNNER_TEMP/workspace-metadata.json"; then
+            jq -r '.packages[].name' "$RUNNER_TEMP/workspace-metadata.json" > "$RUNNER_TEMP/workspace-members.txt"
+            crates=()
+            for crate in "${requested[@]}"; do
+              if grep -qxF -- "$crate" "$RUNNER_TEMP/workspace-members.txt"; then
+                crates+=("$crate")
+              else
+                echo "::warning::batch plans $crate, which is not a workspace member of the checked-out revision; skipping it"
+              fi
+            done
+          elif [[ "${#requested[@]}" -gt 0 ]]; then
+            echo "::warning::cargo metadata failed; running the planned batch unchanged"
+          fi
+          printf 'crates=%s\n' "$(jq -cn --args '$ARGS.positional' ${crates[@]+"${crates[@]}"})" >> "$GITHUB_OUTPUT"
       - name: Run one Clippy invocation for the batch
         env:
-          CLIPPY_CRATES: ${{ steps.packages.outputs.crates }}
+          CLIPPY_CRATES: ${{ steps.resolve_batch_crates.outputs.crates }}
         run: |
           set -euo pipefail
           mapfile -t crates < <(jq -r '.[]' <<<"$CLIPPY_CRATES")
@@ -339,7 +373,7 @@ jobs:
           persist-credentials: false
       - name: Resolve product source layout
         id: layout
-        uses: Mesh-LLM/mesh-llm/.github/actions/resolve-source-layout@38d63b2f6e27998034fdf0452150c7cc081fe921 # product-layout compatibility helpers
+        uses: Mesh-LLM/mesh-llm/.github/actions/resolve-source-layout@196eba4c21f9b445d0bf11f7938f87e799dd7c8c # product-layout compatibility helpers
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24.20.0
@@ -356,6 +390,8 @@ jobs:
         working-directory: ${{ steps.layout.outputs.website_dir }}
         run: npm ci
       - name: Verify generated CLI inventory is deterministic and current
+        env:
+          MESH_LLM_WEBSITE_DIR: ${{ steps.layout.outputs.website_dir }}
         run: just cli-inventory-check
 
   # Explicit diagnostic exception: this no-checkout job attests the

@@ -378,6 +378,11 @@ should_skip_initial_dry_run() {
 }
 
 publish_crates=(
+    mesh-llm-plugin
+    mesh-llm-wallet
+    mesh-wallet-lexe
+    mesh-llm-payments-types
+    mesh-llm-payments
     mesh-llm-identity
     skippy-events
     skippy-tokenizer
@@ -387,7 +392,6 @@ publish_crates=(
     mesh-llm-types
     mesh-llm-membership
     skippy-guardrails
-    mesh-llm-plugin
     mesh-native-serving-plugin-api
     mesh-llm-skills
     skippy-gpu-bench
@@ -409,6 +413,7 @@ publish_crates=(
     mesh-llm-runtime-event-contracts
     mesh-llm-log-store
     mesh-llm-build-info
+    mesh-llm-analytics
     mesh-llm-release-footer
     skippy-native-runtime
     mesh-llm-config

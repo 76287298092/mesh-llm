@@ -79,6 +79,8 @@ pub struct NativeRuntimeManifestOptions {
 pub struct NativeRuntimeInstallOptions {
     pub catalog: NativeRuntimeCatalog,
     pub release_version: String,
+    /// Override the required ABI. Otherwise installs for the current MeshLLM
+    /// version use the compiled ABI; other versions use the catalog's ABI.
     pub skippy_abi_version: Option<String>,
     pub selection: RuntimeSelection,
     pub manifest_path: Option<PathBuf>,

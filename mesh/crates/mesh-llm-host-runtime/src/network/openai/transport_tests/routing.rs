@@ -113,6 +113,8 @@ pub(super) fn test_peer_serving_model(peer_id: iroh::EndpointId, model: &str) ->
         stage_status_list_supported: false,
         local_gguf_content_id_supported: false,
         advertised_model_throughput: vec![],
+        #[cfg(feature = "payments")]
+        lightning_offers: Default::default(),
         cache_affinity: None,
         display_rtt: None,
         selected_path: None,
@@ -235,6 +237,7 @@ fn test_remote_retry_policy_only_retries_uncommitted_failures() {
             status_code: 200,
             usage: None,
             cache_cost: None,
+            output_digests: Default::default(),
         }
     ));
 }
@@ -712,6 +715,7 @@ async fn named_model_route_records_prompt_shape_from_usage() -> Result<()> {
                 completion_tokens: Some(5),
                 ..Default::default()
             },
+            output_digests: Default::default(),
         },
         &election::InferenceTarget::Local(9337),
     );

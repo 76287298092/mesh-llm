@@ -164,7 +164,7 @@ pub(crate) use mesh_llm_membership::{is_global_ipv4_candidate, is_public_ipv4_ca
     reason = "public compatibility re-export for existing mesh node callers"
 )]
 pub use node::{
-    LocalRequestMetricsSnapshot, Node, RouteEntry, RoutingTable, detect_vram_bytes_capped,
+    LocalRequestMetricsSnapshot, Node, RouteEntry, RoutingTable, detect_local_fit_bytes,
 };
 pub(crate) use node::{PeerDownReport, peer_down_endpoint_id};
 pub(crate) use peer_state::{
@@ -206,3 +206,6 @@ pub(crate) mod tests;
 
 #[cfg(test)]
 mod public_identity_tests;
+
+#[cfg(feature = "payments")]
+mod payments;

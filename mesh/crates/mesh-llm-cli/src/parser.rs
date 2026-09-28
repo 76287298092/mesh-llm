@@ -5,14 +5,14 @@ mod runtime_surface_help;
 mod validation;
 
 pub use commands::{
-    AuthCommand, BinaryFlavor, Cli, Command, ConfigCommand, DiscoveryScope, DoctorCommand,
-    GpuCommand, MeshDiscoveryMode, MeshGuardrailCliMode, PluginCommand, SkillAgentArg,
-    SkillCommand, TrustCommand, TrustPolicy,
+    AnalyticsCommand, AuthCommand, BinaryFlavor, Cli, Command, ConfigCommand, DiscoveryScope,
+    DoctorCommand, GpuCommand, MeshDiscoveryMode, MeshGuardrailCliMode, PluginCommand,
+    SkillAgentArg, SkillCommand, TrustCommand, TrustPolicy,
 };
 pub use logging_help::logging_help;
 pub use normalization::{
     NormalizedRuntimeArgs, RuntimeSurface, legacy_runtime_surface_warning,
-    normalize_runtime_surface_args,
+    normalize_runtime_surface_args, raw_args_invoke_analytics,
 };
 pub use runtime_surface_help::runtime_surface_help;
 pub use validation::validate_discovery_mode_args;
@@ -205,6 +205,30 @@ mod tests {
                         ..
                     },
             } => assert_eq!(source_repo, "unsloth/inkling-GGUF:UD-Q2_K_XL"),
+            other => panic!("unexpected command: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn models_package_parses_generation_defaults_file() {
+        let cli = Cli::parse_from([
+            "mesh-llm",
+            "models",
+            "package",
+            "unsloth/Qwen3.5-9B-GGUF:Q4_K_M",
+            "--generation-defaults",
+            "qwen35-generation.json",
+            "--dry-run",
+        ]);
+
+        match cli.command.expect("models command expected") {
+            Command::Models {
+                command:
+                    ModelsCommand::Package {
+                        generation_defaults: Some(path),
+                        ..
+                    },
+            } => assert_eq!(path, std::path::PathBuf::from("qwen35-generation.json")),
             other => panic!("unexpected command: {other:?}"),
         }
     }

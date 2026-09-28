@@ -9,6 +9,7 @@ set -euo pipefail
 # Hardcoded workspace members (fallback for fail-open)
 WORKSPACE_MEMBERS=(
   "mesh-llm"
+  "mesh-llm-analytics"
   "mesh-llm-build-info"
   "mesh-llm-cli"
   "mesh-llm-commands"
@@ -22,6 +23,10 @@ WORKSPACE_MEMBERS=(
   "mesh-llm-identity"
   "mesh-llm-log-store"
   "skippy-native-runtime"
+  "mesh-llm-payments"
+  "mesh-llm-payments-types"
+  "mesh-llm-wallet"
+  "mesh-wallet-lexe"
   "mesh-llm-protocol"
   "mesh-llm-transport"
   "mesh-llm-membership"
@@ -255,7 +260,8 @@ EOF
   local -a test_crates=()
 
   for file in "${changed_files[@]}"; do
-    # Skip non-Rust files (docs, config, etc.)
+    # Skip non-Rust files (docs, config, etc.). Relocated product crates under
+    # mesh/crates/ and skippy/crates/ must still reach Cargo ownership matching.
     if [[ ! "$file" =~ ^(mesh/|skippy/)?crates/ ]] && [[ ! "$file" =~ ^tools/ ]]; then
       continue
     fi

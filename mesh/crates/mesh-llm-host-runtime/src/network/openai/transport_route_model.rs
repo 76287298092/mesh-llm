@@ -3,6 +3,7 @@ use crate::network::openai::routing_rank::{RankedCandidates, rank_targets_by_con
 use crate::network::reservations::RoutingReservation;
 
 pub(crate) struct RouteModelRequestContext<'a> {
+    pub(crate) exchange_id: Option<&'a str>,
     pub(crate) required_tokens: Option<u32>,
     pub(crate) affinity: &'a AffinityRouter,
     pub(crate) route_observer: OpenAiRouteObserver<'a>,
@@ -33,6 +34,7 @@ pub async fn route_model_request(
         targets,
         model,
         request,
+        exchange_id: context.exchange_id,
         required_tokens: context.required_tokens,
         affinity: context.affinity,
         route_observer: context.route_observer,
@@ -48,6 +50,7 @@ struct RouteModelRequestArgs<'a> {
     targets: &'a election::ModelTargets,
     model: &'a str,
     request: &'a BufferedHttpRequest,
+    exchange_id: Option<&'a str>,
     required_tokens: Option<u32>,
     affinity: &'a AffinityRouter,
     route_observer: OpenAiRouteObserver<'a>,
@@ -105,6 +108,7 @@ async fn route_model_request_inner(args: RouteModelRequestArgs<'_>) -> RouteDisp
         model,
         request,
         required_tokens,
+        exchange_id,
         affinity,
         route_observer,
         served_by_header,
@@ -119,7 +123,26 @@ async fn route_model_request_inner(args: RouteModelRequestArgs<'_>) -> RouteDisp
         targets,
     )
     .await;
-    let ranked = rank_targets_by_context(&node, model, required_tokens, &candidates).await;
+    let mut ranked = rank_targets_by_context(&node, model, required_tokens, &candidates).await;
+    let payment_ranking = crate::network::openai::payment_routing::rank(
+        &node,
+        model,
+        (request.body_len_bytes as u64).div_ceil(4),
+        u64::from(request.completion_tokens.unwrap_or(256)),
+        &mut ranked,
+        request.body_json.as_ref(),
+    )
+    .await;
+
+    let payment_ranked = match payment_ranking {
+        Ok(ranked) => ranked,
+        Err(reason) => {
+            return response_outcome(
+                402,
+                send_error_observed(tcp_stream, 402, reason, route_observer).await,
+            );
+        }
+    };
     let ordered_candidates = affinity.route_eligible_candidates(model, &ranked.ordered);
     if ordered_candidates.is_empty() {
         record_route_model_unavailable(&node, model, 0);
@@ -133,8 +156,16 @@ async fn route_model_request_inner(args: RouteModelRequestArgs<'_>) -> RouteDisp
 
     let affinity_body = super::super::workload_routing::affinity_body(request);
     let prefix_hash = crate::network::affinity::cache_prefix_hash(affinity_body);
+    let cache_candidates = super::super::payment_routing::cache_candidates(
+        payment_ranked,
+        &ranked,
+        &ordered_candidates,
+    );
+
     let cache_target =
-        cache_target_for_request(&node, affinity, model, prefix_hash, &ordered_candidates).await;
+        cache_target_for_request(&node, affinity, model, prefix_hash, cache_candidates).await;
+    let cache_target =
+        super::super::payment_routing::prefer_price_tier(payment_ranked, &ranked, cache_target);
     let Some(ReservedModelRoute {
         selection,
         ordered,
@@ -182,6 +213,7 @@ async fn route_model_request_inner(args: RouteModelRequestArgs<'_>) -> RouteDisp
             forwarding_raw,
             retry_policy,
             RouteAttemptLoggingContext {
+                exchange_id,
                 request_id: request.request_id,
                 retry_policy,
                 response_adapter: request.response_adapter,
@@ -365,6 +397,7 @@ fn handle_route_model_attempt_result(
             status_code,
             usage,
             cache_cost,
+            output_digests,
         } => handle_delivered_route_model_attempt(
             DeliveredRouteModelContext {
                 node,
@@ -377,6 +410,7 @@ fn handle_route_model_attempt_result(
             status_code,
             usage,
             cache_cost,
+            output_digests,
         ),
         RouteAttemptResult::RetryableContextOverflow => {
             handle_retryable_route_model_context(target)
@@ -422,6 +456,7 @@ fn handle_delivered_route_model_attempt(
     status_code: u16,
     usage: Option<TokenUsage>,
     cache_cost: Option<CacheCostObservation>,
+    output_digests: crate::plugin::openai_exchange::ExchangeOutputDigests,
 ) -> RouteModelDisposition {
     update_local_cache_evidence(&context, status_code, usage.as_ref(), cache_cost);
     context.node.record_routed_request(
@@ -436,11 +471,7 @@ fn handle_delivered_route_model_attempt(
         route_ms = context.state.route_started.elapsed().as_millis(),
         "openai route_model_request delivered"
     );
-    RouteModelDisposition::Return(
-        usage.map_or(RouteDispatchOutcome::Responded(status_code), |usage| {
-            RouteDispatchOutcome::RespondedWithUsage { status_code, usage }
-        }),
-    )
+    RouteModelDisposition::Return(delivered_outcome(status_code, usage, output_digests))
 }
 
 fn update_local_cache_evidence(
@@ -556,7 +587,10 @@ pub(crate) fn finalize_route_model_result(
     result: RouteDispatchOutcome,
     target: &election::InferenceTarget,
 ) -> RouteDispatchOutcome {
-    if let RouteDispatchOutcome::RespondedWithUsage { status_code, usage } = result {
+    if let RouteDispatchOutcome::RespondedWithUsage {
+        status_code, usage, ..
+    } = result
+    {
         node.record_prompt_shape(
             Some(model),
             usage.prompt_tokens,
@@ -1088,6 +1122,7 @@ mod tests {
             model,
             &request,
             RouteModelRequestContext {
+                exchange_id: None,
                 required_tokens: None,
                 affinity: &affinity,
                 route_observer: OpenAiRouteObserver::default(),

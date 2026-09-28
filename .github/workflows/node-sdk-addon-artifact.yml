@@ -100,7 +100,7 @@ jobs:
           allow_native_github_cache: "true"
       - name: Resolve product source layout
         id: layout
-        uses: Mesh-LLM/mesh-llm/.github/actions/resolve-source-layout@38d63b2f6e27998034fdf0452150c7cc081fe921 # product-layout compatibility helpers
+        uses: Mesh-LLM/mesh-llm/.github/actions/resolve-source-layout@196eba4c21f9b445d0bf11f7938f87e799dd7c8c # product-layout compatibility helpers
       - name: Build, smoke, and stage immutable addon
         env:
           SDK_DIR: ${{ steps.layout.outputs.sdk_dir }}
@@ -214,7 +214,7 @@ jobs:
             cargo rustc --quiet --manifest-path "$probe/Cargo.toml" --target x86_64-apple-darwin
       - name: Resolve product source layout
         id: layout
-        uses: Mesh-LLM/mesh-llm/.github/actions/resolve-source-layout@38d63b2f6e27998034fdf0452150c7cc081fe921 # product-layout compatibility helpers
+        uses: Mesh-LLM/mesh-llm/.github/actions/resolve-source-layout@196eba4c21f9b445d0bf11f7938f87e799dd7c8c # product-layout compatibility helpers
       - name: Build, smoke, and stage immutable addon
         env:
           SDK_DIR: ${{ steps.layout.outputs.sdk_dir }}
@@ -314,7 +314,7 @@ jobs:
           allow_native_github_cache: "true"
       - name: Resolve product source layout
         id: layout
-        uses: Mesh-LLM/mesh-llm/.github/actions/resolve-source-layout@38d63b2f6e27998034fdf0452150c7cc081fe921 # product-layout compatibility helpers
+        uses: Mesh-LLM/mesh-llm/.github/actions/resolve-source-layout@196eba4c21f9b445d0bf11f7938f87e799dd7c8c # product-layout compatibility helpers
       - name: Build, smoke, and stage immutable addon
         env:
           SDK_DIR: ${{ steps.layout.outputs.sdk_dir }}

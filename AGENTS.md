@@ -21,6 +21,8 @@ Dependency direction is Mesh → Skippy. Skippy does not depend on Mesh crates o
 | `CONTRIBUTING.md` | Build from source, dev workflow, UI dev |
 | `RELEASE.md` | Release process (build, bundle, tag, GitHub release) |
 | `ROADMAP.md` | Future directions |
+| `mesh/website/src/docs/pages/analytics.md` | What anonymous usage analytics collects, and how to opt out |
+| `mesh/crates/mesh-llm-analytics/README.md` | The only vendor-reporting crate; read before adding any event |
 | `mesh/crates/mesh-llm/TODO.md` | Current work items and backlog |
 | `mesh/crates/mesh-llm/README.md` | Rust crate overview and file map |
 | `mesh/docs/README.md` | Documentation map and topic directory guide |
@@ -218,7 +220,7 @@ Product crates live under `mesh/crates/` and `skippy/crates/`. The most importan
 
 Shipped binary and CLI surface:
 
-- `mesh-llm/` — shipped binary; `main.rs` builds the Tokio runtime, `lib.rs` owns `run_main` (CLI parse → one-shot command dispatch via its `commands/` module → runtime handoff), and re-exports `mesh-llm-host-runtime` as a transitional shim. No domain logic here.
+- `mesh-llm/` — shipped binary; `main.rs` builds the Tokio runtime, `lib.rs` owns `run_main` (CLI parse → one-shot command dispatch via its `commands/` module → runtime handoff). No domain logic here.
 - `mesh-llm-cli/` — Clap types, argument parsing, serve/client surface normalization. No handlers.
 - `mesh-llm-commands/` — user-facing command handlers (auth, gpus, update, skills, agent launchers like goose/pi/opencode/claude, plugin, benchmark, model packaging).
 - `mesh-llm-tui/` — terminal UI and progress output surface.
@@ -423,7 +425,7 @@ Host runtime (main monolith — `mesh/crates/mesh-llm-host-runtime/src/`):
 Shipped binary and CLI (`mesh/crates/mesh-llm/src/`, `mesh/crates/mesh-llm-cli/src/`, `mesh/crates/mesh-llm-commands/src/`):
 
 - `mesh-llm/src/main.rs` — builds the Tokio runtime (custom stack size via `MESH_TOKIO_STACK_SIZE`) and calls `mesh_llm::run_main()`.
-- `mesh-llm/src/lib.rs` — `run_main`: CLI parse, one-shot command dispatch, runtime handoff; plus a transitional `pub use mesh_llm_host_runtime::*;` re-export.
+- `mesh-llm/src/lib.rs` — `run_main`: CLI parse, one-shot command dispatch, runtime handoff.
 - `mesh-llm/src/commands/` — dispatch wiring from parsed `Command` values to handlers.
 - `mesh-llm-cli/src/parser.rs` — Clap surface, serve/client arg normalization, advanced help.
 - `mesh-llm-commands/src/` — user-facing handlers (auth, gpus, update, skills, agent launchers, plugin, benchmark).

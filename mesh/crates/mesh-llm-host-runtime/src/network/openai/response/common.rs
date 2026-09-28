@@ -25,6 +25,12 @@ pub(in crate::network::openai::response) fn sse_data_frame_is_openai_error(data:
 
 #[derive(Clone, Copy)]
 pub(in crate::network::openai) struct RouteAttemptLoggingContext<'a> {
+    // Populated for observability on every route attempt but only consumed by
+    // the paid-settlement path. Gating the field would cascade cfgs through
+    // ~30 ingress/transport call sites, so it stays present and is simply
+    // unread when wallets are compiled out.
+    #[cfg_attr(not(feature = "payments"), allow(dead_code))]
+    pub(in crate::network::openai) exchange_id: Option<&'a str>,
     pub(in crate::network::openai) request_id: RequestId,
     pub(in crate::network::openai) retry_policy: ResponseRetryPolicy,
     pub(in crate::network::openai) response_adapter: ResponseAdapter,
@@ -72,6 +78,14 @@ pub(in crate::network::openai) enum RouteAttemptResult {
         status_code: u16,
         usage: Option<TokenUsage>,
         cache_cost: Option<CacheCostObservation>,
+        /// Digests over the REAL served response body (response body /
+        /// tool_calls / reasoning), captured at the JSON-relay delivery point
+        /// where the whole body — or, on a streamed delivery, the assembled
+        /// result of the chunks actually sent to the client — is in hand.
+        /// `Copy` (raw sha-256 bytes) so this variant stays `Copy`. Default
+        /// (all-`None`) wherever no such body was assembled, so the terminal
+        /// event simply omits those digests rather than fabricating any.
+        output_digests: crate::plugin::openai_exchange::ExchangeOutputDigests,
     },
     RetryableTimeout,
     RetryableUnavailable,
@@ -343,6 +357,7 @@ mod tests {
                 status_code: 200,
                 usage: None,
                 cache_cost: None,
+                output_digests: Default::default(),
             }),
             "delivered"
         );
@@ -377,6 +392,7 @@ mod tests {
                 status_code: 200,
                 usage: None,
                 cache_cost: None,
+                output_digests: Default::default(),
             }),
             TargetHealthOutcome::Success
         );
@@ -385,6 +401,7 @@ mod tests {
                 status_code: 503,
                 usage: None,
                 cache_cost: None,
+                output_digests: Default::default(),
             }),
             TargetHealthOutcome::Unavailable
         );
@@ -393,6 +410,7 @@ mod tests {
                 status_code: 400,
                 usage: None,
                 cache_cost: None,
+                output_digests: Default::default(),
             }),
             TargetHealthOutcome::Rejected
         );

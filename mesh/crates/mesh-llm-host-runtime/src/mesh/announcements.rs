@@ -34,6 +34,8 @@ pub(crate) struct LocalAnnouncementData {
     owner_attestation: Option<SignedNodeOwnership>,
     artifact_transfer_supported: bool,
     advertised_model_throughput: Vec<crate::network::metrics::ModelThroughputHint>,
+    #[cfg(feature = "payments")]
+    lightning_offers: std::collections::BTreeMap<String, mesh_llm_payments_types::pricing::Pricing>,
     cache_affinity: Option<mesh_llm_routing::cache_inventory::CacheAffinityAdvertisement>,
     gpu_mem_bandwidth_gbps: Option<String>,
     gpu_compute_tflops_fp32: Option<String>,
@@ -144,6 +146,8 @@ impl Node {
             artifact_transfer_supported:
                 crate::models::artifact_transfer::artifact_transfer_advertised(&owner_summary),
             advertised_model_throughput,
+            #[cfg(feature = "payments")]
+            lightning_offers: self.advertised_payment_offers().await.unwrap_or_default(),
             cache_affinity: Some(cache_affinity),
             gpu_mem_bandwidth_gbps: Self::format_optional_locked_f32_list(
                 &self.gpu_mem_bandwidth_gbps,
@@ -232,6 +236,8 @@ impl Node {
             stage_status_list_supported: true,
             local_gguf_content_id_supported: true,
             advertised_model_throughput: data.advertised_model_throughput,
+            #[cfg(feature = "payments")]
+            lightning_offers: data.lightning_offers,
             cache_affinity: data.cache_affinity,
             latency_ms: None,
             latency_source: None,

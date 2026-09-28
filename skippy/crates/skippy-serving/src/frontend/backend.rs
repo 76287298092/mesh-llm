@@ -36,7 +36,8 @@ use crate::frontend::generation::template_exposes_reasoning;
 use crate::frontend::request::{
     apply_chat_request_defaults, apply_completion_request_defaults, chat_sampling_config,
     chat_template_options, completion_sampling_config, ensure_chat_runtime_features_supported,
-    ensure_completion_runtime_features_supported, sampling_config,
+    ensure_completion_runtime_features_supported, resolve_chat_request_defaults,
+    resolve_completion_request_defaults, sampling_config,
 };
 use crate::runtime_state::RuntimeSessionStats;
 use crate::telemetry::Telemetry;
@@ -73,6 +74,8 @@ use skippy_openai_frontend::OpenAiResult;
 use skippy_openai_frontend::RerankRequest;
 use skippy_openai_frontend::RerankResponse;
 use skippy_openai_frontend::RerankResult;
+use skippy_openai_frontend::SystemOneRequest;
+use skippy_openai_frontend::SystemOneResponse;
 use skippy_openai_frontend::TerminalGuard;
 use skippy_openai_frontend::TerminalGuardedChatStream;
 use skippy_openai_frontend::apply_chat_hook_outcome;
@@ -905,6 +908,15 @@ impl OpenAiBackend for StageOpenAiBackend {
         Ok(vec![ModelObject::new(self.model_id.clone())])
     }
 
+    async fn system_one(&self, request: SystemOneRequest) -> OpenAiResult<SystemOneResponse> {
+        let backend = self.clone();
+        task::spawn_blocking(move || backend.run_system_one(request))
+            .await
+            .map_err(|error| {
+                OpenAiError::backend(format!("System One execution task failed: {error}"))
+            })?
+    }
+
     async fn chat_completion(
         &self,
         request: ChatCompletionRequest,
@@ -926,10 +938,12 @@ impl OpenAiBackend for StageOpenAiBackend {
         let request_timer = PhaseTimer::start();
         self.chat_completion_with_hooks(request, move |mut request| async move {
             self.ensure_model(&request.model)?;
-            apply_chat_request_defaults(&mut request, &self.request_defaults)?;
+            let (request_defaults, defaults_diagnostics) =
+                resolve_chat_request_defaults(&request, &self.request_defaults)?;
+            apply_chat_request_defaults(&mut request, &request_defaults)?;
             ensure_chat_runtime_features_supported(&request)?;
-            let sampling = chat_sampling_config(&request)?;
-            let template_options = chat_template_options(&request, &self.request_defaults)?;
+            let sampling = chat_sampling_config(&request, &request_defaults)?;
+            let template_options = chat_template_options(&request, &request_defaults)?;
             let parse_chat_output = chat_output_parser_required(&request, &template_options);
             let template_timer = PhaseTimer::start();
             let prompt = self
@@ -951,6 +965,22 @@ impl OpenAiBackend for StageOpenAiBackend {
             template_attrs.insert(
                 "llama_stage.media_item_count".to_string(),
                 json!(prompt.media.len()),
+            );
+            template_attrs.insert(
+                "llama_stage.generation_profile".to_string(),
+                json!(defaults_diagnostics.selected_package_profile),
+            );
+            template_attrs.insert(
+                "llama_stage.max_tokens_source".to_string(),
+                json!(defaults_diagnostics.max_tokens_source),
+            );
+            template_attrs.insert(
+                "llama_stage.reasoning_budget_source".to_string(),
+                json!(defaults_diagnostics.reasoning_budget_source),
+            );
+            template_attrs.insert(
+                "llama_stage.generation_default_sources".to_string(),
+                json!(defaults_diagnostics.field_sources),
             );
             self.emit_openai_phase("stage.openai_chat_template", template_timer, template_attrs);
             let max_tokens = GenerationTokenLimit::from_request(
@@ -1033,11 +1063,13 @@ impl OpenAiBackend for StageOpenAiBackend {
         );
         self.chat_completion_stream_with_hooks(request, move |mut request| async move {
             self.ensure_model(&request.model)?;
-            apply_chat_request_defaults(&mut request, &self.request_defaults)?;
+            let (request_defaults, defaults_diagnostics) =
+                resolve_chat_request_defaults(&request, &self.request_defaults)?;
+            apply_chat_request_defaults(&mut request, &request_defaults)?;
             ensure_chat_runtime_features_supported(&request)?;
-            let sampling = chat_sampling_config(&request)?;
+            let sampling = chat_sampling_config(&request, &request_defaults)?;
             let include_usage = request.include_usage();
-            let template_options = chat_template_options(&request, &self.request_defaults)?;
+            let template_options = chat_template_options(&request, &request_defaults)?;
             let parse_chat_output = chat_output_parser_required(&request, &template_options);
             let emit_reasoning = template_exposes_reasoning(&template_options);
             let template_timer = PhaseTimer::start();
@@ -1060,6 +1092,22 @@ impl OpenAiBackend for StageOpenAiBackend {
             template_attrs.insert(
                 "llama_stage.media_item_count".to_string(),
                 json!(prompt.media.len()),
+            );
+            template_attrs.insert(
+                "llama_stage.generation_profile".to_string(),
+                json!(defaults_diagnostics.selected_package_profile),
+            );
+            template_attrs.insert(
+                "llama_stage.max_tokens_source".to_string(),
+                json!(defaults_diagnostics.max_tokens_source),
+            );
+            template_attrs.insert(
+                "llama_stage.reasoning_budget_source".to_string(),
+                json!(defaults_diagnostics.reasoning_budget_source),
+            );
+            template_attrs.insert(
+                "llama_stage.generation_default_sources".to_string(),
+                json!(defaults_diagnostics.field_sources),
             );
             self.emit_openai_phase("stage.openai_chat_template", template_timer, template_attrs);
             let max_tokens = GenerationTokenLimit::from_request(
@@ -1105,7 +1153,9 @@ impl OpenAiBackend for StageOpenAiBackend {
         );
         let request_timer = PhaseTimer::start();
         self.ensure_model(&request.model)?;
-        apply_completion_request_defaults(&mut request, &self.request_defaults);
+        let (request_defaults, defaults_diagnostics) =
+            resolve_completion_request_defaults(&request, &self.request_defaults);
+        apply_completion_request_defaults(&mut request, &request_defaults);
         ensure_completion_runtime_features_supported(&request)?;
         let sampling = completion_sampling_config(&request)?;
         let max_tokens =
@@ -1120,6 +1170,18 @@ impl OpenAiBackend for StageOpenAiBackend {
         prompt_attrs.insert(
             "llama_stage.prompt_chars".to_string(),
             json!(prompt.text.len()),
+        );
+        prompt_attrs.insert(
+            "llama_stage.generation_profile".to_string(),
+            json!(defaults_diagnostics.selected_package_profile),
+        );
+        prompt_attrs.insert(
+            "llama_stage.max_tokens_source".to_string(),
+            json!(defaults_diagnostics.max_tokens_source),
+        );
+        prompt_attrs.insert(
+            "llama_stage.generation_default_sources".to_string(),
+            json!(defaults_diagnostics.field_sources),
         );
         self.emit_openai_phase("stage.openai_prompt_prepare", prompt_timer, prompt_attrs);
         let output = self
@@ -1182,7 +1244,9 @@ impl OpenAiBackend for StageOpenAiBackend {
             &context,
         );
         self.ensure_model(&request.model)?;
-        apply_completion_request_defaults(&mut request, &self.request_defaults);
+        let (request_defaults, defaults_diagnostics) =
+            resolve_completion_request_defaults(&request, &self.request_defaults);
+        apply_completion_request_defaults(&mut request, &request_defaults);
         ensure_completion_runtime_features_supported(&request)?;
         let sampling = completion_sampling_config(&request)?;
         let include_usage = request.include_usage();
@@ -1199,6 +1263,18 @@ impl OpenAiBackend for StageOpenAiBackend {
         prompt_attrs.insert(
             "llama_stage.prompt_chars".to_string(),
             json!(prompt.text.len()),
+        );
+        prompt_attrs.insert(
+            "llama_stage.generation_profile".to_string(),
+            json!(defaults_diagnostics.selected_package_profile),
+        );
+        prompt_attrs.insert(
+            "llama_stage.max_tokens_source".to_string(),
+            json!(defaults_diagnostics.max_tokens_source),
+        );
+        prompt_attrs.insert(
+            "llama_stage.generation_default_sources".to_string(),
+            json!(defaults_diagnostics.field_sources),
         );
         self.emit_openai_phase("stage.openai_prompt_prepare", prompt_timer, prompt_attrs);
         let stream = self
@@ -1877,6 +1953,7 @@ impl StageOpenAiBackend {
         let token_budget_stats = permit.token_budget_stats();
         let backend = self.clone();
         let chat_parse_metadata = prompt.chat_parse_metadata.clone();
+        let generation_gate = crate::frontend::generation_gate::find(ids.frontend_request_id)?;
         let (tx, rx) = mpsc::channel(16);
         let hook_runtime = Some(tokio::runtime::Handle::current());
         let sender = StreamEventSender::new(
@@ -1934,7 +2011,14 @@ impl StageOpenAiBackend {
                     } else {
                         vec![GenerationStreamEvent::Delta(chunk.to_string())]
                     };
+                    let emitted_output = !events.is_empty();
                     for event in events {
+                        sender.send(Ok(event), &context)?;
+                    }
+                    if emitted_output
+                        && let Some(event) =
+                            crate::frontend::generation_gate::usage_event(generation_gate.as_ref())
+                    {
                         sender.send(Ok(event), &context)?;
                     }
                     Ok(())

@@ -810,6 +810,13 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Command {
+    /// Manage the local mainnet Lightning wallet.
+    Wallet {
+        #[arg(long, default_value_t = 3131)]
+        port: u16,
+        #[command(subcommand)]
+        command: crate::wallet::WalletCommand,
+    },
     /// Serve local models and join or publish a mesh.
     Serve,
     /// Run as a client-only mesh node with no local model required.
@@ -857,6 +864,11 @@ pub enum Command {
     Config {
         #[command(subcommand)]
         command: ConfigCommand,
+    },
+    /// Inspect or change anonymous usage reporting.
+    Analytics {
+        #[command(subcommand)]
+        command: AnalyticsCommand,
     },
     /// Diagnose local mesh, runtime, and split-readiness problems.
     Doctor {
@@ -1019,6 +1031,10 @@ pub enum Command {
         #[arg(long)]
         write: bool,
     },
+    /// Add a Mesh provider to Hermes config without launching it.
+    Hermes(crate::agent_config::AgentConfigArgs),
+    /// Add a Mesh provider to OpenClaw config without launching it.
+    Openclaw(crate::agent_config::AgentConfigArgs),
     /// Stop running mesh-llm processes.
     Stop,
     /// Plugin management.
@@ -1116,6 +1132,25 @@ pub enum Command {
     /// Run a CLI command contributed by a configured plugin.
     #[command(external_subcommand)]
     ExternalPlugin(Vec<OsString>),
+}
+
+/// Anonymous usage reporting controls.
+///
+/// Separate from `[telemetry]`, which exports OTLP metrics to an endpoint the
+/// operator chooses. These subcommands govern the reporting that reaches the
+/// mesh-llm maintainers.
+#[derive(Subcommand, Debug)]
+pub enum AnalyticsCommand {
+    /// Show whether usage reporting is on, why, and what is sent.
+    Status {
+        /// Print machine-readable JSON output.
+        #[arg(long)]
+        json: bool,
+    },
+    /// Turn usage reporting on by writing `[analytics] enabled = true`.
+    Enable,
+    /// Turn usage reporting off by writing `[analytics] enabled = false`.
+    Disable,
 }
 
 #[derive(Subcommand, Debug)]

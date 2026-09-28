@@ -8,6 +8,11 @@ on:
         required: false
         default: ''
         type: string
+      policy_source_sha:
+        description: Optional source revision for the runner-policy checkout; defaults to the protected branch.
+        required: false
+        default: ''
+        type: string
       original_event_name:
         description: Original event used for protected runner and cache policy.
         required: false
@@ -50,7 +55,7 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
-          ref: ${{ github.event.repository.default_branch }}
+          ref: ${{ inputs.policy_source_sha || github.event.repository.default_branch }}
           persist-credentials: false
       - name: Select provider for the console artifact role
         id: policy
@@ -91,7 +96,7 @@ jobs:
           persist-credentials: false
       - name: Resolve product source layout
         id: layout
-        uses: Mesh-LLM/mesh-llm/.github/actions/resolve-source-layout@38d63b2f6e27998034fdf0452150c7cc081fe921 # product-layout compatibility helpers
+        uses: Mesh-LLM/mesh-llm/.github/actions/resolve-source-layout@196eba4c21f9b445d0bf11f7938f87e799dd7c8c # product-layout compatibility helpers
       - name: Prepare release UI version
         if: ${{ inputs.release_tag != '' }}
         working-directory: .

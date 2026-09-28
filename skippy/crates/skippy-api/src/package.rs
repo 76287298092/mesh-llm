@@ -22,7 +22,7 @@ const PACKAGE_V2_MANIFEST: &str = "model-package.json";
 fn hex_lower(bytes: &[u8]) -> String {
     hex::encode(bytes)
 }
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct SkippyPackageIdentity {
     pub package_ref: String,
     pub manifest_sha256: String,
@@ -303,6 +303,7 @@ pub fn package_v2_generation_info(
     generation: &skippy_package_format::Generation,
 ) -> PackageGenerationInfo {
     PackageGenerationInfo {
+        request_defaults: generation.request_defaults.clone(),
         speculative_decoding: generation.speculative_decoding.as_ref().map(|speculative| {
             skippy_runtime::package::PackageSpeculativeDecodingInfo {
                 default: speculative.default.clone(),

@@ -493,6 +493,7 @@ mod tests {
         let manifest = manifest_with_mtp_tensor(
             "blk.40.nextn.eh_proj.weight",
             Some(skippy_package_format::Generation {
+                request_defaults: None,
                 speculative_decoding: None,
             }),
         );
@@ -505,6 +506,7 @@ mod tests {
         let manifest = manifest_with_mtp_tensor(
             "blk.40.nextn.eh_proj.weight",
             Some(skippy_package_format::Generation {
+                request_defaults: None,
                 speculative_decoding: Some(skippy_package_format::SpeculativeDecoding {
                     default: "mtp".to_string(),
                     proposers: Default::default(),

@@ -49,13 +49,22 @@ impl StageOpenAiBackend {
         prepared_text: Option<PreparedTextPrompt>,
         token_budget_stats: (usize, usize),
         stop: Option<&skippy_openai_frontend::StopSequence>,
-        sampling: SamplingConfig,
+        mut sampling: SamplingConfig,
         hook_request: Option<ChatCompletionRequest>,
         hook_runtime: Option<tokio::runtime::Handle>,
         cancellation: Option<&skippy_openai_frontend::CancellationToken>,
         ids: OpenAiGenerationIds,
         on_text_chunk: impl FnMut(&str) -> OpenAiResult<()>,
     ) -> OpenAiResult<GeneratedText> {
+        let payment_gate = crate::frontend::generation_gate::find(ids.frontend_request_id)?;
+        if payment_gate.is_some()
+            && (prompt.has_media()
+                || matches!(&self.mode, OpenAiBackendMode::EmbeddedStageZero { config, .. } if config.downstream.is_some()))
+        {
+            return Err(OpenAiError::unsupported(
+                "paid inference currently requires a single-node text model",
+            ));
+        }
         let generation_timer = PhaseTimer::start();
         if cancellation.is_some_and(skippy_openai_frontend::CancellationToken::is_cancelled) {
             return Err(OpenAiError::backend("request cancelled"));
@@ -112,6 +121,7 @@ impl StageOpenAiBackend {
                 "model workload is {workload:?}; chat and completion endpoints require a generative model"
             )));
         }
+        sampling.resolve_reasoning_budget(max_tokens);
         // This is an optional cache candidate. The already-rendered prompt is
         // valid even when its second, assistant-marker-free rendering cannot
         // be tokenized, so bypass the candidate rather than failing the chat
@@ -188,7 +198,8 @@ impl StageOpenAiBackend {
         let mut collector =
             TextGenerationCollector::new(self.runtime.clone(), stop_values, on_text_chunk)?
                 .with_emulation_stop(emulation_active)
-                .with_ignore_eos(sampling.ignore_eos);
+                .with_ignore_eos(sampling.ignore_eos)
+                .with_generation_gate(payment_gate);
         let cache_stats = match self.mode.clone() {
             OpenAiBackendMode::LocalRuntime => self.generate_local_tokens(
                 LocalGeneration {

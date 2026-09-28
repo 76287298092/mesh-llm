@@ -4,7 +4,9 @@ llama_dir := env("MESH_LLM_LLAMA_DIR", ".deps/llama.cpp")
 llama_build_root := env("MESH_LLM_LLAMA_BUILD_ROOT", ".deps/llama-build")
 mesh_dir := "mesh/crates/mesh-llm"
 ui_dir := "mesh/crates/mesh-llm-ui"
-website_dir := "mesh/website"
+# CI resolves this explicitly for dual-layout compatibility. A standalone
+# checkout only carries the relocated tree, so use it as the local default.
+website_dir := env("MESH_LLM_WEBSITE_DIR", "mesh/website")
 home_dir := if os_family() == "windows" { env("USERPROFILE") } else { env("HOME") }
 xdg_cache_dir := env("XDG_CACHE_HOME", home_dir / ".cache")
 hf_home := env("HF_HOME", xdg_cache_dir / "huggingface")
