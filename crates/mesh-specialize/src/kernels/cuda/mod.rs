@@ -11,6 +11,7 @@ mod attention_prepare;
 
 mod bf16_trial;
 mod causal_conv4;
+mod device_view;
 mod driver;
 pub(super) mod embedding_norm;
 pub(super) mod fp8_exact_trial;
@@ -21,6 +22,7 @@ mod gdn_recurrent;
 mod gemm;
 pub(super) mod instructions;
 mod launch_profile;
+mod mlp_workspace_views;
 mod nvfp4_exact_trial;
 pub(super) mod projections;
 pub(super) mod residency;

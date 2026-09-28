@@ -1,8 +1,8 @@
 //! Enqueue-only projection operations over a checked MLP workspace lease.
 use super::{
+    device_view::{DeviceRead, DeviceWrite, validate_launch_access},
     driver::{Context, Module},
     resident_weights::ResidentWeights,
-    resident_workspace::WorkspaceStep,
 };
 use anyhow::{Result, ensure};
 use std::ffi::c_void;
@@ -47,26 +47,31 @@ impl Binding<'_, '_> {
         &self,
         ctx: &Context,
         module: &Module<'_>,
-        step: &WorkspaceStep<'_, '_>,
-        name: &str,
-        input: u64,
+        input: &DeviceRead<'_, '_>,
+        outputs: &[DeviceWrite<'_, '_>; 5],
         rows: usize,
     ) -> Result<()> {
         ensure!(
             self.owner.belongs_to(ctx) && module.belongs_to(ctx),
             "workspace projection context mismatch"
         );
-        for (region_name, bytes) in self.regions(name, rows) {
+        let input_bytes = rows
+            .checked_mul(self.width)
+            .and_then(|n| n.checked_mul(2))
+            .ok_or_else(|| anyhow::anyhow!("projection input extent overflows"))?;
+        ensure!(
+            input.bytes() == input_bytes && input.pointer().is_multiple_of(2),
+            "workspace projection input extent/alignment mismatch"
+        );
+        for ((_, bytes), output) in self.regions("projection", rows).iter().zip(outputs) {
             ensure!(
-                step.region(&region_name)?.bytes() >= bytes,
-                "undersized MLP workspace region {region_name}"
+                output.bytes() >= *bytes && output.pointer().is_multiple_of(4),
+                "undersized or misaligned MLP projection output"
             );
         }
-        let region = |suffix: &str| -> Result<u64> {
-            Ok(step.region(&format!("{name}.{suffix}"))?.pointer())
-        };
-        let codes = region("codes")?;
-        let scales = region("scales")?;
+        validate_launch_access(ctx, &[input], &outputs.each_ref())?;
+        let input = input.pointer();
+        let [codes, scales, effective, values, raw] = outputs.each_ref().map(DeviceWrite::pointer);
         match self.arithmetic {
             Arithmetic::Fp8 => launch(
                 module,
@@ -80,7 +85,7 @@ impl Binding<'_, '_> {
             Arithmetic::Nvfp4 { input_scale, .. } => launch(
                 module,
                 "nvfp4_quantize_bf16",
-                vec![input, codes, scales, region("effective")?],
+                vec![input, codes, scales, effective],
                 vec![rows as u32, self.width as u32],
                 Some(input_scale),
                 [(rows * self.width / 16) as u32, 1, 1],
@@ -112,14 +117,7 @@ impl Binding<'_, '_> {
         launch(
             module,
             kernel,
-            vec![
-                codes,
-                self.weights[0],
-                scales,
-                self.weights[1],
-                region("values")?,
-                region("raw")?,
-            ],
+            vec![codes, self.weights[0], scales, self.weights[1], values, raw],
             vec![rows as u32, self.channels as u32, self.width as u32],
             factor,
             [

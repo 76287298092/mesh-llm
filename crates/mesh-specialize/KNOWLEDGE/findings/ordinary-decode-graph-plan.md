@@ -402,3 +402,280 @@ allocation count, code generation, numerical trial, memory-admission calculation
 long-context qualification, concurrency qualification or matched Ninfer benchmark
 was performed. The document proposes independent Rust changes only. Parent's
 NVFP4 arithmetic investigation and broader quality/provenance gates remain open.
+
+## Appendix: bounded first implementation, checked borrowed device views
+
+This appendix narrows step 1 into its first independently reviewable unit. Implement
+checked view construction and per-launch alias validation before the prepared
+projection and explicit-stream conversion. Execution, synchronization, capture and
+arithmetic stay unchanged. The broader stream-aware lease above remains subsequent
+work; checked views alone do not establish asynchronous or graph lifetime safety.
+
+The current inspected `Buffer` already exposes `context()`, `pointer()`, `len()`
+and `belongs_to()`. `WorkspaceStep::region` exposes address/size without an access
+role, while MLP `Binding::enqueue` accepts an unchecked `input: u64`. Those are the
+immediate gaps. The following signatures are proposals, not compiled code.
+
+### View types and constructors
+
+Add `src/kernels/cuda/device_view.rs`, restricted to the CUDA implementation:
+
+```rust
+pub(super) struct DeviceRead<'owner, 'ctx> {
+    context: &'ctx Context,
+    range: CheckedRange,
+    _owner: PhantomData<&'owner Buffer<'ctx>>,
+}
+
+pub(super) struct DeviceWrite<'owner, 'ctx> {
+    context: &'ctx Context,
+    range: CheckedRange,
+    _owner: PhantomData<&'owner mut Buffer<'ctx>>,
+}
+```
+
+Keep fields private. `DeviceWrite` implements neither `Copy` nor `Clone`.
+`CheckedRange` is a CUDA-independent byte-range description whose constructor
+checks allocation bounds and device-address arithmetic. The write view represents
+device access permission, not a dereferenceable Rust slice.
+
+```rust
+impl<'owner, 'ctx> DeviceRead<'owner, 'ctx> {
+    pub(super) fn from_buffer(buffer: &'owner Buffer<'ctx>) -> Result<Self>;
+
+    pub(super) fn subrange(
+        &self,
+        offset: usize,
+        bytes: usize,
+        alignment: usize,
+    ) -> Result<DeviceRead<'_, 'ctx>>;
+
+    pub(super) fn context(&self) -> &'ctx Context;
+    pub(super) fn bytes(&self) -> usize;
+    pub(super) fn pointer(&self) -> u64;
+}
+
+impl<'owner, 'ctx> DeviceWrite<'owner, 'ctx> {
+    pub(super) fn from_buffer(buffer: &'owner mut Buffer<'ctx>) -> Result<Self>;
+    pub(super) fn as_read(&self) -> DeviceRead<'_, 'ctx>;
+
+    pub(super) fn subrange(
+        &mut self,
+        offset: usize,
+        bytes: usize,
+        alignment: usize,
+    ) -> Result<DeviceWrite<'_, 'ctx>>;
+
+    pub(super) fn context(&self) -> &'ctx Context;
+    pub(super) fn bytes(&self) -> usize;
+    pub(super) fn pointer(&self) -> u64;
+}
+```
+
+Separate mutable workspace borrows cannot construct simultaneous output views.
+Add one checked partition operation instead:
+
+```rust
+pub(super) enum Access {
+    Read,
+    Write,
+}
+
+pub(super) struct RegionRequest<'name> {
+    pub name: &'name str,
+    pub offset: usize,
+    pub bytes: usize,
+    pub alignment: usize,
+    pub access: Access,
+}
+
+pub(super) enum DeviceAccess<'owner, 'ctx> {
+    Read(DeviceRead<'owner, 'ctx>),
+    Write(DeviceWrite<'owner, 'ctx>),
+}
+
+impl<'workspace, 'ctx> WorkspaceStep<'workspace, 'ctx> {
+    pub(super) fn views<'step, const N: usize>(
+        &'step mut self,
+        requests: [RegionRequest<'_>; N],
+    ) -> Result<[DeviceAccess<'step, 'ctx>; N]>;
+}
+```
+
+Resolve names and check each requested subrange against its named region and the
+backing allocation. Validate the complete partition before constructing any views.
+Initially require all returned ranges to be disjoint, including repeated reads;
+consumers can make repeated read borrows from one view. Put the private partition
+constructor in `device_view.rs`. `WorkspaceStep` supplies a mutable allocation
+borrow and checked allocation-relative ranges. Do not expose arbitrary raw-pointer
+constructors. Binding the returned lifetime to the mutable step borrow prevents
+completion or workspace replacement while these views remain in use.
+
+### Bounds, alignment and alias checks
+
+Use checked arithmetic for offset plus length, named-region offset plus requested
+offset, allocation base plus start and exclusive end, and element-count-to-byte
+conversion. Require nonzero bytes and nonzero power-of-two alignment. Reject null
+addresses and misaligned effective addresses even when the allocation base is
+aligned. BF16 callers request alignment 2; FP32/u32 callers request 4; kernels
+with stronger requirements request them explicitly. Whole-buffer constructors can
+use byte alignment 1; operation admission must enforce the actual required alignment.
+
+```rust
+pub(super) fn validate_launch_access(
+    context: &Context,
+    reads: &[DeviceRead<'_, '_>],
+    writes: &[DeviceWrite<'_, '_>],
+) -> Result<()>;
+```
+
+Compare contexts with `std::ptr::eq`, matching existing driver identity rules.
+Reject context mismatches, every read/write overlap and every write/write overlap.
+Read/read overlap is allowed at launch validation. Compare half-open actual address
+intervals only after validating context identity; adjacent ranges are valid. No
+in-place exceptions belong in this first unit. This bounded check needs no new
+allocation-generation identifier, although the later graph binding still does.
+
+Views describe byte extents, alignment and access, not dtype or model shape.
+Projection admission still checks exact BF16 input bytes and appropriate
+quantization/output extents. No alias permission follows merely from having the
+same dtype or from an operator apparently finishing its input reads early.
+
+### Minimal MLP integration and driver impact
+
+Replace the MLP raw input address with a borrowed checked view:
+
+```rust
+pub(super) unsafe fn enqueue(
+    &self,
+    ctx: &Context,
+    module: &Module<'_>,
+    step: &mut WorkspaceStep<'_, '_>,
+    name: &str,
+    input: &DeviceRead<'_, '_>,
+    rows: usize,
+) -> Result<()>;
+```
+
+Acquire projection writable regions together, validate them against the input, and
+retain views through its launches. Preserve kernels, scales, arithmetic profiles,
+allocation layout, launch path, diagnostic writes and completion behavior. Do not
+convert the complete activation/down chain in this unit if it requires retaining
+views across repeated mutable workspace borrows. Its subsequent conversion should
+acquire the complete chain region set once and pass individual views between stages.
+
+At follow-up inspection the working MLP NVFP4 binding used
+`nvfp4_profile::current()?.schedule(...)`. This is a newer working-source observation,
+not a claim about the main report's pinned revision. Preserve that dispatch exactly
+and leave the other worker's NVFP4 feature untouched. The eventual prepared graph
+profile must freeze and qualify its admitted schedule as already required above.
+
+No CUDA driver API changes are necessary for this unit: `Buffer::context()` already
+provides identity access. A later stream unit may need `Stream` context access, but
+that belongs with its execution lease. Do not weaken any capture guard, change
+`Buffer::drop`, remove synchronization, or introduce safe asynchronous submission
+as part of the view change.
+
+### What these lifetimes prove and leave open
+
+The owner borrow prevents dropping or replacing that allocation while its view is
+used. Mutable workspace borrowing prevents `complete()` while returned views are
+used. Neither proves GPU completion: views can end after submission while work
+remains in flight. Keep enqueue unsafe and retain the existing requirement that
+allocations, weights and module survive successful completion or error draining.
+
+Existing `Buffer` methods permit mutation through `&self`. A read view therefore
+does not prove global device immutability. Its access role constrains the checked
+launch, while the later execution lease must exclude unrelated writes and other
+streams. Do not describe the view as an exclusive asynchronous memory capability.
+
+A captured graph may outlive a temporary view. Graph capture remains unsupported
+at this boundary until the prepared owner binds the module and allocations for the
+entire graph lifetime and every replay's completion. A raw pointer extracted from
+a checked view does not carry its borrow into CUDA.
+
+### Pure host acceptance cases
+
+Factor range and overlap validation into functions requiring no CUDA handles.
+Test exact whole/final-byte ranges, adjacent and nested subranges; zero lengths;
+invalid alignments and misaligned effective addresses; start/end out of bounds;
+every checked-add overflow; and device exclusive-end overflow near `u64::MAX`.
+Test duplicate workspace requests, overlapping subranges, valid disjoint partitions,
+and that failures return no partially constructed partition.
+
+Verify read/read overlap passes, while identical, contained and partial read/write
+or write/write overlap fails. Cover BF16/FP32 sizes and alignments and undersized
+outputs. Test context identity through a small generic pointer-identity helper with
+distinct live host objects, without fabricating `Context` or loading CUDA.
+
+Use compile-fail coverage only if the repository already supports it: write views
+cannot be cloned, the owner cannot be mutably reborrowed while its write view is
+used, and a workspace cannot complete while returned views remain used. Otherwise
+document those compiler-enforced constraints rather than adding a test framework.
+
+These are proposed tests. This appendix makes no implementation, compilation,
+GPU correctness, sanitizer, or performance claim. Parent owns API approval and
+integration; completion of this bounded unit is not completion of step 1's later
+stream/prepared-projection work.
+
+### Checked-view implementation status
+
+The bounded first unit is authored in `src/kernels/cuda/device_view.rs`. It is
+not registered or integrated. The parent owns module registration and changes to
+workspace/MLP callers. No driver, workspace, MLP, manifest or kernel file changed
+for this unit; arithmetic and capture guards remain untouched.
+
+The implementation provides `DeviceRead::from_buffer(&Buffer)` and
+`DeviceWrite::from_buffer(&mut Buffer)`, `context`, `bytes`, `pointer`, and checked
+`subrange(ByteRange)` methods. `DeviceWrite::as_read` borrows a read view;
+`DeviceWrite` is neither Clone nor Copy. `ByteRange { offset, bytes, alignment }`
+replaces three positional subrange parameters from the proposal. Its public fields
+are untrusted requests, validated by private `CheckedRange` construction.
+
+The CUDA-module-private `partition(&mut Buffer, [PartitionRequest; N])` returns
+`[DeviceAccess; N]`, with access selected by `Access::Read` or `Access::Write`.
+It validates all bounds/alignment and pairwise disjointness before exposing any
+view, including rejecting an empty partition. The parent workspace adapter must
+also check each allocation-relative request against its original named region
+before calling it. No public arbitrary-address view constructor exists.
+
+`validate_launch_access(&Context, &[&DeviceRead], &[&DeviceWrite])` checks context
+identity before address overlap. It permits shared reads and rejects read/write
+and write/write overlap, including duplicate write arguments. It does not impose
+operator dtype, exact shape or stronger alignment requirements; the caller must
+request and validate those at operation admission.
+
+Seven pure host tests are authored for whole/tail/nested ranges, bounds and
+alignment, offset/address overflow, adjacency/overlap, atomic partition validation,
+read/write access combinations and object identity. They require no fabricated
+CUDA context. They have not been compiled or run. `rustfmt --edition 2024` completed
+successfully for the new file; this is formatting evidence only.
+
+The next parent integration methods are `WorkspaceStep::views` backed by the
+checked partition constructor and replacement of MLP's raw input address with a
+borrowed `DeviceRead`. Full-chain conversion should acquire its complete region
+set once rather than trying to retain views across repeated mutable step borrows.
+No stream conversion is included. Existing Buffer shared-reference mutation and
+unsafe enqueue completion/drain obligations are documented in the source; these
+views alone provide neither asynchronous nor graph lifetime safety.
+
+### Parent MLP integration preflight
+
+Parent registered the checked-view module and converted the entire existing MLP
+workspace chain together. `WorkspaceStep::write_regions` borrows all 19 named
+outputs in one checked partition; `mlp_workspace_views.rs` gives gate/up/down and
+activation their own arrays. Each projection receives a checked read input and
+five writable outputs, verifies sizes/alignment and contexts/aliasing, and retains
+the existing kernels, profiles, scale factors and synchronization. Activation
+checks its two input views and four output views, then down reads the activation
+through a read reborrow. Abort-after-gate retains the existing drain/poison lease.
+
+The initial integrated partition API deliberately returns only writable regions;
+consumers use `as_read`. General mixed-access partitions, direct writable-buffer
+constructors and mutable subviews are deferred until an actual consumer needs
+them. This avoids carrying unused execution interfaces. Named regions retain
+full extents and four-byte alignment. Preparation still performs host allocation
+and function lookup and uses the default stream; graph capture is not ready.
+A mechanical duplicate closure during editing was caught by rustfmt and corrected.
+Linux compilation and real-weight/sanitizer qualification are next. macOS checks
+do not compile this Linux-only CUDA module and cannot qualify these edits.

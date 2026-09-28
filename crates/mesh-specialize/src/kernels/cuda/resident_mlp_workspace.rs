@@ -1,7 +1,9 @@
 //! Experimental exact MLP chain with persistent scratch and explicit completion policy.
 use super::{
+    device_view::{ByteRange, DeviceRead, DeviceWrite, validate_launch_access},
     driver::{Buffer, Context, Module},
     mlp_workspace_projection::Binding,
+    mlp_workspace_views::Views,
     resident_projection::{Projection, Quantization},
     resident_weights::ResidentWeights,
     resident_workspace::ResidentWorkspace,
@@ -122,18 +124,13 @@ impl<'w, 'ctx> Chain<'w, 'ctx> {
                 && input.len() == self.rows * self.width * 2,
             "MLP abort probe input/context mismatch"
         );
-        let step = self.workspace.begin_step()?;
+        let input = DeviceRead::from_buffer(input)?;
+        let mut step = self.workspace.begin_step()?;
+        let views = Views::new(&mut step)?;
         // SAFETY: Same validated input and planned disjoint regions as run; dropping
         // this incomplete lease drains queued work and poisons the owner.
         unsafe {
-            self.projections[0].enqueue(
-                self.context,
-                module,
-                &step,
-                "gate",
-                input.pointer(),
-                self.rows,
-            )?;
+            self.projections[0].enqueue(self.context, module, &input, &views.gate, self.rows)?;
         }
         anyhow::bail!("injected MLP workspace failure after gate")
     }
@@ -184,65 +181,77 @@ pub(super) fn enqueue_chain(
             && projections[2].channels == width,
         "MLP workspace projection geometry mismatch"
     );
-    let step = workspace.begin_step()?;
-    for (name, bytes) in [("values", 2), ("silu", 4), ("activated", 2), ("raw", 4)] {
-        ensure!(
-            step.region(&format!("activation.{name}"))?.bytes() >= rows * channels * bytes,
-            "undersized MLP activation region"
-        );
-    }
-    for (name, projection) in ["gate", "up"].into_iter().zip(projections) {
-        // SAFETY: Checked input/context and this chain's fixed-shape regions remain
-        // live under the exclusive lease through completion or error draining.
-        unsafe {
-            projection.enqueue(ctx, module, &step, name, input.pointer(), rows)?;
+    let input_view = DeviceRead::from_buffer(input)?;
+    let input_view = input_view.subrange(ByteRange {
+        offset: 0,
+        bytes: input.len(),
+        alignment: 2,
+    })?;
+    let mut step = workspace.begin_step()?;
+    {
+        let views = Views::new(&mut step)?;
+        for (projection, outputs) in projections.iter().zip([&views.gate, &views.up]) {
+            // SAFETY: Checked disjoint views and all owners remain live through lease completion/drain.
+            unsafe {
+                projection.enqueue(ctx, module, &input_view, outputs, rows)?;
+            }
+            if operator_waits {
+                ctx.synchronize()?;
+            }
         }
+        activation(ctx, module, &views, rows * channels)?;
         if operator_waits {
             ctx.synchronize()?;
         }
+        // SAFETY: Same ordered stream produces activation, all scratch is disjoint and leased.
+        unsafe {
+            projections[2].enqueue(
+                ctx,
+                module,
+                &views.activation[0].as_read(),
+                &views.down,
+                rows,
+            )?;
+        }
     }
-    let names = [
-        "gate.values",
-        "up.values",
-        "activation.values",
-        "activation.silu",
-        "activation.activated",
-        "activation.raw",
-    ];
-    let mut pointers = names
-        .iter()
-        .map(|name| Ok(step.region(name)?.pointer()))
-        .collect::<Result<Vec<_>>>()?;
-    let mut count = (rows * channels) as u32;
+    step.complete()
+}
+
+/// Retain all intermediate BF16 boundaries and diagnostic writes in the existing ABI.
+fn activation(
+    ctx: &Context,
+    module: &Module<'_>,
+    views: &Views<'_, '_>,
+    elements: usize,
+) -> Result<()> {
+    let gate = views.gate[3].as_read();
+    let up = views.up[3].as_read();
+    ensure!(
+        gate.bytes() >= elements * 2 && up.bytes() >= elements * 2,
+        "undersized MLP activation input"
+    );
+    for (output, bytes) in views.activation.iter().zip([2, 4, 2, 4]) {
+        ensure!(
+            output.bytes() >= elements * bytes,
+            "undersized MLP activation output"
+        );
+    }
+    validate_launch_access(ctx, &[&gate, &up], &views.activation.each_ref())?;
+    let [values, silu, activated, raw] = views.activation.each_ref().map(DeviceWrite::pointer);
+    let mut pointers = [gate.pointer(), up.pointer(), values, silu, activated, raw];
+    let mut count = u32::try_from(elements)?;
     let mut args = pointers
         .iter_mut()
         .map(|p| (p as *mut u64).cast::<c_void>())
         .collect::<Vec<_>>();
-    args.push((&mut count as *mut u32).cast());
-    // SAFETY: Planned disjoint BF16/FP32 regions match the six-pointer activation ABI.
-    // The same stream orders both projections before this consumer; lease drains errors.
+    args.push((&raw mut count).cast());
+    // SAFETY: Checked disjoint views match six-pointer ABI; owners survive completion/drain.
     unsafe {
         module.function("mlp_silu_product")?.launch(
             [count.div_ceil(256), 1, 1],
             [256, 1, 1],
             0,
             &mut args,
-        )?;
+        )
     }
-    if operator_waits {
-        ctx.synchronize()?;
-    }
-    // SAFETY: Activation was queued on the same ordered stream into the planned
-    // BF16 region; downstream scratch is disjoint and the lease remains live.
-    unsafe {
-        projections[2].enqueue(
-            ctx,
-            module,
-            &step,
-            "down",
-            step.region("activation.values")?.pointer(),
-            rows,
-        )?;
-    }
-    step.complete()
 }

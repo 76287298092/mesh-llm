@@ -4,7 +4,10 @@ use crate::engine::workspace::WorkspaceLayout;
 use anyhow::{Context as _, Result, anyhow, ensure};
 use std::marker::PhantomData;
 
-use super::driver::{Buffer, Context};
+use super::{
+    device_view::{self, ByteRange, DeviceWrite},
+    driver::{Buffer, Context},
+};
 
 /// One CUDA allocation for a fixed, checked scratch layout.
 pub(super) struct ResidentWorkspace<'ctx> {
@@ -117,6 +120,29 @@ impl<'workspace, 'ctx> WorkspaceStep<'workspace, 'ctx> {
                 .context("CUDA workspace region length does not fit usize")?,
             _workspace: PhantomData,
         })
+    }
+
+    /// Borrow every named output together. Named extents and the complete partition
+    /// are checked before returning any view; the step cannot complete while borrowed.
+    pub(super) fn write_regions<const N: usize>(
+        &mut self,
+        names: [&str; N],
+    ) -> Result<[DeviceWrite<'_, 'ctx>; N]> {
+        let requests = names
+            .map(|name| {
+                let region = self.owner.layout.region(name)?;
+                Ok(ByteRange {
+                    offset: usize::try_from(region.offset)?,
+                    bytes: usize::try_from(region.length)?,
+                    alignment: 4,
+                })
+            })
+            .into_iter()
+            .collect::<Result<Vec<_>>>()?;
+        let requests: [ByteRange; N] = requests
+            .try_into()
+            .map_err(|_| anyhow!("workspace view count mismatch"))?;
+        device_view::partition(&mut self.owner.allocation, requests)
     }
 
     /// Synchronize the owning CUDA context before making the arena reusable.
