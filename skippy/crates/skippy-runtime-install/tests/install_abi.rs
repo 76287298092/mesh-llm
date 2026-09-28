@@ -1,10 +1,10 @@
+use skippy_native_runtime::runtime_release_version;
 use skippy_native_runtime::{NativeRuntimeBackend, NativeRuntimePlatform};
 use skippy_runtime_install::{
-    CURRENT_MESH_VERSION, CandidateRejection, NativeRuntimeArtifact,
-    NativeRuntimeBundleInstallPolicy, NativeRuntimeCache, NativeRuntimeCatalog,
-    NativeRuntimeInstallOptions, NativeRuntimeManifest, NativeRuntimeReleaseManifest,
-    NativeRuntimeResolutionError, current_skippy_abi_version, host_runtime_profile,
-    install_native_runtime,
+    CandidateRejection, NativeRuntimeArtifact, NativeRuntimeBundleInstallPolicy,
+    NativeRuntimeCache, NativeRuntimeCatalog, NativeRuntimeInstallOptions, NativeRuntimeManifest,
+    NativeRuntimeReleaseManifest, NativeRuntimeResolutionError, current_skippy_abi_version,
+    host_runtime_profile, install_native_runtime,
 };
 use std::path::Path;
 
@@ -97,10 +97,10 @@ fn run_install(
 #[test]
 fn current_install_uses_matching_bundle_despite_stale_catalog_and_cache() {
     let temp = tempfile::tempdir().unwrap();
-    let mut options = install_options(temp.path(), CURRENT_MESH_VERSION);
+    let mut options = install_options(temp.path(), runtime_release_version());
     let bundle = temp.path().join("current-bundle");
     let abi = current_skippy_abi_version();
-    write_bundle(&bundle, "current-runtime", CURRENT_MESH_VERSION, &abi);
+    write_bundle(&bundle, "current-runtime", runtime_release_version(), &abi);
     options.bundle_dirs.push(bundle);
     let outcome = run_install(options).unwrap();
     assert_eq!(outcome.runtime.native_runtime_id, "current-runtime");
@@ -120,7 +120,7 @@ fn current_install_uses_matching_bundle_despite_stale_catalog_and_cache() {
 #[test]
 fn current_install_rejects_stale_catalog_instead_of_returning_cached_runtime() {
     let temp = tempfile::tempdir().unwrap();
-    let error = run_install(install_options(temp.path(), CURRENT_MESH_VERSION)).unwrap_err();
+    let error = run_install(install_options(temp.path(), runtime_release_version())).unwrap_err();
     let rejection = error
         .downcast_ref::<NativeRuntimeResolutionError>()
         .unwrap();
@@ -137,7 +137,7 @@ fn current_install_rejects_stale_catalog_instead_of_returning_cached_runtime() {
 #[test]
 fn explicit_abi_override_is_preserved_for_current_version() {
     let temp = tempfile::tempdir().unwrap();
-    let mut options = install_options(temp.path(), CURRENT_MESH_VERSION);
+    let mut options = install_options(temp.path(), runtime_release_version());
     options.skippy_abi_version = Some(CATALOG_ABI.to_string());
     let outcome = run_install(options).unwrap();
     assert_eq!(outcome.runtime.manifest.runtime.skippy_abi, CATALOG_ABI);
@@ -147,7 +147,7 @@ fn explicit_abi_override_is_preserved_for_current_version() {
 fn staging_another_version_preserves_its_catalog_abi() {
     let temp = tempfile::tempdir().unwrap();
     let version = "0.0.0";
-    assert_ne!(version, CURRENT_MESH_VERSION);
+    assert_ne!(version, runtime_release_version());
     let outcome = run_install(install_options(temp.path(), version)).unwrap();
     assert_eq!(outcome.runtime.manifest.runtime.skippy_abi, CATALOG_ABI);
     assert_eq!(outcome.runtime.release_version, version);

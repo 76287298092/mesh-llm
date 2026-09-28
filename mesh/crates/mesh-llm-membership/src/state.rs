@@ -40,6 +40,9 @@ pub struct MembershipState {
     /// streams from disclosing topology after a deterministic requirement reject.
     pub requirement_rejected_peers: HashSet<EndpointId>,
     pub recent_mesh_rejections: VecDeque<MeshRequirementRejectionEvent>,
+    /// Test seam for healthy admitted peers when an opaque iroh connection
+    /// cannot be fabricated. Production leaves this set empty.
+    pub test_peer_liveness: HashSet<EndpointId>,
 }
 
 impl Default for MembershipState {
@@ -57,6 +60,16 @@ impl Default for MembershipState {
             policy_rejected_peers: HashMap::new(),
             requirement_rejected_peers: HashSet::new(),
             recent_mesh_rejections: VecDeque::new(),
+            test_peer_liveness: HashSet::new(),
         }
+    }
+}
+
+impl MembershipState {
+    pub fn peer_has_observed_liveness(&self, peer: &PeerInfo) -> bool {
+        crate::peer_state::peer_has_observed_liveness(
+            peer,
+            self.connections.contains_key(&peer.id) || self.test_peer_liveness.contains(&peer.id),
+        )
     }
 }

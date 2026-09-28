@@ -179,6 +179,7 @@ impl OpenAiOptions {
             linear_proposal_ingress: None,
             kv_lifecycle_observer: None,
             openai_guardrails: None,
+            l3_manager: None,
         }
     }
 }

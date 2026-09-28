@@ -14,6 +14,13 @@ impl DiagnosticSink for StandaloneDiagnostics {
 
 fn render(output: &mut impl Write, diagnostic: ServingDiagnostic) -> io::Result<()> {
     match diagnostic {
+        ServingDiagnostic::Info { message, context } => {
+            writeln!(output, "{message}")?;
+            if let Some(context) = context {
+                writeln!(output, "  {context}")?;
+            }
+            Ok(())
+        }
         ServingDiagnostic::Warning { message, context } => {
             write!(output, "warning: {message}")?;
             if let Some(context) = context {

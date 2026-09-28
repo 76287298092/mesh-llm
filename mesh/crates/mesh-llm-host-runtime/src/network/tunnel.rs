@@ -14,6 +14,9 @@ use std::time::Duration;
 use tokio::net::TcpStream;
 
 mod inbound_http;
+mod remote_origin;
+#[cfg(feature = "payments")]
+pub(crate) use remote_origin::is_remote_bridge;
 
 fn quic_response_first_byte_timeout() -> Duration {
     Duration::from_secs(5 * 60)

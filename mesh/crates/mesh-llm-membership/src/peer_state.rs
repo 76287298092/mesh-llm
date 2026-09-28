@@ -34,6 +34,16 @@ use crate::requirements::{DirectNodeAdmissionProof, SignedMeshGenesisPolicy};
 use crate::selected_path::SelectedPathObservation;
 use crate::types::NodeRole;
 
+/// Whether a peer has recent direct evidence of reachability. Announcement
+/// content alone is not liveness: a bridge may retain a departed peer's last
+/// advertisement. A live connection or a fresh measured RTT is sufficient.
+pub fn peer_has_observed_liveness(peer: &PeerInfo, has_connection: bool) -> bool {
+    has_connection
+        || peer.display_rtt.as_ref().is_some_and(|observation| {
+            observation.observed_at.elapsed() < std::time::Duration::from_secs(PEER_STALE_SECS)
+        })
+}
+
 /// Whether the owner-trust policy admits a peer with the given ownership
 /// summary. Pure admission predicate shared with host gossip/admission paths.
 pub fn policy_accepts_peer(policy: TrustPolicy, owner_summary: &OwnershipSummary) -> bool {

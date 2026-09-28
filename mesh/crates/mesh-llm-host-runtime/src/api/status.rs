@@ -21,6 +21,25 @@ pub(crate) use mesh_llm_control_api::status::runtime::*;
 use serde::Serialize;
 use skippy_serving::OpenAiGuardrailsStatus;
 
+pub(crate) fn current_runtime_events_summary() -> Option<RuntimeEventsStatusSummary> {
+    let engine = crate::runtime_events::runtime_event_engine()?;
+    let snapshot = engine.reducer_snapshot();
+    let domain = snapshot.domain();
+    let diagnostics = domain.diagnostics();
+    let summary = RuntimeEventsStatusSummary {
+        node_state: domain.node_availability().state,
+        native_runtime_status: domain.native_runtime().status,
+        diagnostics_degraded: diagnostics.degraded,
+        fatal: diagnostics.fatal.is_some(),
+        fatal_reason_code: diagnostics
+            .fatal
+            .as_ref()
+            .and_then(|fatal| fatal.reason_code.clone()),
+        active_warning_count: diagnostics.active_warnings.len(),
+    };
+    (summary != RuntimeEventsStatusSummary::default()).then_some(summary)
+}
+
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub(crate) enum NodeState {
@@ -72,6 +91,9 @@ pub(crate) struct RuntimeStatusPayload {
     /// Intent summary counts and errors. Optional for backward compatibility.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) intent_summary: Option<IntentSummary>,
+    /// Reducer-derived runtime-event summary. Optional for backward compatibility.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) runtime_events: Option<RuntimeEventsStatusSummary>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -684,6 +706,7 @@ pub(crate) fn build_runtime_status_payload(
         capabilities: None,
         lifecycle_instances: vec![],
         intent_summary: None,
+        runtime_events: current_runtime_events_summary(),
     }
 }
 
@@ -938,6 +961,7 @@ mod tests {
                 capabilities: None,
                 lifecycle_instances: vec![],
                 intent_summary: None,
+                runtime_events: None,
             },
             model_name: "Qwen".to_string(),
             models: vec![],
@@ -1010,6 +1034,7 @@ mod tests {
                 capabilities: None,
                 lifecycle_instances: vec![],
                 intent_summary: None,
+                runtime_events: None,
             },
             model_name: "Qwen".to_string(),
             models: vec!["Qwen".to_string()],
@@ -1075,6 +1100,7 @@ mod tests {
                 capabilities: None,
                 lifecycle_instances: vec![],
                 intent_summary: None,
+                runtime_events: None,
             },
             model_name: String::new(),
             models: vec![],
@@ -1149,6 +1175,7 @@ mod tests {
                 capabilities: None,
                 lifecycle_instances: vec![],
                 intent_summary: None,
+                runtime_events: None,
             },
             model_name: String::new(),
             models: vec![],

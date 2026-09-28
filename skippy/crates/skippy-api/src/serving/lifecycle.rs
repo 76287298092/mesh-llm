@@ -19,7 +19,7 @@ use super::{OpenAiOptions, ServingTelemetryOptions};
 /// Whether the caller needs the native model-open event path, even without a sink.
 pub enum ModelOpenEvents {
     Disabled,
-    Enabled(Option<Box<dyn FnMut(skippy_runtime::RuntimeEvent) + Send>>),
+    Enabled(Option<Arc<skippy_runtime::ModelOpenEventQueue>>),
 }
 
 /// Explicit inputs; product configuration, plugin loading and event storage stay outside Skippy.
@@ -35,6 +35,7 @@ pub struct ModelLoadRequest {
     pub guardrail_telemetry: Option<Arc<dyn GuardrailTelemetrySink>>,
     pub downstream_wire_condition: WireCondition,
     pub serving_telemetry: Option<ServingTelemetryOptions>,
+    pub l3_manager: Option<skippy_cache::L3CacheManager>,
 }
 
 /// Keep the native runtime and prediction listener alive for the backend's lifetime.
@@ -72,8 +73,8 @@ impl ModelLoadRequest {
         );
         let runtime = match self.open_events {
             ModelOpenEvents::Disabled => SkippyRuntimeHandle::load(self.runtime),
-            ModelOpenEvents::Enabled(reporter) => {
-                SkippyRuntimeHandle::load_with_open_events(self.runtime, reporter)
+            ModelOpenEvents::Enabled(queue) => {
+                SkippyRuntimeHandle::load_with_open_events(self.runtime, queue)
             }
         }
         .with_context(|| {
@@ -115,6 +116,7 @@ impl ModelLoadRequest {
         args.generation_lifecycle = hooks.generation_lifecycle();
         args.linear_proposal_ingress = hooks.linear_proposal_ingress();
         args.kv_lifecycle_observer = hooks.kv_lifecycle_observer();
+        args.l3_manager = self.l3_manager;
         let binding = embedded_openai_backend(args).context("construct Skippy OpenAI backend")?;
         let backend = match self.guardrails {
             Some(guardrails) => guardrails.wrap_backend_with_telemetry(
@@ -206,7 +208,6 @@ mod tests {
                 metrics_otlp_grpc: None,
                 telemetry_queue_capacity: 0,
                 telemetry_level: skippy_serving::telemetry::TelemetryLevel::Off,
-                operation_id: None,
                 session_lifecycle_observer: None,
             },
             open_events: ModelOpenEvents::Disabled,
@@ -218,6 +219,7 @@ mod tests {
             guardrail_telemetry: None,
             downstream_wire_condition: WireCondition::new(0.0, None).unwrap(),
             serving_telemetry: None,
+            l3_manager: None,
         }
     }
 
@@ -242,9 +244,7 @@ mod tests {
             stage_index: 1,
             endpoint: "127.0.0.1:19001".into(),
         });
-        request.open_events = ModelOpenEvents::Enabled(Some(Box::new(|_| {
-            panic!("ambiguous stage zero must not load a model");
-        })));
+        request.open_events = ModelOpenEvents::Enabled(None);
         let error = request.load().err().expect("ambiguous stage zero accepted");
         assert!(error.to_string().contains("requires stage 0"));
     }
@@ -253,9 +253,7 @@ mod tests {
     fn legacy_package_is_rejected_before_native_loading_or_event_callbacks() {
         let mut request = request();
         request.runtime.config.load_mode = LoadMode::LayerPackage;
-        request.open_events = ModelOpenEvents::Enabled(Some(Box::new(|_| {
-            panic!("invalid package must not enter native model loading");
-        })));
+        request.open_events = ModelOpenEvents::Enabled(None);
         let error = request
             .load()
             .err()

@@ -6,9 +6,8 @@ use skippy_protocol::{
 };
 use skippy_runtime::MtpSource;
 use skippy_serving::{
-    DEFAULT_EMBEDDED_MAX_TOKENS, DEFAULT_GENERATION_ADMISSION_TIMEOUT_SECS, EmbeddedOpenAiArgs,
-    EmbeddedOpenAiRequestDefaults, EmbeddedRuntimeOptions, NativeMtpProposalConfig,
-    SpeculativeDecodeConfig, telemetry::Telemetry,
+    DEFAULT_EMBEDDED_MAX_TOKENS, EmbeddedOpenAiRequestDefaults, EmbeddedRuntimeOptions,
+    SpeculativeDecodeConfig,
 };
 
 use super::super::{
@@ -204,7 +203,6 @@ impl ResolvedSkippyConfig {
             metrics_otlp_grpc: telemetry.metrics_otlp_grpc.clone(),
             telemetry_queue_capacity: telemetry.queue_capacity,
             telemetry_level: telemetry.level,
-            operation_id: None,
             session_lifecycle_observer: None,
         })
     }
@@ -455,9 +453,9 @@ impl ResolvedSkippyConfig {
         &self,
         family_default: Option<StageKvCacheConfig>,
     ) -> Result<Option<StageKvCacheConfig>> {
-        match &self.model_fit.prefix_cache {
-            ResolvedStageKvCache::FamilyDefault => Ok(family_default),
-            ResolvedStageKvCache::Disabled => Ok(Some(StageKvCacheConfig {
+        let mut resolved = match &self.model_fit.prefix_cache {
+            ResolvedStageKvCache::FamilyDefault => family_default,
+            ResolvedStageKvCache::Disabled => Some(StageKvCacheConfig {
                 mode: StageKvCacheMode::Disabled,
                 payload: StageKvCachePayload::Auto,
                 max_entries: 0,
@@ -465,7 +463,9 @@ impl ResolvedSkippyConfig {
                 min_tokens: 0,
                 shared_prefix_stride_tokens: 0,
                 shared_prefix_record_limit: 0,
-            })),
+                l2_max_bytes: 0,
+                codec: skippy_protocol::StageKvCacheCodec::Native,
+            }),
             ResolvedStageKvCache::Explicit(template) => {
                 let mut cache = family_default.unwrap_or(StageKvCacheConfig {
                     mode: template.mode.clone(),
@@ -475,6 +475,8 @@ impl ResolvedSkippyConfig {
                     min_tokens: 256,
                     shared_prefix_stride_tokens: 128,
                     shared_prefix_record_limit: 2,
+                    l2_max_bytes: 0,
+                    codec: skippy_protocol::StageKvCacheCodec::Native,
                 });
                 cache.mode = template.mode.clone();
                 cache.payload = template.payload;
@@ -493,9 +495,19 @@ impl ResolvedSkippyConfig {
                 if let Some(value) = template.shared_prefix_record_limit {
                     cache.shared_prefix_record_limit = value as u64;
                 }
-                Ok(Some(cache))
+                Some(cache)
             }
+        };
+        if self.model_fit.l2_max_bytes > 0 && resolved.is_none() {
+            anyhow::bail!(
+                "model_fit.cache_ram_mib requires an executable prefix-cache configuration"
+            );
         }
+        if let Some(cache) = resolved.as_mut() {
+            cache.l2_max_bytes = self.model_fit.l2_max_bytes;
+            cache.codec = self.model_fit.kv_cache_codec;
+        }
+        Ok(resolved)
     }
 }
 

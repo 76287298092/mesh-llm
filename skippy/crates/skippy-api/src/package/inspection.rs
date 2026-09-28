@@ -5,7 +5,7 @@ use skippy_package_format::{PackageManifest as PackageManifestV2, TensorStorage}
 use skippy_runtime::package::{self, LayerPackageInfo, PackageGenerationInfo};
 use std::{fs, path::PathBuf};
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct StagePackageInfo {
     pub package_ref: String,
     pub package_dir: PathBuf,

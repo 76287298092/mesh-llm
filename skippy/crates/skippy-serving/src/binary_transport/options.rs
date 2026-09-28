@@ -31,6 +31,8 @@ pub struct BinaryStageOptions {
     /// Receives this stage's runtime compute time, for auto-balance
     /// split placement. `None` skips the accounting.
     pub compute_meter: Option<std::sync::Arc<crate::compute_meter::StageComputeMeter>>,
+    /// Optional node-scoped durable cache manager supplied by the embedding host.
+    pub l3_manager: Option<skippy_cache::L3CacheManager>,
 }
 
 #[derive(Clone)]

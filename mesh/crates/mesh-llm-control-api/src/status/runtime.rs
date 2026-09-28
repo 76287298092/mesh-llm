@@ -96,6 +96,25 @@ pub const RUNTIME_EVENTS_CAPABILITY: RuntimeEventsCapability = RuntimeEventsCapa
     cursor: "rt1",
 };
 
+// ─── Runtime-Event Reducer Summary ────────────────────────────────────────────
+
+/// Reducer-derived node summary on `runtime.runtime_events`: what the
+/// runtime-event reducer currently believes about node availability, the
+/// native runtime, and diagnostics. Absent when no engine is installed or
+/// the reducer has observed none of these families.
+#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize)]
+pub struct RuntimeEventsStatusSummary {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub node_state: Option<&'static str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub native_runtime_status: Option<&'static str>,
+    pub diagnostics_degraded: bool,
+    pub fatal: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fatal_reason_code: Option<String>,
+    pub active_warning_count: usize,
+}
+
 // ─── Lifecycle Instance Payloads ──────────────────────────────────────────────
 
 /// Bounded lifecycle instance payload for API status output.

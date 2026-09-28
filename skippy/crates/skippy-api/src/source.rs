@@ -182,6 +182,7 @@ fn synthetic_safetensors_package(
         activation_width,
         tensor_count,
         generation: None,
+        publisher_defaults: None,
     })
 }
 
@@ -277,6 +278,7 @@ fn synthetic_gguf_package_from_source_files(
         activation_width: compact.embedding_size,
         tensor_count,
         generation: None,
+        publisher_defaults: None,
     };
     crate::source_registry::register_content_addressed_identity(
         &identity,

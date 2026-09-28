@@ -33,6 +33,11 @@ dynamic-native-runtime = [
     "skippy-runtime/dynamic-native-runtime",
     "skippy-serving/dynamic-native-runtime",
 ]
+# Runs the installed Claude Code executable through the real host ingress.
+# CI pins and installs the client before enabling this feature.
+claude-code-integration = []
+# Extends the real-client smoke through a credentialed Anthropic Claude model.
+claude-live-model-integration = ["claude-code-integration"]
 
 [lints]
 workspace = true
@@ -73,6 +78,7 @@ skippy-model-ref = { path = "../../../skippy/crates/skippy-model-ref", version =
 skippy-model-resolver = { path = "../../../skippy/crates/skippy-model-resolver", version = "0.76.1"  }
 skippy-openai-frontend = { path = "../../../skippy/crates/skippy-openai-frontend", version = "0.76.1"  }
 skippy-protocol = { path = "../../../skippy/crates/skippy-protocol", version = "0.76.1"  }
+skippy-cache = { path = "../../../skippy/crates/skippy-cache", version = "0.76.1"  }
 skippy-coordinator = { path = "../../../skippy/crates/skippy-coordinator", version = "0.76.1"  }
 skippy-runtime = { path = "../../../skippy/crates/skippy-runtime", version = "0.76.1"  }
 skippy-ffi = { path = "../../../skippy/crates/skippy-ffi", version = "0.76.1", default-features = false }

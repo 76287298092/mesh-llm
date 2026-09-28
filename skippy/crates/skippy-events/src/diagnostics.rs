@@ -11,6 +11,10 @@ use std::{
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ServingDiagnostic {
+    Info {
+        message: String,
+        context: Option<String>,
+    },
     Warning {
         message: String,
         context: Option<String>,

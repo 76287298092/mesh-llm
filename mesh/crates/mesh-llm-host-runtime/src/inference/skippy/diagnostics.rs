@@ -9,6 +9,9 @@ struct MeshDiagnostics;
 impl DiagnosticSink for MeshDiagnostics {
     fn emit(&self, diagnostic: ServingDiagnostic) -> io::Result<()> {
         match diagnostic {
+            ServingDiagnostic::Info { message, context } => {
+                mesh_llm_events::emit_event(mesh_llm_events::OutputEvent::Info { message, context })
+            }
             ServingDiagnostic::Warning { message, context } => {
                 mesh_llm_events::emit_event(mesh_llm_events::OutputEvent::Warning {
                     message,

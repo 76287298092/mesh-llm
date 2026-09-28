@@ -126,6 +126,7 @@ pub fn binary_stage_options(args: ServeBinaryArgs) -> Result<BinaryStageOptions>
         continuous_batching: true,
         compute_meter: None,
         openai,
+        l3_manager: None,
     })
 }
 

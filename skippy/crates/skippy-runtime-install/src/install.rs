@@ -71,7 +71,7 @@ async fn install_with_source_policy(
         // A release catalog can lag behind a locally built host with the
         // same MeshLLM version. Match the ABI that this host can load,
         // while retaining catalog defaults when staging another version.
-        if options.release_version == CURRENT_MESH_VERSION {
+        if options.release_version == skippy_native_runtime::runtime_release_version() {
             current_skippy_abi_version()
         } else {
             manifest.skippy_abi.clone()

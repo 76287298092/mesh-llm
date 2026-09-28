@@ -11,6 +11,8 @@ mod loading;
 mod local_source;
 mod materialization;
 pub(crate) mod metal_pipeline_cache;
+mod model_capabilities;
+mod model_open_drain;
 mod package;
 mod projector;
 #[cfg(test)]
@@ -87,11 +89,10 @@ pub(crate) use package::{
 pub(crate) use resolver::{
     ResolvedEmbeddedOpenAiArgs, ResolvedSkippyConfig, SkippyConfigResolveRequest,
     effective_safety_margin_bytes, resolve_skippy_config_for_selector,
+    resolve_skippy_config_for_selector_with_publisher_defaults,
 };
 pub(crate) use skippy_api::family_policy;
-pub(crate) use skippy_api::family_policy::{
-    family_policy_for_compact_meta, family_policy_for_stage_config,
-};
+pub(crate) use skippy_api::family_policy::family_policy_for_stage_config;
 pub(crate) use skippy_serving::OpenAiGuardrailsStatus as SkippyOpenAiGuardrailsStatus;
 pub(crate) use split_certification::{SplitCertificationAdmission, require_split_certification};
 #[cfg(test)]
@@ -250,7 +251,10 @@ pub(crate) struct SkippyOpenAiGuardrailOptions {
     telemetry: survey::SurveyTelemetry,
 }
 
+/// Host consumer for native model-open events. Runs on a host drain thread,
+/// never on the native callback thread.
 pub(crate) type NativeModelOpenEventReporter = Box<dyn FnMut(skippy_runtime::RuntimeEvent) + Send>;
+pub(crate) use model_open_drain::{ModelOpenObservation, ModelOpenReturn, NativeModelOpenEvents};
 
 impl SkippyOpenAiGuardrailOptions {
     pub(crate) fn new(
@@ -258,6 +262,37 @@ impl SkippyOpenAiGuardrailOptions {
         telemetry: survey::SurveyTelemetry,
     ) -> Self {
         Self { config, telemetry }
+    }
+}
+
+pub(crate) fn load_laya_model(
+    path: &Path,
+    device: Option<&str>,
+) -> Result<Arc<skippy_runtime::LayaModel>> {
+    let threads = std::thread::available_parallelism()
+        .map(usize::from)
+        .unwrap_or(4);
+    Ok(Arc::new(skippy_runtime::LayaModel::open(
+        path, threads, device,
+    )?))
+}
+
+pub(crate) fn start_laya_http_on(
+    model_id: &str,
+    model: Arc<skippy_runtime::LayaModel>,
+    bind_addr: std::net::SocketAddr,
+) -> SkippyHttpHandle {
+    let lifecycle_observer = crate::network::openai::runtime_events::compose_lifecycle_observer(
+        crate::logging_runtime_state().and_then(|state| state.openai_lifecycle_observer()),
+    );
+    let server = skippy_serving::start_openai_backend_with_lifecycle_observer(
+        bind_addr,
+        Arc::new(skippy_serving::LayaSystemOneBackend::new(model_id, model)),
+        lifecycle_observer,
+    );
+    SkippyHttpHandle {
+        port: bind_addr.port(),
+        server,
     }
 }
 
@@ -276,27 +311,6 @@ impl SkippyHttpHandle {
 }
 
 impl SkippyModelHandle {
-    /// Classify the loaded native runtime, including speech-capable projectors.
-    pub(crate) fn workload_class(&self) -> Result<crate::mesh::ModelWorkloadClass> {
-        if self.runtime.supports_speech_synthesis() {
-            return Ok(crate::mesh::ModelWorkloadClass::SpeechSynthesis);
-        }
-        let workload = self
-            .runtime
-            .workload_info()
-            .context("read loaded model workload contract")?;
-        Ok(match workload.kind {
-            skippy_runtime::ModelWorkload::CausalGeneration => {
-                crate::mesh::ModelWorkloadClass::CausalGeneration
-            }
-            skippy_runtime::ModelWorkload::Embedding => crate::mesh::ModelWorkloadClass::Embedding,
-            skippy_runtime::ModelWorkload::Rerank => crate::mesh::ModelWorkloadClass::Rerank,
-            skippy_runtime::ModelWorkload::EncoderDecoder => {
-                crate::mesh::ModelWorkloadClass::EncoderDecoder
-            }
-        })
-    }
-
     pub(crate) fn backend(&self) -> Arc<dyn OpenAiBackend> {
         self.backend.clone()
     }
@@ -394,6 +408,10 @@ fn wrap_host_guardrail_backend(
 
 #[async_trait]
 impl OpenAiBackend for SkippyModelHandle {
+    async fn count_chat_tokens(&self, request: ChatCompletionRequest) -> OpenAiResult<u32> {
+        self.backend.count_chat_tokens(request).await
+    }
+
     async fn models(&self) -> OpenAiResult<Vec<ModelObject>> {
         self.backend.models().await
     }
@@ -687,6 +705,7 @@ mod tests {
             activation_width: 4096,
             tensor_count: 100,
             generation: None,
+            publisher_defaults: None,
         }
     }
 

@@ -2,8 +2,8 @@ use super::*;
 
 pub(crate) use mesh_llm_membership::peer_state::{
     ClaimedLogHead, DEAD_PEER_TTL, PEER_DOWN_REPORTER_COOLDOWN_SECS, PEER_STALE_SECS,
-    ingest_tunnel_map, model_identity_score, policy_accepts_peer, resolve_peer_leaving,
-    stream_allowed_before_admission,
+    ingest_tunnel_map, model_identity_score, peer_has_observed_liveness, policy_accepts_peer,
+    resolve_peer_leaving, stream_allowed_before_admission,
 };
 pub use mesh_llm_membership::peer_state::{
     DirectLatencyObservation, DisplayLatency, DisplayLatencySource, MeshCatalogEntry,
@@ -152,6 +152,13 @@ pub(crate) fn http_routable_models(peer: &PeerInfo) -> Vec<String> {
 
 pub(crate) fn routes_http_model(peer: &PeerInfo, model: &str) -> bool {
     peer.accepts_http_inference() && routes_model(peer, model)
+}
+
+fn is_routing_eligible(
+    peer: &PeerInfo,
+    state: &mesh_llm_membership::state::MembershipState,
+) -> bool {
+    peer.is_admitted() && state.peer_has_observed_liveness(peer)
 }
 
 fn public_model_id_for_routable_model(peer: &PeerInfo, model: &str) -> String {
@@ -305,7 +312,7 @@ impl Node {
         let mut hosts: Vec<(EndpointId, bool)> = state
             .peers
             .values()
-            .filter(|p| p.is_admitted())
+            .filter(|p| is_routing_eligible(p, &state))
             .filter(|p| routes_http_model(p, model))
             .filter_map(|p| {
                 use crate::proto::node::InferenceAdmissionState;
@@ -354,7 +361,7 @@ impl Node {
         state
             .peers
             .values()
-            .filter(|p| p.is_admitted())
+            .filter(|p| is_routing_eligible(p, &state))
             .find(|p| !http_routable_models(p).is_empty())
             .cloned()
     }
@@ -368,7 +375,7 @@ impl Node {
             state
                 .peers
                 .values()
-                .filter(|peer| peer.is_admitted())
+                .filter(|peer| is_routing_eligible(peer, &state))
                 .cloned()
                 .collect()
         };

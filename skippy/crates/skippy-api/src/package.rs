@@ -35,6 +35,7 @@ pub struct SkippyPackageIdentity {
     pub activation_width: u32,
     pub tensor_count: u64,
     pub generation: Option<PackageGenerationInfo>,
+    pub publisher_defaults: Option<skippy_package_format::PublisherModelDefaults>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -168,6 +169,7 @@ pub fn identity_from_package_v2(
         activation_width,
         tensor_count,
         generation,
+        publisher_defaults: manifest.publisher_defaults,
     })
 }
 

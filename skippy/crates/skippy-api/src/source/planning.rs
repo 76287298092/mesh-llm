@@ -104,6 +104,8 @@ pub fn direct_gguf_planning_manifest_from_identity(
         tensor_catalog: TensorCatalog { entries: tensors },
         sidecars: Vec::new(),
         generation: None,
+        publisher_metadata: Vec::new(),
+        publisher_defaults: None,
         native_abi_version: format!(
             "{}.{}.{}",
             skippy_ffi::ABI_VERSION_MAJOR,

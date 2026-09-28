@@ -1,29 +1,11 @@
-# skippy-native-runtime
+# mesh-llm-native-runtime
 
 Shared native runtime manifest, host profile, resolver, cache, and load-plan
-policy owned by Skippy and consumed by Mesh.
+policy for MeshLLM.
 
 This crate is the source of truth for selecting native runtimes. CLI install,
 SDK serving install, dynamic loading, and autoupdate should all use this same
 contract instead of carrying their own CUDA/ROCm/Vulkan detection logic.
-
-Native artifact and catalog manifests require `schema_version: 2` and name
-runtime identity `release_version`. Normal readers reject unversioned legacy
-manifests; only the explicit legacy-cache importer interprets the old field.
-Artifact IDs and packaged tool names remain unchanged in this transition.
-
-## Runtime release source
-
-`RUNTIME_VERSION` owns the native artifact release independently of the Cargo
-workspace version. `runtime_release_version()` exposes it to Rust callers and
-`package-native-runtime.sh` stamps the same value into artifacts. Its initial
-value matches the existing release to preserve cache identity. Mesh version
-bumps do not update this file.
-
-The catalog generator verifies every artifact against this runtime release (or
-an explicit `--runtime-version`). Its `--tag` locates archive downloads and may
-name a different product release. Product composition verifies exact Skippy
-ABI compatibility. This does not by itself prove a clean standalone install.
 
 ## Native Runtimes
 
@@ -38,9 +20,22 @@ matrix:
 - `rocm` with optional GFX targets
 - `vulkan`
 
-The hard compatibility boundary is exact Skippy ABI. `release_version` is still
-recorded and used for cache/prune layout, but a runtime is selected by
-`skippy_abi`, platform, and backend requirements.
+Selection is a hard match on four things, and failing any one of them is a
+rejection rather than a lower rank: `mesh_version`, `skippy_abi`, platform
+(OS, architecture, target triple, minimum glibc), and the backend
+requirements the host must satisfy. `resolver.rs` returns the reason as a
+structured `CandidateRejection`.
+
+`mesh_version` is not only cache layout. Installed runtimes live under
+`<cache-root>/<mesh_version>/<runtime-id>/`, `NativeRuntimeCache::install_manifest`
+writes the *manifest's* version into that path, and the prune policy removes
+non-active version directories. `mesh-llm-runtime-install` also treats
+`mesh_version` and `skippy_abi` together as the single "matches the current
+SDK" predicate. A runtime from a different MeshLLM release is therefore not
+selectable even when its Skippy ABI matches: it would be installed under a
+version directory the running host does not read. Expect a
+`MeshVersionMismatch` rejection (`MeshLLM version mismatch: expected X, found
+Y`) until the runtime is rebuilt or re-fetched for the host's own version.
 
 ## Artifact Manifest
 
@@ -48,10 +43,9 @@ Each packaged runtime directory contains `manifest.json`:
 
 ```json
 {
-  "schema_version": 2,
   "runtime": {
     "id": "meshllm-native-runtime-linux-x86_64-cuda13-sm120",
-    "release_version": "0.76.1",
+    "mesh_version": "0.76.1",
     "skippy_abi": "0.1.25",
     "platform": {
       "os": "linux",
@@ -117,13 +111,12 @@ Release jobs publish `native-runtimes.json`:
 
 ```json
 {
-  "schema_version": 2,
-  "release_version": "0.76.1",
+  "mesh_version": "0.76.1",
   "skippy_abi": "0.1.25",
   "artifacts": [
     {
       "id": "meshllm-native-runtime-linux-x86_64-cpu",
-      "release_version": "0.76.1",
+      "mesh_version": "0.76.1",
       "skippy_abi": "0.1.25",
       "platform": { "os": "linux", "arch": "x86_64" },
       "backend": { "kind": "cpu" },
@@ -141,7 +134,7 @@ Release jobs publish `native-runtimes.json`:
 Selection evaluates artifacts against `HostRuntimeProfile`:
 
 ```rust
-use skippy_native_runtime::{
+use mesh_llm_native_runtime::{
     HostCudaProfile, HostRuntimeProfile, NativeRuntimeBackendKind,
 };
 use std::collections::BTreeSet;
@@ -167,7 +160,7 @@ let profile = HostRuntimeProfile {
 };
 ```
 
-`skippy-hardware-profile` builds this profile for real hosts. It supports
+`mesh-llm-hardware-profile` builds this profile for real hosts. It supports
 explicit environment overrides for CI/release testing, including
 `MESH_LLM_CUDA_TOOLKIT_MAJOR`, `MESH_LLM_CUDA_TOOLKIT_MAJORS`,
 `MESH_LLM_CUDA_DRIVER_MAX_MAJOR`, `MESH_LLM_CUDA_GPU_ARCHES`,
@@ -199,14 +192,14 @@ Use `NativeRuntimeResolver` when the caller needs both the selected artifact and
 where it should come from:
 
 ```rust
-use skippy_native_runtime::{
+use mesh_llm_native_runtime::{
     NativeRuntimeCache, NativeRuntimeReleaseManifest, NativeRuntimeResolver,
     RuntimeSelection,
 };
 use std::path::PathBuf;
 
 # fn example(
-#     profile: skippy_native_runtime::HostRuntimeProfile,
+#     profile: mesh_llm_native_runtime::HostRuntimeProfile,
 #     manifest: NativeRuntimeReleaseManifest,
 # ) -> anyhow::Result<()> {
 let cache = NativeRuntimeCache::new("/tmp/mesh-llm/native-runtimes");
@@ -254,15 +247,14 @@ diagnostics, and support output.
 Installed runtimes are stored under:
 
 ```text
-<cache-root>/<release_version>/<runtime-id>/
+<cache-root>/<mesh_version>/<runtime-id>/
   manifest.json
   lib/...
 ```
 
-`release_version` is part of the cache layout and prune policy. Import keeps
-the legacy release/id directory components and payload bytes unchanged while
-writing generation-2 metadata into the destination cache. Source metadata and
-payloads remain untouched.
+`mesh_version` remains part of the cache layout and prune policy so upgrading
+MeshLLM can install the newly selected runtime, switch to it, and remove older
+runtime caches after success.
 
 ## Load Plan Boundary
 
@@ -271,7 +263,7 @@ validates `runtime.libraries` and returns absolute paths for the Skippy FFI
 loader:
 
 ```rust
-# fn example(installed: skippy_native_runtime::InstalledNativeRuntime) -> anyhow::Result<()> {
+# fn example(installed: mesh_llm_native_runtime::InstalledNativeRuntime) -> anyhow::Result<()> {
 let plan = installed.load_plan()?;
 for library in plan.libraries {
     println!("load {}", library.display());

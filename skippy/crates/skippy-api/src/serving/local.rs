@@ -89,7 +89,6 @@ impl LocalOpenAiOptions {
                     metrics_otlp_grpc: self.metrics_otlp_grpc,
                     telemetry_queue_capacity: self.telemetry_queue_capacity,
                     telemetry_level: self.telemetry_level,
-                    operation_id: None,
                     session_lifecycle_observer: None,
                 },
                 openai,
@@ -106,6 +105,7 @@ impl LocalOpenAiOptions {
                     0.0, None,
                 )?,
                 serving_telemetry: None,
+                l3_manager: None,
             },
         ))
     }

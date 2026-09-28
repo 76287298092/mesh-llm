@@ -6,7 +6,7 @@ use super::{
 use crate::package::inspection::{StagePackageInfo, StagePackageLayerInfo};
 use serde_json::json;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::TcpListener;
+use tokio::net::{TcpListener, TcpStream};
 
 #[test]
 fn certification_ranges_split_two_stage_package() {
@@ -190,6 +190,33 @@ async fn spawn_single_response_server(response: &'static str) -> String {
     format!("http://{addr}")
 }
 
+async fn read_complete_http_request(stream: &mut TcpStream) -> Vec<u8> {
+    let mut request = Vec::new();
+    loop {
+        let mut chunk = [0u8; 4096];
+        let n = stream.read(&mut chunk).await.unwrap();
+        assert!(n > 0, "unexpected EOF while reading certification request");
+        request.extend_from_slice(&chunk[..n]);
+        let Some(header_end) = request.windows(4).position(|window| window == b"\r\n\r\n") else {
+            continue;
+        };
+        let body_start = header_end + 4;
+        let headers = String::from_utf8_lossy(&request[..header_end]);
+        let content_length = headers
+            .lines()
+            .find_map(|line| {
+                let (name, value) = line.split_once(':')?;
+                name.eq_ignore_ascii_case("content-length")
+                    .then(|| value.trim().parse::<usize>().ok())
+                    .flatten()
+            })
+            .unwrap_or(0);
+        if request.len() >= body_start + content_length {
+            return request;
+        }
+    }
+}
+
 /// Mimics a node that only recognizes `served_model_id` — anything else 404s,
 /// the same way a real host does when a client asks for a model name it
 /// doesn't advertise.
@@ -199,9 +226,8 @@ async fn spawn_certification_stub_server(served_model_id: String) -> String {
     tokio::spawn(async move {
         for _ in 0..3 {
             let (mut stream, _) = listener.accept().await.unwrap();
-            let mut buf = [0u8; 4096];
-            let n = stream.read(&mut buf).await.unwrap();
-            let request = String::from_utf8_lossy(&buf[..n]);
+            let request = read_complete_http_request(&mut stream).await;
+            let request = String::from_utf8_lossy(&request);
             let response = if request.starts_with("GET") {
                 let body = json!({
                     "object": "list",
@@ -254,4 +280,23 @@ async fn runtime_smoke_gates_certify_against_served_package_ref() {
     for gate in &gates {
         assert_eq!(gate.status, CertificationGateStatus::Passed, "{gate:?}");
     }
+}
+
+#[tokio::test]
+async fn certification_stub_reads_a_body_split_from_its_headers() {
+    let model = "hf://meshllm/split-request@abc123";
+    let api_base = spawn_certification_stub_server(model.to_string()).await;
+    let addr = api_base.strip_prefix("http://").unwrap();
+    let body = json!({"model": model, "messages": []}).to_string();
+    let headers = format!(
+        "POST /v1/chat/completions HTTP/1.1\r\nHost: {addr}\r\nContent-Length: {}\r\n\r\n",
+        body.len()
+    );
+    let mut stream = TcpStream::connect(addr).await.unwrap();
+    stream.write_all(headers.as_bytes()).await.unwrap();
+    tokio::task::yield_now().await;
+    stream.write_all(body.as_bytes()).await.unwrap();
+    let mut response = Vec::new();
+    stream.read_to_end(&mut response).await.unwrap();
+    assert!(String::from_utf8_lossy(&response).starts_with("HTTP/1.1 200 OK"));
 }

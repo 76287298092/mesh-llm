@@ -278,6 +278,7 @@ mod tests {
             reasoning: CapabilityLevel::Likely,
             tool_use: CapabilityLevel::Supported,
             moe: true,
+            system_one: CapabilityLevel::Likely,
         };
 
         let verified = runtime_verified_capabilities_from_static(
@@ -294,6 +295,7 @@ mod tests {
         assert_eq!(verified.reasoning, CapabilityLevel::Likely);
         assert_eq!(verified.tool_use, CapabilityLevel::Supported);
         assert!(verified.moe);
+        assert_eq!(verified.system_one, CapabilityLevel::Likely);
         assert!(verified.supports_audio_runtime());
     }
 }

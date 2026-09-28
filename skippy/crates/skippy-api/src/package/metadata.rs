@@ -118,6 +118,7 @@ pub fn identity_from_package_v2_metadata(
         activation_width,
         tensor_count,
         generation: manifest.generation.as_ref().map(package_v2_generation_info),
+        publisher_defaults: manifest.publisher_defaults,
     })
 }
 

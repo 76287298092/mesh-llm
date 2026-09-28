@@ -56,29 +56,17 @@ impl SkippyModelHandle {
         hook_policy: Option<Arc<dyn OpenAiHookPolicy>>,
         guardrail_telemetry: survey::SurveyTelemetry,
     ) -> Result<Self> {
-        audit_load(|| {
-            Self::load_local(
-                options,
-                hook_policy,
-                guardrail_telemetry,
-                skippy_api::serving::ModelOpenEvents::Disabled,
-            )
-        })
+        audit_load(|| Self::load_local(options, hook_policy, guardrail_telemetry, None))
     }
 
     pub(crate) fn load_with_hooks_and_open_events(
         options: SkippyModelLoadOptions,
         hook_policy: Option<Arc<dyn OpenAiHookPolicy>>,
-        model_open_event_reporter: Option<NativeModelOpenEventReporter>,
+        model_open_events: Option<NativeModelOpenEvents>,
         guardrail_telemetry: survey::SurveyTelemetry,
     ) -> Result<Self> {
         audit_load(|| {
-            Self::load_local(
-                options,
-                hook_policy,
-                guardrail_telemetry,
-                skippy_api::serving::ModelOpenEvents::Enabled(model_open_event_reporter),
-            )
+            Self::load_local(options, hook_policy, guardrail_telemetry, model_open_events)
         })
     }
 
@@ -86,7 +74,7 @@ impl SkippyModelHandle {
         options: SkippyModelLoadOptions,
         hook_policy: Option<Arc<dyn OpenAiHookPolicy>>,
         guardrail_telemetry: survey::SurveyTelemetry,
-        open_events: skippy_api::serving::ModelOpenEvents,
+        model_open_events: Option<NativeModelOpenEvents>,
     ) -> Result<Self> {
         let stage_config = single_stage_config(&options)?;
         let mtp_source = Self::resolved_mtp_source(
@@ -96,12 +84,6 @@ impl SkippyModelHandle {
                 .as_ref()
                 .and_then(|args| args.native_mtp_draft_model_path.as_deref()),
         );
-        let operation_id = match &open_events {
-            skippy_api::serving::ModelOpenEvents::Disabled => None,
-            skippy_api::serving::ModelOpenEvents::Enabled(_) => {
-                Some(skippy_runtime::next_operation_id())
-            }
-        };
         let runtime_options = EmbeddedRuntimeOptions {
             config: stage_config,
             topology: None,
@@ -111,7 +93,6 @@ impl SkippyModelHandle {
             metrics_otlp_grpc: options.telemetry.metrics_otlp_grpc.clone(),
             telemetry_queue_capacity: options.telemetry.queue_capacity,
             telemetry_level: options.telemetry.level,
-            operation_id,
             session_lifecycle_observer: Some(Arc::new(
                 runtime_events::SkippySessionRuntimeEventObserver::new(),
             )),
@@ -130,7 +111,7 @@ impl SkippyModelHandle {
             hook_policy,
             SkippyOpenAiGuardrailOptions::new(options.openai_guardrails, guardrail_telemetry),
             options.serving_hooks_factory,
-            open_events,
+            model_open_events,
         )
     }
 
@@ -183,7 +164,6 @@ impl SkippyModelHandle {
                 metrics_otlp_grpc: telemetry.metrics_otlp_grpc.clone(),
                 telemetry_queue_capacity: telemetry.queue_capacity,
                 telemetry_level: telemetry.level,
-                operation_id: None,
                 session_lifecycle_observer: Some(session_observer),
             },
             embedded_args,
@@ -210,7 +190,7 @@ impl SkippyModelHandle {
                 telemetry,
                 guardrails,
                 serving_hooks_factory,
-                skippy_api::serving::ModelOpenEvents::Disabled,
+                None,
             )
         })
     }
@@ -220,7 +200,7 @@ impl SkippyModelHandle {
         embedded_args: resolver::ResolvedEmbeddedOpenAiArgs,
         hook_policy: Option<Arc<dyn OpenAiHookPolicy>>,
         telemetry: SkippyTelemetryOptions,
-        model_open_event_reporter: Option<NativeModelOpenEventReporter>,
+        model_open_events: Option<NativeModelOpenEvents>,
         guardrails: SkippyOpenAiGuardrailOptions,
         serving_hooks_factory: Option<SharedModelServingHooksFactory>,
     ) -> Result<Self> {
@@ -232,7 +212,7 @@ impl SkippyModelHandle {
                 telemetry,
                 guardrails,
                 serving_hooks_factory,
-                skippy_api::serving::ModelOpenEvents::Enabled(model_open_event_reporter),
+                model_open_events,
             )
         })
     }
@@ -244,7 +224,7 @@ impl SkippyModelHandle {
         telemetry: SkippyTelemetryOptions,
         guardrails: SkippyOpenAiGuardrailOptions,
         serving_hooks_factory: Option<SharedModelServingHooksFactory>,
-        open_events: skippy_api::serving::ModelOpenEvents,
+        model_open_events: Option<NativeModelOpenEvents>,
     ) -> Result<Self> {
         configure_materialized_stage_cache();
         let config = &mut runtime_options.config;
@@ -266,10 +246,11 @@ impl SkippyModelHandle {
             hook_policy,
             &guardrails,
             serving_hooks_factory,
-            open_events,
+            skippy_api::serving::ModelOpenEvents::Disabled,
         )?;
         request.serving_telemetry = Some(telemetry);
-        let model = Self::finish_load(request, guardrails.config)?;
+        let model =
+            Self::finish_load_with_open_events(request, guardrails.config, model_open_events)?;
         register_stage0_compute_meter(&model.config.run_id, &model.runtime);
         Ok(model)
     }
@@ -280,7 +261,7 @@ impl SkippyModelHandle {
         hook_policy: Option<Arc<dyn OpenAiHookPolicy>>,
         guardrails: SkippyOpenAiGuardrailOptions,
         serving_hooks_factory: Option<SharedModelServingHooksFactory>,
-        open_events: skippy_api::serving::ModelOpenEvents,
+        model_open_events: Option<NativeModelOpenEvents>,
     ) -> Result<Self> {
         let request = Self::model_load_request(
             runtime_options,
@@ -288,9 +269,9 @@ impl SkippyModelHandle {
             hook_policy,
             &guardrails,
             serving_hooks_factory,
-            open_events,
+            skippy_api::serving::ModelOpenEvents::Disabled,
         )?;
-        Self::finish_load(request, guardrails.config)
+        Self::finish_load_with_open_events(request, guardrails.config, model_open_events)
     }
 
     fn model_load_request(
@@ -315,6 +296,7 @@ impl SkippyModelHandle {
             guardrail_telemetry: guardrails.telemetry.guardrail_sink(),
             downstream_wire_condition: benchmark_downstream_wire_condition()?,
             serving_telemetry: None,
+            l3_manager: crate::runtime::kv_disk_config::node_kv_disk_manager(),
         })
     }
 
@@ -336,6 +318,21 @@ impl SkippyModelHandle {
             })),
             _prediction_return_listener: loaded.prediction_return_listener,
         })
+    }
+
+    fn finish_load_with_open_events(
+        mut request: skippy_api::serving::ModelLoadRequest,
+        openai_guardrails: Option<OpenAiGuardrailsConfig>,
+        model_open_events: Option<NativeModelOpenEvents>,
+    ) -> Result<Self> {
+        model_open_drain::observe_model_open(
+            skippy_runtime::next_operation_id(),
+            model_open_events,
+            |queue| {
+                request.open_events = skippy_api::serving::ModelOpenEvents::Enabled(queue);
+                Self::finish_load(request, openai_guardrails)
+            },
+        )
     }
 }
 
