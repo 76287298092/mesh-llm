@@ -28,6 +28,10 @@ pub(in crate::kernels) fn run(
     request: &SpeculationRequest<'_>,
 ) -> Result<Value> {
     ensure!(
+        !super::nvfp4_projection_audit::enabled()?,
+        "NVFP4 audit is diagnostic; use qwen-model-profile"
+    );
+    ensure!(
         crate::kernels::attention_profile::current()?
             == crate::kernels::attention_profile::Profile::Exact,
         "MTP requires the exact attention profile until experimental recovery is qualified"

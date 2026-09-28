@@ -210,3 +210,15 @@ final-state hashes match the prior non-stage-captured trial; profile/control
 outputs/state match and memory release passes in stage2. Strict partition still
 fails. Next audit identical quantized inputs through native/integer projection
 and independent CPU reference; no attention arithmetic change is justified yet.
+
+Prepared `MESH_SPECIALIZE_NVFP4_AUDIT=1` for model-profile together with
+`MESH_SPECIALIZE_PARTITION_STAGE_LAYER=22`. It targets only the128-row layer22
+NVFP4downprojection,row101,N5120,K17408. Diagnostic integer GPU output uses
+pointers to the exact native input codes/scales and resident weights; neither
+control output feeds the model. Selected differing channels (up to32), first/
+middle/last and worst raw-error channel are checked against the independent
+logical FP64 NVFP4 reference, including represented global scales. Subsequent
+one-token row101 must match the captured quantized bytes and integer raw/BF16
+outputs. Stored BF16/raw rounding and finiteness are checked. Model reports
+retain numerical failures and strict partition gates; throughput/MTP reject
+this diagnostic mode. No PTX changed. Live audit pending.

@@ -434,3 +434,23 @@ Ninfer remainsinactive. Other mesh-llm processes appeared during trials and were
 preserved; refresh process/service state. Stage1's exact memory-release gate
 failed due to concurrent allocation; numerical stage checks passed. Stage2
 passed memory release but retains the expected strict partition failure.
+
+## Deep-dive follow-up workers
+
+User explicitly requested GPT-6-Astra at low reasoning (correcting an initial
+Luna request) for this dispatch. Three dedicated workers are active:
+
+- `feature_a16_head_schedule`: item3, new sliced-K BF16-input/FP8-weight head
+  kernel and independent reference; owns only fp8_a16_head device/reference
+  files and optimizations/a16-head-schedule.md.
+- `feature_nvfp4_pipeline`: item4, new32x32 multiwarp K64 staged NVFP4 kernel
+  and independent reference; owns only nvfp4_prefill_tiled device/reference
+  files and optimizations/nvfp4-prefill-pipeline.md. No baseline arithmetic edit.
+- `feature_ordinary_graph_plan`: item2, source-backed whole-model eager-stream
+  and graph integration design; owns only findings/ordinary-decode-graph-plan.md.
+
+Each assignment is bounded and keeps existing feature workers separate. Workers
+may not run Cargo, GPU jobs, SSH, Git mutations, services or further delegation.
+Parent retains design review, integration, registration/assembly inventory,
+serial builds, GPU/reference/sanitizer/model qualification, Git and the ongoing
+layer22 NVFP4 numerical audit. Candidate delivery is not performance parity.

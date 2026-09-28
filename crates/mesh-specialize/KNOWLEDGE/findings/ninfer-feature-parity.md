@@ -141,3 +141,14 @@ Resumed conversation dispatched fresh dedicated F09 and F10 workers using
 GPT-6-Luna max, and the format investigation using GPT-6-Astra low. F09 owns
 record/replay kernels and independent CPU reference; F10 owns generic checkpoint
 identity/eviction policy. Delivered primitives do not close either feature.
+
+Deep-dive follow-up dispatch (user-selected GPT-6-Astra, low):
+
+| Bounded follow-up | Dedicated worker | Status |
+| --- | --- | --- |
+| A16 sliced-K vocabulary-head schedule | `feature_a16_head_schedule` | Implementing a separate kernel/reference; parent qualification pending |
+| Multiwarp pipelined NVFP4 prefill | `feature_nvfp4_pipeline` | Implementing a separate kernel/reference; baseline arithmetic preserved |
+| Ordinary whole-model graph preparation | `feature_ordinary_graph_plan` | Source-backed integration design only; parent implementation/qualification pending |
+
+These workers own separate new files; they do not replace or reassign earlier
+feature workers. Parent continues the layer22 NVFP4 same-input numerical audit.

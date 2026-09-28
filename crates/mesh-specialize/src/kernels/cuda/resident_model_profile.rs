@@ -58,6 +58,7 @@ pub(in crate::kernels) fn run(
     );
     super::fp8_projection_audit::take_reports();
     super::attention_audit::take_reports();
+    super::nvfp4_projection_audit::take();
     validate_request(
         tokens,
         config.vocabulary,
@@ -205,16 +206,25 @@ pub(in crate::kernels) fn run(
     let attention_audit = super::attention_audit::take_reports();
     let audit_passed = !crate::kernels::attention_profile::current()?.is_audit()
         || (attention_audit.len() == 2 && attention_audit.iter().all(|v| v["all_passed"] == true));
+    let nvfp4_audit = super::nvfp4_projection_audit::take();
+    let nvfp4_audit_passed = !super::nvfp4_projection_audit::enabled()?
+        || nvfp4_audit.as_ref().is_some_and(|v| {
+            v["integer_cpu_samples_exact"] == true
+                && v["token_quantized_inputs_equal"] == true
+                && v["token_integer_outputs_equal"] == true
+        });
     let all_passed = prefill_exact
         && exact_output_and_state
         && past_exact
         && memory_released
         && partition_exact
-        && audit_passed;
+        && audit_passed
+        && nvfp4_audit_passed;
 
     Ok(json!({
         "attention_profile":crate::kernels::attention_profile::current()?.name(),
         "attention_audit":attention_audit,
+        "nvfp4_projection_audit":nvfp4_audit,
         "gpu_selection_check": gpu_selection_check,
         "projection_audit": super::fp8_projection_audit::take_reports(),
         "schema_version": 1,

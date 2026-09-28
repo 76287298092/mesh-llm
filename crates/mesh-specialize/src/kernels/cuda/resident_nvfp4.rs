@@ -16,6 +16,7 @@ const MAX_ROWS: usize = 2_048;
 /// A reference-free NVFP4 projection over verified, device-resident weights.
 pub(super) struct Projection<'w, 'ctx> {
     owner: &'w ResidentWeights<'ctx>,
+    prefix: String,
     weight_pointer: u64,
     scale_pointer: u64,
     width: usize,
@@ -54,6 +55,7 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
             owner.positive_scalar(&format!("{prefix}.weight_global_scale"))?;
         let global_factor = global_factor(input_global_scale, weight_global_scale)?;
         Ok(Self {
+            prefix: prefix.to_owned(),
             owner,
             weight_pointer,
             scale_pointer,
@@ -148,6 +150,21 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
             ));
         }
         context.synchronize()?;
+        super::nvfp4_projection_audit::compare(
+            context,
+            module,
+            super::nvfp4_projection_audit::Case {
+                owner: self.owner,
+                prefix: &self.prefix,
+                codes: &activation.packed,
+                scales: &activation.scales,
+                output: &output,
+                raw: &unrounded,
+                shape: [rows, self.channels, self.width],
+                input_global: self.input_global_scale,
+                factor: self.global_factor,
+            },
+        )?;
         Ok(Output {
             values: output,
             unrounded,
