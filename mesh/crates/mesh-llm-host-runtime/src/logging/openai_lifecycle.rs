@@ -13,7 +13,7 @@ use mesh_llm_events::logging::{
     identifiers::{AttemptId, RequestId},
     replay::ReplayChannel,
 };
-use skippy_openai_frontend::{
+use skippy_inference_api::{
     OpenAiBackendOperation, OpenAiFailure, OpenAiLifecycleContext, OpenAiLifecycleEvent,
     OpenAiLifecycleObserver, OpenAiRejection, OpenAiRequestMethod, OpenAiTerminalResult,
     OpenAiUsage,
@@ -832,7 +832,7 @@ mod tests {
     use std::sync::{Arc, Mutex};
 
     use mesh_llm_events::logging::{events::LifecycleEvent, identifiers::RequestId};
-    use skippy_openai_frontend::{
+    use skippy_inference_api::{
         OpenAiBackendOperation, OpenAiFrontendRoute, OpenAiLifecycleContext, OpenAiLifecycleEvent,
         OpenAiRequestMethod, OpenAiTerminalResult, OpenAiUsage,
     };

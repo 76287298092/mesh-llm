@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use skippy_openai_frontend::{ChatCompletionRequest, OpenAiError, OpenAiResult};
+use skippy_inference_api::{ChatCompletionRequest, OpenAiError, OpenAiResult};
 use skippy_runtime::{ModelWorkload, SamplingConfig};
 
 use crate::frontend::generation::{
@@ -20,7 +20,7 @@ impl StageOpenAiBackend {
         max_tokens: u32,
         sampling: &SamplingConfig,
         chat_request: Option<&ChatCompletionRequest>,
-        cancellation: Option<&skippy_openai_frontend::CancellationToken>,
+        cancellation: Option<&skippy_inference_api::CancellationToken>,
         ids: &OpenAiGenerationIds,
         mut emit_token: impl FnMut(i32) -> OpenAiResult<TokenControl>,
     ) -> OpenAiResult<GenerationCacheStats> {
@@ -62,7 +62,7 @@ impl StageOpenAiBackend {
                         .0;
                     for generated in 0..max_tokens {
                         if cancellation
-                            .is_some_and(skippy_openai_frontend::CancellationToken::is_cancelled)
+                            .is_some_and(skippy_inference_api::CancellationToken::is_cancelled)
                         {
                             return Err(OpenAiError::backend("request cancelled"));
                         }

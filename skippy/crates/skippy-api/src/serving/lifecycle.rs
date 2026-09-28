@@ -2,7 +2,7 @@
 use std::sync::Arc;
 
 use anyhow::{Context, Result, ensure};
-use skippy_openai_frontend::{GuardrailTelemetrySink, OpenAiBackend, OpenAiHookPolicy};
+use skippy_inference_api::{GuardrailTelemetrySink, OpenAiBackend, OpenAiHookPolicy};
 use skippy_protocol::{LoadMode, StageConfig};
 use skippy_serving::{
     EmbeddedRuntimeOptions, OpenAiGuardrailsConfig, SkippyRuntimeHandle,

@@ -42,7 +42,7 @@ pub(in crate::network::openai::response) async fn relay_translated_messages_stre
 async fn write_chat_protocol_event(
     tcp_stream: &mut ClientStream,
     capture: &mut Option<OpenAiStreamArtifactCapture>,
-    messages: &mut Option<skippy_openai_frontend::anthropic::MessagesWireStream>,
+    messages: &mut Option<skippy_inference_api::anthropic::MessagesWireStream>,
     data: &str,
 ) -> Result<()> {
     if let Some(messages) = messages {
@@ -63,7 +63,7 @@ async fn write_chat_protocol_event(
 
 struct ChatProtocolRelayState {
     normalization: ChatStreamNormalizationState,
-    messages: Option<skippy_openai_frontend::anthropic::MessagesWireStream>,
+    messages: Option<skippy_inference_api::anthropic::MessagesWireStream>,
     observed_usage: Option<TokenUsage>,
     observed_cache_cost: Option<CacheCostObservation>,
     done_seen: bool,
@@ -75,7 +75,7 @@ impl ChatProtocolRelayState {
     fn new(anthropic: bool) -> Self {
         Self {
             normalization: ChatStreamNormalizationState::default(),
-            messages: anthropic.then(skippy_openai_frontend::anthropic::MessagesWireStream::new),
+            messages: anthropic.then(skippy_inference_api::anthropic::MessagesWireStream::new),
             observed_usage: None,
             observed_cache_cost: None,
             done_seen: false,
@@ -304,7 +304,7 @@ pub(in crate::network::openai::response) async fn relay_chat_protocol_stream<
 async fn write_truncated_message(
     tcp_stream: &mut ClientStream,
     response_capture: &mut Option<OpenAiStreamArtifactCapture>,
-    messages: Option<&mut skippy_openai_frontend::anthropic::MessagesWireStream>,
+    messages: Option<&mut skippy_inference_api::anthropic::MessagesWireStream>,
     done_seen: bool,
 ) -> Result<()> {
     if !done_seen && let Some(messages) = messages {

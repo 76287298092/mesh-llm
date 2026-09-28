@@ -34,7 +34,7 @@ This adds native startup, not model-reference resolution or clean-install proof.
 Each embedded server or server process owns one contiguous layer range. Mesh
 plans peers and layer ranges, sends `LoadStage` downstream-to-upstream, waits
 for readiness, and then publishes the stage-0 route. OpenAI clients talk to
-mesh/skippy-openai-frontend; diagnostic and benchmark clients may connect directly to
+mesh/skippy-inference-api; diagnostic and benchmark clients may connect directly to
 the first stage.
 
 The full request/reply path is tip-to-tip: token IDs enter at the driver-facing
@@ -48,7 +48,7 @@ downstream while local compute advances.
 
 ```mermaid
 flowchart LR
-    C["OpenAI client"] --> Mesh["mesh-llm<br/>skippy-openai-frontend + coordinator"]
+    C["OpenAI client"] --> Mesh["mesh-llm<br/>skippy-inference-api + coordinator"]
     Mesh --> D["stage-0 route<br/>token IDs"]
     D --> S0["stage-0<br/>layers 0..10"]
     S0 -->|activation frames| S1["stage-1<br/>layers 10..20"]
@@ -180,7 +180,7 @@ deadline handling.
   the private LAN address, such as `192.168.0.x:19031`, so both inbound serving
   and outbound stage-to-stage traffic are pinned to that interface.
 - `serve-openai` exposes model discovery, chat/completions, Responses,
-  embeddings, rerank, and audio endpoints using the shared `skippy-openai-frontend`
+  embeddings, rerank, and audio endpoints using the shared `skippy-inference-api`
   crate for a local
   final/single-stage config with no downstream peer. Split serving uses
   embedded stage-0 OpenAI serving from `serve-binary --openai-bind-addr` because

@@ -25,19 +25,19 @@ pub(super) fn normalize_openai_compat_request(
     path: &str,
     body: &mut serde_json::Value,
 ) -> Result<RequestNormalization> {
-    let normalized = skippy_openai_frontend::normalize_openai_compat_request(path, body)?;
+    let normalized = skippy_inference_api::normalize_openai_compat_request(path, body)?;
     let response_adapter = match normalized.response_adapter {
-        skippy_openai_frontend::ResponseAdapterMode::AnthropicMessagesJson => {
+        skippy_inference_api::ResponseAdapterMode::AnthropicMessagesJson => {
             ResponseAdapter::AnthropicMessagesJson
         }
-        skippy_openai_frontend::ResponseAdapterMode::AnthropicMessagesStream => {
+        skippy_inference_api::ResponseAdapterMode::AnthropicMessagesStream => {
             ResponseAdapter::AnthropicMessagesStream
         }
-        skippy_openai_frontend::ResponseAdapterMode::None => ResponseAdapter::None,
-        skippy_openai_frontend::ResponseAdapterMode::OpenAiResponsesJson => {
+        skippy_inference_api::ResponseAdapterMode::None => ResponseAdapter::None,
+        skippy_inference_api::ResponseAdapterMode::OpenAiResponsesJson => {
             ResponseAdapter::OpenAiResponsesJson
         }
-        skippy_openai_frontend::ResponseAdapterMode::OpenAiResponsesStream => {
+        skippy_inference_api::ResponseAdapterMode::OpenAiResponsesStream => {
             ResponseAdapter::OpenAiResponsesStream
         }
     };

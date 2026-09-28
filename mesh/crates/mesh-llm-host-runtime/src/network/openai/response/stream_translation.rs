@@ -538,7 +538,7 @@ pub(in crate::network::openai::response) async fn relay_translated_responses_str
         usage: state.observed_usage,
         cache_cost: state.observed_cache_cost,
         // The Responses-API stream reshapes each typed upstream chunk through
-        // `openai_frontend`'s incremental emitters rather than folding raw
+        // `skippy_inference_api`'s incremental emitters rather than folding raw
         // deltas the way the chat-completions stream above does; assembling
         // an equivalent response to digest would mean extending that typed
         // chunk model. Left absent (never fabricated) as a documented
@@ -554,7 +554,7 @@ async fn process_translated_responses_frame(
     state: &mut ResponsesStreamRelayState,
     data: &str,
 ) -> Result<()> {
-    let chunk = skippy_openai_frontend::parse_chat_stream_chunk(data)
+    let chunk = skippy_inference_api::parse_chat_stream_chunk(data)
         .context("parse typed upstream chat stream chunk")?;
     update_translated_responses_model(state, &chunk);
     emit_translated_response_created(tcp_stream, capture, state).await?;
@@ -566,7 +566,7 @@ async fn process_translated_responses_frame(
 
 fn update_translated_responses_model(
     state: &mut ResponsesStreamRelayState,
-    chunk: &skippy_openai_frontend::responses::ChatCompletionStreamChunk,
+    chunk: &skippy_inference_api::responses::ChatCompletionStreamChunk,
 ) {
     if let Some(chunk_model) = chunk.model.as_deref().filter(|_| state.model.is_empty()) {
         state.model = chunk_model.to_string();
@@ -599,7 +599,7 @@ async fn emit_translated_reasoning_delta(
     tcp_stream: &mut ClientStream,
     capture: &mut Option<OpenAiStreamArtifactCapture>,
     state: &mut ResponsesStreamRelayState,
-    chunk: &skippy_openai_frontend::responses::ChatCompletionStreamChunk,
+    chunk: &skippy_inference_api::responses::ChatCompletionStreamChunk,
 ) -> Result<()> {
     let Some(delta) = chunk
         .choices
@@ -632,7 +632,7 @@ async fn emit_translated_output_delta(
     tcp_stream: &mut ClientStream,
     capture: &mut Option<OpenAiStreamArtifactCapture>,
     state: &mut ResponsesStreamRelayState,
-    chunk: &skippy_openai_frontend::responses::ChatCompletionStreamChunk,
+    chunk: &skippy_inference_api::responses::ChatCompletionStreamChunk,
 ) -> Result<()> {
     let Some(delta) = chunk
         .choices
@@ -711,7 +711,7 @@ async fn emit_translated_output_item_prelude(
 
 fn update_translated_responses_usage(
     state: &mut ResponsesStreamRelayState,
-    chunk: &skippy_openai_frontend::responses::ChatCompletionStreamChunk,
+    chunk: &skippy_inference_api::responses::ChatCompletionStreamChunk,
 ) {
     if let Some(usage) = chunk.usage.as_ref() {
         state.usage = Some(response_adapter::stream_usage_to_responses_usage(usage));

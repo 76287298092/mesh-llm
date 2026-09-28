@@ -52,7 +52,7 @@ use lifecycle::{
 };
 use prefix_restore::EmbeddedPrefixRestore;
 use serde_json::json;
-use skippy_openai_frontend::{OpenAiError, OpenAiResult};
+use skippy_inference_api::{OpenAiError, OpenAiResult};
 use skippy_protocol::binary::{StageReplyStats, WireReplyKind, recv_reply};
 
 fn draft_fallback_budget(
@@ -180,7 +180,7 @@ impl StageOpenAiBackend {
                 while pos_start < prefill_tokens.len() {
                     if request
                         .cancellation
-                        .is_some_and(skippy_openai_frontend::CancellationToken::is_cancelled)
+                        .is_some_and(skippy_inference_api::CancellationToken::is_cancelled)
                     {
                         lifecycle_cancelled = true;
                         drain_embedded_prefill_replies(
@@ -924,7 +924,7 @@ impl StageOpenAiBackend {
                 }
                 if request
                     .cancellation
-                    .is_some_and(skippy_openai_frontend::CancellationToken::is_cancelled)
+                    .is_some_and(skippy_inference_api::CancellationToken::is_cancelled)
                 {
                     lifecycle_cancelled = true;
                     break;

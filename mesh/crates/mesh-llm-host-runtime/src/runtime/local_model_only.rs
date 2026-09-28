@@ -465,7 +465,7 @@ mod tests {
     use crate::runtime_events::{
         clear_runtime_event_engine, install_runtime_event_engine, runtime_event_engine,
     };
-    use skippy_openai_frontend::ChatCompletionRequest;
+    use skippy_inference_api::ChatCompletionRequest;
     use skippy_protocol::{StageKvCacheConfig, StageKvCacheMode, StageKvCachePayload};
     use std::path::PathBuf;
     use std::sync::Arc;

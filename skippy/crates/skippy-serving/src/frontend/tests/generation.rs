@@ -84,7 +84,7 @@ async fn generation_admission_honors_existing_absolute_deadline() {
     let generation_queue_depth = Arc::new(AtomicUsize::new(0));
     let reservation = reserve_generation_queue(generation_queue_depth.clone(), 1)
         .expect("generation queue reservation");
-    let cancellation = skippy_openai_frontend::CancellationToken::new();
+    let cancellation = skippy_inference_api::CancellationToken::new();
     let started = std::time::Instant::now();
 
     let error = acquire_generation_permit_with_queue_reservation(
@@ -111,7 +111,7 @@ async fn cancelled_queued_admission_releases_queue_slot() {
     let generation_queue_depth = Arc::new(AtomicUsize::new(0));
     let reservation = reserve_generation_queue(generation_queue_depth.clone(), 1)
         .expect("generation queue reservation");
-    let cancellation = skippy_openai_frontend::CancellationToken::new();
+    let cancellation = skippy_inference_api::CancellationToken::new();
     let waiter_cancellation = cancellation.clone();
     let waiter = tokio::spawn(async move {
         acquire_generation_permit_with_queue_reservation(
@@ -273,7 +273,7 @@ fn trims_at_first_stop_sequence() {
 
 #[test]
 fn generation_stop_values_include_chat_template_stops() {
-    let request_stop = skippy_openai_frontend::StopSequence::One("</stop>".to_string());
+    let request_stop = skippy_inference_api::StopSequence::One("</stop>".to_string());
     let metadata = json!({
         "additional_stops": ["<|user|>", "<|observation|>", ""],
     })

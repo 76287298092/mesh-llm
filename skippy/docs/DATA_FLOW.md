@@ -10,7 +10,7 @@ summary telemetry, and balanced splits `10,20,30`.
 
 ```mermaid
 flowchart LR
-    Client["OpenAI client / benchmark driver"] --> Mesh["mesh-llm<br/>skippy-openai-frontend + stage-0 route"]
+    Client["OpenAI client / benchmark driver"] --> Mesh["mesh-llm<br/>skippy-inference-api + stage-0 route"]
     Mesh --> D["token IDs + control<br/>~183 KiB total corpus"]
     D --> S0["stage-0<br/>layers 0..10<br/>embeddings + first block"]
 
@@ -55,7 +55,7 @@ but they are not part of the decode-token prediction return path.
 
 ```mermaid
 flowchart LR
-    Client["OpenAI client / benchmark driver"] --> Mesh["mesh-llm<br/>skippy-openai-frontend + stage-0 route"]
+    Client["OpenAI client / benchmark driver"] --> Mesh["mesh-llm<br/>skippy-inference-api + stage-0 route"]
     Mesh --> D["token IDs + control<br/>~183 KiB total corpus"]
     D --> S0["stage-0<br/>layers 0..10<br/>embeddings + first block"]
 

@@ -8,7 +8,7 @@ use axum::{
 use futures_util::stream;
 use http_body_util::BodyExt;
 use serde_json::{Value, json};
-use skippy_openai_frontend::{
+use skippy_inference_api::{
     ChatCompletionChunk, ChatCompletionRequest, ChatCompletionResponse, ChatCompletionStream,
     CompletionChunk, CompletionRequest, CompletionResponse, CompletionStream, FinishReason,
     GuardedOpenAiBackend, GuardrailMode, GuardrailPolicy, ModelObject, OpenAiBackend, OpenAiError,
@@ -357,7 +357,7 @@ async fn legacy_completions_surface_stays_available_for_other_clients() {
 
 async fn request(method: &str, path: &str, value: Value) -> axum::response::Response {
     request_with_app(
-        skippy_openai_frontend::router_for(Arc::new(BenchyBackend)),
+        skippy_inference_api::router_for(Arc::new(BenchyBackend)),
         method,
         path,
         value,
@@ -375,7 +375,7 @@ fn guarded_backend_app(backend: Arc<GuardedBenchyBackend>) -> axum::Router {
             ..GuardrailPolicy::default()
         },
     ));
-    skippy_openai_frontend::router_for_with_config(
+    skippy_inference_api::router_for_with_config(
         guarded,
         OpenAiFrontendConfig::default().without_backend_timeout(),
     )
@@ -427,7 +427,7 @@ async fn responses_flat_function_tools_reach_shared_backend_in_both_modes() {
     for streaming in [false, true] {
         let backend = Arc::new(GuardedBenchyBackend::default());
         let response = request_with_app(
-            skippy_openai_frontend::router_for(backend.clone()), "POST", "/v1/responses",
+            skippy_inference_api::router_for(backend.clone()), "POST", "/v1/responses",
             json!({"model":BENCHY_MODEL_ID,"input":"weather","stream":streaming,
                 "tools":[{"type":"function","name":"lookup","description":"weather","parameters":{"type":"object","properties":{}},"strict":true}],
                 "tool_choice":{"type":"function","name":"lookup"}}), None,
@@ -478,7 +478,7 @@ async fn flat_tools_remain_invalid_on_chat_and_malformed_responses_are_rejected(
 async fn responses_flat_function_names_are_trimmed_before_the_backend() {
     let backend = Arc::new(GuardedBenchyBackend::default());
     let response = request_with_app(
-        skippy_openai_frontend::router_for(backend.clone()), "POST", "/v1/responses",
+        skippy_inference_api::router_for(backend.clone()), "POST", "/v1/responses",
         json!({"model":BENCHY_MODEL_ID,"input":"weather",
             "tools":[{"type":"function","name":"  lookup  ","description":"weather","parameters":{"type":"object","properties":{}}}],
             "tool_choice":{"type":"function","name":" lookup "}}), None,

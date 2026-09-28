@@ -1,6 +1,6 @@
 # Anthropic compatibility
 
-The Messages surface is a protocol adapter in `openai-frontend`. The host normalizes `/v1/messages` into `/v1/chat/completions` **before** classification, affinity, model selection, MoA, plugin dispatch or remote forwarding. Only the ingress keeps the original response protocol. Remote peers and OpenAI providers receive chat requests. JSON responses and SSE events are translated at the client boundary.
+The Messages surface is a protocol adapter in `skippy-inference-api`. The host normalizes `/v1/messages` into `/v1/chat/completions` **before** classification, affinity, model selection, MoA, plugin dispatch or remote forwarding. Only the ingress keeps the original response protocol. Remote peers and OpenAI providers receive chat requests. JSON responses and SSE events are translated at the client boundary.
 
 The embedded router uses the same backend, hook wrappers, guardrails, request context, cancellation and lifecycle helpers as chat. Host relay adaptation retains the original route for logging, terminal usage for routing, and capsule nonce headers. Stream requests explicitly request terminal usage from upstreams.
 

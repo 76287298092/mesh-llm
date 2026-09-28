@@ -25,11 +25,11 @@ use crate::kv_integration::{KvStageIntegration, PrefillKvIdentity, StagePrefixCa
 use crate::runtime_state::{RuntimeSessionStats, RuntimeState};
 use axum::http::StatusCode;
 use serde_json::json;
+use skippy_inference_api::ChatCompletionRequest;
+use skippy_inference_api::OpenAiError;
+use skippy_inference_api::OpenAiErrorKind;
+use skippy_inference_api::OpenAiResult;
 use skippy_metrics::attr as attr_key;
-use skippy_openai_frontend::ChatCompletionRequest;
-use skippy_openai_frontend::OpenAiError;
-use skippy_openai_frontend::OpenAiErrorKind;
-use skippy_openai_frontend::OpenAiResult;
 use skippy_runtime::NativeMtpDraft as RuntimeNativeMtpDraft;
 use skippy_runtime::SamplingConfig;
 use std::cell::RefCell;
@@ -442,7 +442,7 @@ impl StageOpenAiBackend {
         let result = (|| {
             if request
                 .cancellation
-                .is_some_and(skippy_openai_frontend::CancellationToken::is_cancelled)
+                .is_some_and(skippy_inference_api::CancellationToken::is_cancelled)
             {
                 return Err(OpenAiError::backend("request cancelled"));
             }
@@ -1411,7 +1411,7 @@ impl StageOpenAiBackend {
         if let Some(predicted) = prompt_prefill_sample {
             if request
                 .cancellation
-                .is_some_and(skippy_openai_frontend::CancellationToken::is_cancelled)
+                .is_some_and(skippy_inference_api::CancellationToken::is_cancelled)
             {
                 return Err(OpenAiError::backend("request cancelled"));
             }
@@ -1551,7 +1551,7 @@ impl StageOpenAiBackend {
         while !state.stopped && state.decoded_tokens < request.max_tokens as usize {
             if request
                 .cancellation
-                .is_some_and(skippy_openai_frontend::CancellationToken::is_cancelled)
+                .is_some_and(skippy_inference_api::CancellationToken::is_cancelled)
             {
                 *receipt_cancelled = true;
                 break;

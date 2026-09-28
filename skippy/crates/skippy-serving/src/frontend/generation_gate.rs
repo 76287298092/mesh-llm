@@ -4,7 +4,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
 
-use skippy_openai_frontend::{OpenAiError, OpenAiResult};
+use skippy_inference_api::{OpenAiError, OpenAiResult};
 
 pub trait GenerationGate: Send + Sync {
     /// Called once, at the first canonical output token (after the full prompt
@@ -67,7 +67,7 @@ pub(in crate::frontend) fn usage_event(
 ) -> Option<crate::frontend::generation::GenerationStreamEvent> {
     gate.map(|gate| {
         crate::frontend::generation::GenerationStreamEvent::Usage(
-            skippy_openai_frontend::Usage::new(
+            skippy_inference_api::Usage::new(
                 0,
                 gate.committed_tokens().min(u64::from(u32::MAX)) as u32,
             ),

@@ -1,5 +1,5 @@
 use super::{DirectIteration, MAX_NATIVE_ITERATION_TOKENS};
-use skippy_openai_frontend::{OpenAiError, OpenAiResult};
+use skippy_inference_api::{OpenAiError, OpenAiResult};
 use std::collections::{BTreeSet, VecDeque};
 
 pub(super) fn should_serve_direct(

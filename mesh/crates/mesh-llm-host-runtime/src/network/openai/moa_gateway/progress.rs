@@ -233,7 +233,7 @@ async fn write_progress_response_created(
     stream: &mut ClientStream,
     completion_id: &str,
 ) -> std::io::Result<i64> {
-    use skippy_openai_frontend::responses as resp;
+    use skippy_inference_api::responses as resp;
     let created_at = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs() as i64)
@@ -520,7 +520,7 @@ async fn write_failure_as_sse_tail(
         .unwrap_or("MoA failed after streaming headers were sent");
 
     if adapter == proxy::ResponseAdapter::AnthropicMessagesStream {
-        let event = skippy_openai_frontend::anthropic::translate_stream_error_body(
+        let event = skippy_inference_api::anthropic::translate_stream_error_body(
             &serde_json::json!({"error":{"message":err_msg}}),
         );
         crate::network::openai::response_adapter::write_chunked_sse_event(

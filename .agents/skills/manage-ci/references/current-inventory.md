@@ -1034,6 +1034,11 @@ acquisition after extraction: retain its existing split-serving rule on main,
 with model-download ownership on the relocated path. That conservatively runs
 both domains until the later catalog cleanup; existing main routing is unchanged.
 
+The OpenAI-compatible frontend package is `skippy-inference-api`; its direct
+CI owner, affected-crate roster, executor package translation, and publish
+order use that name. The legacy `openai-frontend` predecessor remains an input
+to the pre-extraction package translator.
+
 Skippy inference contracts are published as `skippy-events` and guardrail primitives
 as `skippy-guardrails`. Both appear in the affected-crate fallback roster and
 publish chain; `skippy-events` precedes its Mesh event consumers. Guardrail

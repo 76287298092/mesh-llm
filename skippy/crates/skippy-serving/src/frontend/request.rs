@@ -4,13 +4,13 @@ use crate::frontend::EmbeddedReasoningEnabled;
 use crate::frontend::EmbeddedReasoningFormat;
 use base64::Engine;
 use serde_json::Value;
-use skippy_openai_frontend::ChatCompletionRequest;
-use skippy_openai_frontend::ChatMessage;
-use skippy_openai_frontend::CompletionRequest;
-use skippy_openai_frontend::MessageContent;
-use skippy_openai_frontend::MessageContentPart;
-use skippy_openai_frontend::OpenAiError;
-use skippy_openai_frontend::OpenAiResult;
+use skippy_inference_api::ChatCompletionRequest;
+use skippy_inference_api::ChatMessage;
+use skippy_inference_api::CompletionRequest;
+use skippy_inference_api::MessageContent;
+use skippy_inference_api::MessageContentPart;
+use skippy_inference_api::OpenAiError;
+use skippy_inference_api::OpenAiResult;
 use skippy_package_format::{
     GenerationProfile, GenerationReasoningBudget, GenerationReasoningBudgetLevel,
     GenerationReasoningEnabled, GenerationReasoningFormat,
@@ -47,7 +47,7 @@ pub(super) fn resolve_chat_request_defaults(
     request: &ChatCompletionRequest,
     configured: &EmbeddedOpenAiRequestDefaults,
 ) -> OpenAiResult<(EmbeddedOpenAiRequestDefaults, RequestDefaultsDiagnostics)> {
-    let template_reasoning = skippy_openai_frontend::normalize_reasoning_template_options(
+    let template_reasoning = skippy_inference_api::normalize_reasoning_template_options(
         request.reasoning.as_ref(),
         request.reasoning_effort,
         &request.extra,
@@ -531,9 +531,7 @@ fn operator_reasoning_mode(defaults: &EmbeddedOpenAiRequestDefaults) -> Option<b
         EmbeddedReasoningBudget::Tokens(0) => Some(false),
         EmbeddedReasoningBudget::Auto => None,
         EmbeddedReasoningBudget::Unrestricted | EmbeddedReasoningBudget::Tokens(_) => Some(true),
-        EmbeddedReasoningBudget::Effort(skippy_openai_frontend::ReasoningEffort::None) => {
-            Some(false)
-        }
+        EmbeddedReasoningBudget::Effort(skippy_inference_api::ReasoningEffort::None) => Some(false),
         EmbeddedReasoningBudget::Effort(_) => Some(true),
     })
 }
@@ -632,15 +630,15 @@ fn apply_package_profile(
                 }
                 GenerationReasoningBudget::Level(level) => match level {
                     GenerationReasoningBudgetLevel::Auto => EmbeddedReasoningBudget::Auto,
-                    GenerationReasoningBudgetLevel::Low => EmbeddedReasoningBudget::Effort(
-                        skippy_openai_frontend::ReasoningEffort::Low,
-                    ),
+                    GenerationReasoningBudgetLevel::Low => {
+                        EmbeddedReasoningBudget::Effort(skippy_inference_api::ReasoningEffort::Low)
+                    }
                     GenerationReasoningBudgetLevel::Medium => EmbeddedReasoningBudget::Effort(
-                        skippy_openai_frontend::ReasoningEffort::Medium,
+                        skippy_inference_api::ReasoningEffort::Medium,
                     ),
-                    GenerationReasoningBudgetLevel::High => EmbeddedReasoningBudget::Effort(
-                        skippy_openai_frontend::ReasoningEffort::High,
-                    ),
+                    GenerationReasoningBudgetLevel::High => {
+                        EmbeddedReasoningBudget::Effort(skippy_inference_api::ReasoningEffort::High)
+                    }
                     GenerationReasoningBudgetLevel::Unrestricted => {
                         EmbeddedReasoningBudget::Unrestricted
                     }
@@ -657,7 +655,7 @@ struct SharedRequestFields<'a> {
     logit_bias: &'a mut Option<std::collections::BTreeMap<String, serde_json::Value>>,
     temperature: &'a mut Option<f32>,
     top_p: &'a mut Option<f32>,
-    stop: &'a mut Option<skippy_openai_frontend::StopSequence>,
+    stop: &'a mut Option<skippy_inference_api::StopSequence>,
     extra: &'a mut std::collections::BTreeMap<String, serde_json::Value>,
 }
 
@@ -747,7 +745,7 @@ fn apply_chat_only_request_defaults(
             0,
             ChatMessage {
                 role: "system".to_string(),
-                content: Some(skippy_openai_frontend::MessageContent::Text(system_prompt)),
+                content: Some(skippy_inference_api::MessageContent::Text(system_prompt)),
                 extra: std::collections::BTreeMap::new(),
             },
         );
@@ -766,7 +764,7 @@ fn prefill_assistant_message(value: &Value) -> OpenAiResult<ChatMessage> {
     if let Some(content) = value.as_str() {
         return Ok(ChatMessage {
             role: "assistant".to_string(),
-            content: Some(skippy_openai_frontend::MessageContent::Text(
+            content: Some(skippy_inference_api::MessageContent::Text(
                 content.to_string(),
             )),
             extra: std::collections::BTreeMap::new(),
@@ -918,7 +916,7 @@ fn apply_shared_request_defaults(
         *stop = defaults
             .stop
             .as_ref()
-            .map(|values| skippy_openai_frontend::StopSequence::from_values(values.clone()));
+            .map(|values| skippy_inference_api::StopSequence::from_values(values.clone()));
     }
     if let (true, Some(value)) = (extra_value_is_omitted(extra, "top_k"), defaults.top_k) {
         extra.insert("top_k".to_string(), serde_json::json!(value));
@@ -1044,7 +1042,7 @@ pub(super) fn chat_template_options(
     request: &ChatCompletionRequest,
     defaults: &EmbeddedOpenAiRequestDefaults,
 ) -> OpenAiResult<ChatTemplateOptions> {
-    let reasoning = skippy_openai_frontend::normalize_reasoning_template_options(
+    let reasoning = skippy_inference_api::normalize_reasoning_template_options(
         request.reasoning.as_ref(),
         request.reasoning_effort,
         &request.extra,
@@ -1101,13 +1099,13 @@ fn merged_chat_template_kwargs(
                 merged.insert(
                     "reasoning_effort".to_string(),
                     Value::from(match effort {
-                        skippy_openai_frontend::ReasoningEffort::None => "none",
-                        skippy_openai_frontend::ReasoningEffort::Minimal => "minimal",
-                        skippy_openai_frontend::ReasoningEffort::Low => "low",
-                        skippy_openai_frontend::ReasoningEffort::Medium => "medium",
-                        skippy_openai_frontend::ReasoningEffort::High => "high",
-                        skippy_openai_frontend::ReasoningEffort::Xhigh => "xhigh",
-                        skippy_openai_frontend::ReasoningEffort::Max => "max",
+                        skippy_inference_api::ReasoningEffort::None => "none",
+                        skippy_inference_api::ReasoningEffort::Minimal => "minimal",
+                        skippy_inference_api::ReasoningEffort::Low => "low",
+                        skippy_inference_api::ReasoningEffort::Medium => "medium",
+                        skippy_inference_api::ReasoningEffort::High => "high",
+                        skippy_inference_api::ReasoningEffort::Xhigh => "xhigh",
+                        skippy_inference_api::ReasoningEffort::Max => "max",
                     }),
                 );
             }
@@ -1139,7 +1137,7 @@ fn request_reasoning_format(
 fn request_reasoning_budget(
     request: &ChatCompletionRequest,
 ) -> OpenAiResult<Option<ReasoningBudget>> {
-    let normalized = skippy_openai_frontend::normalize_reasoning_template_options(
+    let normalized = skippy_inference_api::normalize_reasoning_template_options(
         request.reasoning.as_ref(),
         request.reasoning_effort,
         &request.extra,
@@ -1179,8 +1177,8 @@ fn request_reasoning_budget(
     Ok(effort.map(reasoning_effort_budget))
 }
 
-fn reasoning_effort_budget(effort: skippy_openai_frontend::ReasoningEffort) -> ReasoningBudget {
-    use skippy_openai_frontend::ReasoningEffort;
+fn reasoning_effort_budget(effort: skippy_inference_api::ReasoningEffort) -> ReasoningBudget {
+    use skippy_inference_api::ReasoningEffort;
     match effort {
         ReasoningEffort::None => ReasoningBudget::Explicit(0),
         ReasoningEffort::Minimal | ReasoningEffort::Low => ReasoningBudget::Capped(1_024),
@@ -1313,7 +1311,7 @@ fn default_reasoning_budget_enabled(value: Option<EmbeddedReasoningBudget>) -> O
     match value {
         Some(EmbeddedReasoningBudget::Tokens(0)) => Some(false),
         Some(EmbeddedReasoningBudget::Tokens(_)) => Some(true),
-        Some(EmbeddedReasoningBudget::Effort(skippy_openai_frontend::ReasoningEffort::None)) => {
+        Some(EmbeddedReasoningBudget::Effort(skippy_inference_api::ReasoningEffort::None)) => {
             Some(false)
         }
         Some(EmbeddedReasoningBudget::Effort(_)) => Some(true),
@@ -1337,7 +1335,7 @@ pub(super) fn ensure_chat_runtime_features_supported(
 ) -> OpenAiResult<()> {
     if request.logprobs.unwrap_or(false) || request.top_logprobs.is_some() {
         return Err(OpenAiError::unsupported(
-            "chat logprobs are parsed by skippy-openai-frontend but not yet implemented by skippy runtime",
+            "chat logprobs are parsed by skippy-inference-api but not yet implemented by skippy runtime",
         ));
     }
     Ok(())
@@ -1348,7 +1346,7 @@ pub(super) fn ensure_completion_runtime_features_supported(
 ) -> OpenAiResult<()> {
     if request.logprobs.is_some() {
         return Err(OpenAiError::unsupported(
-            "completion logprobs are parsed by skippy-openai-frontend but not yet implemented by skippy runtime",
+            "completion logprobs are parsed by skippy-inference-api but not yet implemented by skippy runtime",
         ));
     }
     Ok(())

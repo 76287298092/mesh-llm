@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::time::Duration;
 
 use serde_json::json;
-use skippy_openai_frontend::{OpenAiError, OpenAiResult};
+use skippy_inference_api::{OpenAiError, OpenAiResult};
 
 use crate::frontend::generation::{LocalGeneration, StageOpenAiBackend, TokenControl};
 use crate::frontend::linear_proposal::{
@@ -46,7 +46,7 @@ impl StageOpenAiBackend {
             &StageOpenAiBackend,
             LinearProposalExecutionParams<'a>,
             crate::frontend::linear_proposal::QueriedLinearProposal,
-            Option<&'a skippy_openai_frontend::CancellationToken>,
+            Option<&'a skippy_inference_api::CancellationToken>,
             &'a mut dyn FnMut(i32) -> OpenAiResult<TokenControl>,
         ) -> OpenAiResult<
             Option<crate::frontend::linear_proposal::LinearProposalReceipt>,
@@ -60,7 +60,7 @@ impl StageOpenAiBackend {
         };
         if request
             .cancellation
-            .is_some_and(skippy_openai_frontend::CancellationToken::is_cancelled)
+            .is_some_and(skippy_inference_api::CancellationToken::is_cancelled)
         {
             return Err(OpenAiError::backend("request cancelled"));
         }
@@ -160,7 +160,7 @@ impl StageOpenAiBackend {
         };
         if request
             .cancellation
-            .is_some_and(skippy_openai_frontend::CancellationToken::is_cancelled)
+            .is_some_and(skippy_inference_api::CancellationToken::is_cancelled)
         {
             return Err(OpenAiError::backend("request cancelled"));
         }

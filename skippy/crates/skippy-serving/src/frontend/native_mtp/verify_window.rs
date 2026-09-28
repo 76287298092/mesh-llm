@@ -1,6 +1,6 @@
 use std::net::TcpStream;
 
-use skippy_openai_frontend::{OpenAiError, OpenAiResult};
+use skippy_inference_api::{OpenAiError, OpenAiResult};
 use skippy_protocol::binary::{StageNativeMtpDraft, WireReplyKind};
 
 use crate::frontend::embedded_execution::VerifyRetirement;

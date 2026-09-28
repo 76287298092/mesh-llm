@@ -1,5 +1,5 @@
 use mesh_llm_events::logging::identifiers::RequestId;
-use skippy_openai_frontend::{
+use skippy_inference_api::{
     OpenAiBackendOperation, OpenAiFrontendRoute, OpenAiLifecycleContext, OpenAiLifecycleEvent,
     OpenAiRequestMethod, OpenAiTerminalResult, OpenAiUsage, Usage,
 };

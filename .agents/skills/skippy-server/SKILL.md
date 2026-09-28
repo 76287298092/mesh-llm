@@ -14,7 +14,7 @@ stage-to-stage transport.
 
 The mesh integration embeds `skippy-serving` through Rust APIs instead of
 launching it as mesh's public OpenAI surface. Public OpenAI compatibility
-belongs in `skippy-openai-frontend`; `skippy-serving` should remain the backend stage
+belongs in `skippy-inference-api`; `skippy-serving` should remain the backend stage
 runtime.
 
 Important crates:
@@ -47,7 +47,7 @@ cargo test -p mesh-llm-host-runtime --lib
 
 Do not reintroduce standalone `kv-server` or `ngram-pool` dependencies into
 mesh. Keep structured outputs, tools, logprobs, and `/v1/responses`
-compatibility in `skippy-openai-frontend`.
+compatibility in `skippy-inference-api`.
 
 Stage status exposed by mesh should be backend-neutral at the API boundary.
 Backend-specific details can remain in internal skippy structs.

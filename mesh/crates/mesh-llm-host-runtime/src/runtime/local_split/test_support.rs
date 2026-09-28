@@ -507,7 +507,7 @@ stop = ["END"]
         n_ubatch_override: None,
         flash_attention_override: FlashAttentionType::Auto,
         openai_guardrail_policy: openai_guardrail_policy_handle(
-            skippy_openai_frontend::GuardrailMode::Disabled,
+            skippy_inference_api::GuardrailMode::Disabled,
         ),
         skippy_telemetry: skippy::SkippyTelemetryOptions::off(),
         survey_telemetry: survey::SurveyTelemetry::disabled(),
@@ -645,7 +645,7 @@ async fn split_stage_load_guards_publisher_kv_default_with_planned_metadata() {
         n_ubatch_override: None,
         flash_attention_override: FlashAttentionType::Auto,
         openai_guardrail_policy: openai_guardrail_policy_handle(
-            skippy_openai_frontend::GuardrailMode::Disabled,
+            skippy_inference_api::GuardrailMode::Disabled,
         ),
         skippy_telemetry: skippy::SkippyTelemetryOptions::off(),
         survey_telemetry: survey::SurveyTelemetry::disabled(),
@@ -739,7 +739,7 @@ max_tokens = 222
         parallel_override: None,
         planning_profile: RuntimeResourcePlanningProfile::DedicatedLocal,
         openai_guardrail_policy: openai_guardrail_policy_handle(
-            skippy_openai_frontend::GuardrailMode::Disabled,
+            skippy_inference_api::GuardrailMode::Disabled,
         ),
         skippy_telemetry: skippy::SkippyTelemetryOptions::off(),
         survey_telemetry: survey::SurveyTelemetry::disabled(),
@@ -789,7 +789,7 @@ max_tokens = 222
         parallel_override: None,
         planning_profile: RuntimeResourcePlanningProfile::DedicatedLocal,
         openai_guardrail_policy: openai_guardrail_policy_handle(
-            skippy_openai_frontend::GuardrailMode::Disabled,
+            skippy_inference_api::GuardrailMode::Disabled,
         ),
         skippy_telemetry: skippy::SkippyTelemetryOptions::off(),
         survey_telemetry: survey::SurveyTelemetry::disabled(),

@@ -253,7 +253,7 @@ SDK and API surface:
 - `mesh-llm-sdk/` — Rust SDK facade for clients and embedded serving.
 - `mesh-llm-api-server/`, `mesh-llm-api-client/` — public Rust SDK APIs for embedding nodes / client-only use.
 - `mesh-llm-ffi/`, `mesh-llm-nodejs/` — FFI bindings and Node.js native addon.
-- `skippy-openai-frontend/` — OpenAI-compatible HTTP frontend (chat, completions, responses, models).
+- `skippy-inference-api/` — OpenAI-compatible HTTP frontend (chat, completions, responses, models).
 - `mesh-mixture-of-agents/` — Mixture-of-Agents fan-out/arbitration engine.
 
 Models:
@@ -439,7 +439,7 @@ Embedded staged runtime (`skippy/crates/skippy-*`):
 - `skippy-serving/src/runtime_state.rs` — KV-slot, lane, session state machine.
 - `skippy-serving/src/binary_transport.rs`, `binary_transport/` — binary transport to embedded server.
 
-OpenAI-compatible HTTP frontend (`skippy/crates/skippy-openai-frontend/src/`):
+OpenAI-compatible HTTP frontend (`skippy/crates/skippy-inference-api/src/`):
 
 - `router.rs`, `chat.rs`, `completions.rs`, `responses.rs`, `models.rs`, `sse.rs`, `backend.rs` — OpenAI surface.
 
@@ -529,7 +529,7 @@ Run `cargo` commands serially. Do not run multiple `cargo` commands in parallel 
 ### Which crate to `-p`
 
 - Touched `mesh-llm-host-runtime` or the shipped `mesh-llm` binary — use `-p mesh-llm` for build/check (it pulls the host runtime through its single dep) and `-p mesh-llm-host-runtime` for focused tests.
-- Touched a specific workspace crate (e.g., `skippy-runtime`, `skippy-openai-frontend`, `mesh-client`) — run `cargo check -p <crate>` and `cargo test -p <crate> --lib` for fast iteration.
+- Touched a specific workspace crate (e.g., `skippy-runtime`, `skippy-inference-api`, `mesh-client`) — run `cargo check -p <crate>` and `cargo test -p <crate> --lib` for fast iteration.
 - For broad refactors, fall back to `cargo check --workspace` (serially!).
 
 ## Running mesh-llm locally

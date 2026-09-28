@@ -20,7 +20,7 @@ use crate::kv_integration::StagePrefixCachePayload;
 use crate::runtime_state::{RuntimeIterationBatchRequest, RuntimeSessionAlignStats, RuntimeState};
 use crate::telemetry::Telemetry;
 use serde_json::json;
-use skippy_openai_frontend::{OpenAiError, OpenAiResult};
+use skippy_inference_api::{OpenAiError, OpenAiResult};
 use skippy_protocol::StageConfig;
 use skippy_runtime::{ActivationFrame, IterationBatchPhase, SamplingConfig};
 use skippy_scheduler::{
@@ -61,7 +61,7 @@ pub(super) struct ScheduledGenerationRequest<'a> {
     pub(super) max_tokens: u32,
     pub(super) sampling: Option<&'a SamplingConfig>,
     pub(super) chat_sampling_metadata: Option<&'a str>,
-    pub(super) cancellation: Option<&'a skippy_openai_frontend::CancellationToken>,
+    pub(super) cancellation: Option<&'a skippy_inference_api::CancellationToken>,
 }
 
 pub(super) struct ScheduledResumeRequest<'a> {
@@ -70,7 +70,7 @@ pub(super) struct ScheduledResumeRequest<'a> {
     pub(super) generated_tokens: &'a [i32],
     pub(super) max_tokens: u32,
     pub(super) sampling: Option<&'a SamplingConfig>,
-    pub(super) cancellation: Option<&'a skippy_openai_frontend::CancellationToken>,
+    pub(super) cancellation: Option<&'a skippy_inference_api::CancellationToken>,
 }
 
 #[derive(Debug, Clone)]
@@ -100,7 +100,7 @@ pub(crate) struct DirectIterationChannel {
 pub(crate) struct CacheAwareRuntimeRequest<'a> {
     pub(crate) operation_id: String,
     pub(crate) deadline: Instant,
-    pub(crate) cancellation: Option<&'a skippy_openai_frontend::CancellationToken>,
+    pub(crate) cancellation: Option<&'a skippy_inference_api::CancellationToken>,
     pub(crate) prompt_tokens: Arc<[i32]>,
     pub(crate) priority: u64,
     pub(crate) payload: StagePrefixCachePayload,
@@ -136,7 +136,7 @@ struct DirectIteration {
     sample_last: bool,
     phase: IterationBatchPhase,
     deadline: Option<Instant>,
-    cancellation: Option<skippy_openai_frontend::CancellationToken>,
+    cancellation: Option<skippy_inference_api::CancellationToken>,
     enqueued_at: Instant,
     reply: std_mpsc::SyncSender<OpenAiResult<SchedulerIterationOutcome>>,
 }
@@ -149,9 +149,9 @@ impl DirectIteration {
 
 fn ensure_direct_iteration_active(
     deadline: Option<Instant>,
-    cancellation: Option<&skippy_openai_frontend::CancellationToken>,
+    cancellation: Option<&skippy_inference_api::CancellationToken>,
 ) -> OpenAiResult<()> {
-    if cancellation.is_some_and(skippy_openai_frontend::CancellationToken::is_cancelled) {
+    if cancellation.is_some_and(skippy_inference_api::CancellationToken::is_cancelled) {
         return Err(OpenAiError::cancelled(
             "request cancelled during scheduler iteration",
         ));
@@ -181,7 +181,7 @@ const CACHE_OPERATION_DEADLINE_EXCEEDED: u8 = 2;
 pub(crate) struct CacheRuntimeContext {
     operation_id: String,
     deadline: Instant,
-    cancellation: Option<skippy_openai_frontend::CancellationToken>,
+    cancellation: Option<skippy_inference_api::CancellationToken>,
     state: Arc<AtomicU8>,
 }
 
@@ -189,7 +189,7 @@ impl CacheRuntimeContext {
     fn new(
         operation_id: String,
         deadline: Instant,
-        cancellation: Option<&skippy_openai_frontend::CancellationToken>,
+        cancellation: Option<&skippy_inference_api::CancellationToken>,
     ) -> Self {
         Self {
             operation_id,
@@ -203,7 +203,7 @@ impl CacheRuntimeContext {
         if self
             .cancellation
             .as_ref()
-            .is_some_and(skippy_openai_frontend::CancellationToken::is_cancelled)
+            .is_some_and(skippy_inference_api::CancellationToken::is_cancelled)
         {
             self.cancel(CACHE_OPERATION_CANCELLED);
         } else if Instant::now() >= self.deadline {
@@ -287,7 +287,7 @@ fn cache_runtime_operation<T>(
     label: &'static str,
     operation_id: String,
     deadline: Instant,
-    cancellation: Option<&skippy_openai_frontend::CancellationToken>,
+    cancellation: Option<&skippy_inference_api::CancellationToken>,
     operation: impl FnOnce(&mut RuntimeState, &CacheRuntimeContext) -> OpenAiResult<T> + Send + 'static,
 ) -> (
     RuntimeOperation,
@@ -584,7 +584,7 @@ impl IterationScheduler {
     fn drive_generation_events(
         &self,
         id: &str,
-        cancellation: Option<&skippy_openai_frontend::CancellationToken>,
+        cancellation: Option<&skippy_inference_api::CancellationToken>,
         events: std_mpsc::Receiver<SchedulerEvent>,
         on_token: &mut impl FnMut(i32) -> OpenAiResult<TokenControl>,
         started: Instant,
@@ -592,7 +592,7 @@ impl IterationScheduler {
     ) -> OpenAiResult<ScheduledGenerationStats> {
         let mut first_token_at = None;
         loop {
-            if cancellation.is_some_and(skippy_openai_frontend::CancellationToken::is_cancelled) {
+            if cancellation.is_some_and(skippy_inference_api::CancellationToken::is_cancelled) {
                 let _ = self
                     .shared
                     .commands
@@ -675,7 +675,7 @@ impl IterationScheduler {
         sample_last: bool,
         phase: IterationBatchPhase,
         deadline: Option<Instant>,
-        cancellation: Option<&skippy_openai_frontend::CancellationToken>,
+        cancellation: Option<&skippy_inference_api::CancellationToken>,
     ) -> OpenAiResult<SchedulerIterationOutcome> {
         self.execute_direct_iteration(
             channel,
@@ -732,7 +732,7 @@ impl IterationScheduler {
         sample_last: bool,
         phase: IterationBatchPhase,
         deadline: Option<Instant>,
-        cancellation: Option<&skippy_openai_frontend::CancellationToken>,
+        cancellation: Option<&skippy_inference_api::CancellationToken>,
     ) -> OpenAiResult<SchedulerIterationOutcome> {
         validate_direct_iteration(
             token_ids,

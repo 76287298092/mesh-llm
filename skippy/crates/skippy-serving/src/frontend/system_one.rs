@@ -8,7 +8,7 @@
 use std::collections::BTreeMap;
 
 use sha2::{Digest, Sha256};
-use skippy_openai_frontend::{
+use skippy_inference_api::{
     OpenAiError, OpenAiResult, SystemOneAnswer, SystemOneJson, SystemOneQuestion, SystemOneRequest,
     SystemOneResponse, SystemOneUsage,
 };

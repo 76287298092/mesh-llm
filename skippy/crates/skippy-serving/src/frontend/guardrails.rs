@@ -6,16 +6,16 @@ pub enum OpenAiGuardrailsMode {
     Enforce,
 }
 use serde::Serialize;
-use skippy_openai_frontend::CompactingOpenAiBackend;
-use skippy_openai_frontend::CompactionConfig;
-use skippy_openai_frontend::GuardedOpenAiBackend;
-use skippy_openai_frontend::GuardrailMode;
-use skippy_openai_frontend::GuardrailPolicy;
-use skippy_openai_frontend::GuardrailPolicyHandle;
-use skippy_openai_frontend::GuardrailTelemetrySink;
-use skippy_openai_frontend::OpenAiBackend;
-use skippy_openai_frontend::RetryExhaustionMode;
-use skippy_openai_frontend::StreamingGuardrailMode;
+use skippy_inference_api::CompactingOpenAiBackend;
+use skippy_inference_api::CompactionConfig;
+use skippy_inference_api::GuardedOpenAiBackend;
+use skippy_inference_api::GuardrailMode;
+use skippy_inference_api::GuardrailPolicy;
+use skippy_inference_api::GuardrailPolicyHandle;
+use skippy_inference_api::GuardrailTelemetrySink;
+use skippy_inference_api::OpenAiBackend;
+use skippy_inference_api::RetryExhaustionMode;
+use skippy_inference_api::StreamingGuardrailMode;
 use std::sync::Arc;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

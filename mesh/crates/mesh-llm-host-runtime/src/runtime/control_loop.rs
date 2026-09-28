@@ -673,7 +673,7 @@ async fn run_auto_handle_unload_intent(
 
 pub(super) async fn run_auto_set_openai_guardrail_mode(
     ctx: &mut RunAutoRuntimeLoopContext<'_>,
-    mode: skippy_openai_frontend::GuardrailMode,
+    mode: skippy_inference_api::GuardrailMode,
 ) -> Result<api::OpenAiGuardrailModeUpdateResponse> {
     set_openai_guardrail_policy_mode(ctx.openai_guardrail_policy, mode);
     let mut updated_models = 0_usize;
@@ -704,12 +704,12 @@ pub(super) async fn run_auto_set_openai_guardrail_mode(
 }
 
 pub(super) fn guardrail_mode_status_label(
-    mode: skippy_openai_frontend::GuardrailMode,
+    mode: skippy_inference_api::GuardrailMode,
 ) -> &'static str {
     match mode {
-        skippy_openai_frontend::GuardrailMode::Disabled => "disabled",
-        skippy_openai_frontend::GuardrailMode::MetricsOnly => "metrics",
-        skippy_openai_frontend::GuardrailMode::Enforce => "enforce",
+        skippy_inference_api::GuardrailMode::Disabled => "disabled",
+        skippy_inference_api::GuardrailMode::MetricsOnly => "metrics",
+        skippy_inference_api::GuardrailMode::Enforce => "enforce",
     }
 }
 

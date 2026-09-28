@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use skippy_openai_frontend::{
+use skippy_inference_api::{
     ChatCompletionRequest, ChatCompletionResponse, ChatCompletionStream, ModelObject,
     OpenAiBackend, OpenAiError, OpenAiRequestContext, OpenAiResult, SystemOneRequest,
     SystemOneResponse,
@@ -124,7 +124,7 @@ mod tests {
     /// Sends the body text as given. `json!` goes through serde_json's sorted
     /// map, so tests about request order must spell the JSON out.
     async fn post_raw(model: Arc<FakeModel>, path: &str, body: String) -> (StatusCode, Value) {
-        let router = skippy_openai_frontend::router_for(Arc::new(LayaSystemOneBackend::new(
+        let router = skippy_inference_api::router_for(Arc::new(LayaSystemOneBackend::new(
             "laya-test",
             model,
         )));
@@ -230,7 +230,7 @@ mod tests {
         .await;
         assert!(!status.is_success(), "{status}");
 
-        let router = skippy_openai_frontend::router_for(Arc::new(LayaSystemOneBackend::new(
+        let router = skippy_inference_api::router_for(Arc::new(LayaSystemOneBackend::new(
             "laya-test",
             Arc::new(FakeModel::default()),
         )));

@@ -5,7 +5,7 @@
 //! transport targets.
 
 use mesh_llm_events::logging::envelope::{closed_method, closed_source};
-use skippy_openai_frontend::OpenAiFrontendRoute;
+use skippy_inference_api::OpenAiFrontendRoute;
 
 use super::policy::{RedactMode, apply_redaction};
 

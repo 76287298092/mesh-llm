@@ -5369,13 +5369,13 @@ dependencies = [
  "skippy-ffi",
  "skippy-guardrails",
  "skippy-hf-hub",
+ "skippy-inference-api",
  "skippy-model",
  "skippy-model-artifact",
  "skippy-model-hf",
  "skippy-model-ref",
  "skippy-model-resolver",
  "skippy-native-runtime",
- "skippy-openai-frontend",
  "skippy-package-format",
  "skippy-protocol",
  "skippy-runtime",
@@ -5635,10 +5635,10 @@ dependencies = [
  "skippy-api",
  "skippy-config",
  "skippy-hf-hub",
+ "skippy-inference-api",
  "skippy-model",
  "skippy-model-artifact",
  "skippy-model-hf",
- "skippy-openai-frontend",
  "skippy-package-format",
  "skippy-protocol",
  "skippy-runtime",
@@ -9088,12 +9088,12 @@ dependencies = [
  "skippy-config",
  "skippy-ffi",
  "skippy-hf-hub",
+ "skippy-inference-api",
  "skippy-model",
  "skippy-model-artifact",
  "skippy-model-hf",
  "skippy-model-ref",
  "skippy-native-runtime",
- "skippy-openai-frontend",
  "skippy-package-format",
  "skippy-protocol",
  "skippy-runtime",
@@ -9292,6 +9292,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "skippy-inference-api"
+version = "0.76.1"
+dependencies = [
+ "async-trait",
+ "axum",
+ "base64 0.22.1",
+ "futures-core",
+ "futures-util",
+ "http-body-util",
+ "serde",
+ "serde_json",
+ "skippy-events",
+ "skippy-guardrails",
+ "tokio",
+ "tower",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
 name = "skippy-metrics"
 version = "0.76.1"
 
@@ -9394,26 +9414,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "skippy-openai-frontend"
-version = "0.76.1"
-dependencies = [
- "async-trait",
- "axum",
- "base64 0.22.1",
- "futures-core",
- "futures-util",
- "http-body-util",
- "serde",
- "serde_json",
- "skippy-events",
- "skippy-guardrails",
- "tokio",
- "tower",
- "tracing",
- "uuid",
-]
-
-[[package]]
 name = "skippy-package-builder"
 version = "0.76.1"
 dependencies = [
@@ -9454,8 +9454,8 @@ dependencies = [
  "ctrlc",
  "rustyline",
  "serde_json",
+ "skippy-inference-api",
  "skippy-model-artifact",
- "skippy-openai-frontend",
  "skippy-protocol",
  "skippy-runtime",
  "skippy-topology",
@@ -9562,9 +9562,9 @@ dependencies = [
  "skippy-cache",
  "skippy-config",
  "skippy-events",
+ "skippy-inference-api",
  "skippy-metrics",
  "skippy-model-artifact",
- "skippy-openai-frontend",
  "skippy-package-format",
  "skippy-protocol",
  "skippy-runtime",

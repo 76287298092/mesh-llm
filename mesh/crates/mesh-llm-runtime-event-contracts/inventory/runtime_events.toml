@@ -269,9 +269,9 @@ migration_task = 12
 [[families]]
 section = "8.8"
 enum_name = "RequestEventKind"
-owning_crates = ["mesh-llm-host-runtime", "skippy-openai-frontend"]
-source_paths = ["mesh/crates/mesh-llm-host-runtime/src/logging/openai_lifecycle.rs", "skippy/crates/skippy-openai-frontend/src/router.rs"]
-producer_symbols = ["logging::openai_lifecycle", "skippy_openai_frontend::router"]
+owning_crates = ["mesh-llm-host-runtime", "skippy-inference-api"]
+source_paths = ["mesh/crates/mesh-llm-host-runtime/src/logging/openai_lifecycle.rs", "skippy/crates/skippy-inference-api/src/router.rs"]
+producer_symbols = ["logging::openai_lifecycle", "skippy_inference_api::router"]
 authoritative_outcome = "OpenAI request result and TerminalOutcome"
 reducer_effect = "request admission and inflight state"
 projection = "runtime_state.requests and runtime_event"
@@ -297,9 +297,9 @@ migration_task = 12
 [[families]]
 section = "8.10"
 enum_name = "GenerationEventKind"
-owning_crates = ["skippy-serving", "skippy-openai-frontend"]
-source_paths = ["skippy/crates/skippy-serving/src/frontend.rs", "skippy/crates/skippy-openai-frontend/src/sse.rs"]
-producer_symbols = ["skippy_serving::frontend", "skippy_openai_frontend::sse"]
+owning_crates = ["skippy-serving", "skippy-inference-api"]
+source_paths = ["skippy/crates/skippy-serving/src/frontend.rs", "skippy/crates/skippy-inference-api/src/sse.rs"]
+producer_symbols = ["skippy_serving::frontend", "skippy_inference_api::sse"]
 authoritative_outcome = "generation receipt and response stream outcome"
 reducer_effect = "request generation state"
 projection = "runtime_event and aggregate telemetry"

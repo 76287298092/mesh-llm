@@ -57,7 +57,7 @@ Bring over these skippy crates:
 | `skippy-topology` | Layer topology planning and family/split policy |
 | `skippy-metrics` | Runtime telemetry helpers |
 | `metrics-server` | Benchmark/debug OTLP ingest, run lifecycle, SQLite storage, and report export |
-| `skippy-openai-frontend` | Shared OpenAI-compatible request/response, streaming, responses API compatibility, structured-output, tool-call, logprob, and backend contract |
+| `skippy-inference-api` | Shared OpenAI-compatible request/response, streaming, responses API compatibility, structured-output, tool-call, logprob, and backend contract |
 | `skippy-package-builder` | Later package tooling for producing layer packages |
 
 Keep the first mesh integration focused on staged serving, OpenAI compatibility,
@@ -113,7 +113,7 @@ What to avoid:
   activation width from model metadata or reviewed family capability, take
   context from mesh config, and allocate ports explicitly.
 - Do not make skippy-serving the public product API. Mesh keeps routing and
-  user-facing product behavior, while `skippy-openai-frontend` provides the shared
+  user-facing product behavior, while `skippy-inference-api` provides the shared
   OpenAI-compatible request/response contract used by mesh and skippy.
 
 ## Architecture Target
@@ -136,7 +136,7 @@ multimodal parity gates are met.
 
 Current branch status:
 
-- `skippy-openai-frontend` has been imported and mesh's local OpenAI request/response
+- `skippy-inference-api` has been imported and mesh's local OpenAI request/response
   adapters delegate to it.
 - `skippy-serving` exposes embeddable runtime and OpenAI backend handles.
 - `skippy-serving` is split by concern so request parsing/sampling helpers,
@@ -197,7 +197,7 @@ Skippy owns:
 - topology planning primitives and family capability policy;
 - backend telemetry emitted by runtime/stage execution.
 
-`skippy-openai-frontend` sits between those two ownership areas. It should be the
+`skippy-inference-api` sits between those two ownership areas. It should be the
 shared OpenAI-compatible surface crate for:
 
 - request and response structs;
@@ -212,7 +212,7 @@ Mesh should compose those types with mesh-specific routing, authorization,
 model selection, demand tracking, multimodal object handling, and management
 APIs. Skippy should implement the backend trait for local/staged execution.
 Endpoint compatibility that is not mesh-specific should move into
-`skippy-openai-frontend` so mesh does not carry a second OpenAI compatibility layer.
+`skippy-inference-api` so mesh does not carry a second OpenAI compatibility layer.
 
 ## Auto LLM / Virtual LLM Hooks
 
@@ -247,7 +247,7 @@ Target ownership:
 
 - mesh owns hook policy, peer selection, recursion guards, and request-level
   routing decisions;
-- `skippy-openai-frontend` should expose typed preflight/prefill/generation hook
+- `skippy-inference-api` should expose typed preflight/prefill/generation hook
   extension points so hooks do not require raw JSON reparsing;
 - skippy should provide runtime signals needed by the hooks, such as media
   rejection before tokenization, post-prefill uncertainty, and mid-generation
@@ -258,7 +258,7 @@ the legacy llama backend cannot be deleted for Auto LLM users.
 
 Current branch status:
 
-- `skippy-openai-frontend` defines typed hook policy extension points for
+- `skippy-inference-api` defines typed hook policy extension points for
   pre-chat/media fallback, post-prefill uncertainty, and mid-generation drift;
 - mesh passes an in-process hook policy into skippy's embedded OpenAI backend;
 - skippy chat requests with `mesh_hooks: true` now call the existing
@@ -506,7 +506,7 @@ Required skippy replacement work:
 - preserve mesh blob/media normalization before request execution;
 - keep multimodal capability advertisement and routing semantics;
 - test OpenAI multipart image/audio/file request shapes through
-  `skippy-openai-frontend` and mesh routing;
+  `skippy-inference-api` and mesh routing;
 - expose loaded projector/media capability in runtime status.
 
 The implementation can land in stages, but full removal of `llama-server`
@@ -615,7 +615,7 @@ Current branch status:
 ## Runtime Integration Notes
 
 Skippy mesh serving uses the skippy runtime/protocol/topology crates,
-`skippy-openai-frontend`, the metrics workflow, and the embedded runtime route.
+`skippy-inference-api`, the metrics workflow, and the embedded runtime route.
 
 Current serving path:
 
@@ -632,7 +632,7 @@ Local burn-in checklist:
 
 - `cargo test -p skippy-serving --lib`
 - `cargo test -p skippy-protocol --lib`
-- `cargo test -p skippy-openai-frontend --lib`
+- `cargo test -p skippy-inference-api --lib`
 - `cargo test -p metrics-server`
 - `cargo check -p mesh-llm`
 - `cargo test -p mesh-llm-host-runtime --lib inference::skippy`
@@ -681,7 +681,7 @@ Copy in and compile:
 - `skippy-protocol`
 - `skippy-topology`
 - `skippy-metrics`
-- `skippy-openai-frontend`
+- `skippy-inference-api`
 
 This PR should not alter serving behavior.
 
@@ -711,9 +711,9 @@ Refactor `skippy-serving` toward host-friendly Rust APIs:
 - expose synthetic package loading for direct GGUF inputs;
 - keep subprocess mode available only as a temporary burn-in fallback.
 
-### 4. Move OpenAI Compatibility Into `skippy-openai-frontend`
+### 4. Move OpenAI Compatibility Into `skippy-inference-api`
 
-Extend `skippy-openai-frontend` before switching mesh serving:
+Extend `skippy-inference-api` before switching mesh serving:
 
 - move `/v1/responses` request/response translation out of mesh;
 - support structured output end to end, including request parsing, constraint
@@ -739,7 +739,7 @@ affinity, model selection, and object-store cleanup, should remain in mesh.
 Mesh should not lose its optimized OpenAI ingress path. Today mesh reads one raw
 HTTP request, extracts lightweight metadata for routing, and only parses the
 full JSON body when compatibility translation, blob resolution, or local
-execution requires it. `skippy-openai-frontend` should preserve that shape by exposing
+execution requires it. `skippy-inference-api` should preserve that shape by exposing
 reusable parser/normalizer/response-adapter primitives in addition to any Axum
 router it provides. Mesh's public ingress should be able to:
 
@@ -763,10 +763,10 @@ certification matrix.
 
 Current branch status:
 
-- `skippy-openai-frontend` owns `/v1/chat/completions`, `/v1/completions`, and
+- `skippy-inference-api` owns `/v1/chat/completions`, `/v1/completions`, and
   `/v1/responses` request/response shapes, streaming SSE adapters, OpenAI error
   bodies, tool-call fields, structured-output fields, and logprob fields;
-- `openai-frontend` also owns `/v1/embeddings`, `/v1/rerank`, and `/v1/audio/*`
+- `skippy-inference-api` also owns `/v1/embeddings`, `/v1/rerank`, and `/v1/audio/*`
   request/response shapes, including bounded multipart uploads and binary audio
   responses;
 - frontend fixture coverage accepts and translates tool, structured-output,
@@ -786,7 +786,7 @@ Start with single-node serving and make this the path that grows to full
 replacement parity.
 
 The first target is text parity through mesh's existing routing, runtime
-control, and backend rate limiting. Use `skippy-openai-frontend` as the shared
+control, and backend rate limiting. Use `skippy-inference-api` as the shared
 request/response and backend trait layer rather than adding another mesh-local
 OpenAI model of the world.
 

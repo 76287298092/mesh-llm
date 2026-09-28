@@ -186,7 +186,7 @@ fn direct_iteration_rechecks_deadline_after_worker_reply() {
 
 #[test]
 fn queued_direct_iteration_carries_cancellation_state() {
-    let cancellation = skippy_openai_frontend::CancellationToken::new();
+    let cancellation = skippy_inference_api::CancellationToken::new();
     let mut request = direct_iteration("cancelled-deferred-suffix", 1);
     request.cancellation = Some(cancellation.clone());
     cancellation.cancel();
@@ -612,7 +612,7 @@ fn detached_runtime_operation_returns_before_work_completes() {
 #[test]
 fn cancelled_cache_runtime_is_rejected_before_runtime_or_user_work() {
     let runtime = Arc::new(Mutex::new(RuntimeState::new_modelless_for_test(1)));
-    let cancellation = skippy_openai_frontend::CancellationToken::new();
+    let cancellation = skippy_inference_api::CancellationToken::new();
     let executions = Arc::new(AtomicUsize::new(0));
     let worker_executions = executions.clone();
     let (operation, result, _) = cache_runtime_operation(
@@ -666,7 +666,7 @@ fn expired_cache_runtime_is_rejected_before_runtime_or_user_work() {
 #[test]
 fn in_flight_cache_runtime_observes_cancellation_at_checkpoint() {
     let runtime = Arc::new(Mutex::new(RuntimeState::new_modelless_for_test(1)));
-    let cancellation = skippy_openai_frontend::CancellationToken::new();
+    let cancellation = skippy_inference_api::CancellationToken::new();
     let executions = Arc::new(AtomicUsize::new(0));
     let worker_executions = executions.clone();
     let (started, started_rx) = std_mpsc::sync_channel(0);

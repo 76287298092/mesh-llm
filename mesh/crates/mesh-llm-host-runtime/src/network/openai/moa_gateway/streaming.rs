@@ -75,7 +75,7 @@ pub(super) async fn write_moa_response(
         } else {
             body
         };
-        let translated = skippy_openai_frontend::anthropic::translate_chat_value(source)
+        let translated = skippy_inference_api::anthropic::translate_chat_value(source)
             .map_err(std::io::Error::other)?;
         let status = if is_failure { 502 } else { 200 };
         proxy::send_json_with_status_and_headers_observed(
@@ -530,7 +530,7 @@ pub(super) async fn send_moa_as_responses_sse_inner(
     // so downstream consumers (chat UI, billing) see the right keys.
     let usage = response
         .get("usage")
-        .map(skippy_openai_frontend::responses::chat_usage_to_responses_usage);
+        .map(skippy_inference_api::responses::chat_usage_to_responses_usage);
     let item_id = format!("msg_moa_{}", short_id_from_response(response));
 
     // On the progress path, reuse the timestamp the early
@@ -549,7 +549,7 @@ pub(super) async fn send_moa_as_responses_sse_inner(
         }
     };
 
-    use skippy_openai_frontend::responses as resp;
+    use skippy_inference_api::responses as resp;
 
     // `response.created` must come before any delta events. When the
     // progress path is driving us (continuation is Some), it already

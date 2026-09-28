@@ -4,14 +4,14 @@ use crate::frontend::message_content_to_generation_text;
 use crate::frontend::prefill::PrefillChunkPolicy;
 use serde_json::Value;
 use serde_json::json;
-use skippy_openai_frontend::ChatCompletionRequest;
-use skippy_openai_frontend::ChatCompletionResponse;
-use skippy_openai_frontend::ChatHookAction;
-use skippy_openai_frontend::ChatHookOutcome;
-use skippy_openai_frontend::FinishReason;
-use skippy_openai_frontend::MessageContent;
-use skippy_openai_frontend::OpenAiError;
-use skippy_openai_frontend::OpenAiResult;
+use skippy_inference_api::ChatCompletionRequest;
+use skippy_inference_api::ChatCompletionResponse;
+use skippy_inference_api::ChatHookAction;
+use skippy_inference_api::ChatHookOutcome;
+use skippy_inference_api::FinishReason;
+use skippy_inference_api::MessageContent;
+use skippy_inference_api::OpenAiError;
+use skippy_inference_api::OpenAiResult;
 use skippy_runtime::ChatReasoningFormat;
 use skippy_runtime::ChatTemplateOptions;
 use skippy_runtime::GenerationSignalWindow;
@@ -218,12 +218,12 @@ pub(in crate::frontend) fn chat_response_from_generated_text(
             output.finish_reason
         };
         return ChatCompletionResponse::from_parts(
-            skippy_openai_frontend::completion_id("chatcmpl"),
-            skippy_openai_frontend::now_unix_secs(),
+            skippy_inference_api::completion_id("chatcmpl"),
+            skippy_inference_api::now_unix_secs(),
             model,
-            vec![skippy_openai_frontend::ChatCompletionChoice {
+            vec![skippy_inference_api::ChatCompletionChoice {
                 index: 0,
-                message: skippy_openai_frontend::AssistantMessage {
+                message: skippy_inference_api::AssistantMessage {
                     role: "assistant",
                     content: parsed.content,
                     reasoning_content: parsed.reasoning_content,
@@ -249,8 +249,8 @@ pub(in crate::frontend) fn chat_response_from_generated_text(
 pub(in crate::frontend) fn completion_response_from_generated_text(
     model: String,
     output: &GeneratedText,
-) -> skippy_openai_frontend::CompletionResponse {
-    skippy_openai_frontend::CompletionResponse::new_with_reason(
+) -> skippy_inference_api::CompletionResponse {
+    skippy_inference_api::CompletionResponse::new_with_reason(
         model,
         output.text.clone(),
         output.usage(),
@@ -312,7 +312,7 @@ pub(in crate::frontend) fn parsed_tool_calls_from_message_value(
 
 /// Compatibility wrapper for the pre-canonical internal call path.
 pub(in crate::frontend) fn ensure_tool_call_ids(tool_calls: &mut [Value]) {
-    skippy_openai_frontend::ensure_tool_call_ids(tool_calls);
+    skippy_inference_api::ensure_tool_call_ids(tool_calls);
 }
 
 pub(in crate::frontend) fn string_field(value: &Value, field: &str) -> Option<String> {
@@ -407,7 +407,7 @@ pub(in crate::frontend) fn tool_calls_stream_delta(tool_calls: Value) -> Value {
 }
 
 pub(in crate::frontend) fn chat_message_generation_value(
-    message: &skippy_openai_frontend::ChatMessage,
+    message: &skippy_inference_api::ChatMessage,
     marker: &str,
     media: &mut Vec<MediaInput>,
 ) -> OpenAiResult<Value> {

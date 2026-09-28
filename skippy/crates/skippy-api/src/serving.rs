@@ -1,5 +1,5 @@
 //! Product-neutral options for local and staged OpenAI model serving.
-use skippy_openai_frontend::OpenAiHookPolicy;
+use skippy_inference_api::OpenAiHookPolicy;
 use skippy_protocol::StageConfig;
 use skippy_serving::{
     DEFAULT_GENERATION_ADMISSION_TIMEOUT_SECS, EmbeddedOpenAiArgs, EmbeddedOpenAiRequestDefaults,

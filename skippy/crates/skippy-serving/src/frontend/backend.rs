@@ -48,39 +48,39 @@ use futures_util::StreamExt;
 use futures_util::stream;
 use serde_json::Value;
 use serde_json::json;
+use skippy_inference_api::AudioFormat;
+use skippy_inference_api::AudioResponse;
+use skippy_inference_api::AudioSpeechRequest;
+use skippy_inference_api::AudioTranscriptionRequest;
+use skippy_inference_api::AudioTranscriptionResponse;
+use skippy_inference_api::ChatCompletionOutcome;
+use skippy_inference_api::ChatCompletionRequest;
+use skippy_inference_api::ChatCompletionResponse;
+use skippy_inference_api::ChatCompletionStream;
+use skippy_inference_api::ChatExchangeRoute;
+use skippy_inference_api::CompletionRequest;
+use skippy_inference_api::CompletionResponse;
+use skippy_inference_api::CompletionStream;
+use skippy_inference_api::Embedding;
+use skippy_inference_api::EmbeddingInput;
+use skippy_inference_api::EmbeddingResponse;
+use skippy_inference_api::EmbeddingsRequest;
+use skippy_inference_api::ModelObject;
+use skippy_inference_api::OpenAiBackend;
+use skippy_inference_api::OpenAiError;
+use skippy_inference_api::OpenAiRequestContext;
+use skippy_inference_api::OpenAiResult;
+use skippy_inference_api::RerankRequest;
+use skippy_inference_api::RerankResponse;
+use skippy_inference_api::RerankResult;
+use skippy_inference_api::SystemOneRequest;
+use skippy_inference_api::SystemOneResponse;
+use skippy_inference_api::TerminalGuard;
+use skippy_inference_api::TerminalGuardedChatStream;
+use skippy_inference_api::apply_chat_hook_outcome;
+use skippy_inference_api::capsule_id_is_valid;
+use skippy_inference_api::chat_mesh_hooks_enabled;
 use skippy_metrics::attr as attr_key;
-use skippy_openai_frontend::AudioFormat;
-use skippy_openai_frontend::AudioResponse;
-use skippy_openai_frontend::AudioSpeechRequest;
-use skippy_openai_frontend::AudioTranscriptionRequest;
-use skippy_openai_frontend::AudioTranscriptionResponse;
-use skippy_openai_frontend::ChatCompletionOutcome;
-use skippy_openai_frontend::ChatCompletionRequest;
-use skippy_openai_frontend::ChatCompletionResponse;
-use skippy_openai_frontend::ChatCompletionStream;
-use skippy_openai_frontend::ChatExchangeRoute;
-use skippy_openai_frontend::CompletionRequest;
-use skippy_openai_frontend::CompletionResponse;
-use skippy_openai_frontend::CompletionStream;
-use skippy_openai_frontend::Embedding;
-use skippy_openai_frontend::EmbeddingInput;
-use skippy_openai_frontend::EmbeddingResponse;
-use skippy_openai_frontend::EmbeddingsRequest;
-use skippy_openai_frontend::ModelObject;
-use skippy_openai_frontend::OpenAiBackend;
-use skippy_openai_frontend::OpenAiError;
-use skippy_openai_frontend::OpenAiRequestContext;
-use skippy_openai_frontend::OpenAiResult;
-use skippy_openai_frontend::RerankRequest;
-use skippy_openai_frontend::RerankResponse;
-use skippy_openai_frontend::RerankResult;
-use skippy_openai_frontend::SystemOneRequest;
-use skippy_openai_frontend::SystemOneResponse;
-use skippy_openai_frontend::TerminalGuard;
-use skippy_openai_frontend::TerminalGuardedChatStream;
-use skippy_openai_frontend::apply_chat_hook_outcome;
-use skippy_openai_frontend::capsule_id_is_valid;
-use skippy_openai_frontend::chat_mesh_hooks_enabled;
 use skippy_protocol::StageConfig;
 use skippy_runtime::{
     MediaInput, ModelWorkload, SamplingConfig, SpeechOutputFormat, SpeechSynthesisConfig,
@@ -355,7 +355,7 @@ impl GenerationSessionPermit {
         mut self,
         deadline: Option<Instant>,
         admission_timeout: Duration,
-        cancellation: &skippy_openai_frontend::CancellationToken,
+        cancellation: &skippy_inference_api::CancellationToken,
     ) -> OpenAiResult<Self> {
         let permit = if let Some(deadline) = deadline {
             let acquire = tokio::time::timeout_at(
@@ -429,7 +429,7 @@ impl GenerationAdmissionController {
     async fn acquire(
         &self,
         ids: &OpenAiGenerationIds,
-        cancellation: &skippy_openai_frontend::CancellationToken,
+        cancellation: &skippy_inference_api::CancellationToken,
         admission_timeout: Duration,
     ) -> OpenAiResult<(GenerationAdmissionPermit, Option<GenerationSessionPermit>)> {
         self.acquire_work(
@@ -445,7 +445,7 @@ impl GenerationAdmissionController {
     async fn acquire_work(
         &self,
         ids: &OpenAiGenerationIds,
-        cancellation: &skippy_openai_frontend::CancellationToken,
+        cancellation: &skippy_inference_api::CancellationToken,
         admission_timeout: Duration,
         work: GenerationAdmissionWork,
     ) -> OpenAiResult<(GenerationAdmissionPermit, Option<GenerationSessionPermit>)> {
@@ -462,7 +462,7 @@ impl GenerationAdmissionController {
     async fn acquire_scheduled_work(
         &self,
         ids: &OpenAiGenerationIds,
-        cancellation: &skippy_openai_frontend::CancellationToken,
+        cancellation: &skippy_inference_api::CancellationToken,
         admission_timeout: Duration,
         work: GenerationAdmissionWork,
         scheduling: GenerationAdmissionScheduling,
@@ -505,7 +505,7 @@ impl GenerationAdmissionController {
         ids: &OpenAiGenerationIds,
         deadline: Option<Instant>,
         admission_timeout: Duration,
-        cancellation: &skippy_openai_frontend::CancellationToken,
+        cancellation: &skippy_inference_api::CancellationToken,
     ) -> OpenAiResult<Option<GenerationSessionPermit>> {
         let Some(session_key) = trusted_generation_session_key(ids) else {
             return Ok(None);
@@ -528,7 +528,7 @@ impl GenerationAdmissionController {
         &self,
         deadline: Option<Instant>,
         admission_timeout: Duration,
-        cancellation: &skippy_openai_frontend::CancellationToken,
+        cancellation: &skippy_inference_api::CancellationToken,
         work: GenerationAdmissionWork,
         scheduling: GenerationAdmissionScheduling,
     ) -> OpenAiResult<GenerationAdmissionPermit> {
@@ -892,7 +892,7 @@ pub(in crate::frontend) async fn run_blocking_generation_worker<T, F, P>(
 ) -> Result<T, task::JoinError>
 where
     T: Send + 'static,
-    F: FnOnce(skippy_openai_frontend::CancellationToken) -> T + Send + 'static,
+    F: FnOnce(skippy_inference_api::CancellationToken) -> T + Send + 'static,
     P: Send + 'static,
 {
     task::spawn_blocking(move || {
@@ -1403,11 +1403,11 @@ impl OpenAiBackend for StageOpenAiBackend {
         Ok(RerankResponse {
             id: format!("rerank-{}", uuid::Uuid::new_v4().simple()),
             results,
-            usage: skippy_openai_frontend::Usage {
+            usage: skippy_inference_api::Usage {
                 prompt_tokens: u32::try_from(prompt_tokens).unwrap_or(u32::MAX),
                 completion_tokens: 0,
                 total_tokens: u32::try_from(prompt_tokens).unwrap_or(u32::MAX),
-                ..skippy_openai_frontend::Usage::default()
+                ..skippy_inference_api::Usage::default()
             },
         })
     }
@@ -1502,7 +1502,7 @@ impl StageOpenAiBackend {
     async fn acquire_generation_admission(
         &self,
         ids: &OpenAiGenerationIds,
-        cancellation: &skippy_openai_frontend::CancellationToken,
+        cancellation: &skippy_inference_api::CancellationToken,
         work: GenerationAdmissionWork,
         scheduling: GenerationAdmissionScheduling,
     ) -> OpenAiResult<(GenerationAdmissionPermit, Option<GenerationSessionPermit>)> {
@@ -1815,7 +1815,7 @@ impl StageOpenAiBackend {
         &self,
         prompt: PreparedGenerationPrompt,
         max_tokens: GenerationTokenLimit,
-        stop: Option<skippy_openai_frontend::StopSequence>,
+        stop: Option<skippy_inference_api::StopSequence>,
         sampling: SamplingConfig,
         hook_request: Option<ChatCompletionRequest>,
         context: OpenAiRequestContext,
@@ -1907,7 +1907,7 @@ impl StageOpenAiBackend {
         &self,
         prompt: PreparedGenerationPrompt,
         max_tokens: GenerationTokenLimit,
-        stop: Option<skippy_openai_frontend::StopSequence>,
+        stop: Option<skippy_inference_api::StopSequence>,
         sampling: SamplingConfig,
         include_usage: bool,
         hook_request: Option<ChatCompletionRequest>,

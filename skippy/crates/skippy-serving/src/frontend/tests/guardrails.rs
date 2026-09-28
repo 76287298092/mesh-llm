@@ -180,7 +180,7 @@ async fn compaction_wraps_skippy_backend_even_when_guardrails_are_disabled() {
 #[tokio::test]
 async fn disabled_skippy_guardrail_wrapper_can_be_enabled_live() {
     let backend = Arc::new(StructuredGuardrailRecordingBackend::default());
-    let policy: skippy_openai_frontend::GuardrailPolicyHandle = GuardrailPolicy::default().into();
+    let policy: skippy_inference_api::GuardrailPolicyHandle = GuardrailPolicy::default().into();
     let guardrails = OpenAiGuardrailsConfig {
         target: OpenAiGuardrailsTarget::Skippy,
         policy: policy.clone(),

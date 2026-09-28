@@ -36,7 +36,7 @@ use std::{
 
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use skippy_openai_frontend::{
+use skippy_inference_api::{
     AudioResponse, AudioSpeechRequest, AudioTranscriptionRequest, AudioTranscriptionResponse,
     ChatCompletionRequest, ChatCompletionResponse, ChatCompletionStream, CompactionConfig,
     CompletionRequest, CompletionResponse, CompletionStream, EmbeddingResponse, EmbeddingsRequest,
@@ -396,7 +396,7 @@ fn wrap_host_guardrail_backend(
     backend: Arc<dyn OpenAiBackend>,
     openai_guardrails: Option<&OpenAiGuardrailsConfig>,
     context_limit_tokens: Option<usize>,
-    telemetry: Option<Arc<dyn skippy_openai_frontend::GuardrailTelemetrySink>>,
+    telemetry: Option<Arc<dyn skippy_inference_api::GuardrailTelemetrySink>>,
 ) -> Arc<dyn OpenAiBackend> {
     match openai_guardrails {
         Some(config) => {
@@ -620,7 +620,7 @@ pub(crate) fn forget_stage0_compute_meter(run_id: &str) {
 mod tests {
     use super::*;
     use serde_json::json;
-    use skippy_openai_frontend::{MESH_COMPACT_FIELD, OpenAiError};
+    use skippy_inference_api::{MESH_COMPACT_FIELD, OpenAiError};
     use skippy_serving::runtime_state::RuntimeSessionStats;
     use skippy_serving::telemetry::TelemetryStats;
 
@@ -675,7 +675,7 @@ mod tests {
             Ok(ChatCompletionResponse::new(
                 request.model,
                 "ok",
-                skippy_openai_frontend::Usage::new(0, 0),
+                skippy_inference_api::Usage::new(0, 0),
             ))
         }
 
@@ -1092,6 +1092,6 @@ mod tests {
             .filter_map(|function| function.get("name"))
             .filter_map(serde_json::Value::as_str)
             .collect::<Vec<_>>();
-        assert!(tool_names.contains(&skippy_openai_frontend::MESH_RESPOND_TOOL_NAME));
+        assert!(tool_names.contains(&skippy_inference_api::MESH_RESPOND_TOOL_NAME));
     }
 }

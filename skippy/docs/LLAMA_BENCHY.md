@@ -12,10 +12,10 @@ benchy to run without the stage protocol leaking through:
 
 | Endpoint / field | Why benchy needs it | Our owner |
 | --- | --- | --- |
-| `GET /v1/models` | Optional model auto-discovery | `skippy-openai-frontend` route, backend model list |
-| `POST /v1/chat/completions` | Main benchmark request path | `skippy-openai-frontend` route, stage backend generation |
-| `stream: true` SSE | Token timing and throughput | `skippy-openai-frontend` SSE framing |
-| `[DONE]` SSE marker | Stream termination | `skippy-openai-frontend` |
+| `GET /v1/models` | Optional model auto-discovery | `skippy-inference-api` route, backend model list |
+| `POST /v1/chat/completions` | Main benchmark request path | `skippy-inference-api` route, stage backend generation |
+| `stream: true` SSE | Token timing and throughput | `skippy-inference-api` SSE framing |
+| `[DONE]` SSE marker | Stream termination | `skippy-inference-api` |
 | streaming and non-stream `usage` | Prompt/completion accounting | stage backend usage counts |
 | `max_tokens` | Generation length control | stage backend enforcement |
 

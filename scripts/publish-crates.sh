@@ -429,7 +429,7 @@ publish_crates=(
     skippy-hardware-profile
     skippy-runtime
     skippy-scheduler
-    skippy-openai-frontend
+    skippy-inference-api
     skippy-runtime-install
     skippy-config
     skippy-serving

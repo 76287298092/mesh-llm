@@ -16,7 +16,7 @@ drive OpenAI corpus requests through the shared frontend, and collect
 
 ```mermaid
 flowchart LR
-    B["skippy-bench<br/>driver + launcher"] --> O["skippy-openai-frontend<br/>optional corpus path"]
+    B["skippy-bench<br/>driver + launcher"] --> O["skippy-inference-api<br/>optional corpus path"]
     B --> S0["stage-0"]
     O --> S0
     S0 -->|activation frames| S1["stage-1"]

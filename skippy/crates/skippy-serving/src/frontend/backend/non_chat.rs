@@ -28,7 +28,7 @@ pub(super) fn rerank_prompt_tokens_estimate(request: &RerankRequest) -> OpenAiRe
 /// Stop a native batch between items when its owning HTTP request is cancelled.
 pub(super) fn collect_workload_batch<I, T, F>(
     items: I,
-    cancellation: &skippy_openai_frontend::CancellationToken,
+    cancellation: &skippy_inference_api::CancellationToken,
     mut run_item: F,
 ) -> anyhow::Result<Vec<T>>
 where
@@ -318,19 +318,19 @@ fn audio_text_instruction(
 }
 
 /// Place the audio marker after the task instruction and optional prompt.
-fn audio_text_user_message(instruction: String) -> skippy_openai_frontend::ChatMessage {
-    skippy_openai_frontend::ChatMessage {
+fn audio_text_user_message(instruction: String) -> skippy_inference_api::ChatMessage {
+    skippy_inference_api::ChatMessage {
         role: "user".to_string(),
         // The audio marker must follow the instruction. Upstream llama.cpp's
         // transcription route appends the media marker to the user prompt;
         // reversing these parts can make Ultravox ignore the supplied audio.
-        content: Some(skippy_openai_frontend::MessageContent::Parts(vec![
-            skippy_openai_frontend::MessageContentPart {
+        content: Some(skippy_inference_api::MessageContent::Parts(vec![
+            skippy_inference_api::MessageContentPart {
                 content_type: "text".to_string(),
                 text: Some(instruction),
                 extra: BTreeMap::new(),
             },
-            skippy_openai_frontend::MessageContentPart {
+            skippy_inference_api::MessageContentPart {
                 content_type: "input_audio".to_string(),
                 text: None,
                 extra: BTreeMap::from([(
@@ -362,7 +362,7 @@ mod tests {
     #[test]
     /// Cost estimation must validate every document, including entries after valid ones.
     fn rerank_estimate_rejects_invalid_documents_before_workload_admission() {
-        let mut request: skippy_openai_frontend::RerankRequest =
+        let mut request: skippy_inference_api::RerankRequest =
             serde_json::from_value(serde_json::json!({
                 "model": "rank", "query": "query", "documents": ["text", {"title": "no text"}]
             }))
@@ -376,7 +376,7 @@ mod tests {
         audio_text_instruction, audio_text_user_message, audio_transcript_text,
         collect_workload_batch, validate_speech_voice, workload_error,
     };
-    use skippy_openai_frontend::{AudioTranscriptionRequest, MessageContent};
+    use skippy_inference_api::{AudioTranscriptionRequest, MessageContent};
 
     /// Construct a bounded transcription request for prompt and normalization tests.
     fn audio_request() -> AudioTranscriptionRequest {
@@ -481,7 +481,7 @@ mod tests {
     #[test]
     /// Cancellation between batch items prevents any further native execution.
     fn workload_batch_stops_before_the_next_native_call_after_cancellation() {
-        let cancellation = skippy_openai_frontend::CancellationToken::new();
+        let cancellation = skippy_inference_api::CancellationToken::new();
         let mut calls = 0;
         let result = collect_workload_batch(0..3, &cancellation, |item| {
             calls += 1;

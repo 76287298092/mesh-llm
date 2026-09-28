@@ -13,8 +13,8 @@ pub(super) async fn send(
     if !header_sent {
         super::streaming::write_sse_response_headers(&mut stream, headers).await?;
     }
-    let events = skippy_openai_frontend::anthropic::completion_events(body)
-        .map_err(std::io::Error::other)?;
+    let events =
+        skippy_inference_api::anthropic::completion_events(body).map_err(std::io::Error::other)?;
     for event in events {
         let data = serde_json::to_string(&event).map_err(std::io::Error::other)?;
         write_chunked_sse_event(&mut stream, Some(event.event_name()), &data).await?;

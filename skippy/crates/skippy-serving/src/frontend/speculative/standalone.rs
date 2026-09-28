@@ -1,4 +1,4 @@
-use skippy_openai_frontend::{OpenAiError, OpenAiResult};
+use skippy_inference_api::{OpenAiError, OpenAiResult};
 
 use super::{HistoryNgramProposer, NgramProposerKind, SpeculativeDecodeConfig};
 

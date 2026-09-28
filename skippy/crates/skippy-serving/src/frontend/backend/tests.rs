@@ -9,14 +9,14 @@ use crate::frontend::prefill::PrefillChunkPolicy;
 use crate::runtime_state::RuntimeState;
 use futures_util::StreamExt;
 use serde_json::json;
-use skippy_openai_frontend::ChatCompletionChunk;
-use skippy_openai_frontend::ChatCompletionRequest;
-use skippy_openai_frontend::ChatCompletionResponse;
-use skippy_openai_frontend::ChatHookOutcome;
-use skippy_openai_frontend::FinishReason;
-use skippy_openai_frontend::OpenAiHookPolicy;
-use skippy_openai_frontend::Usage;
-use skippy_openai_frontend::set_chat_mesh_hooks_enabled;
+use skippy_inference_api::ChatCompletionChunk;
+use skippy_inference_api::ChatCompletionRequest;
+use skippy_inference_api::ChatCompletionResponse;
+use skippy_inference_api::ChatHookOutcome;
+use skippy_inference_api::FinishReason;
+use skippy_inference_api::OpenAiHookPolicy;
+use skippy_inference_api::Usage;
+use skippy_inference_api::set_chat_mesh_hooks_enabled;
 use tokio::runtime::Runtime;
 
 /// A disabled telemetry sink for `StreamEventSender` construction in tests.
@@ -89,7 +89,7 @@ async fn queued_admission_balances_shared_prefix_families_across_lane_wave() {
     let active = controller
         .acquire_work(
             &trusted_ids("active"),
-            &skippy_openai_frontend::CancellationToken::new(),
+            &skippy_inference_api::CancellationToken::new(),
             Duration::from_secs(2),
             work,
         )
@@ -105,7 +105,7 @@ async fn queued_admission_balances_shared_prefix_families_across_lane_wave() {
         let controller = controller.clone();
         let tx = tx.clone();
         tokio::spawn(async move {
-            let cancellation = skippy_openai_frontend::CancellationToken::new();
+            let cancellation = skippy_inference_api::CancellationToken::new();
             let admitted = controller
                 .acquire_scheduled_work(
                     &trusted_ids(label),
@@ -156,7 +156,7 @@ async fn capacity_waiter_holds_neither_a_lane_nor_kv_until_atomic_promotion() {
     let active = controller
         .acquire_work(
             &trusted_ids("active"),
-            &skippy_openai_frontend::CancellationToken::new(),
+            &skippy_inference_api::CancellationToken::new(),
             Duration::ZERO,
             GenerationAdmissionWork::new(7, 0),
         )
@@ -167,7 +167,7 @@ async fn capacity_waiter_holds_neither_a_lane_nor_kv_until_atomic_promotion() {
         waiting_controller
             .acquire_work(
                 &trusted_ids("waiting"),
-                &skippy_openai_frontend::CancellationToken::new(),
+                &skippy_inference_api::CancellationToken::new(),
                 Duration::ZERO,
                 GenerationAdmissionWork::new(7, 0),
             )
@@ -203,7 +203,7 @@ async fn capacity_waiters_drain_serially_after_each_kv_release() {
     let active = controller
         .acquire_work(
             &trusted_ids("active"),
-            &skippy_openai_frontend::CancellationToken::new(),
+            &skippy_inference_api::CancellationToken::new(),
             Duration::ZERO,
             GenerationAdmissionWork::new(10, 0),
         )
@@ -214,7 +214,7 @@ async fn capacity_waiters_drain_serially_after_each_kv_release() {
         let controller = controller.clone();
         let tx = tx.clone();
         tokio::spawn(async move {
-            let cancellation = skippy_openai_frontend::CancellationToken::new();
+            let cancellation = skippy_inference_api::CancellationToken::new();
             let admitted = controller
                 .acquire_work(
                     &trusted_ids(&format!("waiting-{index}")),
@@ -258,7 +258,7 @@ async fn full_pool_waiter_is_admitted_after_bounded_half_pool_bypasses() {
     let active = controller
         .acquire_work(
             &trusted_ids("active-half-pool"),
-            &skippy_openai_frontend::CancellationToken::new(),
+            &skippy_inference_api::CancellationToken::new(),
             Duration::ZERO,
             half_pool_work,
         )
@@ -270,7 +270,7 @@ async fn full_pool_waiter_is_admitted_after_bounded_half_pool_bypasses() {
         full_pool_controller
             .acquire_work(
                 &trusted_ids("full-pool-waiter"),
-                &skippy_openai_frontend::CancellationToken::new(),
+                &skippy_inference_api::CancellationToken::new(),
                 Duration::ZERO,
                 full_pool_work,
             )
@@ -291,7 +291,7 @@ async fn full_pool_waiter_is_admitted_after_bounded_half_pool_bypasses() {
             Duration::from_secs(1),
             controller.acquire_work(
                 &trusted_ids(&format!("half-pool-bypass-{wave}")),
-                &skippy_openai_frontend::CancellationToken::new(),
+                &skippy_inference_api::CancellationToken::new(),
                 Duration::ZERO,
                 half_pool_work,
             ),
@@ -310,7 +310,7 @@ async fn full_pool_waiter_is_admitted_after_bounded_half_pool_bypasses() {
         bypass_controller
             .acquire_work(
                 &trusted_ids("half-pool-after-bound"),
-                &skippy_openai_frontend::CancellationToken::new(),
+                &skippy_inference_api::CancellationToken::new(),
                 Duration::ZERO,
                 half_pool_work,
             )
@@ -354,7 +354,7 @@ async fn request_larger_than_the_kv_pool_fails_without_queueing_or_taking_a_lane
         controller
             .acquire_work(
                 &trusted_ids("too-large"),
-                &skippy_openai_frontend::CancellationToken::new(),
+                &skippy_inference_api::CancellationToken::new(),
                 Duration::ZERO,
                 GenerationAdmissionWork::new(129, 0),
             )
@@ -384,13 +384,13 @@ async fn cancelling_a_capacity_waiter_leaks_neither_lane_nor_kv_reservation() {
     let active = controller
         .acquire_work(
             &trusted_ids("active"),
-            &skippy_openai_frontend::CancellationToken::new(),
+            &skippy_inference_api::CancellationToken::new(),
             Duration::ZERO,
             GenerationAdmissionWork::new(100, 0),
         )
         .await
         .expect("first capacity reservation");
-    let cancellation = skippy_openai_frontend::CancellationToken::new();
+    let cancellation = skippy_inference_api::CancellationToken::new();
     let waiter_cancellation = cancellation.clone();
     let waiting_controller = controller.clone();
     let waiter = tokio::spawn(async move {
@@ -438,7 +438,7 @@ async fn predicted_wait_rejection_preserves_queue_capacity() {
     let active = controller
         .acquire_work(
             &trusted_ids("agent-1"),
-            &skippy_openai_frontend::CancellationToken::new(),
+            &skippy_inference_api::CancellationToken::new(),
             Duration::from_secs(1),
             work,
         )
@@ -449,7 +449,7 @@ async fn predicted_wait_rejection_preserves_queue_capacity() {
         controller
             .acquire_work(
                 &trusted_ids("agent-2"),
-                &skippy_openai_frontend::CancellationToken::new(),
+                &skippy_inference_api::CancellationToken::new(),
                 Duration::from_millis(199),
                 work,
             )
@@ -503,7 +503,7 @@ fn session_registry_counts_live_leases_and_cleans_replaced_entries() {
 async fn same_trusted_session_serializes_without_consuming_global_queue_capacity() {
     let controller = admission_controller(1, 1);
     let session_key = trusted_session_key("agent-1");
-    let first_cancellation = skippy_openai_frontend::CancellationToken::new();
+    let first_cancellation = skippy_inference_api::CancellationToken::new();
     let first = controller
         .acquire(
             &trusted_ids("agent-1"),
@@ -514,7 +514,7 @@ async fn same_trusted_session_serializes_without_consuming_global_queue_capacity
         .expect("first session admission");
 
     let second_controller = controller.clone();
-    let second_cancellation = skippy_openai_frontend::CancellationToken::new();
+    let second_cancellation = skippy_inference_api::CancellationToken::new();
     let waiter_cancellation = second_cancellation.clone();
     let waiter = tokio::spawn(async move {
         second_controller
@@ -574,7 +574,7 @@ async fn same_trusted_session_serializes_without_consuming_global_queue_capacity
 #[tokio::test]
 async fn same_trusted_session_acquires_only_after_the_first_turn_releases() {
     let controller = admission_controller(1, 1);
-    let first_cancellation = skippy_openai_frontend::CancellationToken::new();
+    let first_cancellation = skippy_inference_api::CancellationToken::new();
     let first = controller
         .acquire(
             &trusted_ids("agent-1"),
@@ -589,7 +589,7 @@ async fn same_trusted_session_acquires_only_after_the_first_turn_releases() {
         second_controller
             .acquire(
                 &trusted_ids("agent-1"),
-                &skippy_openai_frontend::CancellationToken::new(),
+                &skippy_inference_api::CancellationToken::new(),
                 Duration::from_secs(1),
             )
             .await
@@ -613,7 +613,7 @@ async fn same_trusted_session_acquires_only_after_the_first_turn_releases() {
 #[tokio::test]
 async fn session_and_global_admission_share_one_absolute_deadline() {
     let controller = admission_controller(1, 1);
-    let first_cancellation = skippy_openai_frontend::CancellationToken::new();
+    let first_cancellation = skippy_inference_api::CancellationToken::new();
     let (global_permit, session_permit) = controller
         .acquire(
             &trusted_ids("agent-1"),
@@ -633,7 +633,7 @@ async fn session_and_global_admission_share_one_absolute_deadline() {
         controller
             .acquire(
                 &trusted_ids("agent-1"),
-                &skippy_openai_frontend::CancellationToken::new(),
+                &skippy_inference_api::CancellationToken::new(),
                 Duration::from_millis(200),
             )
             .await,
@@ -655,7 +655,7 @@ async fn session_and_global_admission_share_one_absolute_deadline() {
 async fn unrelated_session_is_not_starved_by_a_same_session_waiter() {
     let controller = admission_controller(2, 2);
     let session_key = trusted_session_key("agent-1");
-    let first_cancellation = skippy_openai_frontend::CancellationToken::new();
+    let first_cancellation = skippy_inference_api::CancellationToken::new();
     let first = controller
         .acquire(
             &trusted_ids("agent-1"),
@@ -666,7 +666,7 @@ async fn unrelated_session_is_not_starved_by_a_same_session_waiter() {
         .expect("first session admission");
 
     let duplicate_controller = controller.clone();
-    let duplicate_cancellation = skippy_openai_frontend::CancellationToken::new();
+    let duplicate_cancellation = skippy_inference_api::CancellationToken::new();
     let waiter_cancellation = duplicate_cancellation.clone();
     let duplicate = tokio::spawn(async move {
         duplicate_controller
@@ -701,7 +701,7 @@ async fn unrelated_session_is_not_starved_by_a_same_session_waiter() {
     let unrelated = controller
         .acquire(
             &trusted_ids("agent-2"),
-            &skippy_openai_frontend::CancellationToken::new(),
+            &skippy_inference_api::CancellationToken::new(),
             Duration::from_millis(100),
         )
         .await
@@ -734,14 +734,14 @@ async fn same_session_waiter_does_not_reserve_the_only_global_queue_slot() {
     let first = controller
         .acquire(
             &trusted_ids("agent-1"),
-            &skippy_openai_frontend::CancellationToken::new(),
+            &skippy_inference_api::CancellationToken::new(),
             Duration::from_secs(1),
         )
         .await
         .expect("first session admission");
 
     let duplicate_controller = controller.clone();
-    let duplicate_cancellation = skippy_openai_frontend::CancellationToken::new();
+    let duplicate_cancellation = skippy_inference_api::CancellationToken::new();
     let waiter_cancellation = duplicate_cancellation.clone();
     let duplicate = tokio::spawn(async move {
         duplicate_controller
@@ -775,7 +775,7 @@ async fn same_session_waiter_does_not_reserve_the_only_global_queue_slot() {
         unrelated_controller
             .acquire(
                 &trusted_ids("agent-2"),
-                &skippy_openai_frontend::CancellationToken::new(),
+                &skippy_inference_api::CancellationToken::new(),
                 Duration::from_secs(1),
             )
             .await
@@ -811,8 +811,8 @@ async fn same_session_waiter_does_not_reserve_the_only_global_queue_slot() {
 #[tokio::test]
 async fn different_trusted_sessions_can_hold_generation_lanes_concurrently() {
     let controller = admission_controller(2, 2);
-    let first_cancellation = skippy_openai_frontend::CancellationToken::new();
-    let second_cancellation = skippy_openai_frontend::CancellationToken::new();
+    let first_cancellation = skippy_inference_api::CancellationToken::new();
+    let second_cancellation = skippy_inference_api::CancellationToken::new();
     let first_ids = trusted_ids("agent-1");
     let second_ids = trusted_ids("agent-2");
 
@@ -848,7 +848,7 @@ async fn different_trusted_sessions_can_hold_generation_lanes_concurrently() {
 async fn blocking_worker_holds_global_and_session_permits_until_work_finishes() {
     let controller = admission_controller(1, 1);
     let session_key = trusted_session_key("agent-1");
-    let cancellation = skippy_openai_frontend::CancellationToken::new();
+    let cancellation = skippy_inference_api::CancellationToken::new();
     let (global_permit, session_permit) = controller
         .acquire(
             &trusted_ids("agent-1"),
@@ -1103,7 +1103,7 @@ fn terminal_frames_are_delivered_after_the_request_is_cancelled() {
 
 /// Once streaming has committed HTTP 200, a native generation failure cannot
 /// be converted into a new HTTP status. It must remain an `Err` item on the
-/// backend stream so `skippy-openai-frontend` can frame an explicit SSE error event
+/// backend stream so `skippy-inference-api` can frame an explicit SSE error event
 /// before `[DONE]` instead of making the response look like a zero-token
 /// success.
 #[test]
@@ -1649,9 +1649,8 @@ async fn stage_backend_stream_denied_never_dispatches_and_fires_terminal_exactly
 
 #[test]
 fn generation_ids_carries_the_frontend_request_id_byte_equal_to_the_context() {
-    let request_id =
-        skippy_openai_frontend::parse_request_id("c0a801ef-2a39-4f52-99f5-bdc849127cde")
-            .expect("test UUID should parse");
+    let request_id = skippy_inference_api::parse_request_id("c0a801ef-2a39-4f52-99f5-bdc849127cde")
+        .expect("test UUID should parse");
     let context = OpenAiRequestContext::with_request_id(request_id);
     let ids = generation_ids(OpenAiCacheHints::default(), None, &context);
     assert_eq!(

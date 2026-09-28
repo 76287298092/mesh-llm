@@ -45,7 +45,7 @@ The main entry point is [`crates/skippy-cli`](crates/skippy-cli/). Runtime
 execution lives in [`crates/skippy-runtime`](crates/skippy-runtime/), serving
 coordination in [`crates/skippy-serving`](crates/skippy-serving/), and the
 shared HTTP surface in
-[`crates/skippy-openai-frontend`](crates/skippy-openai-frontend/).
+[`crates/skippy-inference-api`](crates/skippy-inference-api/).
 
 ## Key guides
 

@@ -11,13 +11,13 @@ use crate::frontend::tool_emulation;
 use crate::frontend::util::openai_backend_error;
 use crate::kv_integration::StagePrefixCachePayload;
 use serde_json::Value;
-use skippy_openai_frontend::ChatCompletionRequest;
-use skippy_openai_frontend::GenerationHookSignals;
-use skippy_openai_frontend::OpenAiError;
-use skippy_openai_frontend::OpenAiResult;
-use skippy_openai_frontend::PrefillHookSignals;
-use skippy_openai_frontend::apply_chat_hook_outcome;
-use skippy_openai_frontend::chat_mesh_hooks_enabled;
+use skippy_inference_api::ChatCompletionRequest;
+use skippy_inference_api::GenerationHookSignals;
+use skippy_inference_api::OpenAiError;
+use skippy_inference_api::OpenAiResult;
+use skippy_inference_api::PrefillHookSignals;
+use skippy_inference_api::apply_chat_hook_outcome;
+use skippy_inference_api::chat_mesh_hooks_enabled;
 use skippy_runtime::ChatTemplateJsonOptions;
 use skippy_runtime::ChatTemplateOptions;
 use skippy_runtime::GenerationSignalWindow;
@@ -141,7 +141,7 @@ impl StageOpenAiBackend {
         request: &ChatCompletionRequest,
         options: &ChatTemplateOptions,
         marker: &str,
-        messages: Option<&[skippy_openai_frontend::ChatMessage]>,
+        messages: Option<&[skippy_inference_api::ChatMessage]>,
         include_tools: bool,
     ) -> OpenAiResult<RenderedChatPrompt> {
         let source_messages = messages.unwrap_or(&request.messages);
@@ -420,7 +420,7 @@ pub(super) fn parse_emulated_chat_output(
         if request.parallel_tool_calls == Some(false) {
             calls.truncate(1);
         }
-        skippy_openai_frontend::ensure_tool_call_ids(&mut calls);
+        skippy_inference_api::ensure_tool_call_ids(&mut calls);
         Some(Value::Array(calls))
     };
     Some(ParsedChatMessage {

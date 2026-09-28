@@ -19,7 +19,7 @@ layer range, runtime layout, position, and token prefix all match.
 
 ```mermaid
 flowchart LR
-    OpenAI["skippy-openai-frontend"] --> Server["skippy-serving"]
+    OpenAI["skippy-inference-api"] --> Server["skippy-serving"]
     Server --> Runtime["skippy-runtime"]
     Runtime --> ABI["llama.cpp stage ABI"]
 
@@ -235,7 +235,7 @@ flowchart LR
 
 ```mermaid
 sequenceDiagram
-    participant O as skippy-openai-frontend
+    participant O as skippy-inference-api
     participant S as skippy-serving
     participant C as skippy-cache
     participant R as skippy-runtime

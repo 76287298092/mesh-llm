@@ -1,7 +1,7 @@
 use std::{borrow::Cow, collections::VecDeque, time::Instant};
 
 use serde_json::json;
-use skippy_openai_frontend::{OpenAiError, OpenAiResult};
+use skippy_inference_api::{OpenAiError, OpenAiResult};
 use skippy_protocol::binary::{StageWireMessage, WireReplyKind, recv_reply, write_stage_message};
 
 use crate::frontend::{

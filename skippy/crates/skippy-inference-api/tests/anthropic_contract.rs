@@ -15,12 +15,12 @@ use axum::{
 };
 use futures_util::stream;
 use http_body_util::BodyExt;
-use openai_frontend::{
+use serde_json::{Value, json};
+use skippy_inference_api::{
     ChatCompletionChunk, ChatCompletionChunkChoice, ChatCompletionDelta, ChatCompletionRequest,
     ChatCompletionResponse, ChatCompletionStream, FinishReason, ModelObject, OpenAiBackend,
     OpenAiFrontendConfig, OpenAiRequestContext, OpenAiResult, Usage, router_for_with_config,
 };
-use serde_json::{Value, json};
 use tower::ServiceExt;
 
 const MODEL_ID: &str = "org/repo:Q4_K_M";
@@ -540,12 +540,12 @@ async fn simulated_agent_tool_use_loop_round_trips_over_streaming_messages() {
 fn review_preserves_mesh_hooks() {
     let mut body = messages_body();
     body["mesh_hooks"] = json!(true);
-    let req = openai_frontend::anthropic::messages_request_to_chat_request(
+    let req = skippy_inference_api::anthropic::messages_request_to_chat_request(
         serde_json::from_value(body).unwrap(),
     )
     .unwrap();
     assert!(
-        openai_frontend::chat_mesh_hooks_enabled(&req),
+        skippy_inference_api::chat_mesh_hooks_enabled(&req),
         "mesh_hooks flag discarded"
     );
 }
@@ -553,7 +553,7 @@ fn review_preserves_mesh_hooks() {
 fn review_preserves_image_content() {
     let mut body = messages_body();
     body["messages"][0]["content"] = json!([{"type":"text","text":"describe"},{"type":"image","source":{"type":"base64","media_type":"image/png","data":"AAAA"}}]);
-    let req = openai_frontend::anthropic::messages_request_to_chat_request(
+    let req = skippy_inference_api::anthropic::messages_request_to_chat_request(
         serde_json::from_value(body).unwrap(),
     )
     .unwrap();
@@ -595,8 +595,12 @@ async fn review_error_does_not_emit_success_end_turn() {
     let backend = RecordingBackend::default();
     backend.queue_stream(vec![
         Ok(ChatCompletionChunk::delta(MODEL_ID, "partial")),
-        Err(openai_frontend::OpenAiError::internal("backend failed")),
-        Err(openai_frontend::OpenAiError::internal("second failure")),
+        Err(skippy_inference_api::OpenAiError::internal(
+            "backend failed",
+        )),
+        Err(skippy_inference_api::OpenAiError::internal(
+            "second failure",
+        )),
         Ok(ChatCompletionChunk::delta(MODEL_ID, "after failure")),
     ]);
     let mut body = messages_body();
@@ -624,27 +628,29 @@ async fn review_usage_after_finish_is_reported() {
 }
 
 #[derive(Default)]
-struct AnthropicObserver(Mutex<Vec<openai_frontend::OpenAiLifecycleEvent>>);
-impl openai_frontend::OpenAiLifecycleObserver for AnthropicObserver {
-    fn observe(&self, event: &openai_frontend::OpenAiLifecycleEvent) {
+struct AnthropicObserver(Mutex<Vec<skippy_inference_api::OpenAiLifecycleEvent>>);
+impl skippy_inference_api::OpenAiLifecycleObserver for AnthropicObserver {
+    fn observe(&self, event: &skippy_inference_api::OpenAiLifecycleEvent) {
         self.0.lock().unwrap().push(event.clone());
     }
 }
 struct InjectingHook;
 #[async_trait]
-impl openai_frontend::OpenAiHookPolicy for InjectingHook {
+impl skippy_inference_api::OpenAiHookPolicy for InjectingHook {
     async fn before_chat_completion(
         &self,
         request: &mut ChatCompletionRequest,
-    ) -> OpenAiResult<openai_frontend::ChatHookOutcome> {
+    ) -> OpenAiResult<skippy_inference_api::ChatHookOutcome> {
         assert_eq!(request.extra.get("mesh_hooks"), Some(&json!(true)));
-        Ok(openai_frontend::ChatHookOutcome::injected("hook-marker"))
+        Ok(skippy_inference_api::ChatHookOutcome::injected(
+            "hook-marker",
+        ))
     }
 }
 
 #[tokio::test]
 async fn anthropic_and_chat_share_hooks_and_terminal_usage() {
-    use openai_frontend::{HookedOpenAiBackend, OpenAiLifecycleEvent};
+    use skippy_inference_api::{HookedOpenAiBackend, OpenAiLifecycleEvent};
     let backend = Arc::new(RecordingBackend::default());
     let observer = Arc::new(AnthropicObserver::default());
     let app = router_for_with_config(
@@ -749,7 +755,7 @@ fn translated_cached_usage_preserves_prompt_token_accounting() {
         Usage::new(20, 5).with_cached_tokens(12),
     );
     let translated =
-        openai_frontend::anthropic::messages_response_from_chat_response(&response).unwrap();
+        skippy_inference_api::anthropic::messages_response_from_chat_response(&response).unwrap();
     let usage = serde_json::to_value(translated.usage).unwrap();
     assert_eq!(
         usage,

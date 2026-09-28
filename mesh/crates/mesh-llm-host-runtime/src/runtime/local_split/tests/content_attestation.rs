@@ -156,7 +156,7 @@ async fn strict_multimodal_stage_loads() -> StrictMultimodalStageLoads {
         n_ubatch_override: None,
         flash_attention_override: FlashAttentionType::Auto,
         openai_guardrail_policy: openai_guardrail_policy_handle(
-            skippy_openai_frontend::GuardrailMode::Disabled,
+            skippy_inference_api::GuardrailMode::Disabled,
         ),
         skippy_telemetry: skippy::SkippyTelemetryOptions::off(),
         survey_telemetry: survey::SurveyTelemetry::disabled(),

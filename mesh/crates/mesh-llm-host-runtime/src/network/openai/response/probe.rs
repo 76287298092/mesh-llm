@@ -32,13 +32,13 @@ pub(in crate::network::openai::response) fn append_capsule_nonce_headers(
     if let Some(nonce) = client_nonce {
         header.push_str(&format!(
             "{}: {nonce}\r\n",
-            skippy_openai_frontend::lifecycle::CLIENT_NONCE_HEADER.as_str()
+            skippy_inference_api::lifecycle::CLIENT_NONCE_HEADER.as_str()
         ));
     }
     if let Some(origin) = nonce_origin {
         header.push_str(&format!(
             "{}: {origin}\r\n",
-            skippy_openai_frontend::lifecycle::CLIENT_NONCE_ORIGIN_HEADER.as_str()
+            skippy_inference_api::lifecycle::CLIENT_NONCE_ORIGIN_HEADER.as_str()
         ));
     }
 }
@@ -148,7 +148,7 @@ pub(in crate::network::openai::response) struct ResponseProbe {
 }
 
 /// The rung-ladder response-leg header a SERVED node's own frontend stamps
-/// on its response (`openai-frontend::router::X_CAPSULE_ID_HEADER`). On a
+/// on its response (`skippy_inference_api::router::X_CAPSULE_ID_HEADER`). On a
 /// `RemoteMesh` dispatch this node did not serve the exchange, so any value
 /// here is the PEER's own header, relayed byte-for-byte — see
 /// `peer_response_header_value` and `ingress.rs`'s remote-mesh routing.
@@ -216,9 +216,9 @@ pub(in crate::network::openai::response) fn try_parse_response_headers(
             let mut chunked = false;
             let mut client_nonce = None;
             let mut nonce_origin = None;
-            let nonce_header = skippy_openai_frontend::lifecycle::CLIENT_NONCE_HEADER.as_str();
+            let nonce_header = skippy_inference_api::lifecycle::CLIENT_NONCE_HEADER.as_str();
             let nonce_origin_header =
-                skippy_openai_frontend::lifecycle::CLIENT_NONCE_ORIGIN_HEADER.as_str();
+                skippy_inference_api::lifecycle::CLIENT_NONCE_ORIGIN_HEADER.as_str();
             for header in response.headers.iter() {
                 if header.name.eq_ignore_ascii_case("content-length") {
                     let value = std::str::from_utf8(header.value)

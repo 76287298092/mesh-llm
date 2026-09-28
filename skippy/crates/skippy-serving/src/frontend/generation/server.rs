@@ -41,10 +41,10 @@ use axum::middleware::Next;
 use axum::response::Response;
 use serde_json::Value;
 use serde_json::json;
-use skippy_openai_frontend::ModelId;
-use skippy_openai_frontend::OpenAiBackend;
-use skippy_openai_frontend::OpenAiHookPolicy;
-use skippy_openai_frontend::ReasoningEffort;
+use skippy_inference_api::ModelId;
+use skippy_inference_api::OpenAiBackend;
+use skippy_inference_api::OpenAiHookPolicy;
+use skippy_inference_api::ReasoningEffort;
 use skippy_protocol::StageConfig;
 use std::collections::BTreeMap;
 use std::future::Future;
@@ -528,7 +528,7 @@ pub(in crate::frontend) fn instrumented_openai_router(
     tokenizer: TokenizerCapability,
     telemetry: Telemetry,
 ) -> Router {
-    skippy_openai_frontend::router_for(backend)
+    skippy_inference_api::router_for(backend)
         .merge(tokenizer_http_router(tokenizer))
         .layer(middleware::from_fn_with_state(
             telemetry,

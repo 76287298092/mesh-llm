@@ -10,7 +10,7 @@ use std::{
 
 use anyhow::{Result, bail};
 use serde_json::json;
-use skippy_openai_frontend::{OpenAiError, OpenAiResult};
+use skippy_inference_api::{OpenAiError, OpenAiResult};
 use skippy_runtime::SamplingConfig;
 
 use crate::frontend::openai_backend_error;

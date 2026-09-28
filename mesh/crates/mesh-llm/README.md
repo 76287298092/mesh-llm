@@ -21,7 +21,7 @@ own the reusable pieces:
 - [`../mesh-llm-routing`](../mesh-llm-routing) for shared routing target primitives
 - [`../mesh-llm-system`](../mesh-llm-system) for local hardware/backend/update helpers
 - [`../mesh-llm-plugin`](../mesh-llm-plugin) for plugin author API and plugin protobuf schema
-- existing `model-*`, `skippy-openai-frontend`, and `skippy-*` crates for their domains
+- existing `model-*`, `skippy-inference-api`, and `skippy-*` crates for their domains
 
 For install and end-user usage, see the [project README](../../README.md).
 

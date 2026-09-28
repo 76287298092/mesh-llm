@@ -16,7 +16,7 @@ flowchart LR
     Package["Qwen3.6 package<br/>target, draft, knobs"] --> Planner["topology planner"]
     Planner --> Single["single-node stage<br/>0..40"]
     Planner --> Multi["three-node middle-out stages<br/>0..14, 14..27, 27..40"]
-    Single --> Runner["skippy-openai-frontend<br/>/v1/chat/completions"]
+    Single --> Runner["skippy-inference-api<br/>/v1/chat/completions"]
     Multi --> Runner
     Runner --> Cache["future exact kv-recurrent cache<br/>off until reintroduced"]
     Runner --> Draft["draft verifier<br/>opt-in evidence gate"]
@@ -97,7 +97,7 @@ occupied lab ports, or low disk.
 
 All customer-readiness benchmark numbers must go through the chat-completions
 frontend. Use `skippy-serving serve-openai`, backed by the shared
-`skippy-openai-frontend` crate, and send benchmark traffic to `/v1/chat/completions`.
+`skippy-inference-api` crate, and send benchmark traffic to `/v1/chat/completions`.
 
 Direct `skippy-prompt` or binary protocol runs are allowed for
 correctness isolation, debugging, and preflight checks, but they are not

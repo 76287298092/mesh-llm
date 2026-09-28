@@ -3,7 +3,7 @@ use super::generation::StageOpenAiBackend;
 use super::request::{
     apply_chat_request_defaults, chat_template_options, ensure_chat_runtime_features_supported,
 };
-use skippy_openai_frontend::{ChatCompletionRequest, OpenAiError, OpenAiResult};
+use skippy_inference_api::{ChatCompletionRequest, OpenAiError, OpenAiResult};
 
 impl StageOpenAiBackend {
     pub(super) async fn count_prompt_tokens(

@@ -4,7 +4,7 @@ use std::sync::mpsc::{SyncSender, TrySendError, sync_channel};
 use std::time::Duration;
 
 use anyhow::Result;
-use skippy_openai_frontend::{OpenAiError, OpenAiResult};
+use skippy_inference_api::{OpenAiError, OpenAiResult};
 
 use crate::frontend::{StageOpenAiBackend, openai_backend_error};
 use crate::runtime_state::RuntimeState;

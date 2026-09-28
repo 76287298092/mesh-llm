@@ -1678,11 +1678,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "success",
       "producerSymbols": [
         "skippy_serving::frontend",
-        "skippy_openai_frontend::sse"
+        "skippy_inference_api::sse"
       ],
       "sourcePaths": [
         "skippy/crates/skippy-serving/src/frontend.rs",
-        "skippy/crates/skippy-openai-frontend/src/sse.rs"
+        "skippy/crates/skippy-inference-api/src/sse.rs"
       ],
       "authoritativeOutcome": "generation receipt and response stream outcome",
       "reducerEffect": "request generation state",
@@ -1762,11 +1762,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "failure",
       "producerSymbols": [
         "skippy_serving::frontend",
-        "skippy_openai_frontend::sse"
+        "skippy_inference_api::sse"
       ],
       "sourcePaths": [
         "skippy/crates/skippy-serving/src/frontend.rs",
-        "skippy/crates/skippy-openai-frontend/src/sse.rs"
+        "skippy/crates/skippy-inference-api/src/sse.rs"
       ],
       "authoritativeOutcome": "generation receipt and response stream outcome",
       "reducerEffect": "request generation state",
@@ -1803,11 +1803,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "success",
       "producerSymbols": [
         "skippy_serving::frontend",
-        "skippy_openai_frontend::sse"
+        "skippy_inference_api::sse"
       ],
       "sourcePaths": [
         "skippy/crates/skippy-serving/src/frontend.rs",
-        "skippy/crates/skippy-openai-frontend/src/sse.rs"
+        "skippy/crates/skippy-inference-api/src/sse.rs"
       ],
       "authoritativeOutcome": "generation receipt and response stream outcome",
       "reducerEffect": "request generation state",
@@ -1845,11 +1845,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "failure",
       "producerSymbols": [
         "skippy_serving::frontend",
-        "skippy_openai_frontend::sse"
+        "skippy_inference_api::sse"
       ],
       "sourcePaths": [
         "skippy/crates/skippy-serving/src/frontend.rs",
-        "skippy/crates/skippy-openai-frontend/src/sse.rs"
+        "skippy/crates/skippy-inference-api/src/sse.rs"
       ],
       "authoritativeOutcome": "generation receipt and response stream outcome",
       "reducerEffect": "request generation state",
@@ -1884,11 +1884,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "progress",
       "producerSymbols": [
         "skippy_serving::frontend",
-        "skippy_openai_frontend::sse"
+        "skippy_inference_api::sse"
       ],
       "sourcePaths": [
         "skippy/crates/skippy-serving/src/frontend.rs",
-        "skippy/crates/skippy-openai-frontend/src/sse.rs"
+        "skippy/crates/skippy-inference-api/src/sse.rs"
       ],
       "authoritativeOutcome": "generation receipt and response stream outcome",
       "reducerEffect": "request generation state",
@@ -1923,11 +1923,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "state",
       "producerSymbols": [
         "skippy_serving::frontend",
-        "skippy_openai_frontend::sse"
+        "skippy_inference_api::sse"
       ],
       "sourcePaths": [
         "skippy/crates/skippy-serving/src/frontend.rs",
-        "skippy/crates/skippy-openai-frontend/src/sse.rs"
+        "skippy/crates/skippy-inference-api/src/sse.rs"
       ],
       "authoritativeOutcome": "generation receipt and response stream outcome",
       "reducerEffect": "request generation state",
@@ -1965,11 +1965,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "failure",
       "producerSymbols": [
         "skippy_serving::frontend",
-        "skippy_openai_frontend::sse"
+        "skippy_inference_api::sse"
       ],
       "sourcePaths": [
         "skippy/crates/skippy-serving/src/frontend.rs",
-        "skippy/crates/skippy-openai-frontend/src/sse.rs"
+        "skippy/crates/skippy-inference-api/src/sse.rs"
       ],
       "authoritativeOutcome": "generation receipt and response stream outcome",
       "reducerEffect": "request generation state",
@@ -4650,11 +4650,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "success",
       "producerSymbols": [
         "logging::openai_lifecycle",
-        "skippy_openai_frontend::router"
+        "skippy_inference_api::router"
       ],
       "sourcePaths": [
         "mesh/crates/mesh-llm-host-runtime/src/logging/openai_lifecycle.rs",
-        "skippy/crates/skippy-openai-frontend/src/router.rs"
+        "skippy/crates/skippy-inference-api/src/router.rs"
       ],
       "authoritativeOutcome": "OpenAI request result and TerminalOutcome",
       "reducerEffect": "request admission and inflight state",
@@ -4692,11 +4692,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "failure",
       "producerSymbols": [
         "logging::openai_lifecycle",
-        "skippy_openai_frontend::router"
+        "skippy_inference_api::router"
       ],
       "sourcePaths": [
         "mesh/crates/mesh-llm-host-runtime/src/logging/openai_lifecycle.rs",
-        "skippy/crates/skippy-openai-frontend/src/router.rs"
+        "skippy/crates/skippy-inference-api/src/router.rs"
       ],
       "authoritativeOutcome": "OpenAI request result and TerminalOutcome",
       "reducerEffect": "request admission and inflight state",
@@ -4772,11 +4772,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "success",
       "producerSymbols": [
         "logging::openai_lifecycle",
-        "skippy_openai_frontend::router"
+        "skippy_inference_api::router"
       ],
       "sourcePaths": [
         "mesh/crates/mesh-llm-host-runtime/src/logging/openai_lifecycle.rs",
-        "skippy/crates/skippy-openai-frontend/src/router.rs"
+        "skippy/crates/skippy-inference-api/src/router.rs"
       ],
       "authoritativeOutcome": "OpenAI request result and TerminalOutcome",
       "reducerEffect": "request admission and inflight state",
@@ -4811,11 +4811,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "state",
       "producerSymbols": [
         "logging::openai_lifecycle",
-        "skippy_openai_frontend::router"
+        "skippy_inference_api::router"
       ],
       "sourcePaths": [
         "mesh/crates/mesh-llm-host-runtime/src/logging/openai_lifecycle.rs",
-        "skippy/crates/skippy-openai-frontend/src/router.rs"
+        "skippy/crates/skippy-inference-api/src/router.rs"
       ],
       "authoritativeOutcome": "OpenAI request result and TerminalOutcome",
       "reducerEffect": "request admission and inflight state",
@@ -4853,11 +4853,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "failure",
       "producerSymbols": [
         "logging::openai_lifecycle",
-        "skippy_openai_frontend::router"
+        "skippy_inference_api::router"
       ],
       "sourcePaths": [
         "mesh/crates/mesh-llm-host-runtime/src/logging/openai_lifecycle.rs",
-        "skippy/crates/skippy-openai-frontend/src/router.rs"
+        "skippy/crates/skippy-inference-api/src/router.rs"
       ],
       "authoritativeOutcome": "OpenAI request result and TerminalOutcome",
       "reducerEffect": "request admission and inflight state",
@@ -4892,11 +4892,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "state",
       "producerSymbols": [
         "logging::openai_lifecycle",
-        "skippy_openai_frontend::router"
+        "skippy_inference_api::router"
       ],
       "sourcePaths": [
         "mesh/crates/mesh-llm-host-runtime/src/logging/openai_lifecycle.rs",
-        "skippy/crates/skippy-openai-frontend/src/router.rs"
+        "skippy/crates/skippy-inference-api/src/router.rs"
       ],
       "authoritativeOutcome": "OpenAI request result and TerminalOutcome",
       "reducerEffect": "request admission and inflight state",
@@ -4931,11 +4931,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "state",
       "producerSymbols": [
         "logging::openai_lifecycle",
-        "skippy_openai_frontend::router"
+        "skippy_inference_api::router"
       ],
       "sourcePaths": [
         "mesh/crates/mesh-llm-host-runtime/src/logging/openai_lifecycle.rs",
-        "skippy/crates/skippy-openai-frontend/src/router.rs"
+        "skippy/crates/skippy-inference-api/src/router.rs"
       ],
       "authoritativeOutcome": "OpenAI request result and TerminalOutcome",
       "reducerEffect": "request admission and inflight state",
@@ -4973,11 +4973,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "failure",
       "producerSymbols": [
         "logging::openai_lifecycle",
-        "skippy_openai_frontend::router"
+        "skippy_inference_api::router"
       ],
       "sourcePaths": [
         "mesh/crates/mesh-llm-host-runtime/src/logging/openai_lifecycle.rs",
-        "skippy/crates/skippy-openai-frontend/src/router.rs"
+        "skippy/crates/skippy-inference-api/src/router.rs"
       ],
       "authoritativeOutcome": "OpenAI request result and TerminalOutcome",
       "reducerEffect": "request admission and inflight state",
@@ -5015,11 +5015,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "failure",
       "producerSymbols": [
         "logging::openai_lifecycle",
-        "skippy_openai_frontend::router"
+        "skippy_inference_api::router"
       ],
       "sourcePaths": [
         "mesh/crates/mesh-llm-host-runtime/src/logging/openai_lifecycle.rs",
-        "skippy/crates/skippy-openai-frontend/src/router.rs"
+        "skippy/crates/skippy-inference-api/src/router.rs"
       ],
       "authoritativeOutcome": "OpenAI request result and TerminalOutcome",
       "reducerEffect": "request admission and inflight state",
@@ -6792,11 +6792,11 @@ export const runtimeEventInventory = {
       "projectionProfile": "success",
       "producerSymbols": [
         "skippy_serving::frontend",
-        "skippy_openai_frontend::sse"
+        "skippy_inference_api::sse"
       ],
       "sourcePaths": [
         "skippy/crates/skippy-serving/src/frontend.rs",
-        "skippy/crates/skippy-openai-frontend/src/sse.rs"
+        "skippy/crates/skippy-inference-api/src/sse.rs"
       ],
       "authoritativeOutcome": "generation receipt and response stream outcome",
       "reducerEffect": "request generation state",

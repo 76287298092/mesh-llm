@@ -63,7 +63,7 @@ pub(super) fn request_id_from_raw(raw: &[u8]) -> RequestId {
     }
     std::str::from_utf8(header.value)
         .ok()
-        .and_then(skippy_openai_frontend::parse_request_id)
+        .and_then(skippy_inference_api::parse_request_id)
         .unwrap_or_default()
 }
 

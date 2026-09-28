@@ -1,5 +1,5 @@
 use crate::frontend::generation::StageOpenAiBackend;
-use skippy_openai_frontend::{OpenAiError, OpenAiResult};
+use skippy_inference_api::{OpenAiError, OpenAiResult};
 use skippy_runtime::{IterationBatchPhase, SamplingConfig};
 use std::time::Instant;
 
@@ -36,7 +36,7 @@ impl StageOpenAiBackend {
         sampling: Option<&SamplingConfig>,
         sample_last: bool,
         deadline: Instant,
-        cancellation: Option<&skippy_openai_frontend::CancellationToken>,
+        cancellation: Option<&skippy_inference_api::CancellationToken>,
     ) -> OpenAiResult<SuffixPrefillOutcome> {
         if suffix.is_empty() {
             return Err(OpenAiError::backend(
@@ -86,9 +86,9 @@ impl StageOpenAiBackend {
 
 fn ensure_suffix_prefill_active(
     deadline: Instant,
-    cancellation: Option<&skippy_openai_frontend::CancellationToken>,
+    cancellation: Option<&skippy_inference_api::CancellationToken>,
 ) -> OpenAiResult<()> {
-    if cancellation.is_some_and(skippy_openai_frontend::CancellationToken::is_cancelled) {
+    if cancellation.is_some_and(skippy_inference_api::CancellationToken::is_cancelled) {
         return Err(OpenAiError::cancelled(
             "request cancelled during deferred suffix prefill",
         ));

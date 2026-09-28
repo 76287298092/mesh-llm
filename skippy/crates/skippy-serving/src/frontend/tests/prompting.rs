@@ -572,7 +572,7 @@ fn tool_call_stream_delta_adds_indexes() {
 
 #[test]
 fn chat_message_generation_value_preserves_tool_history() {
-    let message: skippy_openai_frontend::ChatMessage = serde_json::from_value(json!({
+    let message: skippy_inference_api::ChatMessage = serde_json::from_value(json!({
         "role": "assistant",
         "content": null,
         "tool_calls": [{
@@ -593,7 +593,7 @@ fn chat_message_generation_value_preserves_tool_history() {
 
 #[test]
 fn chat_message_generation_value_preserves_omitted_content() {
-    let message: skippy_openai_frontend::ChatMessage = serde_json::from_value(json!({
+    let message: skippy_inference_api::ChatMessage = serde_json::from_value(json!({
         "role": "assistant",
         "tool_calls": [{
             "id": "call_123",

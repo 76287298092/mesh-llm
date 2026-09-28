@@ -1,8 +1,8 @@
 use crate::frontend::NativeMtpStats;
 use crate::frontend::util::now_unix_millis;
 use crate::frontend::util::stable_wire_id;
-use skippy_openai_frontend::ChatCompletionRequest;
-use skippy_openai_frontend::CompletionRequest;
+use skippy_inference_api::ChatCompletionRequest;
+use skippy_inference_api::CompletionRequest;
 use skippy_protocol::binary::StageReplyStats;
 use std::sync::OnceLock;
 use std::sync::atomic::AtomicU64;
@@ -229,11 +229,11 @@ impl OpenAiCacheHints {
 }
 
 pub(in crate::frontend) fn prompt_cache_retention_label(
-    retention: skippy_openai_frontend::PromptCacheRetention,
+    retention: skippy_inference_api::PromptCacheRetention,
 ) -> &'static str {
     match retention {
-        skippy_openai_frontend::PromptCacheRetention::InMemory => "in_memory",
-        skippy_openai_frontend::PromptCacheRetention::TwentyFourHours => "24h",
+        skippy_inference_api::PromptCacheRetention::InMemory => "in_memory",
+        skippy_inference_api::PromptCacheRetention::TwentyFourHours => "24h",
     }
 }
 

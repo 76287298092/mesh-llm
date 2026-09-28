@@ -64,9 +64,9 @@ Useful REPL commands include `:history`, `:logs [name] [lines]`, and `:quit`.
 - `--draft-model-path` enables draft-model speculative proposals.
 - Standalone cache and n-gram sidecars are not imported into mesh-llm; topology
   launch exits before starting sidecars.
-- Thinking controls are forwarded through the shared `skippy-openai-frontend`
+- Thinking controls are forwarded through the shared `skippy-inference-api`
   reasoning/template normalization helpers.
 
 Keep server transport behavior in `skippy-serving`, model/session ABI
 wrapping in `skippy-runtime`, and reusable OpenAI request shapes in
-`skippy-openai-frontend`.
+`skippy-inference-api`.

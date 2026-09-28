@@ -1224,6 +1224,10 @@ acquisition after extraction: retain its existing split-serving rule on main,
 with model-download ownership on the relocated path. That conservatively runs
 both domains until the later catalog cleanup; existing main routing is unchanged.
 
+The frontend's current Cargo package and direct CI owner are
+`skippy-inference-api`. The package translator still recognizes the historical
+`openai-frontend` predecessor for protected pre-extraction plans.
+
 ### Protected executor compatibility for the product extraction
 
 The protected executor workflows pin both resolver actions to commit

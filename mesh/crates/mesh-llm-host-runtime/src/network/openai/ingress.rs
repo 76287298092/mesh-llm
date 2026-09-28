@@ -140,7 +140,7 @@ fn outcome_was_served(outcome: &proxy::RouteDispatchOutcome) -> bool {
 /// real values ride along; anything the node doesn't know for this model, or
 /// the dispatch didn't carry, stays omitted (never fabricated). No
 /// `X-Capsule-Id` marker exists on this path (it never runs through
-/// `skippy-openai-frontend`'s `OpenAiHookPolicy`, the only place a marker is minted),
+/// `skippy-inference-api`'s `OpenAiHookPolicy`, the only place a marker is minted),
 /// so nonce/nonce_source are `None`.
 ///
 /// `served_locally` distinguishes the host-served path (this node's own

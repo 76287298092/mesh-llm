@@ -20,7 +20,7 @@ flowchart LR
     M --> A["skippy-model-artifact<br/>artifact resolution"]
     Q --> A
     A --> P["skippy-package-builder<br/>package provenance"]
-    M --> O["skippy-openai-frontend<br/>model id"]
+    M --> O["skippy-inference-api<br/>model id"]
 ```
 
 ## Supported Forms

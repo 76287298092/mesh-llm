@@ -1,6 +1,6 @@
 use super::*;
 
-use skippy_openai_frontend::{
+use skippy_inference_api::{
     AudioFormat, AudioSpeechRequest, AudioTranscriptionRequest, EmbeddingInput, EmbeddingOutput,
     EmbeddingsRequest, RerankDocument, RerankRequest, RerankResult,
 };

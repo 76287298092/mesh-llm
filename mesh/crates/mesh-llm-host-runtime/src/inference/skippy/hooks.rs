@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use serde_json::Value;
-use skippy_openai_frontend::{
+use skippy_inference_api::{
     ChatCompletionRequest, ChatHookOutcome, ChatMediaKind, GenerationHookSignals, OpenAiHookPolicy,
     OpenAiResult, PrefillHookSignals, chat_mesh_hooks_enabled, first_chat_media,
 };
@@ -304,7 +304,7 @@ fn virtual_hook_response_to_outcome(response: &Value) -> ChatHookOutcome {
 
 fn virtual_media_hook_response_to_outcome(
     response: &Value,
-    media: skippy_openai_frontend::ChatMediaRef,
+    media: skippy_inference_api::ChatMediaRef,
 ) -> ChatHookOutcome {
     virtual_hook_injected_text(response)
         .map(|text| ChatHookOutcome::injected_with_consumed_media(text, media))
@@ -321,7 +321,7 @@ fn virtual_hook_injected_text(response: &Value) -> Option<&str> {
         .filter(|text| !text.is_empty())
 }
 
-fn chat_messages_as_values(messages: &[skippy_openai_frontend::ChatMessage]) -> Vec<Value> {
+fn chat_messages_as_values(messages: &[skippy_inference_api::ChatMessage]) -> Vec<Value> {
     serde_json::to_value(messages)
         .ok()
         .and_then(|value| value.as_array().cloned())
@@ -339,7 +339,7 @@ mod tests {
     use std::sync::{Arc, Mutex};
 
     use serde_json::json;
-    use skippy_openai_frontend::{MessageContent, MessageContentPart, apply_chat_hook_outcome};
+    use skippy_inference_api::{MessageContent, MessageContentPart, apply_chat_hook_outcome};
 
     use super::*;
 
@@ -601,7 +601,7 @@ mod tests {
             outcome,
             ChatHookOutcome::injected_with_consumed_media(
                 "[media fallback]\n\n",
-                skippy_openai_frontend::ChatMediaRef {
+                skippy_inference_api::ChatMediaRef {
                     kind: ChatMediaKind::Image,
                     url: "data:image/png;base64,abc".to_string(),
                     user_text: "what is this?".to_string(),
@@ -632,7 +632,7 @@ mod tests {
             outcome,
             ChatHookOutcome::injected_with_consumed_media(
                 "[media fallback]\n\n",
-                skippy_openai_frontend::ChatMediaRef {
+                skippy_inference_api::ChatMediaRef {
                     kind: ChatMediaKind::Audio,
                     url: "data:audio/wav;base64,abc".to_string(),
                     user_text: "please transcribe this".to_string(),

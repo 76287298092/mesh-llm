@@ -7,7 +7,7 @@ Related: [#183](https://github.com/michaelneale/mesh-llm/issues/183), [#165](htt
 > **Note:** This design predates the embedded staged runtime. Where it says
 > "llama-server", read "the serving runtime". The hook concept and the Rust-side
 > handlers (`inference/virtual_llm.rs`, `inference/consult.rs`,
-> `api/routes/mesh_hook.rs`, `skippy-openai-frontend/src/hooks.rs`) are current; the
+> `api/routes/mesh_hook.rs`, `skippy-inference-api/src/hooks.rs`) are current; the
 > embedded Skippy path applies the same hooks in-process
 > (`inference/skippy/hooks.rs`, `skippy-serving` before-chat hooks) rather than
 > over a localhost HTTP callback from an external process. The
@@ -184,7 +184,7 @@ Files modified (all additive to upstream):
 
 | File | Purpose |
 |---|---|
-| `skippy-openai-frontend/src/hooks.rs` | Hook-time media extraction from OpenAI chat parts, including audio handoff shapes |
+| `skippy-inference-api/src/hooks.rs` | Hook-time media extraction from OpenAI chat parts, including audio handoff shapes |
 | `inference/virtual_llm.rs` | Typed handlers: `handle_image`, `handle_uncertain`, `handle_drift`, `get_peer_hint` |
 | `inference/consult.rs` | Peer discovery, fan-out racing, QUIC consultation, recursion guard |
 | `api/routes/mesh_hook.rs` | Route handler — parses JSON, dispatches to typed handlers |

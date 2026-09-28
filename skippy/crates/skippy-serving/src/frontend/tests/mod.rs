@@ -20,14 +20,14 @@ pub(super) use async_trait::async_trait;
 pub(super) use axum::{http::StatusCode, response::IntoResponse};
 pub(super) use base64::Engine as _;
 pub(super) use serde_json::{Value, json};
-pub(super) use skippy_metrics::attr as attr_key;
-pub(super) use skippy_openai_frontend::{
+pub(super) use skippy_inference_api::{
     AssistantMessage, ChatCompletionChoice, ChatCompletionRequest, ChatCompletionResponse,
     ChatCompletionStream, ChatHookAction, ChatHookOutcome, CompactionConfig, CompletionRequest,
     CompletionResponse, CompletionStream, FinishReason, GuardrailMode, GuardrailPolicy,
     MessageContent, ModelObject, OpenAiBackend, OpenAiError, OpenAiRequestContext, OpenAiResult,
     Usage, apply_chat_hook_outcome,
 };
+pub(super) use skippy_metrics::attr as attr_key;
 pub(super) use skippy_protocol::{
     LoadMode, MessageBase, PeerConfig, SCHEMA_VERSION, StageConfig, StageDevice,
     StageKvCacheConfig, StageKvCacheMode, StageKvCachePayload,

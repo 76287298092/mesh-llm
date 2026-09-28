@@ -1,4 +1,4 @@
-# skippy-openai-frontend
+# skippy-inference-api
 
 Reusable OpenAI-compatible HTTP frontend primitives for mesh and staged runtime
 entry points.
@@ -65,7 +65,7 @@ For the concrete benchy command and contract, see
 
 ```mermaid
 flowchart TB
-    C["OpenAI-compatible client<br/>generation, embeddings, audio"] --> R["skippy-openai-frontend<br/>Axum routes"]
+    C["OpenAI-compatible client<br/>generation, embeddings, audio"] --> R["skippy-inference-api<br/>Axum routes"]
     R --> Parse["request parsing<br/>validation<br/>normalization<br/>OpenAI errors"]
     Parse --> B["OpenAiBackend implementation"]
     B --> Local["embedded single-stage<br/>skippy runtime"]
@@ -120,7 +120,7 @@ pub trait OpenAiBackend: Send + Sync + 'static {
 
 ## Model Identity
 
-`skippy-openai-frontend` treats model ids as opaque OpenAI-facing strings. For
+`skippy-inference-api` treats model ids as opaque OpenAI-facing strings. For
 Mesh-owned routing, the expected user-facing form is a Hugging Face coordinate
 plus artifact selector, for example `org/repo:Q4_K_M`. The suffix is an artifact
 selector, not a stage-server topology or serving-backend variant.
@@ -167,7 +167,7 @@ small adapter:
 - staged chain backend that connects to the first `serve-binary` endpoint
 
 That keeps `serve-openai` and the embedded mesh path thin: parse or build the
-runtime config, construct the backend, pass it to `skippy_openai_frontend::router`,
+runtime config, construct the backend, pass it to `skippy_inference_api::router`,
 and serve the Axum app.
 
 See [`skippy/docs/NON_CHAT_MODELS.md`](../../docs/NON_CHAT_MODELS.md) for endpoint

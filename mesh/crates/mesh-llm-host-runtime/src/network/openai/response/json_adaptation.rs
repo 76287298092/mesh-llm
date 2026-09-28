@@ -135,7 +135,7 @@ pub(in crate::network::openai::response) async fn relay_translated_json<R: Async
             }
             Err(error) => return Err(error.into()),
         };
-        serde_json::to_vec(&skippy_openai_frontend::anthropic::translate_chat_value(
+        serde_json::to_vec(&skippy_inference_api::anthropic::translate_chat_value(
             &value,
         )?)?
     } else {

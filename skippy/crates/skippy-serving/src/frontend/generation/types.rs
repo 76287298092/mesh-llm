@@ -27,10 +27,10 @@ use crate::telemetry::Telemetry;
 use crate::telemetry::now_unix_nanos;
 use serde_json::Value;
 use serde_json::json;
-use skippy_openai_frontend::ChatCompletionRequest;
-use skippy_openai_frontend::FinishReason;
-use skippy_openai_frontend::OpenAiHookPolicy;
-use skippy_openai_frontend::Usage;
+use skippy_inference_api::ChatCompletionRequest;
+use skippy_inference_api::FinishReason;
+use skippy_inference_api::OpenAiHookPolicy;
+use skippy_inference_api::Usage;
 use skippy_protocol::StageConfig;
 use skippy_protocol::binary::StageReply;
 use skippy_protocol::binary::StageReplyStats;
@@ -153,7 +153,7 @@ pub(in crate::frontend) struct LocalGeneration<'a> {
     pub(in crate::frontend) native_mtp_enabled: bool,
     pub(in crate::frontend) hook_request: Option<ChatCompletionRequest>,
     pub(in crate::frontend) hook_runtime: Option<tokio::runtime::Handle>,
-    pub(in crate::frontend) cancellation: Option<&'a skippy_openai_frontend::CancellationToken>,
+    pub(in crate::frontend) cancellation: Option<&'a skippy_inference_api::CancellationToken>,
     pub(in crate::frontend) ids: &'a OpenAiGenerationIds,
 }
 
@@ -178,16 +178,16 @@ pub(in crate::frontend) struct EmbeddedStageZeroGeneration<'a> {
     pub(in crate::frontend) chat_sampling_metadata: Option<&'a str>,
     pub(in crate::frontend) hook_request: Option<ChatCompletionRequest>,
     pub(in crate::frontend) hook_runtime: Option<tokio::runtime::Handle>,
-    pub(in crate::frontend) cancellation: Option<&'a skippy_openai_frontend::CancellationToken>,
+    pub(in crate::frontend) cancellation: Option<&'a skippy_inference_api::CancellationToken>,
     pub(in crate::frontend) ids: &'a OpenAiGenerationIds,
 }
 
 pub(in crate::frontend) struct SplitMultimodalGeneration<'a> {
     pub(in crate::frontend) prompt: PreparedGenerationPrompt,
     pub(in crate::frontend) max_tokens: GenerationTokenLimit,
-    pub(in crate::frontend) stop: Option<&'a skippy_openai_frontend::StopSequence>,
+    pub(in crate::frontend) stop: Option<&'a skippy_inference_api::StopSequence>,
     pub(in crate::frontend) sampling: SamplingConfig,
-    pub(in crate::frontend) cancellation: Option<&'a skippy_openai_frontend::CancellationToken>,
+    pub(in crate::frontend) cancellation: Option<&'a skippy_inference_api::CancellationToken>,
     pub(in crate::frontend) ids: OpenAiGenerationIds,
     pub(in crate::frontend) config: StageConfig,
     pub(in crate::frontend) activation_width: i32,

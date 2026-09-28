@@ -3,7 +3,7 @@ use anyhow::Result;
 use mesh_llm_skippy_adapter::config::{
     SkippyConfigResolveRequest, resolve_skippy_config_for_selector,
 };
-use skippy_openai_frontend::OpenAiBackend;
+use skippy_inference_api::OpenAiBackend;
 use std::{
     path::Path,
     sync::{

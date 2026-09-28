@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use skippy_openai_frontend::{OpenAiError, OpenAiResult};
+use skippy_inference_api::{OpenAiError, OpenAiResult};
 use skippy_runtime::SamplingConfig;
 
 use crate::frontend::{
@@ -62,7 +62,7 @@ impl StageOpenAiBackend {
         &self,
         params: LinearProposalExecutionParams<'_>,
         queried: QueriedLinearProposal,
-        cancellation: Option<&skippy_openai_frontend::CancellationToken>,
+        cancellation: Option<&skippy_inference_api::CancellationToken>,
         on_token: &mut (impl FnMut(i32) -> OpenAiResult<TokenControl> + ?Sized),
     ) -> OpenAiResult<Option<LinearProposalReceipt>> {
         ensure_request_active(cancellation)?;
@@ -148,7 +148,7 @@ impl StageOpenAiBackend {
         params: LinearProposalExecutionParams<'_>,
         proposal_tokens: &[i32],
         verify_inputs: &[i32],
-        cancellation: Option<&skippy_openai_frontend::CancellationToken>,
+        cancellation: Option<&skippy_inference_api::CancellationToken>,
         on_token: &mut (impl FnMut(i32) -> OpenAiResult<TokenControl> + ?Sized),
     ) -> OpenAiResult<Option<LinearProposalExecution>> {
         ensure_request_active(cancellation)?;
@@ -214,7 +214,7 @@ impl StageOpenAiBackend {
         let mut reached_stop = false;
         let mut callback_error = None;
         for token in predictions.iter().copied().take(decision.commit_count) {
-            if cancellation.is_some_and(skippy_openai_frontend::CancellationToken::is_cancelled) {
+            if cancellation.is_some_and(skippy_inference_api::CancellationToken::is_cancelled) {
                 callback_error = Some(OpenAiError::backend("request cancelled"));
                 break;
             }
@@ -358,9 +358,9 @@ impl StageOpenAiBackend {
 }
 
 fn ensure_request_active(
-    cancellation: Option<&skippy_openai_frontend::CancellationToken>,
+    cancellation: Option<&skippy_inference_api::CancellationToken>,
 ) -> OpenAiResult<()> {
-    if cancellation.is_some_and(skippy_openai_frontend::CancellationToken::is_cancelled) {
+    if cancellation.is_some_and(skippy_inference_api::CancellationToken::is_cancelled) {
         Err(OpenAiError::backend("request cancelled"))
     } else {
         Ok(())

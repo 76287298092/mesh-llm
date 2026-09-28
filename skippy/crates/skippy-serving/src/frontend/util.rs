@@ -1,9 +1,9 @@
 use crate::runtime_state::RuntimeState;
 use sha2::Digest;
 use sha2::Sha256;
-use skippy_openai_frontend::FinishReason;
-use skippy_openai_frontend::OpenAiError;
-use skippy_openai_frontend::OpenAiResult;
+use skippy_inference_api::FinishReason;
+use skippy_inference_api::OpenAiError;
+use skippy_inference_api::OpenAiResult;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::SystemTime;
@@ -29,7 +29,7 @@ pub(super) fn trim_at_stop<'a>(text: &'a str, stop_values: &[&str]) -> &'a str {
 }
 
 pub(super) fn generation_stop_values(
-    stop: Option<&skippy_openai_frontend::StopSequence>,
+    stop: Option<&skippy_inference_api::StopSequence>,
     chat_metadata: Option<&str>,
 ) -> Vec<String> {
     let mut values: Vec<String> = stop

@@ -26,7 +26,7 @@
 use std::collections::BTreeMap;
 
 use serde_json::{Map, Value};
-use skippy_openai_frontend::{ChatMessage, MessageContent};
+use skippy_inference_api::{ChatMessage, MessageContent};
 
 /// Marker a model is instructed to emit, on its own line, to request a tool
 /// call. The remainder of the line is a JSON object `{"name", "arguments"}`.
@@ -285,7 +285,7 @@ fn balanced_json_object_end(text: &str) -> Option<usize> {
 /// Flattens message content into plain text for history rewriting.
 fn content_text(content: Option<&MessageContent>) -> String {
     content
-        .and_then(skippy_openai_frontend::message_content_to_text)
+        .and_then(skippy_inference_api::message_content_to_text)
         .unwrap_or_default()
 }
 
@@ -733,7 +733,7 @@ mod tests {
         let rewritten = rewrite_history_for_emulation(&messages, "INSTRUCTION");
         assert_eq!(rewritten.len(), 2);
         let system =
-            skippy_openai_frontend::message_content_to_text(rewritten[0].content.as_ref().unwrap())
+            skippy_inference_api::message_content_to_text(rewritten[0].content.as_ref().unwrap())
                 .unwrap();
         assert!(system.contains("You are helpful."));
         assert!(system.contains("INSTRUCTION"));
@@ -757,7 +757,7 @@ mod tests {
         // system instruction + rewritten tool message
         let tool_msg = rewritten.iter().find(|m| m.role == "user").unwrap();
         let text =
-            skippy_openai_frontend::message_content_to_text(tool_msg.content.as_ref().unwrap())
+            skippy_inference_api::message_content_to_text(tool_msg.content.as_ref().unwrap())
                 .unwrap();
         assert!(text.starts_with("Tool result: exit 0"));
     }
@@ -779,8 +779,8 @@ mod tests {
         };
         let rewritten = rewrite_history_for_emulation(&[assistant], "I");
         let asst = rewritten.iter().find(|m| m.role == "assistant").unwrap();
-        let text = skippy_openai_frontend::message_content_to_text(asst.content.as_ref().unwrap())
-            .unwrap();
+        let text =
+            skippy_inference_api::message_content_to_text(asst.content.as_ref().unwrap()).unwrap();
         assert!(text.contains("TOOL_CALL"));
         assert!(text.contains("\"name\":\"shell\""));
         assert!(text.contains("\"command\":\"ls\""));

@@ -5,7 +5,7 @@ use crate::frontend::generation::{
 };
 use crate::frontend::util::{generation_stop_values, openai_backend_error};
 use serde_json::json;
-use skippy_openai_frontend::{ChatCompletionRequest, OpenAiError, OpenAiResult};
+use skippy_inference_api::{ChatCompletionRequest, OpenAiError, OpenAiResult};
 use skippy_runtime::{ModelWorkload, SamplingConfig};
 
 pub(super) fn resident_capacity_target_tokens(prompt_token_count: usize) -> u64 {
@@ -48,11 +48,11 @@ impl StageOpenAiBackend {
         max_tokens: GenerationTokenLimit,
         prepared_text: Option<PreparedTextPrompt>,
         token_budget_stats: (usize, usize),
-        stop: Option<&skippy_openai_frontend::StopSequence>,
+        stop: Option<&skippy_inference_api::StopSequence>,
         mut sampling: SamplingConfig,
         hook_request: Option<ChatCompletionRequest>,
         hook_runtime: Option<tokio::runtime::Handle>,
-        cancellation: Option<&skippy_openai_frontend::CancellationToken>,
+        cancellation: Option<&skippy_inference_api::CancellationToken>,
         ids: OpenAiGenerationIds,
         on_text_chunk: impl FnMut(&str) -> OpenAiResult<()>,
     ) -> OpenAiResult<GeneratedText> {
@@ -66,7 +66,7 @@ impl StageOpenAiBackend {
             ));
         }
         let generation_timer = PhaseTimer::start();
-        if cancellation.is_some_and(skippy_openai_frontend::CancellationToken::is_cancelled) {
+        if cancellation.is_some_and(skippy_inference_api::CancellationToken::is_cancelled) {
             return Err(OpenAiError::backend("request cancelled"));
         }
         if prompt.text.is_empty() {
@@ -148,10 +148,10 @@ impl StageOpenAiBackend {
                     && prefix.len() <= prompt_token_ids.len()
                     && prompt_token_ids.starts_with(prefix)
             });
-        if cancellation.is_some_and(skippy_openai_frontend::CancellationToken::is_cancelled) {
+        if cancellation.is_some_and(skippy_inference_api::CancellationToken::is_cancelled) {
             return Err(OpenAiError::backend("request cancelled"));
         }
-        if cancellation.is_some_and(skippy_openai_frontend::CancellationToken::is_cancelled) {
+        if cancellation.is_some_and(skippy_inference_api::CancellationToken::is_cancelled) {
             return Err(OpenAiError::backend("request cancelled"));
         }
         let token_admit_timer = PhaseTimer::start();

@@ -6,7 +6,7 @@ use crate::plugin;
 use crate::runtime_data;
 use mesh_llm_node::serving::{UnloadOptions, UnloadTarget};
 use serde::{Serialize, Serializer};
-use skippy_openai_frontend::GuardrailMode;
+use skippy_inference_api::GuardrailMode;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;

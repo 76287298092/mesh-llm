@@ -323,7 +323,7 @@ fn request_defaults_fill_omitted_chat_fields_only() {
     assert_eq!(request.logit_bias, test_request_defaults().logit_bias);
     assert_eq!(
         request.stop,
-        Some(skippy_openai_frontend::StopSequence::One(
+        Some(skippy_inference_api::StopSequence::One(
             "</stop>".to_string()
         ))
     );
@@ -435,7 +435,7 @@ fn request_defaults_fill_omitted_completion_fields_and_nulls() {
     assert_eq!(request.logit_bias, test_request_defaults().logit_bias);
     assert_eq!(
         request.stop,
-        Some(skippy_openai_frontend::StopSequence::One(
+        Some(skippy_inference_api::StopSequence::One(
             "</stop>".to_string()
         ))
     );
@@ -484,7 +484,7 @@ fn explicit_chat_request_values_override_request_defaults() {
     assert_eq!(request.effective_max_tokens(), Some(32));
     assert_eq!(
         request.stop,
-        Some(skippy_openai_frontend::StopSequence::Many(vec![
+        Some(skippy_inference_api::StopSequence::Many(vec![
             "USER".to_string()
         ]))
     );
@@ -650,11 +650,11 @@ fn request_default_reasoning_budget_controls_chat_template() {
         (EmbeddedReasoningBudget::Tokens(0), Some(false)),
         (EmbeddedReasoningBudget::Tokens(256), Some(true)),
         (
-            EmbeddedReasoningBudget::Effort(skippy_openai_frontend::ReasoningEffort::None),
+            EmbeddedReasoningBudget::Effort(skippy_inference_api::ReasoningEffort::None),
             Some(false),
         ),
         (
-            EmbeddedReasoningBudget::Effort(skippy_openai_frontend::ReasoningEffort::Low),
+            EmbeddedReasoningBudget::Effort(skippy_inference_api::ReasoningEffort::Low),
             Some(true),
         ),
         (EmbeddedReasoningBudget::Auto, None),
@@ -786,7 +786,7 @@ fn chat_template_kwargs_enable_thinking_overrides_template() {
 
 #[test]
 fn thinking_boolean_aliases_override_chat_template_thinking() {
-    for field in skippy_openai_frontend::THINKING_BOOLEAN_ALIASES {
+    for field in skippy_inference_api::THINKING_BOOLEAN_ALIASES {
         let request: ChatCompletionRequest = serde_json::from_value(json!({
             "model": "jc-builds/SmolLM2-135M-Instruct-Q4_K_M-GGUF:Q4_K_M",
             "messages": [{"role": "user", "content": "hello"}],

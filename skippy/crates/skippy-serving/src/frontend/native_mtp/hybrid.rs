@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use skippy_openai_frontend::{OpenAiError, OpenAiResult};
+use skippy_inference_api::{OpenAiError, OpenAiResult};
 
 use super::NativeMtpDecodeOptions;
 use crate::frontend::speculative::HistoryNgramProposer;

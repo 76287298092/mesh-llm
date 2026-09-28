@@ -9,7 +9,7 @@ use axum::{
 use futures_util::stream;
 use http_body_util::BodyExt;
 use serde_json::json;
-use skippy_openai_frontend::{
+use skippy_inference_api::{
     CancellationToken, ChatCompletionResponse, ChatCompletionStream, CompletionResponse,
     CompletionStream, ModelObject, OpenAiBackend, OpenAiBackendOperation, OpenAiFailure,
     OpenAiFrontendConfig, OpenAiFrontendRoute, OpenAiLifecycleEvent, OpenAiLifecycleObserver,
@@ -72,12 +72,10 @@ impl OpenAiBackend for TestBackend {
 
     async fn chat_completion(
         &self,
-        request: skippy_openai_frontend::ChatCompletionRequest,
+        request: skippy_inference_api::ChatCompletionRequest,
     ) -> OpenAiResult<ChatCompletionResponse> {
         if request.model == "backend-error" {
-            return Err(skippy_openai_frontend::OpenAiError::backend(
-                "backend failed",
-            ));
+            return Err(skippy_inference_api::OpenAiError::backend("backend failed"));
         }
         Ok(ChatCompletionResponse::new(
             request.model,
@@ -88,7 +86,7 @@ impl OpenAiBackend for TestBackend {
 
     async fn chat_completion_stream(
         &self,
-        request: skippy_openai_frontend::ChatCompletionRequest,
+        request: skippy_inference_api::ChatCompletionRequest,
         context: OpenAiRequestContext,
     ) -> OpenAiResult<ChatCompletionStream> {
         self.stream_request_ids
@@ -110,7 +108,7 @@ impl OpenAiBackend for TestBackend {
             ));
         if request.model == "stream-error" {
             return Ok(Box::pin(stream::iter(vec![Err(
-                skippy_openai_frontend::OpenAiError::backend("stream failed"),
+                skippy_inference_api::OpenAiError::backend("stream failed"),
             )])));
         }
         if request.model == "pending" {
@@ -122,11 +120,11 @@ impl OpenAiBackend for TestBackend {
         }
 
         Ok(Box::pin(stream::iter(vec![
-            Ok(skippy_openai_frontend::ChatCompletionChunk::usage(
+            Ok(skippy_inference_api::ChatCompletionChunk::usage(
                 request.model.clone(),
                 Usage::new(8, 2).with_cached_tokens(5),
             )),
-            Ok(skippy_openai_frontend::ChatCompletionChunk::done(
+            Ok(skippy_inference_api::ChatCompletionChunk::done(
                 request.model,
             )),
         ])))
@@ -134,7 +132,7 @@ impl OpenAiBackend for TestBackend {
 
     async fn completion(
         &self,
-        request: skippy_openai_frontend::CompletionRequest,
+        request: skippy_inference_api::CompletionRequest,
     ) -> OpenAiResult<CompletionResponse> {
         Ok(CompletionResponse::new(
             request.model,
@@ -145,11 +143,11 @@ impl OpenAiBackend for TestBackend {
 
     async fn completion_stream(
         &self,
-        request: skippy_openai_frontend::CompletionRequest,
+        request: skippy_inference_api::CompletionRequest,
         _context: OpenAiRequestContext,
     ) -> OpenAiResult<CompletionStream> {
         Ok(Box::pin(stream::iter(vec![Ok(
-            skippy_openai_frontend::CompletionChunk::done(request.model),
+            skippy_inference_api::CompletionChunk::done(request.model),
         )])))
     }
 }
@@ -693,7 +691,7 @@ fn event_request_id(event: &OpenAiLifecycleEvent) -> String {
     event_context(event).request_id.as_ref().to_string()
 }
 
-fn event_context(event: &OpenAiLifecycleEvent) -> &skippy_openai_frontend::OpenAiLifecycleContext {
+fn event_context(event: &OpenAiLifecycleEvent) -> &skippy_inference_api::OpenAiLifecycleContext {
     match event {
         OpenAiLifecycleEvent::Admitted { context }
         | OpenAiLifecycleEvent::StreamDropped { context }

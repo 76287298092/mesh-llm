@@ -1,8 +1,8 @@
 use std::collections::{BTreeMap, VecDeque};
 use std::time::Instant;
 
+use skippy_inference_api::{OpenAiError, OpenAiResult};
 use skippy_metrics::attr as attr_key;
-use skippy_openai_frontend::{OpenAiError, OpenAiResult};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct VerifyWindowPipelineConfig {

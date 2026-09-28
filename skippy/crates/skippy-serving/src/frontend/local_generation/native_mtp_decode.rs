@@ -13,7 +13,7 @@ use std::collections::BTreeMap;
 use std::time::Instant;
 
 use serde_json::json;
-use skippy_openai_frontend::{OpenAiError, OpenAiResult};
+use skippy_inference_api::{OpenAiError, OpenAiResult};
 
 use crate::frontend::generation::{LocalGeneration, StageOpenAiBackend, TokenControl};
 use crate::frontend::{
@@ -309,7 +309,7 @@ impl StageOpenAiBackend {
         for token in predictions.iter().copied().take(decision.commit_count) {
             if request
                 .cancellation
-                .is_some_and(skippy_openai_frontend::CancellationToken::is_cancelled)
+                .is_some_and(skippy_inference_api::CancellationToken::is_cancelled)
             {
                 break;
             }

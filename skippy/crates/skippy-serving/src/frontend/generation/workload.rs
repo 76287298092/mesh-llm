@@ -1,6 +1,6 @@
 use super::StageOpenAiBackend;
 use crate::frontend::util::openai_backend_error;
-use skippy_openai_frontend::{OpenAiError, OpenAiResult};
+use skippy_inference_api::{OpenAiError, OpenAiResult};
 use skippy_runtime::ModelWorkload;
 use std::sync::OnceLock;
 

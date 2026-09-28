@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use serde_json::json;
-use skippy_openai_frontend::OpenAiResult;
+use skippy_inference_api::OpenAiResult;
 
 use crate::frontend::generation::{
     GenerationCacheStats, LocalGeneration, PhaseTimer, StageOpenAiBackend, TokenControl,

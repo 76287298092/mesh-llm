@@ -275,9 +275,9 @@ impl InvoiceGate {
         &self,
         cap: u64,
         max_pause: std::time::Duration,
-    ) -> skippy_openai_frontend::OpenAiResult<()> {
+    ) -> skippy_inference_api::OpenAiResult<()> {
         let cancelled = || {
-            Err(skippy_openai_frontend::OpenAiError::backend(
+            Err(skippy_inference_api::OpenAiError::backend(
                 "paid request cancelled",
             ))
         };
@@ -304,7 +304,7 @@ impl InvoiceGate {
             };
             if gave_up {
                 self.cancelled.store(true, Ordering::Release);
-                return Err(skippy_openai_frontend::OpenAiError::backend(
+                return Err(skippy_inference_api::OpenAiError::backend(
                     "input payment did not arrive",
                 ));
             }
@@ -314,15 +314,15 @@ impl InvoiceGate {
 }
 
 impl GenerationGate for InvoiceGate {
-    fn after_prefill(&self, input: usize, output: u32) -> skippy_openai_frontend::OpenAiResult<()> {
+    fn after_prefill(&self, input: usize, output: u32) -> skippy_inference_api::OpenAiResult<()> {
         let authorization = self.prepare_authorization(input, output).map_err(|_| {
-            skippy_openai_frontend::OpenAiError::backend("inference payment was not authorized")
+            skippy_inference_api::OpenAiError::backend("inference payment was not authorized")
         })?;
         self.spawn_authorization(authorization);
         Ok(())
     }
 
-    fn before_token(&self) -> skippy_openai_frontend::OpenAiResult<()> {
+    fn before_token(&self) -> skippy_inference_api::OpenAiResult<()> {
         self.wait_for_decode_allowance(
             PRE_PAYMENT_OUTPUT_TOKENS,
             INPUT_ARRIVAL_WAIT + PRE_PAYMENT_PAUSE_SLACK,
@@ -333,7 +333,7 @@ impl GenerationGate for InvoiceGate {
         self.output_tokens.load(Ordering::Acquire)
     }
 
-    fn committed_token(&self) -> skippy_openai_frontend::OpenAiResult<()> {
+    fn committed_token(&self) -> skippy_inference_api::OpenAiResult<()> {
         self.output_tokens.fetch_add(1, Ordering::AcqRel);
         Ok(())
     }

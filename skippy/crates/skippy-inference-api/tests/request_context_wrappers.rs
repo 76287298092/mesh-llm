@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use async_trait::async_trait;
 use futures_util::stream;
 use serde_json::json;
-use skippy_openai_frontend::{
+use skippy_inference_api::{
     ChatCompletionRequest, ChatCompletionResponse, ChatCompletionStream, CompactingOpenAiBackend,
     CompactionConfig, GuardedOpenAiBackend, GuardrailPolicy, HookedOpenAiBackend, ModelObject,
     OpenAiBackend, OpenAiHookPolicy, OpenAiRequestContext, OpenAiResult, Usage, parse_request_id,

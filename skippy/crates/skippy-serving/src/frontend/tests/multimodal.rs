@@ -641,7 +641,7 @@ fn rescued_audio_media_becomes_text_only_before_prompt_media_extraction() {
         "mesh_hooks": true
     }))
     .unwrap();
-    let media = skippy_openai_frontend::first_chat_media(&request.messages).expect("media");
+    let media = skippy_inference_api::first_chat_media(&request.messages).expect("media");
 
     apply_chat_hook_outcome(
         &mut request,
@@ -679,7 +679,7 @@ fn rescued_media_leaves_unhandled_second_media_in_prompt_media() {
         "mesh_hooks": true
     }))
     .unwrap();
-    let media = skippy_openai_frontend::first_chat_media(&request.messages).expect("media");
+    let media = skippy_inference_api::first_chat_media(&request.messages).expect("media");
 
     apply_chat_hook_outcome(
         &mut request,

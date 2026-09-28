@@ -7,7 +7,7 @@ use std::{
 use anyhow::{Context, Result};
 use axum::Router;
 use skippy_config::validate_config;
-use skippy_openai_frontend::{OpenAiBackend, OpenAiFrontendConfig, OpenAiLifecycleObserver};
+use skippy_inference_api::{OpenAiBackend, OpenAiFrontendConfig, OpenAiLifecycleObserver};
 use skippy_protocol::{StageConfig, StageTopology};
 use skippy_runtime::{ActivationBoundaryDesc, MtpSource, WorkloadInfo};
 use tokio::{sync::oneshot, task::JoinHandle};
@@ -442,7 +442,7 @@ pub fn start_openai_backend(
     bind_addr: SocketAddr,
     backend: Arc<dyn OpenAiBackend>,
 ) -> EmbeddedServerHandle {
-    spawn_openai_backend(bind_addr, skippy_openai_frontend::router_for(backend))
+    spawn_openai_backend(bind_addr, skippy_inference_api::router_for(backend))
 }
 
 pub fn start_openai_backend_with_tokenizer(
@@ -495,7 +495,7 @@ pub(crate) fn openai_backend_router(
     backend: Arc<dyn OpenAiBackend>,
     tokenizer: TokenizerCapability,
 ) -> Router {
-    skippy_openai_frontend::router_for(backend).merge(tokenizer_http_router(tokenizer))
+    skippy_inference_api::router_for(backend).merge(tokenizer_http_router(tokenizer))
 }
 
 /// Start an OpenAI backend with an optional metadata-only lifecycle observer.
@@ -533,7 +533,7 @@ fn openai_backend_router_with_lifecycle_observer(
     let config = lifecycle_observer.map_or_else(OpenAiFrontendConfig::default, |observer| {
         OpenAiFrontendConfig::default().with_lifecycle_observer(observer)
     });
-    skippy_openai_frontend::router_for_with_config(backend, config)
+    skippy_inference_api::router_for_with_config(backend, config)
 }
 
 pub fn start_binary_stage(options: BinaryStageOptions) -> EmbeddedServerHandle {
@@ -975,7 +975,7 @@ mod lifecycle_tests {
         body::Body,
         http::{Request, StatusCode},
     };
-    use skippy_openai_frontend::{
+    use skippy_inference_api::{
         ChatCompletionRequest, ChatCompletionResponse, ChatCompletionStream, ModelObject,
         OpenAiFrontendRoute, OpenAiLifecycleEvent, OpenAiLifecycleObserver, OpenAiRequestContext,
         OpenAiResult,
@@ -996,7 +996,7 @@ mod lifecycle_tests {
             &self,
             _request: ChatCompletionRequest,
         ) -> OpenAiResult<ChatCompletionResponse> {
-            Err(skippy_openai_frontend::OpenAiError::unsupported(
+            Err(skippy_inference_api::OpenAiError::unsupported(
                 "not used by this test",
             ))
         }
@@ -1006,7 +1006,7 @@ mod lifecycle_tests {
             _request: ChatCompletionRequest,
             _context: OpenAiRequestContext,
         ) -> OpenAiResult<ChatCompletionStream> {
-            Err(skippy_openai_frontend::OpenAiError::unsupported(
+            Err(skippy_inference_api::OpenAiError::unsupported(
                 "not used by this test",
             ))
         }
@@ -1049,7 +1049,7 @@ mod lifecycle_tests {
                 .any(|event| matches!(
                     event,
                     OpenAiLifecycleEvent::Admitted {
-                        context: skippy_openai_frontend::OpenAiLifecycleContext {
+                        context: skippy_inference_api::OpenAiLifecycleContext {
                             route: OpenAiFrontendRoute::Models,
                             ..
                         }

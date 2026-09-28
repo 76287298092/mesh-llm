@@ -30,7 +30,7 @@ impl IterationScheduler {
         label: &'static str,
         operation_id: String,
         deadline: Instant,
-        cancellation: Option<&skippy_openai_frontend::CancellationToken>,
+        cancellation: Option<&skippy_inference_api::CancellationToken>,
         operation: impl FnOnce(&mut RuntimeState) -> OpenAiResult<T> + Send + 'static,
     ) -> OpenAiResult<SchedulerRuntimeOutcome<T>>
     where

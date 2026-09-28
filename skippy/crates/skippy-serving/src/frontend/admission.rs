@@ -2,10 +2,10 @@
 use crate::frontend::generation::GENERATION_RETRY_AFTER_SECS;
 #[cfg(test)]
 use axum::http::StatusCode;
-use skippy_openai_frontend::OpenAiError;
+use skippy_inference_api::OpenAiError;
 #[cfg(test)]
-use skippy_openai_frontend::OpenAiErrorKind;
-use skippy_openai_frontend::OpenAiResult;
+use skippy_inference_api::OpenAiErrorKind;
+use skippy_inference_api::OpenAiResult;
 use std::sync::Arc;
 use std::sync::Mutex;
 use tokio::sync::Notify;
@@ -119,7 +119,7 @@ impl GenerationTokenBudget {
         self: &Arc<Self>,
         request: GenerationTokenBudgetRequest,
         admission_timeout: Duration,
-        cancellation: Option<&skippy_openai_frontend::CancellationToken>,
+        cancellation: Option<&skippy_inference_api::CancellationToken>,
     ) -> OpenAiResult<GenerationTokenReservation> {
         let tokens = request.reservation_tokens();
         self.ensure_request_fits(tokens)?;
@@ -129,7 +129,7 @@ impl GenerationTokenBudget {
             .lock()
             .map_err(|_| OpenAiError::backend("generation token budget lock poisoned"))?;
         loop {
-            if cancellation.is_some_and(skippy_openai_frontend::CancellationToken::is_cancelled) {
+            if cancellation.is_some_and(skippy_inference_api::CancellationToken::is_cancelled) {
                 return Err(OpenAiError::backend("request cancelled"));
             }
             if state.active_tokens.saturating_add(tokens) <= self.capacity_tokens {

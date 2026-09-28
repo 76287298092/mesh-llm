@@ -16,13 +16,13 @@ use crate::frontend::util::trim_at_stop;
 use crate::frontend::util::valid_utf8_prefix_len;
 use crate::runtime_state::RuntimeState;
 use serde_json::Value;
-use skippy_openai_frontend::ChatCompletionChunk;
-use skippy_openai_frontend::ChatCompletionRequest;
-use skippy_openai_frontend::CompletionChunk;
-use skippy_openai_frontend::FinishReason;
-use skippy_openai_frontend::OpenAiError;
-use skippy_openai_frontend::OpenAiResult;
-use skippy_openai_frontend::Usage;
+use skippy_inference_api::ChatCompletionChunk;
+use skippy_inference_api::ChatCompletionRequest;
+use skippy_inference_api::CompletionChunk;
+use skippy_inference_api::FinishReason;
+use skippy_inference_api::OpenAiError;
+use skippy_inference_api::OpenAiResult;
+use skippy_inference_api::Usage;
 use skippy_runtime::StageModelReader;
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -241,13 +241,13 @@ pub(in crate::frontend) fn generation_event_to_chat_chunk(
             Ok(ChatCompletionChunk::delta(model.to_string(), delta))
         }
         GenerationStreamEvent::ReasoningDelta(delta) => Ok(ChatCompletionChunk {
-            id: skippy_openai_frontend::completion_id("chatcmpl"),
+            id: skippy_inference_api::completion_id("chatcmpl"),
             object: "chat.completion.chunk",
-            created: skippy_openai_frontend::now_unix_secs(),
+            created: skippy_inference_api::now_unix_secs(),
             model: model.to_string(),
-            choices: vec![skippy_openai_frontend::ChatCompletionChunkChoice {
+            choices: vec![skippy_inference_api::ChatCompletionChunkChoice {
                 index: 0,
-                delta: skippy_openai_frontend::ChatCompletionDelta {
+                delta: skippy_inference_api::ChatCompletionDelta {
                     role: None,
                     content: None,
                     reasoning_content: Some(delta),
@@ -260,13 +260,13 @@ pub(in crate::frontend) fn generation_event_to_chat_chunk(
             timings: None,
         }),
         GenerationStreamEvent::ToolCalls(tool_calls) => Ok(ChatCompletionChunk {
-            id: skippy_openai_frontend::completion_id("chatcmpl"),
+            id: skippy_inference_api::completion_id("chatcmpl"),
             object: "chat.completion.chunk",
-            created: skippy_openai_frontend::now_unix_secs(),
+            created: skippy_inference_api::now_unix_secs(),
             model: model.to_string(),
-            choices: vec![skippy_openai_frontend::ChatCompletionChunkChoice {
+            choices: vec![skippy_inference_api::ChatCompletionChunkChoice {
                 index: 0,
-                delta: skippy_openai_frontend::ChatCompletionDelta {
+                delta: skippy_inference_api::ChatCompletionDelta {
                     role: None,
                     content: None,
                     reasoning_content: None,

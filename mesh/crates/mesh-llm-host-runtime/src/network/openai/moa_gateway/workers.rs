@@ -48,7 +48,7 @@ pub(super) fn effective_enable_thinking_for_moa(body: &serde_json::Value) -> Opt
 
 /// Pull the caller's "disable / enable thinking" preference out of an
 /// inbound chat-completion or responses JSON body. Mirrors the same
-/// shapes that `skippy_openai_frontend::common::normalize_reasoning_template_options`
+/// shapes that `skippy_inference_api::common::normalize_reasoning_template_options`
 /// recognises so MoA users get the same surface as direct callers.
 ///
 /// Recognised inputs (any one is enough):
@@ -87,7 +87,7 @@ fn extract_enable_thinking_override(body: &serde_json::Value) -> Option<bool> {
     }
 
     // Top-level boolean aliases (enable_thinking, enable_reasoning, etc.).
-    for alias in skippy_openai_frontend::common::THINKING_BOOLEAN_ALIASES {
+    for alias in skippy_inference_api::common::THINKING_BOOLEAN_ALIASES {
         if let Some(b) = obj.get(*alias).and_then(|v| v.as_bool()) {
             result = Some(b);
         }
@@ -99,7 +99,7 @@ fn extract_enable_thinking_override(body: &serde_json::Value) -> Option<bool> {
 
     // chat_template_kwargs.{enable_thinking, ...}
     if let Some(kwargs) = obj.get("chat_template_kwargs").and_then(|v| v.as_object()) {
-        for alias in skippy_openai_frontend::common::THINKING_BOOLEAN_ALIASES {
+        for alias in skippy_inference_api::common::THINKING_BOOLEAN_ALIASES {
             if let Some(b) = kwargs.get(*alias).and_then(|v| v.as_bool()) {
                 result = Some(b);
             }
@@ -510,7 +510,7 @@ mod tests {
 
     // ── extract_enable_thinking_override ────────────────────────────────
     //
-    // Mirrors the shapes that `skippy_openai_frontend::common::normalize_reasoning_template_options`
+    // Mirrors the shapes that `skippy_inference_api::common::normalize_reasoning_template_options`
     // accepts, so MoA users get the same surface as direct callers. If we
     // forget a shape, the model never gets told to stop thinking and the
     // fast worker burns its budget inside `<think>`.

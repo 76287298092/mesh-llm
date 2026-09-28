@@ -648,7 +648,7 @@ mod tests {
         let manifest = include_str!("../Cargo.toml");
         assert!(
             !manifest.contains("mesh-llm-host-runtime"),
-            "skippy-openai-frontend must not depend on mesh-llm-host-runtime"
+            "skippy-inference-api must not depend on mesh-llm-host-runtime"
         );
     }
 }

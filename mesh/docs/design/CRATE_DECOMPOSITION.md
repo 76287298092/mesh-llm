@@ -41,7 +41,7 @@ The app crate is now decomposed into the following owned crates:
   the binary: CLI, management API, mesh orchestration, host-local protocol
   conversion, gateway/proxy glue, plugin host, runtime-data aggregation, and
   embedded skippy coordination.
-- `skippy-openai-frontend` now owns the OpenAI request/response adapter pieces that
+- `skippy-inference-api` now owns the OpenAI request/response adapter pieces that
   were previously duplicated under the host network module: request
   normalization, stream-chunk parsing, response stream usage conversion, and
   upstream error mapping.
@@ -60,7 +60,7 @@ flowchart TD
     system["mesh-llm-system"]
     protocol["mesh-llm-protocol"]
     routing["mesh-llm-routing"]
-    openai["skippy-openai-frontend"]
+    openai["skippy-inference-api"]
     artifact["skippy-model-artifact"]
     ui["mesh-llm-ui"]
     api_assets["mesh-llm API asset routes"]
@@ -153,7 +153,7 @@ flowchart TD
 | `mesh/` gossip, heartbeat, membership, peer state, config sync | `mesh-llm-membership` | Admission policy and neutral peer state have moved; gossip/heartbeat orchestration still requires removal of host runtime and plugin dependencies. |
 | `network/router.rs`, `network/affinity.rs`, route scoring, request placement, election-adjacent logic | New `mesh-llm-routing` | Routing and placement should be reusable without pulling in process runtime or CLI UI. |
 | `network/proxy.rs`, `network/tunnel.rs`, HTTP ingress glue | New `mesh-llm-gateway` | This is the network edge around OpenAI/API traffic. |
-| `network/openai/*` | Existing `skippy-openai-frontend` | Request/response adapter shims, stream-chunk schema parsing, response stream usage conversion, and upstream error mapping belong in `skippy-openai-frontend`; host networking keeps ingress and mesh transport glue. |
+| `network/openai/*` | Existing `skippy-inference-api` | Request/response adapter shims, stream-chunk schema parsing, response stream usage conversion, and upstream error mapping belong in `skippy-inference-api`; host networking keeps ingress and mesh transport glue. |
 | `plugin/` host runtime, MCP bridge, transport, config support | New `mesh-llm-plugin-host` | Keep host-side plugin orchestration separate from `mesh-llm-plugin`, which should remain the plugin author API. |
 | Plugin protobuf schema | `mesh-llm-plugin` | The plugin wire schema belongs beside the plugin author/runtime API crate, outside the host binary crate. |
 | `plugins/blobstore`, `plugins/blackboard`, telemetry, OpenAI endpoint plugin | Initially submodules of `mesh-llm-plugin-host`; later first-party plugin crates if needed | These do not all need crates yet. Extract only when boundaries harden. |
@@ -197,7 +197,7 @@ The main blocker is dependency direction. Before extracting crates, reduce direc
 The crate split should include the documentation migration as part of the same scope, not as follow-up cleanup:
 
 - Add a `README.md` for every new crate that explains ownership, public API boundaries, dependency expectations, and how the crate fits into the host runtime.
-- Update existing crate READMEs when code moves into or out of those crates, especially `mesh-client`, `mesh-llm-api-server`, `mesh-llm-plugin`, `skippy-openai-frontend`, `model-*`, and `skippy-*`.
+- Update existing crate READMEs when code moves into or out of those crates, especially `mesh-client`, `mesh-llm-api-server`, `mesh-llm-plugin`, `skippy-inference-api`, `model-*`, and `skippy-*`.
 - Update top-level docs that describe repository structure, architecture, runtime composition, plugin ownership, model resolution, OpenAI routing, and console/API packaging.
 - Update Mermaid diagrams anywhere they describe the crate graph, runtime architecture, protocol/control-plane flow, API/UI packaging, or plugin/data ownership.
 - Keep the root `README.md`, `mesh/docs/README.md`, and `mesh/crates/mesh-llm/README.md` aligned so new contributors can find the owning crate for a subsystem without reading implementation details first.
@@ -206,7 +206,7 @@ The crate split should include the documentation migration as part of the same s
 
 1. Extract the first `mesh-llm-types`, `mesh-llm-identity`, `mesh-llm-protocol`, and `mesh-llm-routing` slices.
 2. Continue moving model metadata, resolve, search, and download code into existing `model-*` crates.
-3. Continue moving OpenAI adapter and schema code into `skippy-openai-frontend`.
+3. Continue moving OpenAI adapter and schema code into `skippy-inference-api`.
 4. Push Skippy-owned logic into existing `skippy-*` crates.
 5. Extract `mesh-llm-runtime-data`.
 6. Decouple `mesh/` from CLI, system, and runtime, then extract `mesh-llm-control-plane`.

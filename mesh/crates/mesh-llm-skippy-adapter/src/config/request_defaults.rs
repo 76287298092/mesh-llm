@@ -1,5 +1,5 @@
 use anyhow::{Result, bail};
-use skippy_openai_frontend::ReasoningEffort;
+use skippy_inference_api::ReasoningEffort;
 use skippy_serving::{EmbeddedReasoningBudget, EmbeddedReasoningEnabled, EmbeddedReasoningFormat};
 
 use super::support::string_list_value;

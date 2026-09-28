@@ -76,7 +76,7 @@ class ProductLayoutCatalogTests(unittest.TestCase):
 
     def test_renamed_crates_keep_their_direct_semantic_domains(self) -> None:
         for old, new in (
-            ("openai-frontend", "skippy-openai-frontend"),
+            ("openai-frontend", "skippy-inference-api"),
             ("skippy-server", "skippy-serving"),
             ("skippy-model-package", "skippy-package-builder"),
             ("model-hf", "skippy-model-hf"),
