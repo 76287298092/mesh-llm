@@ -136,3 +136,20 @@ throughput rejects audit mode. Reports/logit manifests identify attention
 arithmetic separately from projection arithmetic. MTP rejects non-exact attention
 until recovery is qualified. Same-profile exact checks remain unchanged.
 This is preparation; real-weight audit, model quality and performance are pending.
+
+
+Real-weight audit `attention-audit-1` at source `238ac8a7d` passed at128/512
+inputs with exact outputs continuing to drive the model. Layer3 prefill BF16
+differences:155/786432 and636/3145728; raw relative L2:1.8451e-7 and1.8598e-7.
+Following decode:1/6144 differing BF16 values at both lengths, raw relative
+L2:1.5908e-7 and2.7077e-7. All-output candidate/exact GPU comparisons passed the
+unchanged per-channel component budget. Independent FP64 oracle samples cover
+all24heads across selected first/middle/final/worst-error rows; maximum candidate
+error/budget ratios were0.01924/0.01329 for prefill and0.00641/0.01020 for decode.
+Stored BF16 rounding, finiteness, exact-model partition and profile/control gates
+passed. These are same-input operator diagnostics, not semantic quality or
+candidate model throughput. PTX stayed `features-greedy`, SHA256
+`961d1652408eeb9ec8d72aa9c14d32ced2c2f0efb3e8e2a32dd0d5cdcc0c4a05`.
+Host267tests, both-host Clippy, Linux release build and no-console checks pass.
+Ninfer stayed inactive and ComfyUI remained resident. Candidate-driven natural
+model comparison is running separately in `attention-model-1`; no promotion.
