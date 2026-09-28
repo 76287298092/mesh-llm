@@ -11,7 +11,7 @@ const MIN_AUTO_CONTEXT_LENGTH: u32 = 512;
 /// `"n_parallel is set to auto, using n_parallel = 4 and kv_unified = true"`).
 ///
 /// Skippy's stage-runtime patches also set `kv_unified = true` whenever
-/// `lane_count > 1` (`skippy/third_party/llama.cpp/patches/0034-*.patch`). In
+/// `lane_count > 1` (`skippy/llama_cpp/patches/0034-*.patch`). In
 /// unified mode llama allocates exactly `n_ctx` cells total, shared
 /// across all `n_seq_max` sequences. The previous ceiling of 16 was
 /// inherited from a VRAM-based slot calculation that pretended each
@@ -363,7 +363,7 @@ fn context_slot_target(input: &RuntimeResourcePlanInput<'_>) -> u64 {
 /// Plan the number of concurrent lanes to run at the chosen context depth.
 ///
 /// Under `kv_unified = true` — which skippy's stage runtime sets whenever
-/// `lane_count > 1` (`skippy/third_party/llama.cpp/patches/0034-*.patch`) and which
+/// `lane_count > 1` (`skippy/llama_cpp/patches/0034-*.patch`) and which
 /// llama-server's `--parallel auto` also selects — every lane shares a single
 /// `n_ctx` cell pool. The attention KV cache is one allocation of
 /// `context_length × kv_bytes_per_token`, **not** one allocation per lane, so

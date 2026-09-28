@@ -59,10 +59,10 @@ def prepared_patched_sha(root: Path) -> str:
     prepared_patch_digest = (checkout / ".mesh-llm-patch-digest").read_text(encoding="utf-8").strip()
     prepared_patched = (checkout / ".mesh-llm-patched-sha").read_text(encoding="utf-8").strip()
     prepared_schema = (checkout / ".mesh-llm-prepare-schema").read_text(encoding="utf-8").strip()
-    upstream = (root / "skippy/third_party/llama.cpp/upstream.txt").read_text(encoding="utf-8").strip()
+    upstream = (root / "skippy/llama_cpp/upstream.txt").read_text(encoding="utf-8").strip()
     if prepared_schema != "5" or prepared_upstream != upstream:
         raise RuntimeError("prepared llama.cpp checkout does not match the pinned upstream")
-    if prepared_patch_digest != patch_digest(root / "skippy/third_party/llama.cpp/patches"):
+    if prepared_patch_digest != patch_digest(root / "skippy/llama_cpp/patches"):
         raise RuntimeError("prepared llama.cpp checkout does not match the current patch queue")
     head = subprocess.run(
         ["git", "-C", str(checkout), "rev-parse", "HEAD"],

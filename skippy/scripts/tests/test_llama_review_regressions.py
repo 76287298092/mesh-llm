@@ -4,7 +4,7 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[3]
-PATCHES = ROOT / "skippy/third_party/llama.cpp/patches"
+PATCHES = ROOT / "skippy/llama_cpp/patches"
 
 
 def patch_text(relative_path: str) -> str:

@@ -19,7 +19,7 @@ import tempfile
 
 
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
-PIN_PATH = "skippy/third_party/llama.cpp/upstream.txt"
+PIN_PATH = "skippy/llama_cpp/upstream.txt"
 DEFAULT_UPSTREAM_URL = "https://github.com/ggml-org/llama.cpp.git"
 UPSTREAM_FETCH_TIMEOUT_SECONDS = 300
 
@@ -210,7 +210,7 @@ def check_pin(repository: Path, base_revision: str, head_revision: str, upstream
         )
         if proposed_ancestor.returncode == 0:
             raise PinGuardError(
-                "PR moves skippy/third_party/llama.cpp/upstream.txt backward: "
+                "PR moves skippy/llama_cpp/upstream.txt backward: "
                 f"{proposed_pin} is an ancestor of the base pin {base_pin}"
             )
         if proposed_ancestor.returncode != 1:

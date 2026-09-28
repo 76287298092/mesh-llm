@@ -26,7 +26,7 @@ flowchart TB
     Mesh["mesh-llm<br/>embedded runtime owner"] --> Runtime
     Server["skippy-serving<br/>lifecycle + transport"] --> Runtime["skippy-runtime<br/>safe model/session API"]
     Runtime --> FFI["skippy-ffi<br/>raw ABI declarations"]
-    FFI --> Llama["third_party/llama.cpp<br/>skippy.h stage execution"]
+    FFI --> Llama["llama_cpp<br/>skippy.h stage execution"]
 ```
 
 Keep this crate close to the C ABI. Higher-level behavior such as topology
@@ -53,7 +53,7 @@ same Rust crate.
 ## ABI Contract
 
 The staged ABI is versioned as `0.1.59`. The patch header in
-`skippy/third_party/llama.cpp/patches/` and the Rust constants in
+`skippy/llama_cpp/patches/` and the Rust constants in
 `skippy/crates/skippy-ffi/src/lib.rs` are the source of truth, so keep this README
 aligned with those files instead of treating it as canonical prose.
 

@@ -135,7 +135,7 @@ See `CONTRIBUTING.md` for full dev workflow.
 
 mesh-llm embeds the stage runtime and links patched llama.cpp static ABI
 libraries. The only durable llama.cpp patch queue is
-`skippy/third_party/llama.cpp/patches`, pinned by `skippy/third_party/llama.cpp/upstream.txt`.
+`skippy/llama_cpp/patches`, pinned by `skippy/llama_cpp/upstream.txt`.
 
 - `just build` builds the UI and a dynamic host, then packages the selected
   local runtime next to it. The host never links a backend library.
@@ -288,7 +288,7 @@ Other top-level directories:
 - `mesh/deploy/fly/` — Fly.io deployment (console + API client apps).
 - `tools/relay-fly-legacy/` — Archived self-hosted iroh relay reference; production uses services.iroh.computer.
 - `mesh/evals/`, `skippy/evals/` — Product benchmarking and evaluation scripts.
-- `skippy/third_party/llama.cpp/patches/` — durable llama.cpp patch queue, pinned by `upstream.txt`.
+- `skippy/llama_cpp/patches/` — durable llama.cpp patch queue, pinned by `upstream.txt`.
 
 ## Module Structure Rules
 

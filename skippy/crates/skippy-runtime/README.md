@@ -21,7 +21,7 @@ flowchart TB
     R --> PS["package selector<br/>manifest + selected parts<br/>direct GGUF fake packages"]
     PS --> R
     R --> F["skippy-ffi"]
-    F --> L["third_party/llama.cpp<br/>stage ABI"]
+    F --> L["llama_cpp<br/>stage ABI"]
 ```
 
 For inference, the runtime opens a stage view, creates a session, runs prefill

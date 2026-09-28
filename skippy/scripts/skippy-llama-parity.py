@@ -25,7 +25,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_MANIFEST = ROOT / "skippy/docs/llama-parity-candidates.json"
-DEFAULT_UPSTREAM_PIN = ROOT / "skippy/third_party/llama.cpp/upstream.txt"
+DEFAULT_UPSTREAM_PIN = ROOT / "skippy/llama_cpp/upstream.txt"
 SHARDED_GGUF_RE = re.compile(r"-0*(\d+)-of-0*\d+\.gguf$", re.IGNORECASE)
 
 

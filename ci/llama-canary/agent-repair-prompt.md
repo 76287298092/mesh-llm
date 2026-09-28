@@ -3,7 +3,7 @@
 You are working on a trusted `main` checkout on the `family-certify`
 self-hosted runner. Complete the llama.cpp upstream update as one developer
 task. The harness has written the exact target SHA to
-`skippy/third_party/llama.cpp/upstream.txt` and `.deps/llama-canary-target-sha`.
+`skippy/llama_cpp/upstream.txt` and `.deps/llama-canary-target-sha`.
 
 Read `.agents/skills/llama-patch-changes/SKILL.md` before changing the queue.
 When the stage ABI changes, also read

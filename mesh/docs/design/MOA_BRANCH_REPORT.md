@@ -110,7 +110,7 @@ context, where the planner had picked `slots = 16`.
 
 **Root cause**: skippy's stage-runtime patches set
 `kv_unified = true` whenever `lane_count > 1`
-(`skippy/third_party/llama.cpp/patches/0034-Add-shared-execution-lanes-to-skippy-ABI.patch`).
+(`skippy/llama_cpp/patches/0034-Add-shared-execution-lanes-to-skippy-ABI.patch`).
 In unified mode llama allocates **exactly `n_ctx` cells total**,
 shared across all `n_seq_max` sequences. The previous planner
 derived `slots` from VRAM as if each lane carved off its own

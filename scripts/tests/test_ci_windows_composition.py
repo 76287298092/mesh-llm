@@ -418,8 +418,8 @@ class CiWindowsCompositionTests(unittest.TestCase):
             "'.github/actions/setup-windows-rocm-sdk/action.yml', "
             "'scripts/build-llama.sh', 'skippy/scripts/build-llama.sh', 'scripts/prepare-llama.sh', 'skippy/scripts/prepare-llama.sh', "
             "'scripts/package-native-runtime.sh', 'skippy/scripts/package-native-runtime.sh', "
-            "'skippy/third_party/llama.cpp/upstream.txt', "
-            "'skippy/third_party/llama.cpp/patches/**', "
+            "'skippy/llama_cpp/upstream.txt', "
+            "'skippy/llama_cpp/patches/**', "
             "'.github/cache-version.txt') }}"
         )
         self.assertIn(expected_hash, action)

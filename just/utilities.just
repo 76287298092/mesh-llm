@@ -77,9 +77,9 @@ test port="9337":
 
 # Show the local llama.cpp ABI patch queue
 diff:
-    @find skippy/third_party/llama.cpp/patches -maxdepth 1 -type f -name '*.patch' -print | sort
-    @sed 's#^#skippy/third_party/llama.cpp/patches/model_support/#' skippy/third_party/llama.cpp/patches/model_support/series
-    @sed 's#^#skippy/third_party/llama.cpp/patches/generated/#' skippy/third_party/llama.cpp/patches/generated/series
+    @find skippy/llama_cpp/patches -maxdepth 1 -type f -name '*.patch' -print | sort
+    @sed 's#^#skippy/llama_cpp/patches/model_support/#' skippy/llama_cpp/patches/model_support/series
+    @sed 's#^#skippy/llama_cpp/patches/generated/#' skippy/llama_cpp/patches/generated/series
 
 # Build the client-only Docker image
 [unix]

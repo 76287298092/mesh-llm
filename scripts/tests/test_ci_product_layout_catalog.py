@@ -28,7 +28,7 @@ class ProductLayoutCatalogTests(unittest.TestCase):
             ("crates/skippy-ffi/src/abi.rs", "skippy/crates/skippy-ffi/src/abi.rs"),
             ("crates/skippy-server/src/lib.rs", "skippy/crates/skippy-serving/src/lib.rs"),
             ("crates/model-hf/src/lib.rs", "skippy/crates/skippy-model-hf/src/lib.rs"),
-            ("third_party/llama.cpp/patches/0001.patch", "skippy/third_party/llama.cpp/patches/0001.patch"),
+            ("third_party/llama.cpp/patches/0001.patch", "skippy/llama_cpp/patches/0001.patch"),
             ("scripts/prepare-llama.sh", "skippy/scripts/prepare-llama.sh"),
             ("scripts/build-host.sh", "mesh/scripts/build-host.sh"),
             ("sdk/kotlin/build.gradle.kts", "mesh/sdk/kotlin/build.gradle.kts"),

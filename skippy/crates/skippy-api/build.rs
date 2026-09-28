@@ -101,8 +101,8 @@ fn series_patches(patch_dir: &Path, subdir: &str) -> Vec<(String, PathBuf)> {
 fn main() {
     let crate_dir = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").expect("crate directory"));
     let root = crate_dir.join("../..");
-    let upstream_path = root.join("third_party/llama.cpp/upstream.txt");
-    let patch_dir = root.join("third_party/llama.cpp/patches");
+    let upstream_path = root.join("llama_cpp/upstream.txt");
+    let patch_dir = root.join("llama_cpp/patches");
     if !upstream_path.is_file() && !patch_dir.is_dir() {
         // crates.io packages cannot contain files outside this crate. The
         // repository CI validates the source recipe before packaging; a

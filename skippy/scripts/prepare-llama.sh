@@ -6,8 +6,8 @@ MODE="${1:-pinned}"
 
 LLAMA_UPSTREAM_URL="${LLAMA_UPSTREAM_URL:-https://github.com/ggml-org/llama.cpp.git}"
 LLAMA_WORKDIR="${LLAMA_WORKDIR:-$ROOT/.deps/llama.cpp}"
-PIN_FILE="${LLAMA_PIN_FILE:-$ROOT/skippy/third_party/llama.cpp/upstream.txt}"
-PATCH_DIR="${LLAMA_PATCH_DIR:-$ROOT/skippy/third_party/llama.cpp/patches}"
+PIN_FILE="${LLAMA_PIN_FILE:-$ROOT/skippy/llama_cpp/upstream.txt}"
+PATCH_DIR="${LLAMA_PATCH_DIR:-$ROOT/skippy/llama_cpp/patches}"
 PREPARE_SCHEMA=5
 
 if [[ ! -f "$PIN_FILE" ]]; then
@@ -330,7 +330,7 @@ git -C "$LLAMA_WORKDIR" config user.name "Mesh-LLM CI"
 git -C "$LLAMA_WORKDIR" config user.email "ci@mesh-llm.local"
 
 # The llama.cpp checkout is a generated dependency worktree. Local edits there
-# should live in skippy/third_party/llama.cpp/patches, so reset before switching pins.
+# should live in skippy/llama_cpp/patches, so reset before switching pins.
 git -C "$LLAMA_WORKDIR" reset --hard HEAD
 git -C "$LLAMA_WORKDIR" clean -fdx
 git -C "$LLAMA_WORKDIR" checkout --force --detach "$TARGET_SHA"

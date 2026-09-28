@@ -81,7 +81,7 @@ jobs:
           file="${{ inputs.dockerfile_path }}"
           grep -q "scripts/prepare-llama.sh pinned" "$file"
           grep -q "scripts/build-llama.sh" "$file"
-          grep -q "third_party/llama.cpp/patches" "$file"
+          grep -q "skippy/llama_cpp/patches" "$file"
 
       - name: Runtime apt libraries are present
         if: ${{ inputs.validate_shared_core }}

@@ -193,8 +193,8 @@ main() {
     # line in skippy/crates/skippy-ffi/build.rs is hand-maintained, so only the Rust
     # test batches can prove the link still closes. Advancing the pin without
     # this escalation is how an undefined hash_sha256_hex reached main.
-    if [[ "$file" =~ ^(skippy/)?third_party/llama\.cpp/upstream\.txt$ ]] || \
-       [[ "$file" =~ ^(skippy/)?third_party/llama\.cpp/patches/ ]] || \
+    if [[ "$file" =~ ^(third_party/llama\.cpp/|skippy/llama_cpp/)upstream\.txt$ ]] || \
+       [[ "$file" =~ ^(third_party/llama\.cpp/|skippy/llama_cpp/)patches/ ]] || \
        [[ "$file" =~ ^Cargo\.lock$ ]] || \
        [[ "$file" =~ ^Cargo\.toml$ ]] || \
             [[ "$file" =~ ^(mesh/|skippy/)?scripts/(build-llama|prepare-llama|build-linux|build-linux-rocm|build-mac|build-windows|skippy-ci-smoke|ci-install-native-runtime|ci-prepare-native-runtime|ci-smoke-test|ci-compat-smoke|ci-client-auto-test|ci-two-node-client-serving-smoke|ci-two-node-split-smoke)\. ]] || \

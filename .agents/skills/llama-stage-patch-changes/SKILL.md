@@ -8,14 +8,14 @@ metadata:
 # llama-stage-patch-changes
 
 Use this skill when changing the Skippy staged-runtime ABI carried in
-`skippy/third_party/llama.cpp/patches`.
+`skippy/llama_cpp/patches`.
 
 ## Boundaries
 
 - Keep durable llama.cpp-side changes in the ordered queue under
-  `skippy/third_party/llama.cpp/patches`: top-level core patches first,
+  `skippy/llama_cpp/patches`: top-level core patches first,
   `model_support/series` second, and `generated/series` last.
-- Keep the upstream pin in `skippy/third_party/llama.cpp/upstream.txt`.
+- Keep the upstream pin in `skippy/llama_cpp/upstream.txt`.
 - Do not edit `.deps/llama.cpp` as the final artifact; regenerate the
   patch queue from commits.
 - Keep mesh orchestration, protocol compatibility, lifecycle, model management,
@@ -138,13 +138,13 @@ the patch after `model_support/` or generated shards:
 ```bash
 repo_root="$(pwd)"
 llama_checkout="${LLAMA_CHECKOUT:-$repo_root/.deps/llama.cpp}"
-last_patch="$(find skippy/third_party/llama.cpp/patches -maxdepth 1 -type f -name '*.patch' | sort | tail -n 1)"
+last_patch="$(find skippy/llama_cpp/patches -maxdepth 1 -type f -name '*.patch' | sort | tail -n 1)"
 last_number="${last_patch##*/}"
 last_number="${last_number%%-*}"
 next_number=$((10#$last_number + 1))
 git -C "$llama_checkout" format-patch -1 \
   --start-number "$next_number" \
-  --output-directory "$repo_root/third_party/llama.cpp/patches" HEAD
+  --output-directory "$repo_root/skippy/llama_cpp/patches" HEAD
 ```
 
 For a deliberate queue-boundary or source-layout change, rebuild the affected
@@ -163,7 +163,7 @@ git log --reverse --oneline <pinned-upstream>..<reconstructed-series-head>
 ```
 
 Move the old queue to an explicit temporary backup, generate the replacement
-into a fresh `skippy/third_party/llama.cpp/patches` directory, and retain the backup
+into a fresh `skippy/llama_cpp/patches` directory, and retain the backup
 until clean application and native compilation pass. Never keep both series or
 duplicate patch numbers in the durable directory.
 
@@ -184,7 +184,7 @@ LLAMA_WORKDIR="$tmp_root/llama.cpp" \
 
 ### Re-pinning upstream
 
-Advancing `skippy/third_party/llama.cpp/upstream.txt` can silently invalidate a patch
+Advancing `skippy/llama_cpp/upstream.txt` can silently invalidate a patch
 that depends on upstream's *ordering*, not just its symbols. The queue still
 applies, everything compiles, and the behavior is broken. This happened with
 upstream `1269cb1`, which moved `check_tensor_dims` ahead of `buft_for_tensor`

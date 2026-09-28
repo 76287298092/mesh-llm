@@ -134,7 +134,8 @@ class SourceLayoutTests(unittest.TestCase):
         script += '\nprintf "%s %s %s %s" "$BACKEND_CHANGED" "$WINDOWS_CPU_BUILD_REQUIRED" "$WINDOWS_GPU_BUILD_REQUIRED" "$SDK_SMOKE_REQUIRED"\n'
         cases = {
             'third_party/llama.cpp/upstream.txt': 'true true true false',
-            'skippy/third_party/llama.cpp/patches/test.patch': 'true true true false',
+            'skippy/llama_cpp/upstream.txt': 'true true true false',
+            'skippy/llama_cpp/patches/test.patch': 'true true true false',
             'sdk/node/index.js': 'false false false true',
             'mesh/sdk/node/index.js': 'false false false true',
             'skippy/scripts/build-llama.sh': 'true false false true',
@@ -215,7 +216,7 @@ class SourceLayoutTests(unittest.TestCase):
         body = next(s['run'] for s in steps if s.get('id') == 'resolve')
         script = body[body.index('pins=()'):body.index('upstream="$UPSTREAM"')]
         script += '\nprintf "%s" "$old"\n'
-        for paths in ([], ['third_party/llama.cpp/upstream.txt'], ['skippy/third_party/llama.cpp/upstream.txt'], ['third_party/llama.cpp/upstream.txt', 'skippy/third_party/llama.cpp/upstream.txt']):
+        for paths in ([], ['third_party/llama.cpp/upstream.txt'], ['skippy/llama_cpp/upstream.txt'], ['third_party/llama.cpp/upstream.txt', 'skippy/llama_cpp/upstream.txt']):
             with self.subTest(paths=paths), tempfile.TemporaryDirectory() as tmp:
                 for relative in paths:
                     path = Path(tmp) / relative

@@ -71,11 +71,11 @@ class LlamaOracleSourceTests(unittest.TestCase):
             root = Path(temp_dir)
             checkout = root / ".deps/llama.cpp"
             checkout.mkdir(parents=True)
-            patches = root / "skippy/third_party/llama.cpp/patches"
+            patches = root / "skippy/llama_cpp/patches"
             patches.mkdir(parents=True)
             patch = patches / "0001-test.patch"
             patch.write_bytes(b"original\n")
-            upstream = root / "skippy/third_party/llama.cpp/upstream.txt"
+            upstream = root / "skippy/llama_cpp/upstream.txt"
             upstream.write_text("upstream-sha\n", encoding="utf-8")
             subprocess.run(["git", "init", "-q", str(checkout)], check=True)
             head = subprocess.run(

@@ -7,7 +7,7 @@ use crate::support::{NativeFamilyMapping, load_inventory};
 const KNOWN_FEATURE_BITS: [u32; 5] = [32, 33, 34, 35, 36];
 
 /// Expected `(feature_bit, native_kind)` -> `event_id` rows, transcribed
-/// from `skippy/third_party/llama.cpp/patches/0058-0062-skippy-add-*-events-
+/// from `skippy/llama_cpp/patches/0058-0062-skippy-add-*-events-
 /// family-bit-*.patch`'s `SKIPPY_RUNTIME_EVENT_KIND_*` literals. This is
 /// the independent cross-check for the inventory table: it is built from
 /// the native patch queue's numeric constants, not copied from

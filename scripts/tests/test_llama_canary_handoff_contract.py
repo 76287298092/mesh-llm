@@ -81,7 +81,7 @@ class HandoffContractTests(unittest.TestCase):
 
     def test_prepared_source_roundtrip_in_empty_worker_and_stale_pin_rejected(self):
         self.copy_script('llama-oracle-source.py')
-        pin = self.source / 'skippy/third_party/llama.cpp/upstream.txt'
+        pin = self.source / 'skippy/llama_cpp/upstream.txt'
         pin.parent.mkdir(parents=True)
         (pin.parent / 'patches').mkdir()
         pin.write_text('a' * 40 + '\n')
@@ -115,7 +115,7 @@ class HandoffContractTests(unittest.TestCase):
         manifest = self.source / 'ci/llama-canary/family-certified.json'
         manifest.parent.mkdir(parents=True)
         shutil.copy2(ROOT / 'ci/llama-canary/family-certified.json', manifest)
-        pin = self.source / 'skippy/third_party/llama.cpp/upstream.txt'
+        pin = self.source / 'skippy/llama_cpp/upstream.txt'
         pin.parent.mkdir(parents=True)
         (pin.parent / 'patches').mkdir()
         pin.write_text('a'*40 + '\n')

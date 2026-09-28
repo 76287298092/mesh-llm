@@ -13,7 +13,7 @@ Related: [#183](https://github.com/michaelneale/mesh-llm/issues/183), [#165](htt
 > over a localhost HTTP callback from an external process. The
 > "Temporary co-iteration setup" section is historical — `llama-patches/` and
 > `sync.sh` no longer exist; C++ changes live in the
-> `skippy/third_party/llama.cpp/patches` queue.
+> `skippy/llama_cpp/patches` queue.
 
 ---
 

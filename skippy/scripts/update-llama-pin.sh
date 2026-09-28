@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 LLAMA_WORKDIR="${LLAMA_WORKDIR:-$ROOT/.deps/llama.cpp}"
-PIN_FILE="${LLAMA_PIN_FILE:-$ROOT/skippy/third_party/llama.cpp/upstream.txt}"
+PIN_FILE="${LLAMA_PIN_FILE:-$ROOT/skippy/llama_cpp/upstream.txt}"
 
 if (( $# > 1 )); then
   echo "usage: scripts/update-llama-pin.sh [40-hex-upstream-sha]" >&2

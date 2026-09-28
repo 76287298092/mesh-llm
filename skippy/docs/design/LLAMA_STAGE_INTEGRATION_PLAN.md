@@ -4,7 +4,7 @@
 
 This migration has shipped. mesh-llm now embeds the staged (Skippy) runtime
 behind the C ABI, built from the upstream llama.cpp pin plus the patch queue in
-`skippy/third_party/llama.cpp/patches` (pinned by `skippy/third_party/llama.cpp/upstream.txt`).
+`skippy/llama_cpp/patches` (pinned by `skippy/llama_cpp/upstream.txt`).
 The external `llama-server` / `rpc-server` runtime lane described below as
 "Current State" no longer exists and must not be reintroduced. Keep this
 document as background for why the patch queue and embedded ABI are shaped the
@@ -70,8 +70,8 @@ Runtime orchestration is process based:
 model:
 
 - upstream `ggml-org/llama.cpp` is pinned in
-  `skippy/third_party/llama.cpp/upstream.txt`
-- patches live in `skippy/third_party/llama.cpp/patches/*.patch`
+  `skippy/llama_cpp/upstream.txt`
+- patches live in `skippy/llama_cpp/patches/*.patch`
 - `just llama-prepare` checks out upstream and applies patches
 - `just llama-build` builds static llama.cpp archives
 - Rust crates link the patched static libraries through `llama-stage-ffi`
@@ -144,10 +144,9 @@ llama-stage/
     prepare-llama.sh
     build-llama.sh
     update-llama-pin.sh
-  third_party/
-    llama.cpp/
-      upstream.txt
-      patches/
+  llama_cpp/
+    upstream.txt
+    patches/
 ```
 
 mesh-llm can then depend on `llama-stage-*` crates by workspace path.
@@ -196,8 +195,8 @@ For early integration, keep mesh-llm's routing and tunneling model stable:
 Add llama patch queue files to the mesh repo:
 
 ```text
-skippy/third_party/llama.cpp/upstream.txt
-skippy/third_party/llama.cpp/patches/
+skippy/llama_cpp/upstream.txt
+skippy/llama_cpp/patches/
 ```
 
 Convert the current Mesh-LLM llama.cpp fork commits into ordered patches. Add
@@ -213,13 +212,13 @@ Patch groups should stay reviewable:
 
 Build scripts should prepare llama.cpp by:
 
-1. reading `skippy/third_party/llama.cpp/upstream.txt`
+1. reading `skippy/llama_cpp/upstream.txt`
 2. cloning/fetching upstream `ggml-org/llama.cpp`
 3. checking out the pinned upstream SHA
 4. applying patches with `git am --3way`
 5. writing prepared and patched SHAs for diagnostics
 
-`skippy/third_party/llama.cpp/upstream.txt` is the sole upstream version selector.
+`skippy/llama_cpp/upstream.txt` is the sole upstream version selector.
 
 ### Phase 2: Use One Backend Build Matrix
 

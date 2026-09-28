@@ -248,7 +248,7 @@ impl SkippyRuntimeEventCategory {
     pub const SESSION: Self = Self(3);
     pub const KV: Self = Self(4);
     pub const WARNING: Self = Self(5);
-    // Numeric values already emitted by `skippy/third_party/llama.cpp/patches/
+    // Numeric values already emitted by `skippy/llama_cpp/patches/
     // 0060-0062-*`; naming them here changes no layout or ABI surface.
     pub const DEVICE: Self = Self(6);
     pub const DIAGNOSTIC: Self = Self(7);
@@ -266,7 +266,7 @@ impl SkippyRuntimeEventKind {
     pub const MODEL_OPEN_FINISHED: Self = Self(4);
     pub const MODEL_OPEN_FAILED_HANDLED: Self = Self(5);
     // Named mirrors of the `SKIPPY_RUNTIME_EVENT_KIND_*` literals already
-    // emitted by `skippy/third_party/llama.cpp/patches/0058-0062-*`.
+    // emitted by `skippy/llama_cpp/patches/0058-0062-*`.
     pub const MODEL_LOAD_PHASE_CHANGED: Self = Self(100);
     pub const MODEL_LOAD_MEMORY_ALLOCATED: Self = Self(101);
     pub const MODEL_LOAD_TENSORS_OFFLOADED: Self = Self(102);

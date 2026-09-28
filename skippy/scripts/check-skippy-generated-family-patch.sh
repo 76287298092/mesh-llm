@@ -13,7 +13,7 @@ fi
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SOURCE_ROOT="${SKIPPY_REWRITER_SOURCE_ROOT:-$ROOT/.deps/llama.cpp}"
 LLAMA_BUILD_DIR="${LLAMA_STAGE_BUILD_DIR:-${LLAMA_BUILD_DIR:-$ROOT/.deps/llama-build/build-stage-abi-static-metal}}"
-CHECKED_PATCH_DIR="${SKIPPY_REWRITER_PATCH_DIR:-$ROOT/skippy/third_party/llama.cpp/patches/generated}"
+CHECKED_PATCH_DIR="${SKIPPY_REWRITER_PATCH_DIR:-$ROOT/skippy/llama_cpp/patches/generated}"
 CHECKED_PATCH_SERIES="$CHECKED_PATCH_DIR/series"
 FAMILY_SOURCE_MAP="${SKIPPY_REWRITER_FAMILY_MAP:-$ROOT/ci/llama-canary/generated-family-map.json}"
 FAMILY_MANIFEST="${SKIPPY_REWRITER_FAMILY_MANIFEST:-$ROOT/ci/llama-canary/family-certified.json}"

@@ -45,8 +45,8 @@ fi
 
 cd "$ROOT"
 
-OLD_SHA="$(tr -d '[:space:]' < skippy/third_party/llama.cpp/upstream.txt)"
-PIN_FILE="$ROOT/skippy/third_party/llama.cpp/upstream.txt"
+OLD_SHA="$(tr -d '[:space:]' < skippy/llama_cpp/upstream.txt)"
+PIN_FILE="$ROOT/skippy/llama_cpp/upstream.txt"
 AGENT_PROVIDER="${CANARY_AGENT_PROVIDER:-zai_coding_plan}"
 AGENT_MODEL="${CANARY_AGENT_MODEL:-glm-5.3-flash}"
 AGENT_TIMEOUT_SECONDS="${CANARY_AGENT_TIMEOUT_SECONDS:-41400}"
@@ -214,7 +214,7 @@ verify_repair_pin() {
 agent_prompt() {
   printf 'Complete the llama.cpp upstream update to %s as one developer task in this checkout.
 
-The trusted harness has already written skippy/third_party/llama.cpp/upstream.txt to the exact target and recorded it in .deps/llama-canary-target-sha. Read ci/llama-canary/agent-repair-prompt.md and every repository skill it names, then own the work end to end: reproduce the queue failure, deliberately rebase or regenerate the owned patches, fix any generated-family rewriter or Rust ABI fallout, and run the prepare, build, smoke, and focused reproductions needed to validate your repairs. Once those checks pass, return control to the trusted harness for the full supported-family battery. Do not start an additional full battery in the coding session; the wrapper and separate verifier each run all required gates.
+The trusted harness has already written skippy/llama_cpp/upstream.txt to the exact target and recorded it in .deps/llama-canary-target-sha. Read ci/llama-canary/agent-repair-prompt.md and every repository skill it names, then own the work end to end: reproduce the queue failure, deliberately rebase or regenerate the owned patches, fix any generated-family rewriter or Rust ABI fallout, and run the prepare, build, smoke, and focused reproductions needed to validate your repairs. Once those checks pass, return control to the trusted harness for the full supported-family battery. Do not start an additional full battery in the coding session; the wrapper and separate verifier each run all required gates.
 
 Do not weaken, skip, or narrow a gate. Do not edit the workflow, this wrapper, its publisher, the agent runbook, or their contract tests. Do not create or switch branches, commit, push, open a pull request, or use GitHub credentials. Leave the completed changes in this working tree. The harness will independently rerun the entire verification sequence and only a green exact tree can be published.' \
     "$UPSTREAM_SHA"
@@ -234,7 +234,7 @@ agent_session_step() {
     root="$1"
     started="$2"
     while sleep 600; do
-      newest="$(find "$root/.deps/llama.cpp" -type f -newer "$root/skippy/third_party/llama.cpp/upstream.txt" -print -quit 2>/dev/null || true)"
+      newest="$(find "$root/.deps/llama.cpp" -type f -newer "$root/skippy/llama_cpp/upstream.txt" -print -quit 2>/dev/null || true)"
       printf "heartbeat: agent task running for %dm; recent llama.cpp activity: %s\n" \
         "$(( ($(date +%s) - started) / 60 ))" "${newest:-none observed yet}"
     done
@@ -401,7 +401,7 @@ materialize_verification_tree() {
   git -c core.hooksPath=/dev/null -C "$TRUSTED_ROOT" \
     worktree add --detach "$VERIFY_ROOT" "$CERTIFIED_SHA"
   ROOT="$VERIFY_ROOT"
-  PIN_FILE="$ROOT/skippy/third_party/llama.cpp/upstream.txt"
+  PIN_FILE="$ROOT/skippy/llama_cpp/upstream.txt"
   FAMILY_BATTERY_RUN_ID="${RUN_KEY}-verification"
   PLAN_PATH="$ROOT/target/family-battery/$FAMILY_BATTERY_RUN_ID/policy-plan.json"
   LLAMA_STAGE_BUILD_DIR="${LLAMA_STAGE_BUILD_DIR}-verification-${RUN_KEY}"

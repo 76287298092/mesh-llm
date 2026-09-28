@@ -39,7 +39,7 @@ downloads, single-model serving, and explicit split-worker commands. See
 | [`docs/`](docs/) | Operator guides, compatibility status, designs, experiments, and runbooks |
 | [`evals/`](evals/) | Skippy performance and correctness evaluation workloads |
 | [`scripts/`](scripts/) | Skippy-owned build, packaging, certification, and benchmark automation |
-| [`third_party/`](third_party/) | Pinned llama.cpp source metadata and the durable Skippy ABI patch queue |
+| [`llama_cpp/`](llama_cpp/) | Pinned llama.cpp source metadata and the durable Skippy ABI patch queue |
 
 The main entry point is [`crates/skippy-cli`](crates/skippy-cli/). Runtime
 execution lives in [`crates/skippy-runtime`](crates/skippy-runtime/), serving

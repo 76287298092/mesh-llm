@@ -1763,7 +1763,7 @@ Deferred patch provenance:
 
 | Field | Value |
 | --- | --- |
-| Former patch | `skippy/third_party/llama.cpp/patches/0030-Import-buun-TCQ-KV-cache-support.patch` |
+| Former patch | `skippy/llama_cpp/patches/0030-Import-buun-TCQ-KV-cache-support.patch` |
 | Source fork | `https://github.com/spiritbuun/buun-llama-cpp` |
 | Source checkout | `/tmp/buun-llama-cpp` at `65ada42cf97ca771cff8bad0923ce8ae41a13378` |
 | Upstream base | `9725a313be0528214c4a02fed906ddaf7b3f712e` |

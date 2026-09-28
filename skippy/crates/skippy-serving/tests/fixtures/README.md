@@ -9,13 +9,13 @@ parser output rather than a hand-written guess at it.
 
 `record_partial_tool_calls.cpp` is the generator. It calls the parser through the
 same shape `skippy_parse_chat_response_json` uses (see
-`skippy/third_party/llama.cpp/patches/0010-Add-Skippy-tokenization-and-stage-chat.patch`):
+`skippy/llama_cpp/patches/0010-Add-Skippy-tokenization-and-stage-chat.patch`):
 `common_chat_parse(text, is_partial, params)` followed by
 `common_chat_msgs_to_json_oaicompat`.
 
 ## Regenerating
 
-Regenerate after a `skippy/third_party/llama.cpp` pin bump or any patch-queue change
+Regenerate after a `skippy/llama_cpp` pin bump or any patch-queue change
 that touches chat parsing, and commit the result with that change. From a
 prepared native checkout:
 
