@@ -91,6 +91,13 @@ fn check(
             json!({"operator_waits":operator_waits,"all_passed":exact,"wall_seconds":timings}),
         );
     }
+    let prepared_times = chain.prepared_trial(module, &input, false)?;
+    let prepared_exact = chain.snapshot()?.into_iter().collect::<BTreeMap<_, _>>() == expected;
+    ensure!(prepared_exact, "prepared MLP changed output");
+    ensure!(
+        chain.addresses()? == addresses,
+        "prepared MLP changed workspace addresses"
+    );
     let mut control_times = Vec::new();
     for _ in 0..3 {
         let start = Instant::now();
@@ -120,11 +127,34 @@ fn check(
             "aborted workspace was reused"
         );
     }
+    if abort_checked {
+        let mut aborted = Chain::new(
+            ctx,
+            weights,
+            &case.prefix,
+            [rows, case.width, case.channels],
+            kind,
+        )?;
+        let error = aborted
+            .prepared_trial(module, &input, true)
+            .err()
+            .ok_or_else(|| anyhow::anyhow!("prepared abort unexpectedly succeeded"))?;
+        ensure!(
+            error.to_string().contains("injected"),
+            "prepared abort did not reach gate"
+        );
+        ensure!(
+            aborted.prepared_trial(module, &input, false).is_err(),
+            "prepared aborted workspace was reused"
+        );
+    }
     Ok(
         json!({"prefix":case.prefix,"rows":rows,"width":case.width,"channels":case.channels,"fp8":case.fp8,
-        "stable_addresses":true,"abort_after_gate_checked":abort_checked,"workspace_bytes":chain.bytes(),"control_wall_seconds":control_times,"variants":variants,
+        "stable_addresses":true,"abort_after_gate_checked":abort_checked,
+        "prepared_exact":prepared_exact,"prepared_warmup_repetitions":1,"prepared_submit_and_completion_seconds":prepared_times,
+        "prepared_abort_after_gate_checked":abort_checked,"workspace_bytes":chain.bytes(),"control_wall_seconds":control_times,"variants":variants,
         "all_passed":variants.iter().all(|v|v["all_passed"]==true),"compared_buffers":expected.len(),
-        "input_fixture":"deterministic signed BF16, not recorded model activations","timing_order":"workspace-waits,workspace-one-wait,control; screening only"}),
+        "input_fixture":"deterministic signed BF16, not recorded model activations","timing_order":"workspace-waits,workspace-one-wait,prepared-stream,control; screening only; prepared excludes preparation/view binding"}),
     )
 }
 fn snapshot(output: ResultBuffers<'_>) -> Result<BTreeMap<String, Vec<u8>>> {

@@ -735,3 +735,24 @@ launch formatting change are subsequent, unqualified work. They are not included
 in this source pin or these results. Next: bind an explicit-stream completion
 lease, prepare all MLP functions once, and compare the prepared chain with this
 qualified default-stream baseline before ordinary-model integration.
+
+### Prepared explicit-stream MLP trial integration
+
+Parent integrated the prepared projection and new `mlp_prepared_chain.rs` into
+`mlp-workspace-check`, retaining the default-stream variants. Preparation resolves
+six projection functions and one activation function, freezes dimensions and
+profile dispatch, and binds all 19 views before timing. Enqueue uses fixed stack
+argument arrays and the driver formats operation names only on error. Success-path
+Rust allocation removal is source inspection, not an allocator-trace measurement.
+
+`ResidentWorkspace::begin_stream_step` binds a non-capturing stream from the same
+context. Completion synchronizes that stream; incomplete-drop drains it and
+poisons the workspace. Existing context-completed steps remain unchanged. The
+new qualification method runs four submissions, the first a warmup, recording
+submission and submission-plus-completion times. It checks the same seven buffers,
+stable addresses and a queued-gate abort followed by rejected reuse. Preparation
+and view-binding costs are excluded from these screening timings and must not be
+reported as complete-model throughput. Input producers finish before the lease.
+No capture or safe asynchronous API is introduced. Ordinary model dispatch remains
+on its qualified default-stream path until prepared integration is separately proven.
+Linux compilation and GPU/sanitizer qualification of this change are pending.

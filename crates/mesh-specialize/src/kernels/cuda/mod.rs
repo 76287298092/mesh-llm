@@ -22,6 +22,8 @@ mod gdn_recurrent;
 mod gemm;
 pub(super) mod instructions;
 mod launch_profile;
+mod mlp_prepared_chain;
+mod mlp_prepared_projection;
 mod mlp_workspace_views;
 mod nvfp4_exact_trial;
 pub(super) mod projections;

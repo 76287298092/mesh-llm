@@ -238,7 +238,7 @@ impl<'ctx> Stream<'ctx> {
         )
     }
 
-    fn belongs_to(&self, context: &Context) -> bool {
+    pub(in super::super) fn belongs_to(&self, context: &Context) -> bool {
         ptr::eq(self.context, context)
     }
 }
@@ -512,27 +512,28 @@ impl Function<'_, '_> {
         } else {
             args.as_mut_ptr()
         };
-        let operation = format!("cuLaunchKernel ({})", self.name.to_str()?);
-        // SAFETY: The caller upholds the argument, buffer-retention, and dimension contracts; the
-        // function, stream, and context remain live for this driver call.
-        check_cuda(
-            unsafe {
-                (context.api.cu_launch_kernel)(
-                    self.raw,
-                    grid[0],
-                    grid[1],
-                    grid[2],
-                    block[0],
-                    block[1],
-                    block[2],
-                    shared_bytes,
-                    stream.raw,
-                    kernel_params,
-                    ptr::null_mut(),
-                )
-            },
-            &operation,
-        )
+        // SAFETY: The caller upholds argument, buffer-retention and dimension contracts;
+        // function, stream and context remain live for this driver call.
+        let result = unsafe {
+            (context.api.cu_launch_kernel)(
+                self.raw,
+                grid[0],
+                grid[1],
+                grid[2],
+                block[0],
+                block[1],
+                block[2],
+                shared_bytes,
+                stream.raw,
+                kernel_params,
+                ptr::null_mut(),
+            )
+        };
+        if result == super::CUDA_SUCCESS {
+            Ok(())
+        } else {
+            check_cuda(result, &format!("cuLaunchKernel ({})", self.name.to_str()?))
+        }
     }
 }
 

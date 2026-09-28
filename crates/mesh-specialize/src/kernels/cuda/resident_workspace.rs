@@ -6,7 +6,10 @@ use std::marker::PhantomData;
 
 use super::{
     device_view::{self, ByteRange, DeviceWrite},
-    driver::{Buffer, Context},
+    driver::{
+        Buffer, Context,
+        graph::{self, Stream},
+    },
 };
 
 /// One CUDA allocation for a fixed, checked scratch layout.
@@ -46,6 +49,29 @@ impl<'ctx> ResidentWorkspace<'ctx> {
         Ok(WorkspaceStep {
             owner: self,
             closed: false,
+            stream: None,
+        })
+    }
+
+    /// Begin a non-capturing explicit-stream lease. Producers on other streams
+    /// must have completed before enqueue; this lease does not order external work.
+    pub(super) fn begin_stream_step<'step>(
+        &'step mut self,
+        stream: &'step Stream<'ctx>,
+    ) -> Result<WorkspaceStep<'step, 'ctx>> {
+        graph::ensure_driver_operation_allowed("begin workspace stream lease")?;
+        ensure!(
+            !self.poisoned && stream.belongs_to(self.context),
+            "invalid or poisoned stream workspace"
+        );
+        ensure!(
+            !stream.is_capturing(),
+            "workspace stream lease cannot capture"
+        );
+        Ok(WorkspaceStep {
+            owner: self,
+            closed: false,
+            stream: Some(stream),
         })
     }
 
@@ -92,6 +118,7 @@ impl<'ctx> ResidentWorkspace<'ctx> {
 pub(super) struct WorkspaceStep<'workspace, 'ctx> {
     owner: &'workspace mut ResidentWorkspace<'ctx>,
     closed: bool,
+    stream: Option<&'workspace Stream<'ctx>>,
 }
 
 impl<'workspace, 'ctx> WorkspaceStep<'workspace, 'ctx> {
@@ -145,9 +172,16 @@ impl<'workspace, 'ctx> WorkspaceStep<'workspace, 'ctx> {
         device_view::partition(&mut self.owner.allocation, requests)
     }
 
-    /// Synchronize the owning CUDA context before making the arena reusable.
+    fn drain(&self) -> Result<()> {
+        match self.stream {
+            Some(stream) => stream.synchronize(),
+            None => self.owner.context.synchronize(),
+        }
+    }
+
+    /// Complete the selected stream or legacy context before arena reuse.
     pub(super) fn complete(mut self) -> Result<()> {
-        match self.owner.context.synchronize() {
+        match self.drain() {
             Ok(()) => {
                 self.closed = true;
                 Ok(())
@@ -166,7 +200,7 @@ impl Drop for WorkspaceStep<'_, '_> {
             return;
         }
         self.owner.poisoned = true;
-        if let Err(error) = self.owner.context.synchronize() {
+        if let Err(error) = self.drain() {
             tracing::warn!(error = %error, "failed to drain incomplete CUDA workspace step");
         }
     }

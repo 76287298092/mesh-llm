@@ -1,7 +1,7 @@
 //! Experimental exact MLP chain with persistent scratch and explicit completion policy.
 use super::{
     device_view::{ByteRange, DeviceRead, DeviceWrite, validate_launch_access},
-    driver::{Buffer, Context, Module},
+    driver::{Buffer, Context, Module, graph::Stream},
     mlp_workspace_projection::Binding,
     mlp_workspace_views::Views,
     resident_projection::{Projection, Quantization},
@@ -134,6 +134,42 @@ impl<'w, 'ctx> Chain<'w, 'ctx> {
         }
         anyhow::bail!("injected MLP workspace failure after gate")
     }
+    /// Qualification lane: preparation and view binding are outside each timed
+    /// submission. The lease retains scratch through every completion or failure.
+    pub(super) fn prepared_trial(
+        &mut self,
+        module: &Module<'ctx>,
+        input: &Buffer<'_>,
+        abort_after_gate: bool,
+    ) -> Result<Vec<[f64; 2]>> {
+        let plan = super::mlp_prepared_chain::Plan::new(
+            self.context,
+            module,
+            &self.projections,
+            self.rows,
+        )?;
+        let stream = Stream::new(self.context)?;
+        let input = DeviceRead::from_buffer(input)?;
+        let mut timings = Vec::with_capacity(4);
+        let mut step = self.workspace.begin_stream_step(&stream)?;
+        {
+            let views = Views::new(&mut step)?;
+            for _ in 0..4 {
+                let start = std::time::Instant::now();
+                // SAFETY: Input upload completed, all scratch is exclusively leased,
+                // and module/weights/input/stream survive success or error draining.
+                unsafe {
+                    plan.enqueue(&stream, &input, &views, abort_after_gate)?;
+                }
+                let submitted = start.elapsed().as_secs_f64();
+                stream.synchronize()?;
+                timings.push([submitted, start.elapsed().as_secs_f64()]);
+            }
+        }
+        step.complete()?;
+        Ok(timings)
+    }
+
     pub(super) fn snapshot(&self) -> Result<Vec<(String, Vec<u8>)>> {
         self.workspace
             .layout()
