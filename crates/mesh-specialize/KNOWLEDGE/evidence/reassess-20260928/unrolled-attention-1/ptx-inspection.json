@@ -1,0 +1,47 @@
+{
+  "ptx_sha256": "705d4bd093c13ea728f1a0fcdcca71645c0b4f2de3cea3d049256e3e097fda32",
+  "entries": {
+    "causal_attention_bf16": {
+      "local_declarations": [
+        ".local .align 8 .b8 \t__local_depot15[152];",
+        ".local.b8 \t[%rd53], %rs1;",
+        ".local.b64 \t%rd99, [%rd23+16];",
+        ".local.b8 \t[%rd68], %rs2;",
+        ".local.b64 \t%rd105, [%rd26+16];"
+      ],
+      "ld_local": 2,
+      "st_local": 2,
+      "byte_coefficient_loads": 2,
+      "fma": 0,
+      "mul_rn_f64": 15,
+      "add_rn_f64": 16
+    },
+    "causal_attention_unrolled_fp64": {
+      "local_declarations": [],
+      "ld_local": 0,
+      "st_local": 0,
+      "byte_coefficient_loads": 0,
+      "fma": 0,
+      "mul_rn_f64": 47,
+      "add_rn_f64": 44
+    },
+    "exponential_control_bits": {
+      "local_declarations": [],
+      "ld_local": 0,
+      "st_local": 0,
+      "byte_coefficient_loads": 0,
+      "fma": 0,
+      "mul_rn_f64": 21,
+      "add_rn_f64": 19
+    },
+    "exponential_unrolled_bits": {
+      "local_declarations": [],
+      "ld_local": 0,
+      "st_local": 0,
+      "byte_coefficient_loads": 0,
+      "fma": 0,
+      "mul_rn_f64": 21,
+      "add_rn_f64": 17
+    }
+  }
+}

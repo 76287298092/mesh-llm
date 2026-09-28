@@ -125,3 +125,10 @@ checks before interpreting any timing. A component pass alone is not promotion.
 ## September 28 measured follow-up
 
 Whole-model isolated medians at56d426cb0:106-input26.472→27.678tok/s;512-input18.166→18.733tok/s,256outputs,four samples/profile inbalancedorder. Both modelchecks match savedbaseline logits/tokens/allstatebits.63operatorcasesincludinghead pass;40regs,0shared,0local. Sanitizersstillpending; defaultunchanged.
+
+Combined exact schedule follow-up at b1e7abd36: vector16 + paired-fp64 A/B +
+NVFP4 prmt preserve captured native control logits/tokens/all state and pass
+bounded model memcheck/racecheck/synccheck. Balanced medians 31.838/20.548 tok/s
+after 106/512 inputs versus 26.476/18.167 control. This combination is measured,
+not summed component gains. It still uses exact FP64 attention and remains far
+from Ninfer MTP4. Evidence: reassess-20260928/exact-combination-1.

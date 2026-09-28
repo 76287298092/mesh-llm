@@ -68,3 +68,16 @@ unchanged rounded arithmetic, then qualify resources, all three sanitizers,
 whole-model same-input/logit/state identity and repeated matched model timings.
 No candidate PTX build, device/toolchain/clock record, GPU equivalence or model
 speedup is established here. Host comparisons do not substitute for device bits.
+
+
+## Measured isolated result
+
+At b58527962, helper bit checks, strict attention checks and same-input native
+model checks pass. Candidate PTX has no local coefficient array/loads/stores and
+no FMA; control retains 152 local bytes. Balanced 256-output medians: 106-input
+26.473→28.038 tok/s; 512-input 18.170→20.238 tok/s. This is a modest gain, not
+the large context gap. Memcheck passes; broad candidate racecheck timed out at
+1200 seconds. A bounded retry instruments 48 launches covering past 0/1/32/127,
+plus one M17/past32 launch; it passes, as does candidate-filtered synccheck.
+Preserve these coverage limits and the failed run. No default change. Evidence:
+reassess-20260928/unrolled-attention-1 and -2.
