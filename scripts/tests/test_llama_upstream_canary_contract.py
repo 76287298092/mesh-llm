@@ -289,9 +289,12 @@ class LlamaUpstreamCanaryWorkflowTests(unittest.TestCase):
             self.assertEqual(verify['uses'], repair['uses'])
             command = '\n'.join(step.get('run', '') for step in select['steps'])
             self.assertIn('llama-canary-select-attempt.py attempt', command)
+        self.assertIn("certify == 'true'", jobs['attempt_1']['if'])
         for attempt in (2, 3):
             candidate = jobs[f'repair_{attempt}']
+            select = jobs[f'attempt_{attempt}']
             self.assertIn("state == 'repairable'", candidate['if'])
+            self.assertIn("changed == 'true'", select['if'])
             self.assertEqual(candidate['with']['previous_package'],
                              f'${{{{ needs.attempt_{attempt - 1}.outputs.resume_package }}}}')
             self.assertEqual(candidate['with']['previous_feedback'],

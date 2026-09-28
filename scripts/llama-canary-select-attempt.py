@@ -70,7 +70,8 @@ def successful(source: dict[str, Any]) -> dict[str, str]:
 
 def select_attempt(changed: bool, repair: dict[str, Any], verification: dict[str, Any]) -> dict[str, str]:
     if not green(repair):
-        return resumable(repair) or failed(repair, "candidate-build-or-family-certification")
+        resume = resumable(repair) if changed else None
+        return resume or failed(repair, "candidate-build-or-family-certification")
     if not changed:
         return successful(repair)
     if green(verification):

@@ -50,6 +50,12 @@ class AttemptSelectionTests(unittest.TestCase):
     def test_unchanged_certification_needs_no_verifier(self):
         self.assertEqual(SELECT.select_attempt(False, green(), job())["state"], "green")
 
+    def test_unchanged_failure_never_starts_a_repair_attempt(self):
+        result = SELECT.select_attempt(False, repairable(), job())
+        self.assertEqual(result["state"], "failed")
+        self.assertEqual(result["repairable"], "false")
+        self.assertEqual(result["failure_class"], "candidate")
+
     def test_final_uses_latest_attempt_and_publishes_only_changed_upgrade(self):
         selected = job(state="green", green="true", head="a" * 40, package="package",
                        identity="b" * 64, branch="branch")

@@ -155,7 +155,7 @@ jobs:
 
   attempt_1:
     needs: [resolve, repair_1, verify_1]
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && needs.resolve.outputs.certify == 'true' }}
     runs-on: ubuntu-24.04
     outputs: &attempt_outputs
       state: ${{ steps.select.outputs.state }}
@@ -213,7 +213,7 @@ jobs:
 
   attempt_2:
     needs: [resolve, attempt_1, repair_2, verify_2]
-    if: ${{ !cancelled() && needs.attempt_1.outputs.state == 'repairable' }}
+    if: ${{ !cancelled() && needs.resolve.outputs.changed == 'true' && needs.attempt_1.outputs.state == 'repairable' }}
     runs-on: ubuntu-24.04
     outputs: *attempt_outputs
     steps:
@@ -258,7 +258,7 @@ jobs:
 
   attempt_3:
     needs: [resolve, attempt_2, repair_3, verify_3]
-    if: ${{ !cancelled() && needs.attempt_2.outputs.state == 'repairable' }}
+    if: ${{ !cancelled() && needs.resolve.outputs.changed == 'true' && needs.attempt_2.outputs.state == 'repairable' }}
     runs-on: ubuntu-24.04
     outputs: *attempt_outputs
     steps:

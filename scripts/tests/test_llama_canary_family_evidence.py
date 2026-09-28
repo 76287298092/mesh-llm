@@ -250,6 +250,31 @@ class FamilyEvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'digest mismatch'):
             E.verify_feedback(feedback, self.digest, self.identity)
 
+    def test_candidate_failure_mixed_with_missing_receipt_is_not_repairable(self):
+        self.make_receipt('dense', 'failure')
+        (self.evidence / 'hybrid/receipt.json').unlink()
+        feedback = self.root / 'feedback'
+        output = self.root / 'outputs'
+        with patch.dict(os.environ, GITHUB_OUTPUT=str(output)):
+            with self.assertRaises(ValueError):
+                self.aggregate(feedback=feedback, family_result='failure')
+        self.assertIn('repairable=false', output.read_text())
+        self.assertIn('failure_class=infrastructure', output.read_text())
+        self.assertFalse(feedback.exists())
+
+    def test_cancelled_or_skipped_graph_blocks_candidate_repair(self):
+        for family_result in ('cancelled', 'skipped'):
+            with self.subTest(family_result=family_result):
+                self.make_receipt('dense', 'failure')
+                feedback = self.root / f'feedback-{family_result}'
+                output = self.root / f'outputs-{family_result}'
+                with patch.dict(os.environ, GITHUB_OUTPUT=str(output)):
+                    with self.assertRaises(ValueError):
+                        self.aggregate(feedback=feedback, family_result=family_result)
+                self.assertIn('repairable=false', output.read_text())
+                self.assertIn('failure_class=infrastructure', output.read_text())
+                self.assertFalse(feedback.exists())
+
     def test_environment_preflight_failure_is_not_repairable(self):
         path = self.evidence / 'dense/results.jsonl'
         battery = {'family': 'battery', 'exit_code': 1,

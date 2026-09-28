@@ -703,6 +703,7 @@ def aggregate(args) -> None:
     latest = {}
     attempts = set()
     candidate_failures = {}
+    infrastructure_failure = False
     for path in receipts:
         family = path.parent.name
         try:
@@ -723,6 +724,7 @@ def aggregate(args) -> None:
                 latest[family] = (attempt, path, item)
         except (ValueError, OSError, KeyError, TypeError) as error:
             errors.append(f"{family}: {error}")
+            infrastructure_failure = True
     # Select before validation: a newer failure or corrupt result must never
     # silently fall back to a successful receipt from an earlier attempt.
     for family, (_, path, item) in sorted(latest.items()):
@@ -740,11 +742,16 @@ def aggregate(args) -> None:
             errors.append(f"{family}: {error}")
             if classify_family_failure(path, family, identity, args.identity) == "candidate":
                 candidate_failures[family] = path.parent
+            else:
+                infrastructure_failure = True
     if seen != set(models):
         errors.append(f"missing family receipts: {sorted(set(models) - seen)}")
+        infrastructure_failure = True
     family_result = getattr(args, "family_result", "success")
     if family_result != "success":
         errors.append(f"family job graph result: {family_result}")
+        if family_result in {"cancelled", "skipped"}:
+            infrastructure_failure = True
     report = (f"Canary {identity['pass_id']}: {len(passed)}/{len(models)} family receipts passed "
               f"for {identity['candidate']}\n")
     if errors:
@@ -754,7 +761,7 @@ def aggregate(args) -> None:
         with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as stream:
             stream.write(report + "\n")
     if errors:
-        repairable = bool(candidate_failures)
+        repairable = bool(candidate_failures) and not infrastructure_failure
         output(green="false", repairable=str(repairable).lower(),
                failure_class="candidate" if repairable else "infrastructure",
                failure_stage="family-certification")
