@@ -241,3 +241,14 @@ Wide follow-up: `evidence/iterate-20260927/nvfp4-pipeline-check-3` at
 `475c1b35f` passes33 cases and all three sanitizers with zero errors/hazards.
 JIT:62 registers,11520 shared bytes,0 local bytes. Raw/BF16 native-baseline
 identity holds for tested fixtures; this does not establish model throughput.
+
+## Teacher-forced row log-prob/top-64 (`kernels/nvptx/row_logprob_topk.rs`)
+
+Entry `row_logprob_topk_bf16`: one 256-thread CTA per logits row. Inline sites are
+`mov.u32 %tid.x`/`%ctaid.x` reads, one `.shared` scratch declaration with
+`cvta.shared.u64`, `bar.sync 0`, and generic `atom.add.u32` into that shared
+scratch. No tensor-core, async-copy or global atomic site. `logprob_math.rs` is
+pure Rust (FP32 exp, FP64 ln). Independent oracle: `reference/row_logprob_topk.rs`
+(FP64 over the same BF16 logits). The scorer also checks the first four rows of
+the first chunk against that oracle on GPU. GPU execution, JIT resources and
+sanitizers are pending.

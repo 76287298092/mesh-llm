@@ -8,6 +8,8 @@ Start with [the implementation plan](../PLAN.md) and the
 | [A16 head schedule](optimizations/a16-head-schedule.md) | 37 GPU cases and sanitizers pass; head-only model checks pass, no ordinary-decode speedup, quality still open |
 | [NVFP4 prefill pipeline](optimizations/nvfp4-prefill-pipeline.md) | Wide32x128 passes operator sanitizers and tested exact model comparisons; shared-GPU prefill medians improve about6%, remains opt-in |
 | [Ordinary decode graph plan](findings/ordinary-decode-graph-plan.md) | Prepared MLP stream trial passes exact real-weight reuse/abort and three sanitizers; ordinary-model integration and capture pending |
+| [StreamForward single-stream execution](optimizations/stream-forward.md) | Implemented, unqualified: one stream, planned arena (151.0 MiB at 512 rows), device greedy; opt-in via `MESH_SPECIALIZE_EXECUTION=stream`, no build or GPU evidence yet |
+| [Teacher-forced scoring](optimizations/teacher-forced-scoring.md) | Implemented, unqualified: windowed per-position logprob/top-64 records, fresh state per window, quality-gate comparator; context <=512, no build or GPU evidence yet |
 | [Exact GPU greedy selection](optimizations/gpu-greedy.md) | Device and resident checks plus three sanitizers pass; short timing change below1%, no stable speedup established |
 | [Tiled online attention](optimizations/feature-f05-attention.md) | Opt-in; short checks pass, strict128-row partition fails at NVFP4 rounding boundary; two longer answer checks are limited smoke evidence |
 | [Ninfer runtime deep dive](findings/ninfer-runtime-deep-dive.md) | Complete-source execution comparison; workspace/stream ordering first, then GPU selection/graphs, shape-specific kernels, and long-context algorithms |

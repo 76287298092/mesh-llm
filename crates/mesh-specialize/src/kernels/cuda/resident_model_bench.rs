@@ -4,6 +4,7 @@ use super::{
     driver::{Context, Module},
     resident_model::{Model, SelectedOutput, Session},
     resident_weights::ResidentWeights,
+    stream_forward::bench::{Execution, Runner},
 };
 use crate::{
     artifact::{reader::VerifiedArtifact, schema::Object},
@@ -95,10 +96,19 @@ pub(in crate::kernels) fn run(
     let weights = ResidentWeights::load(&context, artifact, objects)?;
     memory.record(&context, "after_weights_loaded", None, None)?;
     let model = Model::new(&weights, config)?;
+    let execution = Execution::current()?;
+    let runner = Runner::new(
+        execution,
+        &model,
+        &weights,
+        &module,
+        config,
+        request.tokens.len(),
+    )?;
     let warmup = run_warmup(
         &context,
         &module,
-        &model,
+        &runner,
         config,
         request.tokens[0],
         &mut memory,
@@ -109,7 +119,7 @@ pub(in crate::kernels) fn run(
         repetitions.push(run_repetition(
             &context,
             &module,
-            &model,
+            &runner,
             config,
             request,
             index + 1,
@@ -117,6 +127,8 @@ pub(in crate::kernels) fn run(
         )?);
     }
 
+    let execution_report = runner.report();
+    drop(runner);
     drop(model);
     drop(weights);
     context.synchronize()?;
@@ -137,6 +149,7 @@ pub(in crate::kernels) fn run(
         "arithmetic_profile": crate::kernels::fp8_profile::current()?.name(),
         "attention_profile":crate::kernels::attention_profile::current()?.name(),
         "nvfp4_profile":crate::kernels::nvfp4_profile::current()?.name(),
+        "execution": execution_report,
         "gpu_greedy":super::model_greedy::enabled()?, "mlp_workspace":super::model_workspace::enabled()?, "fp8_split_k":super::resident_fp8_splitk::configured_splits()?,
         "configured_capacity": config.capacity,
         "prompt_token_ids": request.tokens,
@@ -290,7 +303,7 @@ struct Warmup {
 fn run_warmup(
     context: &Context,
     module: &Module<'_>,
-    model: &Model<'_, '_>,
+    model: &Runner<'_, '_, '_, '_>,
     config: &DecoderConfig,
     token: u32,
     memory: &mut MemoryTracker,
@@ -314,7 +327,7 @@ fn run_warmup(
 fn run_repetition(
     context: &Context,
     module: &Module<'_>,
-    model: &Model<'_, '_>,
+    model: &Runner<'_, '_, '_, '_>,
     config: &DecoderConfig,
     request: &ModelBenchRequest<'_>,
     repetition: usize,
@@ -398,7 +411,7 @@ fn run_repetition(
 fn timed_forward(
     context: &Context,
     module: &Module<'_>,
-    model: &Model<'_, '_>,
+    model: &Runner<'_, '_, '_, '_>,
     tokens: &[u32],
     session: &mut Session<'_>,
 ) -> Result<(SelectedOutput, f64)> {

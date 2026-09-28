@@ -31,12 +31,14 @@ mod gdn_prepare;
 mod gdn_recurrent;
 mod greedy_bf16;
 mod kv_fp8;
+mod logprob_math;
 mod memory;
 mod nvfp4_gemm;
 mod ordinary_mma;
 mod register_budget;
 mod residual_norm;
 mod rms_norm;
+mod row_logprob_topk;
 mod silu;
 mod silu_probe;
 

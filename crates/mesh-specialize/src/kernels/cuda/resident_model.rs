@@ -260,6 +260,33 @@ impl<'w, 'ctx> Model<'w, 'ctx> {
         )
     }
 
+    /// Teacher-forced scoring: an ordinary last-row diagnostic forward whose
+    /// final hidden rows (`rows x hidden` BF16, before the final norm) are
+    /// returned for every position. Arithmetic and selection are unchanged; the
+    /// last-row logits are computed and discarded.
+    pub(super) fn forward_hidden<'a>(
+        &self,
+        ctx: &'a Context,
+        module: &Module<'_>,
+        tokens: &[u32],
+        session: &mut Session<'_>,
+    ) -> Result<Buffer<'a>> {
+        let output = self.forward_detailed(
+            ctx,
+            module,
+            tokens,
+            session,
+            LogitsSelection::Last,
+            None,
+        )?;
+        Ok(output.hidden)
+    }
+
+    /// The final norm and vocabulary projection used for next-token logits.
+    pub(super) fn head(&self) -> &Head<'w, 'ctx> {
+        &self.head
+    }
+
     fn execute<'a>(
         &self,
         ctx: &'a Context,

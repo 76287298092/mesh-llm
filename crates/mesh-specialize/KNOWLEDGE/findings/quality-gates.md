@@ -30,8 +30,15 @@ of its existing bitwise checks.
   stride 2,048.
 - Every scored position records the target log-probability, top-1 token and
   the top-64 log-probabilities of both profiles' full-vocabulary softmax.
-- KL uses the exact profile as P, over the union of both top-64 sets plus one
-  tail bucket holding each distribution's remaining mass.
+- KL uses the exact profile as P. Clarified 2026-09-28, before any scoring run
+  existed: records hold only each profile's own top 64, so a union id absent
+  from one list has no known probability there. The gated KL is therefore
+  computed on a common partition: every id present in both top-64 lists is its
+  own cell, and one bucket holds all other ids, with each profile's bucket mass
+  equal to one minus its mass on the shared ids. By the data-processing
+  inequality this is a lower bound on the full-vocabulary KL. The comparator
+  also reports an estimate that assigns absent union ids
+  `min(p64, tail/(n+1))`; that estimate is informational, not gated.
 
 ## Internal gate: fast profile against the exact control, same weights
 

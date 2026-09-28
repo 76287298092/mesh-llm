@@ -7,15 +7,19 @@ mod mlp_workspace;
 mod model;
 mod model_bench;
 mod model_profile;
+mod model_score;
 mod mtp;
 mod observations;
 mod probe;
+mod stream_check;
 
 use crate::command::DynResult;
 
 pub(crate) fn run(args: &[String]) -> DynResult<()> {
     match args {
         [command, rest @ ..] if command == "qwen-model-profile" => model_profile::run(rest),
+        [command, rest @ ..] if command == "qwen-model-score" => model_score::run(rest),
+        [command, rest @ ..] if command == "qwen-stream-check" => stream_check::run(rest),
         [command, rest @ ..] if command == "qwen-mtp-reference" => mtp::reference(rest),
         [command, rest @ ..] if command == "qwen-mtp-check" => mtp::run(rest),
         [command, rest @ ..] if command == "mlp-workspace-check" => mlp_workspace::run(rest),

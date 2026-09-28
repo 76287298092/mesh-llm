@@ -9,6 +9,7 @@ pub mod fp8_mlp;
 pub mod model_benchmark;
 pub mod model_profile;
 pub mod model_reference;
+pub mod model_score;
 mod model_weights;
 pub mod residency;
 pub mod resident_attention;

@@ -110,6 +110,40 @@ pub fn mtp_trial(
     }
 }
 
+/// One independent token stream for teacher-forced scoring.
+pub struct ScoreStream {
+    pub id: String,
+    pub domain: String,
+    pub tokens: Vec<u32>,
+}
+/// Fixed-window teacher-forced scoring request (context <= 512 for now).
+pub struct ModelScoreRequest<'a> {
+    pub corpus_id: &'a str,
+    pub streams: &'a [ScoreStream],
+    pub context: usize,
+    pub stride: usize,
+}
+/// Receives encoded records for `(stream index, bytes)` after every window.
+pub type ScoreSink<'a> = dyn FnMut(usize, &[u8]) -> std::io::Result<()> + 'a;
+/// Score streams with fresh state per window; records go to `sink`.
+pub fn model_score(
+    ptx: &str,
+    device: i32,
+    artifact: &mut crate::artifact::reader::VerifiedArtifact,
+    objects: &[crate::artifact::schema::Object],
+    config: &DecoderConfig,
+    request: &ModelScoreRequest<'_>,
+    sink: &mut ScoreSink<'_>,
+) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::resident_model_score::run(ptx, device, artifact, objects, config, request, sink);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device, artifact, objects, config, request, sink);
+        anyhow::bail!("Teacher-forced scoring requires Linux")
+    }
+}
+
 pub struct ModelBenchRequest<'a> {
     pub tokens: &'a [u32],
     pub output_tokens: usize,
@@ -129,6 +163,29 @@ pub fn model_benchmark(
     {
         let _ = (ptx, device, artifact, objects, config, request);
         anyhow::bail!("Model benchmark requires Linux")
+    }
+}
+
+/// Legacy versus stream forward equivalence request: prefill `tokens`, then
+/// `decode_steps` greedy decode steps from identical zeroed sessions.
+pub struct StreamCheckRequest<'a> {
+    pub tokens: &'a [u32],
+    pub decode_steps: usize,
+}
+pub fn stream_forward_check(
+    ptx: &str,
+    device: i32,
+    artifact: &mut crate::artifact::reader::VerifiedArtifact,
+    objects: &[crate::artifact::schema::Object],
+    config: &DecoderConfig,
+    request: &StreamCheckRequest<'_>,
+) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::stream_forward::check::run(ptx, device, artifact, objects, config, request);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device, artifact, objects, config, request);
+        anyhow::bail!("Stream forward check requires Linux")
     }
 }
 
@@ -478,6 +535,9 @@ pub mod silu;
 
 #[path = "../kernels/nvptx/exponential.rs"]
 pub mod exponential;
+
+#[path = "../kernels/nvptx/logprob_math.rs"]
+pub mod logprob_math;
 
 /// Check experimental projection kernels against independent synthetic references.
 pub fn feature_projection_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json::Value> {

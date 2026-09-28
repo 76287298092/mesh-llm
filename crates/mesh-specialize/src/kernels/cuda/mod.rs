@@ -285,3 +285,8 @@ mod resident_greedy;
 mod model_greedy;
 
 mod attention_audit;
+
+pub(super) mod stream_forward;
+
+mod resident_score;
+pub(super) mod resident_model_score;

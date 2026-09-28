@@ -6,7 +6,10 @@
 //! retention period. Capture finalization, instantiation, and replay are unsafe and
 //! require the caller to retain every referenced module and allocation.
 
-use super::{Context, CuResult, Function, check_cuda, load_symbol, report_cleanup_error};
+use super::{
+    Context, CuResult, CurrentContextGuard, Function, check_cuda, load_symbol,
+    report_cleanup_error,
+};
 use anyhow::{Result, anyhow, bail, ensure};
 use std::cell::{Cell, RefCell};
 use std::ffi::{c_int, c_uint, c_ulonglong, c_void};
@@ -31,6 +34,8 @@ type CuGraphInstantiateWithFlagsFn =
 type CuGraphLaunchFn = unsafe extern "C" fn(CuGraphExec, CuStream) -> CuResult;
 type CuGraphDestroyFn = unsafe extern "C" fn(CuGraph) -> CuResult;
 type CuGraphExecDestroyFn = unsafe extern "C" fn(CuGraphExec) -> CuResult;
+type CuMemcpyHtoDAsyncV2Fn = unsafe extern "C" fn(u64, *const c_void, usize, CuStream) -> CuResult;
+type CuMemcpyDtoDAsyncV2Fn = unsafe extern "C" fn(u64, u64, usize, CuStream) -> CuResult;
 
 #[derive(Clone, Copy)]
 struct GraphApi {
@@ -43,6 +48,8 @@ struct GraphApi {
     graph_launch: CuGraphLaunchFn,
     graph_destroy: CuGraphDestroyFn,
     graph_exec_destroy: CuGraphExecDestroyFn,
+    memcpy_htod_async: CuMemcpyHtoDAsyncV2Fn,
+    memcpy_dtod_async: CuMemcpyDtoDAsyncV2Fn,
 }
 
 impl GraphApi {
@@ -58,6 +65,8 @@ impl GraphApi {
             graph_launch: load_symbol(library, b"cuGraphLaunch\0")?,
             graph_destroy: load_symbol(library, b"cuGraphDestroy\0")?,
             graph_exec_destroy: load_symbol(library, b"cuGraphExecDestroy\0")?,
+            memcpy_htod_async: load_symbol(library, b"cuMemcpyHtoDAsync_v2\0")?,
+            memcpy_dtod_async: load_symbol(library, b"cuMemcpyDtoDAsync_v2\0")?,
         })
     }
 }
@@ -534,6 +543,167 @@ impl Function<'_, '_> {
         } else {
             check_cuda(result, &format!("cuLaunchKernel ({})", self.name.to_str()?))
         }
+    }
+}
+
+/// A stream whose context stays current on this host thread for the guard's lifetime.
+///
+/// Whole-forward executors enter once and then enqueue many operations without a
+/// context push/pop per launch. Other driver wrappers may still push and pop
+/// around their own calls; those pairs are balanced and leave this context on top.
+pub(in super::super) struct ActiveStream<'s, 'ctx> {
+    stream: &'s Stream<'ctx>,
+    _current: CurrentContextGuard<'ctx>,
+}
+
+impl<'ctx> Stream<'ctx> {
+    /// Make this stream's context current until the returned guard drops.
+    pub(in super::super) fn enter(&self) -> Result<ActiveStream<'_, 'ctx>> {
+        Ok(ActiveStream {
+            stream: self,
+            _current: self.context.activate()?,
+        })
+    }
+}
+
+impl ActiveStream<'_, '_> {
+    fn check_enqueue_allowed(&self) -> Result<()> {
+        if self.stream.capturing.get() {
+            ensure!(
+                capture_active_for(self.stream.context),
+                "CUDA stream capture state is inconsistent on this host thread"
+            );
+            Ok(())
+        } else {
+            ensure_no_capture("enqueue outside the active capture stream")
+        }
+    }
+
+    /// Enqueue a kernel with no dynamic shared memory on the entered stream.
+    ///
+    /// # Safety
+    /// Same contract as [`Function::launch_on_stream`]: every argument pointer names
+    /// live, aligned host storage of the kernel parameter's exact type; encoded device
+    /// pointers stay allocated until the stream completes; dimensions are valid.
+    pub(in super::super) unsafe fn launch(
+        &self,
+        function: &Function<'_, '_>,
+        grid: [u32; 3],
+        block: [u32; 3],
+        args: &mut [*mut c_void],
+    ) -> Result<()> {
+        validate_launch_dimensions(grid, block)?;
+        let context = function.module.context;
+        ensure!(
+            ptr::eq(context, self.stream.context),
+            "CUDA kernel launch requires a stream from the function's context"
+        );
+        self.check_enqueue_allowed()?;
+        let kernel_params = if args.is_empty() {
+            ptr::null_mut()
+        } else {
+            args.as_mut_ptr()
+        };
+        // SAFETY: The guard keeps this stream's context current; the caller upholds the
+        // argument, retention and dimension contracts; function and stream are live.
+        let result = unsafe {
+            (context.api.cu_launch_kernel)(
+                function.raw,
+                grid[0],
+                grid[1],
+                grid[2],
+                block[0],
+                block[1],
+                block[2],
+                0,
+                self.stream.raw,
+                kernel_params,
+                ptr::null_mut(),
+            )
+        };
+        if result == super::CUDA_SUCCESS {
+            Ok(())
+        } else {
+            check_cuda(
+                result,
+                &format!("cuLaunchKernel ({})", function.name.to_str()?),
+            )
+        }
+    }
+
+    /// Enqueue a stream-ordered device-to-device copy.
+    ///
+    /// # Safety
+    /// Both ranges must lie inside live allocations of this context, must not overlap,
+    /// and must stay allocated until the stream completes.
+    pub(in super::super) unsafe fn copy_device(
+        &self,
+        destination: u64,
+        source: u64,
+        bytes: usize,
+    ) -> Result<()> {
+        self.check_enqueue_allowed()?;
+        if bytes == 0 {
+            return Ok(());
+        }
+        // SAFETY: The context is current and the caller guarantees both device ranges.
+        check_cuda(
+            unsafe {
+                (self.stream.api.memcpy_dtod_async)(destination, source, bytes, self.stream.raw)
+            },
+            "cuMemcpyDtoDAsync_v2",
+        )
+    }
+
+    /// Enqueue a stream-ordered copy from pageable host memory.
+    ///
+    /// CUDA stages pageable sources before this call returns, so `source` may be
+    /// released afterwards; the device write itself is ordered on this stream.
+    /// Pageable copies are not graph-capturable, so this rejects active capture.
+    ///
+    /// # Safety
+    /// The destination range must lie in a live allocation of this context that no
+    /// in-flight work on another stream reads or writes.
+    pub(in super::super) unsafe fn copy_from_host(
+        &self,
+        destination: u64,
+        source: &[u8],
+    ) -> Result<()> {
+        ensure!(
+            !self.stream.capturing.get(),
+            "pageable host uploads cannot be captured"
+        );
+        ensure_no_capture("upload host memory")?;
+        if source.is_empty() {
+            return Ok(());
+        }
+        // SAFETY: The context is current, `source` is live for this call, and the
+        // caller guarantees the destination range.
+        check_cuda(
+            unsafe {
+                (self.stream.api.memcpy_htod_async)(
+                    destination,
+                    source.as_ptr().cast::<c_void>(),
+                    source.len(),
+                    self.stream.raw,
+                )
+            },
+            "cuMemcpyHtoDAsync_v2",
+        )
+    }
+
+    /// Wait for every operation enqueued on this stream.
+    pub(in super::super) fn synchronize(&self) -> Result<()> {
+        ensure!(
+            !self.stream.capturing.get(),
+            "cannot synchronize a CUDA stream during graph capture"
+        );
+        ensure_no_capture("synchronize a CUDA stream")?;
+        // SAFETY: The stream belongs to the context this guard keeps current.
+        check_cuda(
+            unsafe { (self.stream.api.stream_synchronize)(self.stream.raw) },
+            "cuStreamSynchronize",
+        )
     }
 }
 
