@@ -92,46 +92,75 @@ pub(super) async fn send_chat_sse(
         .get("model")
         .and_then(serde_json::Value::as_str)
         .unwrap_or("virtual-model");
+    for chunk in chat_sse_chunks(response, id, model) {
+        write_sse_event(&mut stream, &chunk).await?;
+    }
+    finish_sse(&mut stream).await
+}
+
+/// Convert one buffered completion into OpenAI-compatible chat stream chunks.
+/// Text and tool calls can coexist in a single assistant message, every tool
+/// call carries its stream position, and the terminal chunk preserves both
+/// the backend finish reason and usage accounting.
+fn chat_sse_chunks(response: &Value, id: &str, model: &str) -> Vec<Value> {
     let message = response
         .pointer("/choices/0/message")
         .cloned()
-        .unwrap_or_else(|| serde_json::json!({}));
-    let tool_calls = message.get("tool_calls").cloned();
-    let delta = match tool_calls.as_ref() {
-        Some(tool_calls) => serde_json::json!({
-            "role": "assistant",
-            "tool_calls": tool_calls,
-        }),
-        None => serde_json::json!({
-            "role": "assistant",
-            "content": message.get("content").cloned().unwrap_or(serde_json::Value::String(String::new())),
-        }),
+        .unwrap_or_else(|| json!({}));
+    let mut delta = serde_json::Map::new();
+    delta.insert("role".into(), json!("assistant"));
+    if let Some(content) = message.get("content") {
+        delta.insert("content".into(), content.clone());
+    }
+    let tool_calls = message
+        .get("tool_calls")
+        .and_then(Value::as_array)
+        .map(|calls| {
+            calls
+                .iter()
+                .enumerate()
+                .map(|(index, call)| {
+                    let mut call = call.clone();
+                    if let Some(object) = call.as_object_mut() {
+                        object.insert("index".into(), json!(index));
+                    }
+                    call
+                })
+                .collect::<Vec<_>>()
+        });
+    if let Some(tool_calls) = tool_calls.as_ref() {
+        delta.insert("tool_calls".into(), json!(tool_calls));
+    }
+
+    let default_finish = if tool_calls.is_some() {
+        "tool_calls"
+    } else {
+        "stop"
     };
-    write_sse_event(
-        &mut stream,
-        &serde_json::json!({
-            "id": id,
-            "object": "chat.completion.chunk",
-            "model": model,
-            "choices": [{"index": 0, "delta": delta, "finish_reason": null}],
-        }),
-    )
-    .await?;
-    write_sse_event(
-        &mut stream,
-        &serde_json::json!({
-            "id": id,
-            "object": "chat.completion.chunk",
-            "model": model,
-            "choices": [{
-                "index": 0,
-                "delta": {},
-                "finish_reason": if tool_calls.is_some() { "tool_calls" } else { "stop" },
-            }],
-        }),
-    )
-    .await?;
-    finish_sse(&mut stream).await
+    let finish_reason = response
+        .pointer("/choices/0/finish_reason")
+        .and_then(Value::as_str)
+        .unwrap_or(default_finish);
+    let first = json!({
+        "id": id,
+        "object": "chat.completion.chunk",
+        "model": model,
+        "choices": [{"index": 0, "delta": delta, "finish_reason": null}],
+    });
+    let mut terminal = json!({
+        "id": id,
+        "object": "chat.completion.chunk",
+        "model": model,
+        "choices": [{
+            "index": 0,
+            "delta": {},
+            "finish_reason": finish_reason,
+        }],
+    });
+    if let Some(usage) = response.get("usage") {
+        terminal["usage"] = usage.clone();
+    }
+    vec![first, terminal]
 }
 
 pub(super) async fn send_responses_sse(
@@ -370,5 +399,43 @@ mod tests {
             super::super::progress::progress_item_id(42),
             "progress deltas must land on the item the content lands on"
         );
+    }
+
+    #[test]
+    fn chat_stream_preserves_text_indexed_tools_usage_and_length_finish() {
+        let response = json!({
+            "id": "chatcmpl-mixed",
+            "model": "mesh",
+            "choices": [{
+                "index": 0,
+                "message": {
+                    "role": "assistant",
+                    "content": "I will check that.",
+                    "tool_calls": [
+                        {"id": "call-a", "type": "function", "function": {"name": "first", "arguments": "{}"}},
+                        {"id": "call-b", "type": "function", "function": {"name": "second", "arguments": "{}"}}
+                    ]
+                },
+                "finish_reason": "length"
+            }],
+            "usage": {"prompt_tokens": 5, "completion_tokens": 7, "total_tokens": 12}
+        });
+
+        let chunks = chat_sse_chunks(&response, "chatcmpl-mixed", "mesh");
+
+        assert_eq!(
+            chunks[0]["choices"][0]["delta"]["content"],
+            "I will check that."
+        );
+        assert_eq!(
+            chunks[0]["choices"][0]["delta"]["tool_calls"][0]["index"],
+            0
+        );
+        assert_eq!(
+            chunks[0]["choices"][0]["delta"]["tool_calls"][1]["index"],
+            1
+        );
+        assert_eq!(chunks[1]["choices"][0]["finish_reason"], "length");
+        assert_eq!(chunks[1]["usage"], response["usage"]);
     }
 }

@@ -67,17 +67,19 @@ impl InferenceRpcBridge {
         let timeout = std::time::Duration::from_millis(
             request.timeout_ms.unwrap_or(60_000).clamp(1, 300_000),
         );
-        let response = self
+        let mut request_builder = self
             .client
             .post(format!(
                 "http://127.0.0.1:{}/v1/chat/completions",
                 self.api_port
             ))
             .timeout(timeout)
-            .json(&request.request)
-            .send()
-            .await
-            .map_err(internal)?;
+            .json(&request.request);
+        if let Some(target_node_id) = request.target_node_id {
+            request_builder =
+                request_builder.header(super::request_parse::MESH_TARGET_HEADER, target_node_id);
+        }
+        let response = request_builder.send().await.map_err(internal)?;
         let status_code = response.status().as_u16();
         let served_by = response
             .headers()
@@ -248,6 +250,7 @@ pub(crate) async fn route_virtual_model_or_passthrough(
         &model_id,
         body,
         candidates,
+        proxy::request_context_budget(request),
         request.response_adapter,
         route_observer,
     )
@@ -311,6 +314,7 @@ pub(crate) async fn try_handle_virtual_model(
     model_id: &str,
     request_body: serde_json::Value,
     candidate_models: Vec<String>,
+    required_tokens: Option<u32>,
     response_adapter: proxy::ResponseAdapter,
     route_observer: OpenAiRouteObserver<'_>,
 ) -> VirtualModelDispatchResult {
@@ -349,7 +353,8 @@ pub(crate) async fn try_handle_virtual_model(
         .get("stream")
         .and_then(serde_json::Value::as_bool)
         .unwrap_or(false);
-    let candidates = virtual_model_candidates(node, candidate_models, &virtual_ids).await;
+    let candidates =
+        virtual_model_candidates(node, candidate_models, &virtual_ids, required_tokens).await;
     let invocation = VirtualModelInvocation {
         request: request_body,
         candidates,
@@ -512,25 +517,30 @@ async fn virtual_model_candidates(
     node: &mesh::Node,
     candidate_models: Vec<String>,
     virtual_ids: &std::collections::BTreeSet<String>,
+    required_tokens: Option<u32>,
 ) -> Vec<VirtualModelCandidate> {
     let descriptors = node.all_served_model_descriptors().await;
-    let runtimes = node.all_model_runtime_descriptors().await;
-    let mut candidates = candidate_models
+    let local_models = node.hosted_models().await;
+    let mut model_ids = candidate_models
         .into_iter()
         .filter(|candidate| !virtual_ids.contains(candidate))
-        .map(|model_id| {
-            let descriptor = descriptors
-                .iter()
-                .find(|descriptor| descriptor.identity.model_name == model_id);
-            let runtime = runtimes
-                .iter()
-                .find(|runtime| runtime.model_name == model_id);
-            VirtualModelCandidate {
-                model_id,
+        .collect::<Vec<_>>();
+    model_ids.sort();
+    model_ids.dedup();
+
+    let mut candidates = Vec::new();
+    for model_id in model_ids {
+        let descriptor = descriptors
+            .iter()
+            .find(|descriptor| descriptor.identity.model_name == model_id);
+        let candidate_from =
+            |target_node_id: Option<String>, context_length: Option<u32>| VirtualModelCandidate {
+                model_id: model_id.clone(),
+                target_node_id,
                 parameter_count_b: descriptor
                     .and_then(|descriptor| descriptor.metadata.as_ref())
                     .and_then(|metadata| metadata.parameter_count_b),
-                context_length: runtime.and_then(|runtime| runtime.advertised_context_length()),
+                context_length,
                 supports_tools: descriptor.is_some_and(|descriptor| {
                     descriptor.capabilities.tool_use != crate::models::CapabilityLevel::None
                 }),
@@ -538,12 +548,49 @@ async fn virtual_model_candidates(
                     .is_some_and(|descriptor| descriptor.capabilities.supports_vision_runtime()),
                 supports_audio: descriptor
                     .is_some_and(|descriptor| descriptor.capabilities.supports_audio_runtime()),
+            };
+        let has_local_instance = local_models.iter().any(|local| local == &model_id);
+        if has_local_instance {
+            let context_length = node.local_model_context_length(&model_id).await;
+            if context_can_satisfy(required_tokens, context_length) {
+                candidates.push(candidate_from(
+                    Some(hex::encode(node.id().as_bytes())),
+                    context_length,
+                ));
             }
-        })
-        .collect::<Vec<_>>();
-    candidates.sort_by(|left, right| left.model_id.cmp(&right.model_id));
-    candidates.dedup_by(|left, right| left.model_id == right.model_id);
+        }
+
+        let remote_hosts = node.hosts_for_model(&model_id).await;
+        let has_remote_instances = !remote_hosts.is_empty();
+        for host in remote_hosts {
+            let context_length = node.peer_model_context_length(host, &model_id).await;
+            if context_can_satisfy(required_tokens, context_length) {
+                candidates.push(candidate_from(
+                    Some(hex::encode(host.as_bytes())),
+                    context_length,
+                ));
+            }
+        }
+
+        // Plugin-backed inference models have no mesh endpoint. Keep one
+        // untargeted candidate when discovery did not find a host instance.
+        if !has_local_instance && !has_remote_instances {
+            candidates.push(candidate_from(None, None));
+        }
+    }
+    candidates.sort_by(|left, right| {
+        left.model_id
+            .cmp(&right.model_id)
+            .then_with(|| left.target_node_id.cmp(&right.target_node_id))
+    });
     candidates
+}
+
+fn context_can_satisfy(required_tokens: Option<u32>, context_length: Option<u32>) -> bool {
+    !matches!(
+        (required_tokens, context_length),
+        (Some(required), Some(context)) if context < required
+    )
 }
 
 fn virtual_response_header_allowed(name: &str, value: &str) -> bool {
@@ -646,5 +693,13 @@ mod tests {
             "x-too-large",
             &"x".repeat(8 * 1024 + 1)
         ));
+    }
+
+    #[test]
+    fn context_filter_rejects_known_short_windows_but_keeps_unknowns() {
+        assert!(!context_can_satisfy(Some(16_384), Some(4_096)));
+        assert!(context_can_satisfy(Some(16_384), Some(32_768)));
+        assert!(context_can_satisfy(Some(16_384), None));
+        assert!(context_can_satisfy(None, Some(4_096)));
     }
 }

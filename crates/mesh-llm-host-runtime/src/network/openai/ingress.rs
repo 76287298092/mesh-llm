@@ -1982,6 +1982,7 @@ async fn try_handle_virtual_model_intercept(
         model_id,
         body,
         candidate_models,
+        decision.required_tokens,
         request.response_adapter,
         route_observer,
     )

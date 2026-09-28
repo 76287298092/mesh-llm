@@ -3,6 +3,14 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct VirtualModelCandidate {
     pub model_id: String,
+    /// Hex-encoded mesh endpoint that serves this concrete instance.
+    ///
+    /// `None` keeps compatibility with plugin-backed candidates that are not
+    /// tied to a mesh host. Host-backed virtual models should preserve this
+    /// value when they call back into inference so replicas of the same model
+    /// remain distinct workers.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub target_node_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parameter_count_b: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -37,6 +45,11 @@ pub struct VirtualModelResponse {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct HostInferenceRequest {
     pub model_id: String,
+    /// Force this nested request to the physical candidate selected by the
+    /// virtual model. This is the same endpoint identity accepted by
+    /// `x-mesh-target` at normal ingress.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub target_node_id: Option<String>,
     pub request: serde_json::Value,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timeout_ms: Option<u64>,

@@ -12,6 +12,15 @@ use std::time::Duration;
 pub const PLUGIN_ID: &str = "mesh-moa";
 pub const HANDLER: &str = "chat";
 
+/// Above this verified parameter count a worker is in the capable tier used
+/// by the MoA engine. Unknown sizes are deliberately treated as small for
+/// destructive pool decisions: a label is not evidence that a model is big.
+const SMALL_TIER_MAX_B: f64 = moa::SMALL_TIER_MAX_B;
+
+/// Measured quality is flat beyond four capable workers while fan-out cost is
+/// roughly `2N+1` calls. Keep the shared mesh from being consumed by one turn.
+const COMMITTEE_CAP: usize = 4;
+
 /// Lines the host drips onto a streaming caller while the committee works.
 /// Played once in order, then the last line repeats. See
 /// `VirtualModelBuilder::progress_lines`.
@@ -156,6 +165,7 @@ async fn handle(
     if invocation.candidates.is_empty() {
         return error_response(422, "no concrete model satisfies the request capabilities");
     }
+    apply_pool_policy(&mut invocation.candidates);
     // A one-model pool has nothing to aggregate. Passing it through the MoA
     // engine would replace the caller's output budget with the Generalist
     // worker budget (1,024 tokens), which can make an otherwise valid request
@@ -172,6 +182,7 @@ async fn handle(
         let index = backends.len();
         backends.push(Arc::new(HostBackend {
             context: context.clone(),
+            target_node_id: candidate.target_node_id.clone(),
         }));
         models.push(
             moa::ModelEntry::new(candidate.model_id, index)
@@ -242,6 +253,7 @@ async fn direct_capability_response(
     match context
         .infer(HostInferenceRequest {
             model_id: candidate.model_id.clone(),
+            target_node_id: candidate.target_node_id.clone(),
             request: invocation.request,
             timeout_ms: Some(60_000),
         })
@@ -319,6 +331,35 @@ fn actor_candidates(models: &[moa::ModelEntry]) -> Vec<usize> {
     indices
 }
 
+/// Restore the measured gateway admission rules before the engine assigns
+/// roles. An all-small pool regressed against its best member, so it becomes a
+/// direct route; any real committee is capped to bound shared-mesh cost.
+fn apply_pool_policy(candidates: &mut Vec<mesh_llm_plugin::VirtualModelCandidate>) {
+    candidates.sort_by(candidate_rank);
+    let all_small = candidates.iter().all(|candidate| {
+        candidate
+            .parameter_count_b
+            .is_none_or(|size| size < SMALL_TIER_MAX_B)
+    });
+    if all_small {
+        candidates.truncate(1);
+    } else {
+        candidates.truncate(COMMITTEE_CAP);
+    }
+}
+
+fn candidate_rank(
+    left: &mesh_llm_plugin::VirtualModelCandidate,
+    right: &mesh_llm_plugin::VirtualModelCandidate,
+) -> std::cmp::Ordering {
+    right
+        .parameter_count_b
+        .partial_cmp(&left.parameter_count_b)
+        .unwrap_or(std::cmp::Ordering::Equal)
+        .then_with(|| left.model_id.cmp(&right.model_id))
+        .then_with(|| left.target_node_id.cmp(&right.target_node_id))
+}
+
 fn error_response(status_code: u16, message: &str) -> VirtualModelResponse {
     VirtualModelResponse {
         status_code,
@@ -330,6 +371,7 @@ fn error_response(status_code: u16, message: &str) -> VirtualModelResponse {
 
 struct HostBackend {
     context: PluginContext<'static>,
+    target_node_id: Option<String>,
 }
 
 #[async_trait::async_trait]
@@ -359,6 +401,7 @@ impl moa::ModelBackend for HostBackend {
             .context
             .infer(HostInferenceRequest {
                 model_id: model.to_string(),
+                target_node_id: self.target_node_id.clone(),
                 request,
                 timeout_ms: Some(timeout.as_millis().min(u64::MAX as u128) as u64),
             })
@@ -375,6 +418,22 @@ impl moa::ModelBackend for HostBackend {
 mod tests {
     use super::*;
     use mesh_llm_plugin::Plugin;
+
+    fn candidate(
+        model_id: &str,
+        parameter_count_b: Option<f64>,
+        target_node_id: &str,
+    ) -> mesh_llm_plugin::VirtualModelCandidate {
+        mesh_llm_plugin::VirtualModelCandidate {
+            model_id: model_id.into(),
+            target_node_id: Some(target_node_id.into()),
+            parameter_count_b,
+            context_length: Some(32_768),
+            supports_tools: true,
+            supports_vision: false,
+            supports_audio: false,
+        }
+    }
 
     #[test]
     fn plugin_declares_mesh_virtual_model() {
@@ -470,5 +529,45 @@ mod tests {
 
         assert_eq!(response["model"], moa::VIRTUAL_MODEL_NAME);
         assert_eq!(response["choices"][0]["message"]["content"], "answer");
+    }
+
+    #[test]
+    fn all_small_pool_routes_to_its_best_member() {
+        let mut candidates = vec![
+            candidate("small-a", Some(8.0), "a"),
+            candidate("small-b", Some(9.0), "b"),
+            candidate("unknown", None, "c"),
+        ];
+
+        apply_pool_policy(&mut candidates);
+
+        assert_eq!(candidates.len(), 1);
+        assert_eq!(candidates[0].model_id, "small-b");
+    }
+
+    #[test]
+    fn capable_committee_is_capped_and_keeps_same_model_replicas() {
+        let mut candidates = vec![
+            candidate("big", Some(70.0), "node-a"),
+            candidate("big", Some(70.0), "node-b"),
+            candidate("medium-a", Some(32.0), "node-c"),
+            candidate("medium-b", Some(24.0), "node-d"),
+            candidate("small", Some(8.0), "node-e"),
+        ];
+
+        apply_pool_policy(&mut candidates);
+
+        assert_eq!(candidates.len(), COMMITTEE_CAP);
+        assert_eq!(candidates[0].model_id, "big");
+        assert_eq!(candidates[1].model_id, "big");
+        assert_ne!(
+            candidates[0].target_node_id, candidates[1].target_node_id,
+            "physical replicas must remain distinct committee members"
+        );
+        assert!(
+            candidates
+                .iter()
+                .all(|candidate| candidate.model_id != "small")
+        );
     }
 }

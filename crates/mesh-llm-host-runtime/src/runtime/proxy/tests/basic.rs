@@ -246,7 +246,7 @@ async fn test_api_proxy_lists_registered_inference_models() {
 }
 
 #[tokio::test]
-async fn test_builtin_moa_virtual_model_runs_end_to_end_through_plugin_api() {
+async fn test_builtin_moa_all_small_pool_routes_direct_through_plugin_api() {
     let worker_response = json!({
         "id": "chatcmpl-worker",
         "object": "chat.completion",
@@ -308,7 +308,10 @@ async fn test_builtin_moa_virtual_model_runs_end_to_end_through_plugin_api() {
         "unexpected virtual-model response: {response}"
     );
     assert!(response.contains("plugin end-to-end"));
-    assert!(response.to_ascii_lowercase().contains("x-moa-turn:"));
+    assert!(
+        !response.to_ascii_lowercase().contains("x-moa-turn:"),
+        "metadata-free workers are conservatively small, so the gateway must not convene the measured-regressive all-small committee"
+    );
     assert!(
         worker_a_requests.load(std::sync::atomic::Ordering::Relaxed)
             + worker_b_requests.load(std::sync::atomic::Ordering::Relaxed)
