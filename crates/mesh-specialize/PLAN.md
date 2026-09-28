@@ -469,3 +469,15 @@ within-profile checks and equal same-input state, but the new schedule does not
 improve ordinary decode. It remains experimental. Evidence is `a16-head-model-1`.
 Dedicated NVFP4 worker has delivered a bounded GPU harness, not yet registered or
 compiled; parent will qualify it next. Goal and meaningful quality gates remain open.
+
+
+NVFP4 pipeline at e68e93d95: original and fixed-producer variants pass19 GPU
+cases and all three sanitizers. Model128/512 comparisons pass strict same-profile
+and cross-schedule captured logits/state/token checks. Original tiled regresses
+prefill; fixed producers recover baseline with only0.28%/0.33% measured differences,
+not a useful established speedup. Evidence: `nvfp4-tiled-model-1`. Default remains
+unchanged. A separate32x128 CTA candidate with four output fragments per warp is
+assigned to the same dedicated NVFP4 worker, still Astra low. It reuses A fragments
+and preserves K64 arithmetic. Parent owns all integration and qualification.
+Current512 diagnostic ranks FP8, attention and GDN above NVFP4; runtime parity
+requires progressing these costs and quality, not merely passing tile tests.
