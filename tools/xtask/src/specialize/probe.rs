@@ -89,3 +89,7 @@ pub(super) fn feature_fusion(args: &[String]) -> DynResult<()> {
 pub(super) fn greedy(args: &[String]) -> DynResult<()> {
     run_probe(args, mesh_specialize::kernels::greedy_trial)
 }
+
+pub(super) fn a16_head(args: &[String]) -> DynResult<()> {
+    run_probe(args, mesh_specialize::kernels::a16_head_trial)
+}

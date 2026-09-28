@@ -119,3 +119,31 @@ Both expected entry symbols are present. PTX declares local storage,40bytes for
 A16 and144bytes for NVFP4; these are virtual PTX declarations, not measured JIT
 register/spill/resource usage. GPU qualification and resident integration remain
 pending. Existing baseline PTX remains retained separately.
+
+## Synthetic launch trial, source handoff
+
+Added `src/kernels/cuda/a16_head_trial.rs` with parent-owned registration pending.
+Its `run(ptx, device)` records SM120 device information, function resources and
+37 case results. One M8/N256/K16 one-hot case covers all 254 finite weight codes
+in every token row, with K-dependent cyclic column shifts. Twenty-four asymmetric
+small-dyadic cases cross M1/5/8, N8/24 and K16/240/256/272, including idle warps and
+partial final K groups. Their FP32 arithmetic is exactly representable, so both
+FP32 bits and final BF16 bits must equal the independent oracle. Twelve general
+cases cross M1/5/8, N8/24 and K272/5120 with every finite weight code, signed
+activations and nonuniform signed scales.
+
+Before any run, the general-case acceptance limits are fixed at BF16 relative L2
+<=0.01 and FP32 maximum absolute error divided by max(1, maximum absolute oracle)
+<=1e-4. Every case also requires finite FP32/BF16 outputs and BF16 bits exactly
+equal to RNE of its stored FP32 output. Reports retain BF16 and FP32 difference
+counts, both normalized L2 errors, maximum raw/scaled error, completion and poison
+status. Numeric failure returns `all_passed:false` with evidence. Driver or
+reference errors still return an error; no successful completion is claimed then.
+Quiet NaN poisons detect unwritten results. All buffers remain owned through
+synchronization and both downloads.
+
+Worker validation for this addition: rustfmt only. Cargo, compilation, execution,
+sanitizers and GPU access NOT RUN. No timing is taken. Parent reported earlier
+kernel/source integration checks at `daabf18c3`; this new launch trial has not yet
+been included in those checks. Representative resident head timing and real-weight
+coverage remain separate parent gates after synthetic and sanitizer qualification.

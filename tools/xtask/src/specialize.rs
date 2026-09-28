@@ -46,6 +46,7 @@ pub(crate) fn run(args: &[String]) -> DynResult<()> {
         [command, rest @ ..] if command == "feature-graph-check" => probe::feature_graph(rest),
         [command, rest @ ..] if command == "feature-fusion-check" => probe::feature_fusion(rest),
         [command, rest @ ..] if command == "greedy-check" => probe::greedy(rest),
+        [command, rest @ ..] if command == "a16-head-check" => probe::a16_head(rest),
         [command, rest @ ..] if command == "feature-projection-check" => {
             probe::feature_projection(rest)
         }

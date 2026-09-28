@@ -578,3 +578,14 @@ pub fn greedy_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json::Value>
         anyhow::bail!("GPU greedy qualification requires Linux")
     }
 }
+
+/// Check the experimental A16 head schedule against independent logical arithmetic.
+pub fn a16_head_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::a16_head_trial::run(ptx, device);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device);
+        anyhow::bail!("A16 head qualification requires Linux")
+    }
+}
