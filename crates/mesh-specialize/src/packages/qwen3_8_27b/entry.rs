@@ -1,11 +1,12 @@
 //! First real-weight operation: embedding lookup and layer-zero input norm.
-use crate::{artifact::reader::VerifiedArtifact, kernels::EmbeddingNormInput};
+use crate::{artifact::model_source::ModelArtifact, kernels::EmbeddingNormInput};
 use anyhow::{Result, ensure};
 use serde_json::{Value, json};
 use std::path::Path;
 
 pub fn trial(path: &Path, ptx: &str, device: i32) -> Result<Value> {
-    let mut artifact = VerifiedArtifact::open(path)?;
+    let mut artifact = ModelArtifact::open(path)?;
+    artifact.require_legacy_reference()?;
     let inventory = super::inventory::validate(artifact.directory())?;
     let identity = artifact.identity().clone();
     let mut table = Vec::with_capacity(248320 * 5120 * 2);

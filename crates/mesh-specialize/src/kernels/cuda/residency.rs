@@ -7,7 +7,7 @@ use super::{
     resident_weights::ResidentWeights,
 };
 use crate::{
-    artifact::{reader::VerifiedArtifact, schema::Object},
+    artifact::{model_source::ModelArtifact, schema::Object},
     engine::layout::Layout,
     kernels::ResidentEntryInput,
 };
@@ -19,7 +19,7 @@ const WORKSPACE_RESERVE: u64 = 1024 * 1024 * 1024;
 pub(in crate::kernels) fn run(
     ptx: &str,
     device: i32,
-    artifact: &mut VerifiedArtifact,
+    artifact: &mut ModelArtifact,
     objects: &[Object],
     state_layout: &Layout,
     entry: &ResidentEntryInput,

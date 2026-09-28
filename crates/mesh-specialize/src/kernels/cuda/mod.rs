@@ -1,6 +1,8 @@
 //! Linux CUDA Driver API instruction qualification.
 
 pub(super) mod a16_head_trial;
+pub(super) mod bf16_ab_decode_trial;
+pub(super) mod native_parameter_trial;
 pub(super) mod nvfp4_pipeline_trial;
 
 pub(super) mod attention;
@@ -288,5 +290,10 @@ mod attention_audit;
 
 pub(super) mod stream_forward;
 
-mod resident_score;
 pub(super) mod resident_model_score;
+mod resident_score;
+
+mod attention_v2_launch;
+pub(super) mod attention_v2_trial;
+
+mod resident_attention_split;

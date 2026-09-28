@@ -4,6 +4,7 @@
 use super::{
     ops::{Args, EPSILON, Enqueue, to_u32},
     program::{NormSlots, Shapes, Slots},
+    split_attention::SplitAttention,
     weights::{AttentionWeights, GdnWeights, MlpWeights, ModelWeights},
 };
 use crate::kernels::cuda::resident_state::ResidentState;
@@ -19,18 +20,36 @@ pub(super) struct Step {
 }
 
 /// Embedding gather plus first norm; the residual output becomes `hidden`.
-pub(super) fn entry(e: &Enqueue<'_, '_, '_, '_>, w: &ModelWeights, s: &Slots, shapes: &Shapes, rows: usize) -> Result<()> {
+pub(super) fn entry(
+    e: &Enqueue<'_, '_, '_, '_>,
+    w: &ModelWeights,
+    s: &Slots,
+    shapes: &Shapes,
+    rows: usize,
+) -> Result<()> {
     let outputs = NormSlots {
         copy: s.hidden,
         out: s.entry[0],
         raw: s.entry[1],
     };
-    e.embedding_norm(
-        [w.embedding_table, s.tokens, w.first_norm],
-        &outputs,
-        rows,
-        shapes.hidden,
-    )
+    let (table, ids) = if let Some(scale) = w.embedding_scale {
+        let args = Args::new()
+            .ptrs(&[w.embedding_table, scale, s.tokens, s.hidden])
+            .u32(to_u32(shapes.hidden)?);
+        e.launch(
+            &e.kernels.fp8_embedding_gather,
+            [to_u32(rows)?, 1, 1],
+            [256, 1, 1],
+            args,
+        )?;
+        // Identity IDs make table==residual safe: each thread rewrites its own
+        // already-rounded BF16 source bits. No cross-row or normalized-output alias.
+        // hidden/tokens/row_ids are whole-forward slots, so no planner reuse occurs.
+        (s.hidden, s.row_ids)
+    } else {
+        (w.embedding_table, s.tokens)
+    };
+    e.embedding_norm([table, ids, w.first_norm], &outputs, rows, shapes.hidden)
 }
 
 /// Mirror of `resident_gdn::Layer::execute` without MLP, observers or recording.
@@ -90,7 +109,11 @@ pub(super) fn gdn(
         .u32(rows_u32)
         .u32(to_u32(vh)?);
     e.launch(
-        &k.gdn_gates,
+        if w.f32_params {
+            &k.gdn_gates_f32_params
+        } else {
+            &k.gdn_gates
+        },
         [to_u32((rows * vh).div_ceil(256))?, 1, 1],
         [256, 1, 1],
         gates,
@@ -131,6 +154,7 @@ pub(super) fn attention(
     shapes: &Shapes,
     state: &ResidentState<'_>,
     step: &Step,
+    split: Option<&SplitAttention<'_, '_>>,
 ) -> Result<()> {
     let a = &s.attention;
     let k = e.kernels;
@@ -182,23 +206,38 @@ pub(super) fn attention(
         [256, 1, 1],
         append,
     )?;
-    let scale = 1.0_f32 / (aw as f32).sqrt();
-    let attend = Args::new()
-        .ptrs(&[a.q_prepared[0], key_state, value_state])
-        .ptrs(&a.output)
-        .u32(to_u32(rows)?)
-        .u32(to_u32(qh)?)
-        .u32(to_u32(kvh)?)
-        .u32(to_u32(aw)?)
-        .u32(past)
-        .u32(capacity)
-        .f32(scale);
-    e.launch(
-        &k.causal_attention,
-        [to_u32(rows * qh)?, 1, 1],
-        [256, 1, 1],
-        attend,
-    )?;
+    if let Some(split) = split.filter(|_| rows <= 8) {
+        split.enqueue(
+            e,
+            [
+                a.q_prepared[0],
+                key_state,
+                value_state,
+                a.output[0],
+                a.output[1],
+            ],
+            step,
+        )?;
+    } else {
+        // SplitDecode changes only M<=8: every larger chunk stays exact FP64.
+        let scale = 1.0_f32 / (aw as f32).sqrt();
+        let attend = Args::new()
+            .ptrs(&[a.q_prepared[0], key_state, value_state])
+            .ptrs(&a.output)
+            .u32(to_u32(rows)?)
+            .u32(to_u32(qh)?)
+            .u32(to_u32(kvh)?)
+            .u32(to_u32(aw)?)
+            .u32(past)
+            .u32(capacity)
+            .f32(scale);
+        e.launch(
+            &k.causal_attention,
+            [to_u32(rows * qh)?, 1, 1],
+            [256, 1, 1],
+            attend,
+        )?;
+    }
     let count = to_u32(rows * shapes.query_width())?;
     let gate = Args::new()
         .ptrs(&[a.output[0], a.q_prepared[3]])

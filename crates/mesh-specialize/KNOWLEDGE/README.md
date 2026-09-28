@@ -5,11 +5,13 @@ Start with [the implementation plan](../PLAN.md) and the
 
 | Entry | Status |
 | --- | --- |
+| [BF16 split attention v2](optimizations/attention-v2.md) | Implemented, unqualified: split-decode opt-in wired to legacy/stream, exact larger prefill, independent FP64 trial; no default change |
 | [A16 head schedule](optimizations/a16-head-schedule.md) | 37 GPU cases and sanitizers pass; head-only model checks pass, no ordinary-decode speedup, quality still open |
 | [NVFP4 prefill pipeline](optimizations/nvfp4-prefill-pipeline.md) | Wide32x128 passes operator sanitizers and tested exact model comparisons; shared-GPU prefill medians improve about6%, remains opt-in |
 | [Ordinary decode graph plan](findings/ordinary-decode-graph-plan.md) | Prepared MLP stream trial passes exact real-weight reuse/abort and three sanitizers; ordinary-model integration and capture pending |
-| [StreamForward single-stream execution](optimizations/stream-forward.md) | Implemented, unqualified: one stream, planned arena (151.0 MiB at 512 rows), device greedy; opt-in via `MESH_SPECIALIZE_EXECUTION=stream`, no build or GPU evidence yet |
-| [Teacher-forced scoring](optimizations/teacher-forced-scoring.md) | Implemented, unqualified: windowed per-position logprob/top-64 records, fresh state per window, quality-gate comparator; context <=512, no build or GPU evidence yet |
+| [StreamForward single-stream execution](optimizations/stream-forward.md) | Bit identical to legacy on two prompts; decode 20.35→26.48 (106 inputs) and 15.07→18.17 (512); opt-in, sanitizers and graphs pending |
+| [Matched Ninfer reference](findings/ninfer-matched-20260928.md) | MTP0 BF16 KV: 76.3 decode tok/s at short prompts; fixture IDs match extracted assets; slice PPL 5.057 |
+| [Teacher-forced scoring](optimizations/teacher-forced-scoring.md) | 49,148 targets scored; exact control close to Ninfer NLL; native FP8 and online attention fail fixed agreement gates, remain experimental |
 | [Exact GPU greedy selection](optimizations/gpu-greedy.md) | Device and resident checks plus three sanitizers pass; short timing change below1%, no stable speedup established |
 | [Tiled online attention](optimizations/feature-f05-attention.md) | Opt-in; short checks pass, strict128-row partition fails at NVFP4 rounding boundary; two longer answer checks are limited smoke evidence |
 | [Ninfer runtime deep dive](findings/ninfer-runtime-deep-dive.md) | Complete-source execution comparison; workspace/stream ordering first, then GPU selection/graphs, shape-specific kernels, and long-context algorithms |

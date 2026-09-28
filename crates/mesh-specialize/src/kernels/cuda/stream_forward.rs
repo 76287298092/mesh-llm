@@ -8,6 +8,8 @@
 //! synchronization; and selection runs on device, ending in one stream
 //! synchronize and one 16-byte readback. Persistent state (K/V, convolution
 //! history, GDN recurrence) and cursor transaction semantics are unchanged.
+//! With the explicit SplitDecode profile, M<=8 uses split/reduce instead, with
+//! one separately owned persistent workspace; larger chunks keep exact attention.
 //!
 //! Per-forward host transfers: one stream-ordered pageable upload of the token
 //! IDs (4 bytes per row), one stream synchronize, and one 16-byte selection
@@ -15,11 +17,13 @@
 
 pub(super) mod bench;
 pub(in crate::kernels) mod check;
+pub(in crate::kernels) mod chunked_bench;
 mod functions;
 mod layers;
 mod ops;
 mod plan;
 mod program;
+mod split_attention;
 mod weights;
 
 use super::{
@@ -42,6 +46,7 @@ use ops::Enqueue;
 use plan::ArenaPlan;
 use program::{MAX_ROWS, Shapes, Slots, forward_program};
 use serde_json::{Value, json};
+use split_attention::SplitAttention;
 use weights::{Block, ModelWeights};
 
 const ROPE_CHUNK_ROWS: usize = 2048;
@@ -50,6 +55,8 @@ pub(super) struct StreamForward<'m, 'w, 'ctx> {
     context: &'ctx Context,
     _weights: &'w ResidentWeights<'ctx>,
     kernels: Functions<'m, 'ctx>,
+    attention_profile: attention_profile::Profile,
+    split_attention: Option<SplitAttention<'m, 'ctx>>,
     stream: Stream<'ctx>,
     arena: Buffer<'ctx>,
     rope: Rope<'ctx>,
@@ -84,7 +91,7 @@ impl<'m, 'w, 'ctx> StreamForward<'m, 'w, 'ctx> {
         config: &DecoderConfig,
         max_rows: usize,
     ) -> Result<Self> {
-        ensure_default_profiles()?;
+        let attention_profile = ensure_supported_profiles()?;
         let context = weights.context();
         ensure!(
             module.belongs_to(context),
@@ -95,6 +102,10 @@ impl<'m, 'w, 'ctx> StreamForward<'m, 'w, 'ctx> {
             "stream forward max rows must be in 1..={MAX_ROWS}"
         );
         let shapes = Shapes::from_config(config)?;
+        // Default construction neither resolves split handles nor allocates scratch.
+        let split_attention = (attention_profile == attention_profile::Profile::SplitDecode)
+            .then(|| SplitAttention::new(context, module, &shapes, max_rows, config.capacity))
+            .transpose()?;
         let bound = ModelWeights::bind(weights, config)?;
         let specs = forward_program(&shapes, max_rows)?;
         let plan = ArenaPlan::place(&specs)?;
@@ -111,6 +122,8 @@ impl<'m, 'w, 'ctx> StreamForward<'m, 'w, 'ctx> {
             context,
             _weights: weights,
             kernels,
+            attention_profile,
+            split_attention,
             stream,
             arena,
             rope,
@@ -126,8 +139,12 @@ impl<'m, 'w, 'ctx> StreamForward<'m, 'w, 'ctx> {
     pub(super) fn report(&self) -> Value {
         json!({
             "max_rows": self.max_rows,
+            "weight_representations": self.bound.representation_report(),
             "arena_bytes": self.arena_bytes,
             "arena_peak_live_bytes": self.peak_live_bytes,
+            "attention_profile": self.attention_profile.name(),
+            "attention_workspace_bytes": self.split_attention.as_ref().map_or(0, SplitAttention::workspace_bytes),
+            "split_attention": self.split_attention.as_ref().map(SplitAttention::report),
             "rope_table_bytes": self.rope.buffer.len(),
             "rope_positions": self.rope.positions,
             "kernels": functions::KERNEL_NAMES,
@@ -183,6 +200,9 @@ impl<'m, 'w, 'ctx> StreamForward<'m, 'w, 'ctx> {
             cos: self.rope.cos(transaction.past())?,
             sin: self.rope.sin(transaction.past())?,
         };
+        if let Some(split) = self.split_attention.as_ref().filter(|_| step.rows <= 8) {
+            split.plan(&step)?;
+        }
         let active = self.stream.enter()?;
         let enqueued = self.enqueue(&active, &token_bytes, &session.state, &step);
         let synchronized = active.synchronize();
@@ -230,7 +250,15 @@ impl<'m, 'w, 'ctx> StreamForward<'m, 'w, 'ctx> {
             match &layer.block {
                 Block::Gdn(weights) => layers::gdn(&e, weights, slots, shapes, state, step.rows)?,
                 Block::Attention(weights) => {
-                    layers::attention(&e, weights, slots, shapes, state, step)?;
+                    layers::attention(
+                        &e,
+                        weights,
+                        slots,
+                        shapes,
+                        state,
+                        step,
+                        self.split_attention.as_ref(),
+                    )?;
                 }
             }
             layers::mlp(&e, &layer.mlp, slots, shapes, step.rows)?;
@@ -241,7 +269,8 @@ impl<'m, 'w, 'ctx> StreamForward<'m, 'w, 'ctx> {
     /// Validate the device greedy record exactly as `resident_greedy::Selector` does.
     fn read_selection(&self) -> Result<u32> {
         let mut bytes = [0_u8; 16];
-        self.arena.download_at(self.slots.result_offset, &mut bytes)?;
+        self.arena
+            .download_at(self.slots.result_offset, &mut bytes)?;
         let words: [u32; 4] = std::array::from_fn(|index| {
             let mut word = [0; 4];
             word.copy_from_slice(&bytes[index * 4..index * 4 + 4]);
@@ -336,8 +365,8 @@ fn row_id_bytes(rows: usize) -> Result<Vec<u8>> {
     Ok(bytes)
 }
 
-/// Stream execution currently implements only the default arithmetic profiles.
-fn ensure_default_profiles() -> Result<()> {
+/// Projection restrictions are unchanged; attention admits an explicit decode-only opt-in.
+fn ensure_supported_profiles() -> Result<attention_profile::Profile> {
     let fp8 = fp8_profile::current()?;
     ensure!(
         fp8 == fp8_profile::Profile::Exact,
@@ -352,8 +381,8 @@ fn ensure_default_profiles() -> Result<()> {
     );
     let attention = attention_profile::current()?;
     ensure!(
-        attention == attention_profile::Profile::Exact,
-        "stream execution requires MESH_SPECIALIZE_ATTENTION_PROFILE=exact (found {})",
+        attention.supports_stream(),
+        "stream execution requires MESH_SPECIALIZE_ATTENTION_PROFILE=exact or split-decode (found {})",
         attention.name()
     );
     ensure!(
@@ -368,7 +397,7 @@ fn ensure_default_profiles() -> Result<()> {
         !super::nvfp4_projection_audit::enabled()?,
         "stream execution does not support MESH_SPECIALIZE_NVFP4_AUDIT"
     );
-    Ok(())
+    Ok(attention)
 }
 
 #[cfg(test)]
@@ -377,6 +406,9 @@ mod tests {
 
     #[test]
     fn row_ids_are_consecutive_little_endian_words() {
-        assert_eq!(row_id_bytes(3).unwrap(), [0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0]);
+        assert_eq!(
+            row_id_bytes(3).unwrap(),
+            [0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0]
+        );
     }
 }

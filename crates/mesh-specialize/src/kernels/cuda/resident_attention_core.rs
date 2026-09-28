@@ -68,6 +68,12 @@ pub(super) fn run<'a>(
     let value_state = state.pointer(&value_state_name, extents.cache_bytes)?;
     let append = module.function("attention_kv_append")?;
     let profile = crate::kernels::attention_profile::current()?;
+    // Admit geometry and prepare every allocation/handle before mutating KV state.
+    // Keep this owner, raw output and BF16 output alive through the final drain.
+    let split = profile
+        .uses_split(shape.rows)
+        .then(|| super::resident_attention_split::Prepared::new(context, module, shape))
+        .transpose()?;
     let attention = module.function(profile.kernel())?;
     let output = Buffer::new(context, extents.output_bytes)?;
     let unrounded = Buffer::new(context, extents.unrounded_bytes)?;
@@ -96,7 +102,14 @@ pub(super) fn run<'a>(
             error,
         ));
     }
-    if let Err(error) = launch_attention(&attention, attention_launch) {
+    let launched = match &split {
+        // SAFETY: Same-context Q/cache/output extents were validated above. Append
+        // precedes this launch; every allocation remains live through both failure
+        // draining below and the ordinary final synchronization.
+        Some(split) => unsafe { split.launch(attention_launch.pointers) },
+        None => launch_attention(&attention, attention_launch),
+    };
+    if let Err(error) = launched {
         return Err(synchronize_after_failed_launch(
             context,
             "causal attention",

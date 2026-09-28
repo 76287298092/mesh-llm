@@ -36,7 +36,7 @@ pub struct DecoderConfig {
 pub fn model_check(
     ptx: &str,
     device: i32,
-    artifact: &mut crate::artifact::reader::VerifiedArtifact,
+    artifact: &mut crate::artifact::model_source::ModelArtifact,
     objects: &[crate::artifact::schema::Object],
     config: &DecoderConfig,
     reference: &crate::packages::qwen3_8_27b::model_reference::ModelReference,
@@ -53,7 +53,7 @@ pub fn model_check(
 pub fn model_profile(
     ptx: &str,
     device: i32,
-    artifact: &mut crate::artifact::reader::VerifiedArtifact,
+    artifact: &mut crate::artifact::model_source::ModelArtifact,
     objects: &[crate::artifact::schema::Object],
     config: &DecoderConfig,
     tokens: &[u32],
@@ -93,12 +93,13 @@ pub struct SpeculationRequest<'a> {
 pub fn mtp_trial(
     ptx: &str,
     device: i32,
-    artifact: &mut crate::artifact::reader::VerifiedArtifact,
+    artifact: &mut crate::artifact::model_source::ModelArtifact,
     objects: &[crate::artifact::schema::Object],
     config: &DecoderConfig,
     reference: &crate::packages::qwen3_8_27b::mtp::Reference,
     request: &SpeculationRequest<'_>,
 ) -> anyhow::Result<serde_json::Value> {
+    artifact.require_mtp()?;
     #[cfg(target_os = "linux")]
     return cuda::resident_mtp_trial::run(
         ptx, device, artifact, objects, config, reference, request,
@@ -129,7 +130,7 @@ pub type ScoreSink<'a> = dyn FnMut(usize, &[u8]) -> std::io::Result<()> + 'a;
 pub fn model_score(
     ptx: &str,
     device: i32,
-    artifact: &mut crate::artifact::reader::VerifiedArtifact,
+    artifact: &mut crate::artifact::model_source::ModelArtifact,
     objects: &[crate::artifact::schema::Object],
     config: &DecoderConfig,
     request: &ModelScoreRequest<'_>,
@@ -144,6 +145,33 @@ pub fn model_score(
     }
 }
 
+/// Separate fixed-output ordinary Qwen benchmark; no change to existing bench limits.
+pub struct ChunkedBenchRequest<'a> {
+    pub tokens: &'a [u32],
+    pub chunk_size: usize,
+    pub output_tokens: usize,
+    pub repetitions: usize,
+}
+
+/// Run real sequential prefill chunks, then ordinary decode. Updates `report`
+/// incrementally so the caller can retain completed repetitions on failure.
+/// The report must be a JSON object. Diagnostics are outside measured intervals.
+pub fn qwen_chunked_benchmark(
+    path: &std::path::Path,
+    ptx: &str,
+    device: i32,
+    request: &ChunkedBenchRequest<'_>,
+    report: &mut serde_json::Value,
+) -> anyhow::Result<()> {
+    #[cfg(target_os = "linux")]
+    return cuda::stream_forward::chunked_bench::run(path, ptx, device, request, report);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (path, ptx, device, request, report);
+        anyhow::bail!("Chunked benchmark requires Linux")
+    }
+}
+
 pub struct ModelBenchRequest<'a> {
     pub tokens: &'a [u32],
     pub output_tokens: usize,
@@ -152,7 +180,7 @@ pub struct ModelBenchRequest<'a> {
 pub fn model_benchmark(
     ptx: &str,
     device: i32,
-    artifact: &mut crate::artifact::reader::VerifiedArtifact,
+    artifact: &mut crate::artifact::model_source::ModelArtifact,
     objects: &[crate::artifact::schema::Object],
     config: &DecoderConfig,
     request: &ModelBenchRequest<'_>,
@@ -175,7 +203,7 @@ pub struct StreamCheckRequest<'a> {
 pub fn stream_forward_check(
     ptx: &str,
     device: i32,
-    artifact: &mut crate::artifact::reader::VerifiedArtifact,
+    artifact: &mut crate::artifact::model_source::ModelArtifact,
     objects: &[crate::artifact::schema::Object],
     config: &DecoderConfig,
     request: &StreamCheckRequest<'_>,
@@ -214,7 +242,7 @@ pub struct ResidentAttentionCase {
 pub fn resident_attention_check(
     ptx: &str,
     device: i32,
-    artifact: &mut crate::artifact::reader::VerifiedArtifact,
+    artifact: &mut crate::artifact::model_source::ModelArtifact,
     objects: &[crate::artifact::schema::Object],
     config: &ResidentAttentionConfig,
     cases: &[ResidentAttentionCase],
@@ -250,7 +278,7 @@ pub struct ResidentGdnCase {
 pub fn resident_gdn_check(
     ptx: &str,
     device: i32,
-    artifact: &mut crate::artifact::reader::VerifiedArtifact,
+    artifact: &mut crate::artifact::model_source::ModelArtifact,
     objects: &[crate::artifact::schema::Object],
     config: &ResidentGdnConfig,
     cases: &[ResidentGdnCase],
@@ -276,7 +304,7 @@ pub struct Fp8MlpCase {
 pub fn fp8_mlp_check(
     ptx: &str,
     device: i32,
-    artifact: &mut crate::artifact::reader::VerifiedArtifact,
+    artifact: &mut crate::artifact::model_source::ModelArtifact,
     objects: &[crate::artifact::schema::Object],
     cases: &[Fp8MlpCase],
 ) -> anyhow::Result<serde_json::Value> {
@@ -302,7 +330,7 @@ pub struct ResidentEntryInput {
 pub fn residency_check(
     ptx: &str,
     device: i32,
-    artifact: &mut crate::artifact::reader::VerifiedArtifact,
+    artifact: &mut crate::artifact::model_source::ModelArtifact,
     objects: &[crate::artifact::schema::Object],
     state_layout: &crate::engine::layout::Layout,
     entry: &ResidentEntryInput,
@@ -616,7 +644,7 @@ pub struct MlpWorkspaceCase {
 pub fn mlp_workspace_trial(
     ptx: &str,
     device: i32,
-    artifact: &mut crate::artifact::reader::VerifiedArtifact,
+    artifact: &mut crate::artifact::model_source::ModelArtifact,
     objects: &[crate::artifact::schema::Object],
     cases: &[MlpWorkspaceCase],
 ) -> anyhow::Result<serde_json::Value> {
@@ -659,5 +687,40 @@ pub fn nvfp4_pipeline_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json
     {
         let _ = (ptx, device);
         anyhow::bail!("NVFP4 pipeline qualification requires Linux")
+    }
+}
+
+/// Qualify the standalone FP32 BF16 A/B decode candidate without changing dispatch.
+pub fn bf16_ab_decode_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::bf16_ab_decode_trial::run(ptx, device);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device);
+        anyhow::bail!("BF16 A/B decode qualification requires Linux")
+    }
+}
+
+pub mod attention_v2_plan;
+
+/// Qualify the standalone BF16 split-attention candidate; no resident dispatch change.
+pub fn attention_v2_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::attention_v2_trial::run(ptx, device);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device);
+        anyhow::bail!("Split attention qualification requires Linux")
+    }
+}
+
+/// Qualify encoded embedding and FP32 GDN parameters with synthetic inputs only.
+pub fn native_parameter_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::native_parameter_trial::run(ptx, device);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device);
+        anyhow::bail!("Native parameter qualification requires Linux")
     }
 }

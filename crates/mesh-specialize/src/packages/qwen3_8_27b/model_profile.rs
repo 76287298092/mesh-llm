@@ -1,5 +1,5 @@
 //! One resident decode profiled against an identical unprofiled session.
-use crate::artifact::reader::VerifiedArtifact;
+use crate::artifact::model_source::ModelArtifact;
 use anyhow::{Result, ensure};
 use std::path::Path;
 
@@ -14,7 +14,7 @@ pub fn run(
         (1..=512).contains(&tokens.len()),
         "model profile requires 1..512 prefix tokens"
     );
-    let mut artifact = VerifiedArtifact::open(path)?;
+    let mut artifact = ModelArtifact::open(path)?;
     super::inventory::validate(artifact.directory())?;
     let objects = super::schedule::text_objects(artifact.directory())?;
     let config = super::decoder::config(tokens.len() + 1)?;
@@ -28,5 +28,6 @@ pub fn run(
         teacher_token,
     )?;
     report["identity"] = serde_json::json!(artifact.identity());
+    report["model_source"] = artifact.verification_report();
     Ok(report)
 }

@@ -1,21 +1,21 @@
 //! Bounded layer-at-a-time checkpoint loading for the independent model oracle.
 use crate::{
-    artifact::reader::VerifiedArtifact,
+    artifact::model_source::ModelArtifact,
     decoder_mlp_reference as mlp, decoder_ops_reference as ops, fp8_mlp_reference,
     kernels::{Bf16Projection, Fp8Projection, Nvfp4Mlp, Nvfp4Projection},
 };
 use anyhow::{Result, ensure};
 
-pub(super) fn bytes(artifact: &mut VerifiedArtifact, name: &str) -> Result<Vec<u8>> {
+pub(super) fn bytes(artifact: &mut ModelArtifact, name: &str) -> Result<Vec<u8>> {
     let mut result = Vec::new();
     artifact.copy_object(name, &mut result)?;
     Ok(result)
 }
-pub(super) fn words(artifact: &mut VerifiedArtifact, name: &str) -> Result<Vec<u16>> {
+pub(super) fn words(artifact: &mut ModelArtifact, name: &str) -> Result<Vec<u16>> {
     ops::words(&bytes(artifact, name)?)
 }
 pub(super) fn fp8(
-    artifact: &mut VerifiedArtifact,
+    artifact: &mut ModelArtifact,
     prefix: &str,
     channels: usize,
 ) -> Result<Fp8Projection> {
@@ -27,7 +27,7 @@ pub(super) fn fp8(
     })
 }
 pub(super) fn bf16(
-    artifact: &mut VerifiedArtifact,
+    artifact: &mut ModelArtifact,
     prefix: &str,
     channels: usize,
 ) -> Result<Bf16Projection> {
@@ -37,7 +37,7 @@ pub(super) fn bf16(
         channels,
     })
 }
-fn scalar(artifact: &mut VerifiedArtifact, name: &str) -> Result<f32> {
+fn scalar(artifact: &mut ModelArtifact, name: &str) -> Result<f32> {
     let data = bytes(artifact, name)?;
     let raw: [u8; 4] = data
         .try_into()
@@ -49,11 +49,7 @@ fn scalar(artifact: &mut VerifiedArtifact, name: &str) -> Result<f32> {
     );
     Ok(result)
 }
-fn nvfp4(
-    artifact: &mut VerifiedArtifact,
-    prefix: &str,
-    channels: usize,
-) -> Result<Nvfp4Projection> {
+fn nvfp4(artifact: &mut ModelArtifact, prefix: &str, channels: usize) -> Result<Nvfp4Projection> {
     Ok(Nvfp4Projection {
         name: prefix.into(),
         packed: bytes(artifact, &format!("{prefix}.weight_packed"))?,
@@ -64,7 +60,7 @@ fn nvfp4(
     })
 }
 fn fp8_mlp_projection(
-    artifact: &mut VerifiedArtifact,
+    artifact: &mut ModelArtifact,
     prefix: &str,
     channels: usize,
 ) -> Result<fp8_mlp_reference::Projection> {
@@ -76,7 +72,7 @@ fn fp8_mlp_projection(
     })
 }
 pub(super) fn mlp(
-    artifact: &mut VerifiedArtifact,
+    artifact: &mut ModelArtifact,
     prefix: &str,
     index: usize,
 ) -> Result<mlp::Weights> {
@@ -99,9 +95,10 @@ pub(super) fn mlp(
 }
 
 pub(super) fn gdn(
-    artifact: &mut VerifiedArtifact,
+    artifact: &mut ModelArtifact,
     index: usize,
 ) -> Result<crate::decoder_gdn_reference::Weights> {
+    artifact.require_legacy_reference()?;
     let prefix = format!("tensors/model.language_model.layers.{index}");
     let attention = format!("{prefix}.linear_attn");
     Ok(crate::decoder_gdn_reference::Weights {
@@ -123,7 +120,7 @@ pub(super) fn gdn(
     })
 }
 pub(super) fn attention(
-    artifact: &mut VerifiedArtifact,
+    artifact: &mut ModelArtifact,
     index: usize,
 ) -> Result<crate::decoder_attention_reference::Weights> {
     let prefix = format!("tensors/model.language_model.layers.{index}");

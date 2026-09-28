@@ -7,7 +7,7 @@ use super::{
     resident_weights::ResidentWeights,
 };
 use crate::{
-    artifact::{reader::VerifiedArtifact, schema::Object},
+    artifact::{model_source::ModelArtifact, schema::Object},
     entry_reference::round_bf16,
     kernels::MlpWorkspaceCase,
 };
@@ -18,7 +18,7 @@ use std::{collections::BTreeMap, time::Instant};
 pub(crate) fn run(
     ptx: &str,
     device: i32,
-    artifact: &mut VerifiedArtifact,
+    artifact: &mut ModelArtifact,
     objects: &[Object],
     cases: &[MlpWorkspaceCase],
 ) -> Result<Value> {

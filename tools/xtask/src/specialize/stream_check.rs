@@ -1,6 +1,6 @@
 use crate::command::{DynResult, print_json};
 use mesh_specialize::{
-    artifact::reader::VerifiedArtifact,
+    artifact::model_source::ModelArtifact,
     kernels::{StreamCheckRequest, stream_forward_check},
     packages::qwen3_8_27b::{decoder, inventory, schedule},
 };
@@ -85,9 +85,11 @@ fn check(
     decode_steps: usize,
 ) -> DynResult<serde_json::Value> {
     if !(1..=512).contains(&tokens.len()) || decode_steps > 512 {
-        return Err("stream check requires 1..=512 prompt tokens and at most 512 decode steps".into());
+        return Err(
+            "stream check requires 1..=512 prompt tokens and at most 512 decode steps".into(),
+        );
     }
-    let mut artifact = VerifiedArtifact::open(path)?;
+    let mut artifact = ModelArtifact::open(path)?;
     inventory::validate(artifact.directory())?;
     let objects = schedule::text_objects(artifact.directory())?;
     let config = decoder::config(tokens.len() + decode_steps)?;
@@ -95,8 +97,8 @@ fn check(
         tokens,
         decode_steps,
     };
-    let mut report =
-        stream_forward_check(ptx, device, &mut artifact, &objects, &config, &request)?;
+    let mut report = stream_forward_check(ptx, device, &mut artifact, &objects, &config, &request)?;
     report["identity"] = json!(artifact.identity());
+    report["model_source"] = artifact.verification_report();
     Ok(report)
 }

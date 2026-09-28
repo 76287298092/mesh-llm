@@ -7,7 +7,7 @@
 
 use super::super::{
     mlp_workspace_projection::{Arithmetic as BindingArithmetic, Binding},
-    resident_fp8, resident_nvfp4,
+    resident_embedding, resident_fp8, resident_gdn_core, resident_nvfp4,
     resident_weights::ResidentWeights,
 };
 use crate::{
@@ -51,7 +51,12 @@ impl ProjectionWeights {
         }
     }
 
-    fn fp8(owner: &ResidentWeights<'_>, prefix: &str, width: usize, channels: usize) -> Result<Self> {
+    fn fp8(
+        owner: &ResidentWeights<'_>,
+        prefix: &str,
+        width: usize,
+        channels: usize,
+    ) -> Result<Self> {
         let projection = resident_fp8::Projection::new(owner, prefix, width, channels)?;
         Ok(Self::from_binding(&projection.workspace_binding()?))
     }
@@ -77,6 +82,7 @@ pub(super) struct GdnWeights {
     pub(super) conv: u64,
     pub(super) a_log: u64,
     pub(super) dt_bias: u64,
+    pub(super) f32_params: bool,
     pub(super) gated_norm: u64,
     pub(super) out: ProjectionWeights,
     pub(super) history: String,
@@ -115,6 +121,7 @@ pub(super) struct LayerWeights {
 
 pub(super) struct ModelWeights {
     pub(super) embedding_table: u64,
+    pub(super) embedding_scale: Option<u64>,
     pub(super) first_norm: u64,
     pub(super) final_norm: u64,
     pub(super) head: ProjectionWeights,
@@ -122,10 +129,38 @@ pub(super) struct ModelWeights {
 }
 
 fn bf16_vector(owner: &ResidentWeights<'_>, name: &str, width: usize) -> Result<u64> {
-    owner.tensor(name, DType::Bf16, &[u64::try_from(width)?], u64::try_from(width * 2)?)
+    owner.tensor(
+        name,
+        DType::Bf16,
+        &[u64::try_from(width)?],
+        u64::try_from(width * 2)?,
+    )
 }
 
 impl ModelWeights {
+    pub(super) fn representation_report(&self) -> serde_json::Value {
+        let gdn_parameters: Vec<_> = self
+            .layers
+            .iter()
+            .enumerate()
+            .filter_map(|(index, layer)| match &layer.block {
+                Block::Gdn(w) => Some(serde_json::json!({
+                    "layer": index,
+                    "a_log_dt_bias": if w.f32_params { "f32" } else { "bf16" },
+                    "beta": "bf16",
+                })),
+                Block::Attention(_) => None,
+            })
+            .collect();
+        serde_json::json!({
+            "dispatch": "verified logical tensor dtype, independent of source container",
+            "embedding": if self.embedding_scale.is_some() { "fp8_e4m3 + bf16 row scale" } else { "bf16" },
+            "embedding_norm_input": "bf16",
+            "gdn_parameters": gdn_parameters,
+            "full_ninfer_arithmetic_parity": false,
+        })
+    }
+
     pub(super) fn bind(owner: &ResidentWeights<'_>, config: &DecoderConfig) -> Result<Self> {
         validate_shapes(config)?;
         let hidden = config.hidden;
@@ -134,9 +169,12 @@ impl ModelWeights {
         for layer in &config.layers {
             let nvfp4 = matches!(layer.mlp, DecoderMlpKind::Nvfp4);
             let block = match layer.block {
-                DecoderBlockKind::Gdn => {
-                    Block::Gdn(Box::new(bind_gdn(owner, config, &layer.prefix, &layer.state_prefix)?))
-                }
+                DecoderBlockKind::Gdn => Block::Gdn(Box::new(bind_gdn(
+                    owner,
+                    config,
+                    &layer.prefix,
+                    &layer.state_prefix,
+                )?)),
                 DecoderBlockKind::Attention => Block::Attention(Box::new(bind_attention(
                     owner,
                     config,
@@ -147,14 +185,11 @@ impl ModelWeights {
             let mlp = bind_mlp(owner, config, &format!("{}.mlp", layer.prefix), nvfp4)?;
             layers.push(LayerWeights { block, mlp });
         }
-        let table_bytes = u64::try_from(vocabulary * hidden * 2)?;
+        let (embedding_table, embedding_scale) =
+            resident_embedding::bind_table(owner, &config.embedding_table, vocabulary, hidden)?;
         Ok(Self {
-            embedding_table: owner.tensor(
-                &config.embedding_table,
-                DType::Bf16,
-                &[u64::try_from(vocabulary)?, u64::try_from(hidden)?],
-                table_bytes,
-            )?,
+            embedding_table,
+            embedding_scale,
             first_norm: bf16_vector(owner, &config.first_norm, hidden)?,
             final_norm: bf16_vector(owner, &config.final_norm, hidden)?,
             head: ProjectionWeights::fp8(owner, &config.head_prefix, hidden, vocabulary)?,
@@ -215,6 +250,8 @@ fn bind_gdn(
             u64::try_from(heads * hidden * 2)?,
         )
     };
+    let (a_log, dt_bias, f32_params) =
+        resident_gdn_core::bind_parameters(owner, &attention, heads)?;
     Ok(GdnWeights {
         norm: bf16_vector(owner, &format!("{prefix}.input_layernorm.weight"), hidden)?,
         post_norm: bf16_vector(
@@ -232,8 +269,9 @@ fn bind_gdn(
             &[u64::try_from(channels)?, 1, 4],
             u64::try_from(channels * 8)?,
         )?,
-        a_log: bf16_vector(owner, &format!("{attention}.A_log"), heads)?,
-        dt_bias: bf16_vector(owner, &format!("{attention}.dt_bias"), heads)?,
+        a_log,
+        dt_bias,
+        f32_params,
         gated_norm: bf16_vector(owner, &format!("{attention}.norm.weight"), shape.head_width)?,
         out: ProjectionWeights::fp8(owner, &format!("{attention}.out_proj"), inner, hidden)?,
         history: format!("{state_prefix}.gdn.history"),
@@ -266,8 +304,16 @@ fn bind_attention(
         k: fp8("k_proj", hidden, kv_width)?,
         v: fp8("v_proj", hidden, kv_width)?,
         out: fp8("o_proj", q_width, hidden)?,
-        q_norm: bf16_vector(owner, &format!("{attention}.q_norm.weight"), shape.head_width)?,
-        k_norm: bf16_vector(owner, &format!("{attention}.k_norm.weight"), shape.head_width)?,
+        q_norm: bf16_vector(
+            owner,
+            &format!("{attention}.q_norm.weight"),
+            shape.head_width,
+        )?,
+        k_norm: bf16_vector(
+            owner,
+            &format!("{attention}.k_norm.weight"),
+            shape.head_width,
+        )?,
         key_state: format!("{state_prefix}.attention.k"),
         value_state: format!("{state_prefix}.attention.v"),
     })

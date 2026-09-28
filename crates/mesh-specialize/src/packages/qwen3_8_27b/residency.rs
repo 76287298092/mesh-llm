@@ -1,7 +1,7 @@
 //! Persistent text-weight and state-capacity qualification, before model execution.
 
 use super::schedule::{Schedule, text_objects};
-use crate::{artifact::reader::VerifiedArtifact, entry_reference, kernels::ResidentEntryInput};
+use crate::{artifact::model_source::ModelArtifact, entry_reference, kernels::ResidentEntryInput};
 use anyhow::Result;
 use serde_json::{Value, json};
 use std::path::Path;
@@ -10,7 +10,7 @@ const TABLE: &str = "tensors/model.language_model.embed_tokens.weight";
 const NORM: &str = "tensors/model.language_model.layers.0.input_layernorm.weight";
 
 pub fn trial(path: &Path, ptx: &str, device: i32) -> Result<Value> {
-    let mut artifact = VerifiedArtifact::open(path)?;
+    let mut artifact = ModelArtifact::open(path)?;
     let objects = text_objects(artifact.directory())?;
     let schedule = Schedule::new(131_072)?;
     let tokens = vec![0, 248_319];

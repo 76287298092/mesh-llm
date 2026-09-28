@@ -6,7 +6,7 @@ const SMALL_LOG1P_EXP: f32 = 0.0625_f32;
 const SOFTPLUS_LINEAR_THRESHOLD: f32 = 20.0_f32;
 
 #[inline(always)]
-fn block_and_thread() -> (u32, u32) {
+pub(super) fn block_and_thread() -> (u32, u32) {
     let block: u32;
     let thread: u32;
     // SAFETY: Reads the calling thread's 1D block and thread coordinates without memory effects.
@@ -375,16 +375,28 @@ pub unsafe extern "ptx-kernel" fn gdn_gates(
             decode_bf16(*dt_bias.add(head)),
         )
     };
-    let beta_value = encode_bf16_rne(stable_sigmoid(b_value));
-    let softplus_input = fp32_add_rn(a_value, dt_bias_value);
-    let softplus = stable_softplus(softplus_input);
-    let negative_exp_a_log = f32::from_bits(exp_from_argument(a_log_value).to_bits() ^ 0x8000_0000);
-    let gate = fp32_multiply_rn(negative_exp_a_log, softplus);
-    let decay_value = exp_from_argument(gate);
+    let (beta_value, gate, decay_value) = gate_values(a_value, b_value, a_log_value, dt_bias_value);
     // SAFETY: Each flattened output thread writes one distinct beta/g/decay element.
     unsafe {
         beta.add(flat_index).write(beta_value);
         g.add(flat_index).write(gate);
         decay.add(flat_index).write(decay_value);
     }
+}
+
+/// Shared arithmetic only: both entry points differ exclusively in parameter loads.
+#[inline(always)]
+pub(super) fn gate_values(
+    a_value: f32,
+    b_value: f32,
+    a_log_value: f32,
+    dt_bias_value: f32,
+) -> (u16, f32, f32) {
+    let beta_value = encode_bf16_rne(stable_sigmoid(b_value));
+    let softplus_input = fp32_add_rn(a_value, dt_bias_value);
+    let softplus = stable_softplus(softplus_input);
+    let negative_exp_a_log = f32::from_bits(exp_from_argument(a_log_value).to_bits() ^ 0x8000_0000);
+    let gate = fp32_multiply_rn(negative_exp_a_log, softplus);
+    let decay_value = exp_from_argument(gate);
+    (beta_value, gate, decay_value)
 }

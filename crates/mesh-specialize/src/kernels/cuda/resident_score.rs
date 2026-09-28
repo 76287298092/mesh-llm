@@ -12,6 +12,7 @@ use crate::{
 };
 use anyhow::{Context as _, Result, bail, ensure};
 use serde_json::{Value, json};
+use sha2::{Digest, Sha256};
 use std::ffi::c_void;
 
 pub(super) const KERNEL: &str = "row_logprob_topk_bf16";
@@ -68,16 +69,24 @@ impl<'m, 'w, 'ctx> Scorer<'m, 'w, 'ctx> {
         context: &Context,
         module: &Module<'_>,
         hidden: &Buffer<'_>,
-        rows: usize,
         first_row: usize,
         targets: &[u32],
+        mut logit_hash: Option<&mut Sha256>,
     ) -> Result<Vec<Record>> {
+        let rows = hidden.len() / (self.width * 2);
         self.validate(hidden, rows, first_row, targets)?;
         let mut records = Vec::with_capacity(targets.len());
         for (index, chunk) in targets.chunks(self.chunk_rows).enumerate() {
             let start = first_row + index * self.chunk_rows;
             let logits = self.project(context, module, hidden, start, chunk.len())?;
             records.extend(self.reduce(context, module, &logits, chunk)?);
+            if let Some(hash) = logit_hash.as_deref_mut() {
+                // Optional diagnostic, excluded from inference benchmarks: hash all
+                // BF16 vocabulary values in scored-position order, not only top-k.
+                let mut bytes = vec![0_u8; logits.len()];
+                logits.download(&mut bytes)?;
+                hash.update(&bytes);
+            }
         }
         Ok(records)
     }
@@ -102,7 +111,8 @@ impl<'m, 'w, 'ctx> Scorer<'m, 'w, 'ctx> {
         let mut reference_error = None;
         for (row, record) in records.iter().take(REFERENCE_ROWS).enumerate() {
             let values = self.download_row(&logits, row)?;
-            let oracle = reference::score_row(&values, record.target).map_err(anyhow::Error::msg)?;
+            let oracle =
+                reference::score_row(&values, record.target).map_err(anyhow::Error::msg)?;
             match reference::matches_device(
                 &oracle,
                 record.target_logprob,
@@ -230,26 +240,50 @@ impl<'m, 'w, 'ctx> Scorer<'m, 'w, 'ctx> {
         );
         let target_ids = Buffer::new(context, rows * 4)?;
         target_ids.upload(&words(targets.iter().map(|t| t.to_le_bytes())))?;
-        let buffers = [rows * 4, rows * 4, rows * TOP_K * 4, rows * TOP_K * 4, rows * 4]
-            .map(|bytes| Buffer::new(context, bytes));
+        let buffers = [
+            rows * 4,
+            rows * 4,
+            rows * TOP_K * 4,
+            rows * TOP_K * 4,
+            rows * 4,
+        ]
+        .map(|bytes| Buffer::new(context, bytes));
         let [target_logprobs, logsumexps, top_ids, top_logprobs, status] = buffers;
-        let outputs = [target_logprobs?, logsumexps?, top_ids?, top_logprobs?, status?];
+        let outputs = [
+            target_logprobs?,
+            logsumexps?,
+            top_ids?,
+            top_logprobs?,
+            status?,
+        ];
         let mut pointers = [logits.pointer(), target_ids.pointer()]
             .into_iter()
             .chain(outputs.iter().map(Buffer::pointer))
             .collect::<Vec<u64>>();
-        let mut dimensions = [u32::try_from(self.vocabulary)?, u32::try_from(self.vocabulary)?];
+        let mut dimensions = [
+            u32::try_from(self.vocabulary)?,
+            u32::try_from(self.vocabulary)?,
+        ];
         let mut arguments: Vec<*mut c_void> = pointers
             .iter_mut()
             .map(|pointer| (pointer as *mut u64).cast())
             .collect();
-        arguments.extend(dimensions.iter_mut().map(|value| (value as *mut u32).cast()));
+        arguments.extend(
+            dimensions
+                .iter_mut()
+                .map(|value| (value as *mut u32).cast()),
+        );
         let function = module.function(KERNEL)?;
         // SAFETY: `rows` contiguous BF16 rows with stride equal to the validated
         // vocabulary (>= 64), `rows` targets and exactly sized outputs stay live
         // through the synchronization below; grid and block match the contract.
         let launched = unsafe {
-            function.launch([u32::try_from(rows)?, 1, 1], [THREADS, 1, 1], 0, &mut arguments)
+            function.launch(
+                [u32::try_from(rows)?, 1, 1],
+                [THREADS, 1, 1],
+                0,
+                &mut arguments,
+            )
         };
         let synchronized = context.synchronize();
         launched.context("row log-probability launch failed")?;
@@ -277,7 +311,9 @@ fn decode_records(targets: &[u32], outputs: &[Buffer<'_>; 5]) -> Result<Vec<Reco
     for (row, &target) in targets.iter().enumerate() {
         let code = u32::from_le_bytes(status[row]);
         if code != 0 {
-            bail!("scoring row {row} status {code:#x} (1 nonfinite, 2 target, 4 target nonfinite, 8 short)");
+            bail!(
+                "scoring row {row} status {code:#x} (1 nonfinite, 2 target, 4 target nonfinite, 8 short)"
+            );
         }
         let record = Record {
             target,

@@ -1,6 +1,7 @@
 mod admission;
 mod baseline;
 mod checkpoint;
+mod chunked_bench;
 mod entry;
 mod fixtures;
 mod mlp_workspace;
@@ -9,6 +10,7 @@ mod model_bench;
 mod model_profile;
 mod model_score;
 mod mtp;
+mod ninfer_inspect;
 mod observations;
 mod probe;
 mod stream_check;
@@ -17,6 +19,8 @@ use crate::command::DynResult;
 
 pub(crate) fn run(args: &[String]) -> DynResult<()> {
     match args {
+        [command, rest @ ..] if command == "ninfer-inspect" => ninfer_inspect::run(rest),
+        [command, rest @ ..] if command == "qwen-chunked-bench" => chunked_bench::run(rest),
         [command, rest @ ..] if command == "qwen-model-profile" => model_profile::run(rest),
         [command, rest @ ..] if command == "qwen-model-score" => model_score::run(rest),
         [command, rest @ ..] if command == "qwen-stream-check" => stream_check::run(rest),
@@ -41,6 +45,7 @@ pub(crate) fn run(args: &[String]) -> DynResult<()> {
         [command, rest @ ..] if command == "baseline" => baseline::run(rest),
         [command, rest @ ..] if command == "baseline-plan" => fixtures::run(rest),
         [command, rest @ ..] if command == "nvfp4-probe" => probe::run(rest),
+        [command, rest @ ..] if command == "attention-v2-check" => probe::attention_v2(rest),
         [command, rest @ ..] if command == "feature-attention-check" => {
             probe::feature_attention(rest)
         }
@@ -51,6 +56,10 @@ pub(crate) fn run(args: &[String]) -> DynResult<()> {
         [command, rest @ ..] if command == "feature-fusion-check" => probe::feature_fusion(rest),
         [command, rest @ ..] if command == "greedy-check" => probe::greedy(rest),
         [command, rest @ ..] if command == "a16-head-check" => probe::a16_head(rest),
+        [command, rest @ ..] if command == "bf16-ab-decode-check" => probe::bf16_ab_decode(rest),
+        [command, rest @ ..] if command == "native-parameter-check" => {
+            probe::native_parameter(rest)
+        }
         [command, rest @ ..] if command == "nvfp4-pipeline-check" => probe::nvfp4_pipeline(rest),
         [command, rest @ ..] if command == "feature-projection-check" => {
             probe::feature_projection(rest)

@@ -8,16 +8,17 @@
 
 use super::StreamForward;
 use crate::{
-    artifact::{reader::VerifiedArtifact, schema::Object},
+    artifact::{model_source::ModelArtifact, schema::Object},
     engine::sampling,
     kernels::{
-        DecoderConfig, StreamCheckRequest, attention_profile, fp8_profile, nvfp4_profile,
+        DecoderConfig, StreamCheckRequest, attention_profile,
         cuda::{
             driver::{Context, Module},
             resident_model::{Model, Session},
             resident_state::ResidentState,
             resident_weights::ResidentWeights,
         },
+        fp8_profile, nvfp4_profile,
     },
 };
 use anyhow::{Context as _, Result, ensure};
@@ -28,7 +29,7 @@ use std::time::Instant;
 pub(in crate::kernels) fn run(
     ptx: &str,
     device: i32,
-    artifact: &mut VerifiedArtifact,
+    artifact: &mut ModelArtifact,
     objects: &[Object],
     config: &DecoderConfig,
     request: &StreamCheckRequest<'_>,

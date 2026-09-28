@@ -5,7 +5,7 @@ use super::{
     resident_weights::ResidentWeights,
 };
 use crate::{
-    artifact::{reader::VerifiedArtifact, schema::Object},
+    artifact::{model_source::ModelArtifact, schema::Object},
     engine::{layout::Layout, sampling},
     entry_reference::bf16_to_f32,
     kernels::DecoderConfig,
@@ -18,7 +18,7 @@ use sha2::{Digest, Sha256};
 pub(in crate::kernels) fn run(
     ptx: &str,
     device: i32,
-    artifact: &mut VerifiedArtifact,
+    artifact: &mut ModelArtifact,
     objects: &[Object],
     config: &DecoderConfig,
     reference: &ModelReference,
@@ -195,7 +195,7 @@ pub(in crate::kernels) fn run(
 }
 
 fn validate_reference(
-    artifact: &VerifiedArtifact,
+    artifact: &ModelArtifact,
     config: &DecoderConfig,
     reference: &ModelReference,
 ) -> Result<()> {

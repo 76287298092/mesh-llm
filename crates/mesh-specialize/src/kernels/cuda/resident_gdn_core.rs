@@ -26,6 +26,7 @@ pub(super) struct GdnCore<'w, 'ctx> {
     owner: &'w ResidentWeights<'ctx>,
     a_log: u64,
     dt_bias: u64,
+    f32_params: bool,
     norm_weight: u64,
     key_heads: usize,
     value_heads: usize,
@@ -42,22 +43,9 @@ impl<'w, 'ctx> GdnCore<'w, 'ctx> {
         width: usize,
     ) -> Result<Self> {
         let qkv_channels = validate_shape(key_heads, value_heads, width)?;
-        let head_shape = [u64::try_from(value_heads)?];
         let norm_shape = [u64::try_from(width)?];
-        let parameter_bytes = checked_product(value_heads, 2, "GDN head parameter")?;
         let norm_bytes = checked_product(width, 2, "GDN norm weight")?;
-        let a_log = owner.tensor(
-            &format!("{prefix}.A_log"),
-            DType::Bf16,
-            &head_shape,
-            u64::try_from(parameter_bytes)?,
-        )?;
-        let dt_bias = owner.tensor(
-            &format!("{prefix}.dt_bias"),
-            DType::Bf16,
-            &head_shape,
-            u64::try_from(parameter_bytes)?,
-        )?;
+        let (a_log, dt_bias, f32_params) = bind_parameters(owner, prefix, value_heads)?;
         let norm_weight = owner.tensor(
             &format!("{prefix}.norm.weight"),
             DType::Bf16,
@@ -68,6 +56,7 @@ impl<'w, 'ctx> GdnCore<'w, 'ctx> {
             owner,
             a_log,
             dt_bias,
+            f32_params,
             norm_weight,
             key_heads,
             value_heads,
@@ -116,6 +105,41 @@ impl<'w, 'ctx> GdnCore<'w, 'ctx> {
             width: self.width,
         });
         Ok(super::resident_recovery::CoreOutput { output, record })
+    }
+}
+
+/// Parameters remain in their verified source precision. The container is irrelevant.
+pub(super) fn bind_parameters(
+    owner: &ResidentWeights<'_>,
+    prefix: &str,
+    heads: usize,
+) -> Result<(u64, u64, bool)> {
+    let log_name = format!("{prefix}.A_log");
+    let bias_name = format!("{prefix}.dt_bias");
+    let log_dtype = &owner.object(&log_name)?.dtype;
+    let bias_dtype = &owner.object(&bias_name)?.dtype;
+    let f32_params = parameter_precision(log_dtype, bias_dtype, heads)?;
+    let bytes = u64::try_from(checked_product(
+        heads,
+        if f32_params { 4 } else { 2 },
+        "GDN parameter",
+    )?)?;
+    let shape = [u64::try_from(heads)?];
+    // tensor verifies row-major layout, exact dtype/shape/bytes and arena membership.
+    let a_log = owner.tensor(&log_name, log_dtype.clone(), &shape, bytes)?;
+    let dt_bias = owner.tensor(&bias_name, bias_dtype.clone(), &shape, bytes)?;
+    Ok((a_log, dt_bias, f32_params))
+}
+
+fn parameter_precision(a_log: &DType, dt_bias: &DType, heads: usize) -> Result<bool> {
+    ensure!(a_log == dt_bias, "GDN A_log and dt_bias precisions differ");
+    match a_log {
+        DType::Bf16 => Ok(false),
+        DType::F32 => {
+            ensure!(heads == 48, "F32 GDN parameters require exact [48] shape");
+            Ok(true)
+        }
+        _ => anyhow::bail!("unsupported GDN parameter dtype: {}", a_log.as_str()),
     }
 }
 
@@ -321,7 +345,11 @@ fn prepare_gates<'a>(
         &mut pointers,
         &mut dimensions,
         LaunchConfig {
-            name: "gdn_gates",
+            name: if core.f32_params {
+                "gdn_gates_f32_params"
+            } else {
+                "gdn_gates"
+            },
             grid: [u32::try_from(extents.gate_elements.div_ceil(256))?, 1, 1],
             block: [256, 1, 1],
             trailing_f32: None,
@@ -502,6 +530,24 @@ mod tests {
         MAX_HEADS, MAX_QKV_CHANNELS, MAX_ROWS, MAX_WIDTH, checked_product, run_extents,
         validate_input_lengths, validate_length, validate_shape,
     };
+
+    #[test]
+    fn gate_precision_defaults_to_bf16_and_requires_matched_f32_48() {
+        use crate::artifact::schema::DType;
+        assert!(!super::parameter_precision(&DType::Bf16, &DType::Bf16, 48).unwrap());
+        assert!(!super::parameter_precision(&DType::Bf16, &DType::Bf16, 2).unwrap());
+        assert!(super::parameter_precision(&DType::F32, &DType::F32, 48).unwrap());
+        for (a, d) in [
+            (DType::Bf16, DType::F32),
+            (DType::F32, DType::Bf16),
+            (DType::F16, DType::F16),
+        ] {
+            assert!(super::parameter_precision(&a, &d, 48).is_err());
+        }
+        for heads in [0, 47, 49, 256] {
+            assert!(super::parameter_precision(&DType::F32, &DType::F32, heads).is_err());
+        }
+    }
 
     #[test]
     fn validates_supported_shape_and_checked_extents() {

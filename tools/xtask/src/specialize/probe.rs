@@ -28,7 +28,7 @@ fn run_probe<E: std::fmt::Display>(
 ) -> DynResult<()> {
     let [ptx_flag, ptx_path, device_flag, device, output_flag, output] = args else {
         return Err(
-            "usage: xtask specialize <nvfp4-probe|instruction-probe|workload-probe|workload-check> --ptx PATH --device ORDINAL --output NEW_FILE"
+            "usage: xtask specialize <nvfp4-probe|instruction-probe|workload-probe|workload-check|native-parameter-check> --ptx PATH --device ORDINAL --output NEW_FILE"
                 .into(),
         );
     };
@@ -96,4 +96,16 @@ pub(super) fn a16_head(args: &[String]) -> DynResult<()> {
 
 pub(super) fn nvfp4_pipeline(args: &[String]) -> DynResult<()> {
     run_probe(args, mesh_specialize::kernels::nvfp4_pipeline_trial)
+}
+
+pub(super) fn bf16_ab_decode(args: &[String]) -> DynResult<()> {
+    run_probe(args, mesh_specialize::kernels::bf16_ab_decode_trial)
+}
+
+pub(super) fn attention_v2(args: &[String]) -> DynResult<()> {
+    run_probe(args, mesh_specialize::kernels::attention_v2_trial)
+}
+
+pub(super) fn native_parameter(args: &[String]) -> DynResult<()> {
+    run_probe(args, mesh_specialize::kernels::native_parameter_trial)
 }

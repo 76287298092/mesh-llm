@@ -1,0 +1,131 @@
+# BF16 A/B FP32 decode candidate
+
+Status: implemented, unqualified, 2026-09-28. The coordinator narrowed
+`feature_decode_a16_pack` to the small BF16 A/B projection bottleneck. No FP8,
+NVFP4, norm/gate fusion, scorer, attention, or stream-executor changes are included.
+Default arithmetic and resident dispatch are unchanged.
+
+Source context: coordinator supplied HEAD `ab33f730e`; this worker did not run
+Git to verify it. Model target is Qwen3.8-27B, current GDN A/B shapes each
+[48,5120]. Weights are separate resident row-major BF16 matrices, without scales,
+from `linear_attn.in_proj_a.weight` and `linear_attn.in_proj_b.weight`.
+Input is the already BF16-rounded input RMSNorm output. No mspec layout or
+recipe transformation is needed. GPU target is SM120; driver, clocks, JIT
+resources and performance are not measured. Host compiler and PTX builds,
+CPU tests, GPU trials and sanitizers were not run. Only rustfmt was run on
+three new Rust files. There is no before/after result or bandwidth-attainment claim.
+
+## Schedule and arithmetic
+
+`kernels/nvptx/bf16_ab_decode_fp32.rs` exports one paired projection launch.
+Each CTA computes one head of either A or B. The current shape launches 96
+CTAs, rather than two launches of 12 CTAs each. This still cannot occupy all
+170 SMs simultaneously. No bandwidth target follows from the schedule.
+
+Four warps within each CTA divide K into contiguous eight-BF16 groups per
+thread. Both activation and weight groups use explicit 16-byte loads. Each
+thread has four independent FP32 FMA chains. At K5120 each chain receives ten
+FMAs; a pairwise local sum and warp shuffles produce four warp partials. One
+CTA barrier and 16 bytes of static shared memory combine those partials.
+No atomics, global scratch, allocation, or inter-CTA synchronization is used.
+This is CTA-local sliced K, justified by N48 rather than large-N GEMV tuning.
+
+The exact control uses FP64 and remains unchanged. The earlier FP8 A16 GEMV
+mostly saved activation-quantization launches, not dot time. This candidate
+instead removes FP64 from A/B and increases CTA count, with a separate numerical
+contract. Its performance and model impact require measurement.
+
+## Exact ABI and parent integration
+
+```text
+bf16_ab_decode_fp32(
+  input: *const u16, weights_a: *const u16, weights_b: *const u16,
+  output_a: *mut u16, output_b: *mut u16,
+  raw_a: *mut f32, raw_b: *mut f32,
+  n: u32, k: u32)
+```
+
+M is fixed at one. Grid `[n,2,1]`, block `[128,1,1]`, dynamic shared 0,
+static shared 16 bytes. N in 1..=256, K divisible by eight in 8..=32768.
+The three input bases need 16-byte alignment. Input spans K BF16 values;
+each matrix spans N*K BF16 values. Each output spans N values of its declared
+type. All pointers are disjoint and remain live through completion. Finite
+inputs, finite intermediate FP32 sums, finite FP32/BF16 results, and checked
+shape/address arithmetic are host obligations. BF16 output is RNE of stored raw
+FP32 output. There is no residual, row scale, or activation quantization.
+
+Parent can pre-resolve this function and enqueue one pointer-only operation
+against preallocated output views. Scalars N/K are fixed launch metadata.
+Reuse the normalized input already consumed by QKV/Z. Bind weights from
+`resident_bf16::Projection::new` semantics, replacing only the two A/B calls
+in `resident_gdn::Layer::execute` for an explicitly non-exact M1 experiment.
+The existing `gdn_gates` consumes the candidate's BF16 A/B outputs unchanged.
+No stream integration is supplied. Mixed M1/non-M1 scheduling is not
+partition-equivalent; MTP and quality admission remain parent-owned.
+
+## Independent oracle and fixed trial gates
+
+`reference/bf16_ab_decode_fp32.rs` accumulates decoded products sequentially
+in FP64, casts once to FP32, and rounds once to BF16. It does not reproduce
+the device reduction. Host fixtures have hand-computed signed dots, absolute
+product sums, cancellation, BF16 tie-to-even boundaries, invalid extents,
+nonfinite inputs, and overflow rejection. These tests are authored, not run.
+
+The GPU trial has eight cases: N1/K8, N3/K24, N48/K1024, N48/K1032,
+N48/K5120 exact dyadics, two distinct seeded N48/K5120 signed cases, and
+N48/K32768. A and B have different values. Small-dyadic cases require exact
+raw and BF16 bits. The unchanged FP64 baseline always requires exact oracle
+bits on these bounded fixtures. General candidate cases use per-output
+`gamma(s)*sum_abs_products + 1e-37`, where `s=2*ceil(K/1024)+14`,
+`gamma(s)=s*2^-24/(1-s*2^-24)`. This covers chain depth, both reductions,
+and oracle rounding. BF16 absolute error may additionally include the sum
+of the two endpoint half-ULPs. A universal one-BF16-ULP bound near cancellation
+is not justified. Every output must be finite, BF16 must equal RNE of stored
+raw, and repeated launches must reproduce all output bits. This is only an
+operator gate; `findings/quality-gates.md` is still required before promotion.
+
+Harness `src/kernels/cuda/bf16_ab_decode_trial.rs` poisons outputs and reports
+candidate/control metrics, determinism, device identity, JIT resources and logs.
+It runs three warmups, then three event batches of ten A/B pairs, for both the
+single candidate launch and the two unchanged baseline launches. Reports include
+logical weight GB/s using `4*N*K` bytes per pair. The 983,040-byte current weight
+pair fits cache; repeated timing is warm-cache, not measured DRAM bandwidth.
+Event batches include host submission gaps, and candidate-first order is fixed.
+No real model weights or model throughput are measured by this harness.
+
+Parent reproduction after approved host/PTX builds:
+
+```text
+cargo xtask specialize bf16-ab-decode-check --ptx PATH --device 0 --output NEW_FILE
+```
+
+This mirrors `a16-head-check` through the existing xtask `run_probe` helper,
+which uses `create_new(true)`, adds the PTX SHA256, retains failure JSON, and
+refuses overwrite. Parent must run host tests/type-check, PTX/JIT inspection,
+memcheck/racecheck/synccheck, same-input real A/B comparison, then matched timings.
+All generated evidence belongs in a fresh parent-selected directory. No trial
+report exists yet.
+
+## Assembly inventory handoff
+
+All new inline-asm sites are in `kernels/nvptx/bf16_ab_decode_fp32.rs`.
+Parent should add these to the shared inventory before admission.
+
+| Function/site | Instructions | Independent evidence needed |
+| --- | --- | --- |
+| `coordinates` | `mov.u32` tid.x/ctaid.x/ctaid.y | Separate A/B row coverage, N1/N3/N48 |
+| `load8` | `ld.global.v4.u32` | Logical BF16 oracle, K8/K24/K1032, alignment and memcheck |
+| `fma` | `fma.rn.f32` | FP64 dot and absolute-product error bound |
+| `add` | `add.rn.f32` | Same oracle, signed cancellation |
+| `sum_warp` | `shfl.sync.bfly.b32` full mask | Both reductions, all-lane participation |
+| `shared_base` | `.shared .align 4 .b8`, symbol-address `mov.u32` | 16-byte extent and JIT resource report |
+| `store_partial` | `st.shared.f32` | Distinct warp slots, racecheck |
+| `load_partial` | `ld.shared.f32` | Initialized slots after barrier, racecheck |
+| kernel barrier | `bar.sync 0` | CTA-uniform guards, synccheck |
+
+Compiler-selected global stores, BF16 bit operations and final register/spill
+usage also need emitted PTX/SASS inspection. No instruction qualification is
+claimed from source inspection alone.
+
+Durable rule: removing FP64 changes arithmetic; operator error bounds do not
+certify gate sensitivity, model quality, MTP equivalence, or serving performance.

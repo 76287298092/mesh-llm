@@ -1,7 +1,7 @@
 //! Independent MTP reference and bounded speculative execution qualification.
 use super::{model_reference::ModelReference, model_weights as weights};
 use crate::{
-    artifact::{reader::VerifiedArtifact, schema::Object},
+    artifact::{model_source::ModelArtifact, schema::Object},
     decoder_ops_reference as ops,
     engine::sampling,
     kernels::SpeculationRequest,
@@ -32,7 +32,8 @@ pub fn reference(path: &Path, target: &ModelReference) -> Result<Reference> {
             && target.layer_outputs.len() == 64,
         "invalid target reference for MTP"
     );
-    let mut artifact = VerifiedArtifact::open(path)?;
+    let mut artifact = ModelArtifact::open(path)?;
+    artifact.require_mtp()?;
     super::inventory::validate(artifact.directory())?;
     ensure!(
         target.model_id == artifact.identity().model_id
@@ -63,7 +64,7 @@ pub fn reference(path: &Path, target: &ModelReference) -> Result<Reference> {
     })
 }
 
-fn load_weights(artifact: &mut VerifiedArtifact, tokens: &[u32]) -> Result<mtp_reference::Weights> {
+fn load_weights(artifact: &mut ModelArtifact, tokens: &[u32]) -> Result<mtp_reference::Weights> {
     let prefix = "tensors/mtp.layers.0";
     let attention = format!("{prefix}.self_attn");
     Ok(mtp_reference::Weights {
@@ -96,7 +97,7 @@ fn load_weights(artifact: &mut VerifiedArtifact, tokens: &[u32]) -> Result<mtp_r
     })
 }
 
-fn objects(artifact: &VerifiedArtifact) -> Result<Vec<Object>> {
+fn objects(artifact: &ModelArtifact) -> Result<Vec<Object>> {
     let mut objects = super::schedule::text_objects(artifact.directory())?;
     let mtp = artifact
         .directory()
@@ -127,7 +128,8 @@ pub fn trial(
             && (1..=3).contains(&request.repetitions),
         "MTP request exceeds bounds"
     );
-    let mut artifact = VerifiedArtifact::open(path)?;
+    let mut artifact = ModelArtifact::open(path)?;
+    artifact.require_mtp()?;
     super::inventory::validate(artifact.directory())?;
     ensure!(
         reference.model_id == artifact.identity().model_id

@@ -3,7 +3,7 @@ use core::arch::asm;
 const BLOCK_THREADS: u32 = 256;
 
 #[inline(always)]
-fn thread_and_row() -> (u32, u32) {
+pub(super) fn thread_and_row() -> (u32, u32) {
     let thread: u32;
     let row: u32;
     // SAFETY: Reads the calling thread's coordinates without changing memory.
@@ -87,7 +87,7 @@ fn fp32_add_rn(left: f32, right: f32) -> f32 {
 }
 
 #[inline(always)]
-fn fp32_multiply_rn(left: f32, right: f32) -> f32 {
+pub(super) fn fp32_multiply_rn(left: f32, right: f32) -> f32 {
     let product: f32;
     // SAFETY: This scalar FP32 operation has no memory or stack effects.
     unsafe {
@@ -138,7 +138,7 @@ fn decode_bf16(bits: u16) -> f32 {
 }
 
 #[inline(always)]
-fn encode_bf16_rne(value: f32) -> u16 {
+pub(super) fn encode_bf16_rne(value: f32) -> u16 {
     let bits = value.to_bits();
     let exponent = bits & 0x7f80_0000;
     let mantissa = bits & 0x007f_ffff;
@@ -165,7 +165,10 @@ fn encode_bf16_rne(value: f32) -> u16 {
 /// at least `rows * width` writable BF16 values, and `unrounded` must contain at
 /// least `rows * width` writable `f32` values. All device pointers must be correctly
 /// aligned, live until kernel completion, and non-overlapping with one another so
-/// concurrent rows cannot race and writes cannot alter inputs.
+/// concurrent rows cannot race and writes cannot alter inputs. The sole exception is
+/// `table == residual` with identity token IDs (`tokens[row] == row`): every thread
+/// rewrites only its own source element with the identical BF16 bits, and all
+/// reduction barriers precede the second read. No other input/output alias is valid.
 #[unsafe(no_mangle)]
 pub unsafe extern "ptx-kernel" fn embedding_norm_bf16(
     table: *const u16,

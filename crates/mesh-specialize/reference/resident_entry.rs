@@ -7,14 +7,15 @@ use crate::artifact::schema::{DType, ObjectKind};
 
 /// Copy requested rows from one resident `[vocab, width]` BF16 tensor.
 ///
-/// The artifact is streamed in full so `VerifiedArtifact` can recheck its object
+/// The artifact is streamed in full so `ModelArtifact` can recheck its object
 /// digest. Only the selected rows are retained, in token order, including repeats.
 pub fn embedding_rows(
-    artifact: &mut crate::artifact::reader::VerifiedArtifact,
+    artifact: &mut crate::artifact::model_source::ModelArtifact,
     name: &str,
     width: usize,
     tokens: &[u32],
 ) -> Result<Vec<u8>> {
+    artifact.require_legacy_reference()?;
     ensure!(
         (1..=32768).contains(&width),
         "embedding width is out of range"

@@ -11,8 +11,8 @@ Internal gate (control = exact profile P, candidate = fast profile Q):
   * top-1 agreement over all scored positions >= 98.0%
   * mean KL(P || Q) <= 0.02 nats, 99.9th-percentile KL <= 1.0 nat
     (overall and per domain)
-  * same-profile determinism: `--repeat DIR` must be byte-identical to the
-    candidate (records are derived from logits; without it the row is NOT RUN)
+  * `--repeat DIR` checks compact score-record repeatability, not full-logit
+    determinism. That stronger gate stays NOT RUN until separately measured.
 
 Gated KL uses a common partition (quality-gates.md, clarified 2026-09-28): each
 id in both top-64 lists is its own cell and one bucket holds every other id,
@@ -60,10 +60,26 @@ def load_dir(path):
         if len(raw) % RECORD.size:
             sys.exit(f"{path}: {stream['records']} is not a whole number of records")
         records = list(RECORD.iter_unpack(raw))
-        if len(records) != stream["scored_tokens"]:
-            sys.exit(f"{path}: {stream['id']} record count disagrees with manifest")
+        if len(records) != stream["scored_tokens"] or not records:
+            sys.exit(f"{path}: {stream['id']} empty records or count disagrees with manifest")
+        for index, record in enumerate(records):
+            validate_record(record, f"{path}/{stream['id']} row {index}")
         streams.append((stream, records, raw))
     return manifest, streams
+
+
+def validate_record(record, label):
+    ids, logs = record[3:3 + TOP_K], record[3 + TOP_K:]
+    if not all(math.isfinite(x) for x in (record[1], record[2], *logs)):
+        sys.exit(f"{label}: nonfinite score")
+    if record[1] > 0 or any(x > 0 for x in logs):
+        sys.exit(f"{label}: positive log probability")
+    if len(set(ids)) != TOP_K:
+        sys.exit(f"{label}: duplicate top-k ids")
+    if any(a < b for a, b in zip(logs, logs[1:])):
+        sys.exit(f"{label}: top-k probabilities are not descending")
+    if sum(map(math.exp, logs)) > 1.0 + 1e-5:
+        sys.exit(f"{label}: top-k probability mass exceeds one")
 
 
 def distribution(record):
@@ -128,10 +144,14 @@ def compare_internal(control_dir, candidate_dir):
     for key in ("corpus_id", "context_tokens", "stride_tokens"):
         if control_manifest[key] != candidate_manifest[key]:
             sys.exit(f"{key} differs between control and candidate")
+    for key in ("artifact_sha256", "identity"):
+        if not control_manifest.get(key) or control_manifest[key] != candidate_manifest.get(key):
+            sys.exit(f"{key} missing or differs; internal gates require identical weights")
     if [s["id"] for s, _, _ in control] != [s["id"] for s, _, _ in candidate]:
         sys.exit("stream lists differ between control and candidate")
     rows_by_domain = {}
-    for (stream, p_records, _), (_, q_records, _) in zip(control, candidate):
+    for (stream, p_records, _), (other, q_records, _) in zip(control, candidate):
+        require_stream_protocol(stream, other)
         if len(p_records) != len(q_records):
             sys.exit(f"{stream['id']}: scored counts differ")
         rows = rows_by_domain.setdefault(stream["domain"], [])
@@ -155,6 +175,21 @@ def compare_internal(control_dir, candidate_dir):
     )
 
 
+def require_stream_protocol(control, candidate):
+    for key in ("id", "domain", "input_tokens", "scored_tokens"):
+        if control[key] != candidate[key]:
+            sys.exit(f"{control['id']}: {key} differs")
+    digest = control.get("input_tokens_sha256")
+    if digest and candidate.get("input_tokens_sha256") and digest != candidate["input_tokens_sha256"]:
+        sys.exit(f"{control['id']}: input tokens differ")
+    left, right = control["windows"], candidate["windows"]
+    if len(left) != len(right):
+        sys.exit(f"{control['id']}: window count differs")
+    keys = ("input_begin", "input_end", "target_begin", "target_end", "scored_tokens")
+    if any(a[k] != b[k] for a, b in zip(left, right) for k in keys):
+        sys.exit(f"{control['id']}: window protocol differs")
+
+
 def determinism(candidate, repeat_dir):
     if repeat_dir is None:
         return None
@@ -164,7 +199,31 @@ def determinism(candidate, repeat_dir):
     return all(a == b for (_, _, a), (_, _, b) in zip(candidate, repeat))
 
 
-def gate_rows(overall, domains, identical):
+def full_logit_determinism(candidate_dir, repeat_dir):
+    if repeat_dir is None:
+        return None
+    a = json.loads((Path(candidate_dir) / 'manifest.json').read_text())
+    b = json.loads((Path(repeat_dir) / 'manifest.json').read_text())
+    for key in ('corpus_id', 'context_tokens', 'stride_tokens', 'profiles', 'artifact_sha256', 'ptx_sha256'):
+        if a.get(key) is None or b.get(key) is None:
+            return None
+        if a[key] != b[key]:
+            return False
+    if not a.get('full_logit_hash', {}).get('enabled') or not b.get('full_logit_hash', {}).get('enabled'):
+        return None
+    if len(a['streams']) != len(b['streams']):
+        return False
+    for left, right in zip(a['streams'], b['streams']):
+        require_stream_protocol(left, right)
+        for key in ('input_tokens_sha256', 'full_logits_sha256'):
+            if not left.get(key) or not right.get(key):
+                return None
+            if left[key] != right[key]:
+                return False
+    return True
+
+
+def gate_rows(overall, domains, identical, full_identical=None):
     rows = [("NLL increase overall", overall["nll_relative_increase"], "<=", THRESHOLDS["nll_overall"])]
     rows += [(f"NLL increase {d}", s["nll_relative_increase"], "<=", THRESHOLDS["nll_domain"]) for d, s in domains.items()]
     rows.append(("Top-1 agreement overall", overall["top1_agreement"], ">=", THRESHOLDS["top1"]))
@@ -176,9 +235,13 @@ def gate_rows(overall, domains, identical):
         passed = value <= limit if op == "<=" else value >= limit
         result.append({"gate": name, "value": value, "op": op, "threshold": limit,
                        "status": "PASS" if passed else "FAIL"})
-    result.append({"gate": "Same-profile determinism", "value": identical, "op": "==",
+    result.append({"gate": "Score-record repeatability", "value": identical, "op": "==",
                    "threshold": True,
                    "status": "NOT RUN" if identical is None else ("PASS" if identical else "FAIL")})
+    # Compact top-k/NLL records cannot prove equality of all vocabulary logits.
+    result.append({"gate": "Full-logit determinism", "value": full_identical, "op": "==",
+                   "threshold": True,
+                   "status": "NOT RUN" if full_identical is None else ("PASS" if full_identical else "FAIL")})
     return result
 
 
@@ -187,7 +250,8 @@ def compare_ninfer(manifest, report_path):
     theirs = {s["id"]: s for s in report["streams"]}
     execution = report.get("execution", {})
     protocol_match = (execution.get("context_tokens") == manifest["context_tokens"]
-                      and execution.get("stride_tokens") == manifest["stride_tokens"])
+                      and execution.get("stride_tokens") == manifest["stride_tokens"]
+                      and set(theirs) == {s["id"] for s in manifest["streams"]})
     streams, valid = [], protocol_match
     for ours in manifest["streams"]:
         other = theirs.get(ours["id"])
@@ -221,7 +285,7 @@ def compare_ninfer(manifest, report_path):
         "overall": {"mean_nll": ours_total["mean_nll"], "ninfer_mean_nll": report["overall"]["mean_nll"],
                     "nll_difference": ours_total["mean_nll"] - report["overall"]["mean_nll"]},
         "streams": streams,
-        "note": "Different NVFP4 checkpoints and runtimes; reported, not a gate.",
+        "note": "Logical weight equivalence and exact tokenizer-ID equivalence remain unverified; reported, not an arithmetic gate.",
     }
 
 
@@ -261,7 +325,8 @@ def main():
     if args.candidate:
         overall, domains, manifests, candidate = compare_internal(args.control, args.candidate)
         identical = determinism(candidate, args.repeat)
-        gates = gate_rows(overall, domains, identical)
+        full_identical = full_logit_determinism(args.candidate, args.repeat)
+        gates = gate_rows(overall, domains, identical, full_identical)
         statuses = {row["status"] for row in gates}
         result.update({
             "control": args.control, "candidate": args.candidate, "repeat": args.repeat,

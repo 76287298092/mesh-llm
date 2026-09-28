@@ -1,6 +1,6 @@
 use crate::{
     artifact::{
-        reader::VerifiedArtifact,
+        model_source::ModelArtifact,
         schema::{DType, Object, ObjectKind},
     },
     engine::layout::Layout,
@@ -29,7 +29,7 @@ impl<'ctx> ResidentWeights<'ctx> {
     /// fails, so no partially loaded weight set is returned.
     pub(super) fn load(
         context: &'ctx Context,
-        artifact: &mut VerifiedArtifact,
+        artifact: &mut ModelArtifact,
         objects: &[Object],
     ) -> Result<Self> {
         validate_objects(artifact, objects)?;
@@ -143,7 +143,7 @@ impl<'ctx> ResidentWeights<'ctx> {
     }
 }
 
-fn validate_objects(artifact: &VerifiedArtifact, objects: &[Object]) -> Result<()> {
+fn validate_objects(artifact: &ModelArtifact, objects: &[Object]) -> Result<()> {
     let directory = artifact.directory();
     for object in objects {
         ensure!(
@@ -170,7 +170,7 @@ fn validate_objects(artifact: &VerifiedArtifact, objects: &[Object]) -> Result<(
 }
 
 fn copy_object_to_arena(
-    artifact: &mut VerifiedArtifact,
+    artifact: &mut ModelArtifact,
     arena: &Buffer<'_>,
     layout: &Layout,
     object: &Object,

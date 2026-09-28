@@ -44,7 +44,28 @@ pub struct Inventory {
 pub fn validate(directory: &Directory) -> Result<Inventory> {
     validate_identity(directory)?;
 
-    let mut expected = compiled_tensors()?;
+    let native = directory.identity.model_id == super::native_views::MODEL_ID;
+    let (expected_text_tensors, expected_text_bytes, expected_mtp_tensors, expected_mtp_bytes) =
+        if native {
+            (
+                super::native_views::TEXT_TENSORS,
+                super::native_views::TEXT_BYTES,
+                0,
+                0,
+            )
+        } else {
+            (
+                EXPECTED_TEXT_TENSORS,
+                EXPECTED_TEXT_BYTES,
+                EXPECTED_MTP_TENSORS,
+                EXPECTED_MTP_BYTES,
+            )
+        };
+    let mut expected = if native {
+        native_tensors()?
+    } else {
+        compiled_tensors()?
+    };
     let mut seen = HashSet::with_capacity(expected.len());
     let mut text_tensors = 0;
     let mut mtp_tensors = 0;
@@ -117,20 +138,20 @@ pub fn validate(directory: &Directory) -> Result<Inventory> {
             .context("expected tensor set is empty")?
     );
     ensure!(
-        text_tensors == EXPECTED_TEXT_TENSORS,
-        "compiled text tensor count is {text_tensors}; expected {EXPECTED_TEXT_TENSORS}"
+        text_tensors == expected_text_tensors,
+        "compiled text tensor count is {text_tensors}; expected {expected_text_tensors}"
     );
     ensure!(
-        mtp_tensors == EXPECTED_MTP_TENSORS,
-        "compiled MTP tensor count is {mtp_tensors}; expected {EXPECTED_MTP_TENSORS}"
+        mtp_tensors == expected_mtp_tensors,
+        "compiled MTP tensor count is {mtp_tensors}; expected {expected_mtp_tensors}"
     );
     ensure!(
-        text_bytes == EXPECTED_TEXT_BYTES,
-        "compiled text tensor bytes are {text_bytes}; expected {EXPECTED_TEXT_BYTES}"
+        text_bytes == expected_text_bytes,
+        "compiled text tensor bytes are {text_bytes}; expected {expected_text_bytes}"
     );
     ensure!(
-        mtp_bytes == EXPECTED_MTP_BYTES,
-        "compiled MTP tensor bytes are {mtp_bytes}; expected {EXPECTED_MTP_BYTES}"
+        mtp_bytes == expected_mtp_bytes,
+        "compiled MTP tensor bytes are {mtp_bytes}; expected {expected_mtp_bytes}"
     );
 
     Ok(Inventory {
@@ -146,6 +167,16 @@ pub fn validate(directory: &Directory) -> Result<Inventory> {
 }
 
 fn validate_identity(directory: &Directory) -> Result<()> {
+    if directory.identity.model_id == super::native_views::MODEL_ID {
+        ensure!(
+            directory.identity.weights_id
+                == format!("sha256:{}", super::native_views::SOURCE_SHA256)
+                && directory.source.repository == super::native_source::SOURCE_REPOSITORY
+                && directory.source.revision == super::native_views::SOURCE_SHA256,
+            "native artifact identity does not match the pinned source"
+        );
+        return Ok(());
+    }
     ensure!(
         directory.identity.model_id == MODEL_ID,
         "artifact model identity does not match compiled Qwen model"
@@ -229,6 +260,32 @@ fn compiled_tensors() -> Result<HashMap<String, ExpectedTensor>> {
         "compiled tensor generator produced {} entries",
         tensors.len()
     );
+    Ok(tensors)
+}
+
+/// Native text contract is a distinct strict inventory, not a relaxed raw gate.
+fn native_tensors() -> Result<HashMap<String, ExpectedTensor>> {
+    let mut tensors = compiled_tensors()?;
+    tensors.retain(|name, _| {
+        !name.starts_with("tensors/mtp.")
+            && !name.ends_with(".self_attn.k_scale")
+            && !name.ends_with(".self_attn.v_scale")
+    });
+    for (name, tensor) in &mut tensors {
+        if name == "tensors/model.language_model.embed_tokens.weight" {
+            tensor.dtype = DType::Fp8E4m3;
+        } else if name.ends_with(".linear_attn.A_log") || name.ends_with(".linear_attn.dt_bias") {
+            tensor.dtype = DType::F32;
+        }
+        tensor.length = storage_length(&tensor.dtype, &tensor.shape)?;
+    }
+    add_tensor(
+        &mut tensors,
+        "model.language_model.embed_tokens.weight_scale",
+        DType::Bf16,
+        vec![VOCABULARY, 1],
+        TensorFamily::Text,
+    )?;
     Ok(tensors)
 }
 

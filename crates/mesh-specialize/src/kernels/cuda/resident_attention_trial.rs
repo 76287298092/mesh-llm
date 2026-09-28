@@ -8,7 +8,7 @@ use super::{
     resident_weights::ResidentWeights,
 };
 use crate::{
-    artifact::{reader::VerifiedArtifact, schema::Object},
+    artifact::{model_source::ModelArtifact, schema::Object},
     engine::layout::Layout,
     entry_reference::bf16_to_f32,
     kernels::{ResidentAttentionCase, ResidentAttentionConfig},
@@ -19,7 +19,7 @@ use serde_json::{Value, json};
 pub(in crate::kernels) fn run(
     ptx: &str,
     device: i32,
-    artifact: &mut VerifiedArtifact,
+    artifact: &mut ModelArtifact,
     objects: &[Object],
     config: &ResidentAttentionConfig,
     cases: &[ResidentAttentionCase],

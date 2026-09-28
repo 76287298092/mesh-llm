@@ -11,8 +11,6 @@ const LAYER_COUNT: usize = 64;
 const GDN_HISTORY_BYTES: u64 = 3 * 10_240 * 2;
 const GDN_RECURRENT_BYTES: u64 = 48 * 128 * 128 * 4;
 const KV_BYTES_PER_TOKEN: u64 = 4 * 256 * 2;
-const EXPECTED_TEXT_TENSORS: usize = 1_620;
-const EXPECTED_TEXT_BYTES: u64 = 21_646_480_768;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -104,7 +102,8 @@ fn append_layer_state(
 
 /// Select the compiled text weights, leaving the separate MTP head for its own phase.
 pub fn text_objects(directory: &Directory) -> Result<Vec<Object>> {
-    crate::packages::qwen3_8_27b::inventory::validate(directory)?;
+    // The strict inventory selects explicit raw or native profile totals.
+    let inventory = crate::packages::qwen3_8_27b::inventory::validate(directory)?;
     let mut objects: Vec<_> = directory
         .objects
         .iter()
@@ -121,13 +120,15 @@ pub fn text_objects(directory: &Directory) -> Result<Vec<Object>> {
             .context("selected text tensor byte count overflows u64")
     })?;
     ensure!(
-        objects.len() == EXPECTED_TEXT_TENSORS,
-        "selected text tensor count is {}; expected {EXPECTED_TEXT_TENSORS}",
-        objects.len()
+        objects.len() == inventory.text_tensors,
+        "selected text tensor count is {}; expected {}",
+        objects.len(),
+        inventory.text_tensors
     );
     ensure!(
-        byte_count == EXPECTED_TEXT_BYTES,
-        "selected text tensor bytes are {byte_count}; expected {EXPECTED_TEXT_BYTES}"
+        byte_count == inventory.text_bytes,
+        "selected text tensor bytes are {byte_count}; expected {}",
+        inventory.text_bytes
     );
     objects.sort_by(|left, right| left.name.cmp(&right.name));
     Ok(objects)

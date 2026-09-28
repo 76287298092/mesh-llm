@@ -3,6 +3,8 @@
 
 pub mod header;
 mod identity;
+pub mod model_source;
+pub mod ninfer;
 pub mod reader;
 pub mod schema;
 pub mod writer;

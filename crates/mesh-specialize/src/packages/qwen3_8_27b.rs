@@ -17,3 +17,6 @@ pub mod resident_gdn;
 pub mod schedule;
 
 pub mod mtp;
+
+pub mod native_source;
+pub(crate) mod native_views;

@@ -8,7 +8,7 @@ use super::{
     resident_weights::ResidentWeights,
 };
 use crate::{
-    artifact::{reader::VerifiedArtifact, schema::Object},
+    artifact::{model_source::ModelArtifact, schema::Object},
     engine::{
         layout::Layout,
         teacher_scoring::{self, RECORD_BYTES, TOP_K, Window},
@@ -17,6 +17,7 @@ use crate::{
 };
 use anyhow::{Context as _, Result, ensure};
 use serde_json::{Map, Value, json};
+use sha2::{Digest, Sha256};
 use std::{collections::BTreeMap, time::Instant};
 
 /// Current single-forward limit; larger contexts need chunked prefill.
@@ -57,19 +58,24 @@ struct Runner<'r, 'm, 'w, 'ctx> {
     scorer: Scorer<'m, 'w, 'ctx>,
     config: &'r DecoderConfig,
     check: Option<Value>,
+    hash_logits: bool,
 }
 
 pub(in crate::kernels) fn run(
     ptx: &str,
     device: i32,
-    artifact: &mut VerifiedArtifact,
+    artifact: &mut ModelArtifact,
     objects: &[Object],
     config: &DecoderConfig,
     request: &ModelScoreRequest<'_>,
     sink: &mut ScoreSink<'_>,
 ) -> Result<Value> {
     let plans = plan(request, config)?;
-    ensure!(ptx.contains(".target sm_120a"), "scoring requires SM120a PTX");
+    let hash_logits = logit_hash_enabled()?;
+    ensure!(
+        ptx.contains(".target sm_120a"),
+        "scoring requires SM120a PTX"
+    );
     let layout = Layout::new(objects.iter().map(|o| (o.name.clone(), o.length)))?;
     let context = Context::new(device)?;
     let info = context.info();
@@ -93,6 +99,7 @@ pub(in crate::kernels) fn run(
         scorer: Scorer::new(model.head(), config.hidden, config.vocabulary)?,
         config,
         check: None,
+        hash_logits,
     };
     let started = Instant::now();
     let mut streams = Vec::new();
@@ -136,6 +143,8 @@ pub(in crate::kernels) fn run(
         "profiles": profiles()?,
         "environment": environment(),
         "head_chunk_rows": chunk_rows,
+        "full_logit_hash": {"enabled": hash_logits,
+            "scope": "SHA-256 of every little-endian BF16 vocabulary value at scored positions, in window order"},
         "device": info,
         "check": check,
         "streams": streams,
@@ -172,12 +181,9 @@ fn plan<'a>(request: &'a ModelScoreRequest<'a>, config: &DecoderConfig) -> Resul
             "stream {} contains a token outside the vocabulary",
             stream.id
         );
-        let windows = teacher_scoring::plan_windows(
-            stream.tokens.len(),
-            request.context,
-            request.stride,
-        )
-        .with_context(|| format!("plan windows for stream {}", stream.id))?;
+        let windows =
+            teacher_scoring::plan_windows(stream.tokens.len(), request.context, request.stride)
+                .with_context(|| format!("plan windows for stream {}", stream.id))?;
         plans.push(Plan { stream, windows });
     }
     Ok(plans)
@@ -193,16 +199,14 @@ impl Runner<'_, '_, '_, '_> {
         let started = Instant::now();
         let mut aggregate = Aggregate::default();
         let mut windows = Vec::new();
+        let mut logit_hash = self.hash_logits.then(Sha256::new);
         for (window_index, window) in plan.windows.iter().enumerate() {
             let window_started = Instant::now();
-            let (scored, total_nll, bytes) = self.score_window(plan.stream.tokens.as_slice(), window)?;
+            let (scored, total_nll, bytes) =
+                self.score_window(plan.stream.tokens.as_slice(), window, logit_hash.as_mut())?;
             sink(index, &bytes).with_context(|| format!("write records for {}", plan.stream.id))?;
             aggregate.add(scored, total_nll);
-            let mut report = Aggregate {
-                scored,
-                total_nll,
-            }
-            .json();
+            let mut report = Aggregate { scored, total_nll }.json();
             report["index"] = json!(window_index);
             report["input_begin"] = json!(window.input_begin);
             report["input_end"] = json!(window.input_end);
@@ -216,6 +220,8 @@ impl Runner<'_, '_, '_, '_> {
         report["id"] = json!(plan.stream.id);
         report["domain"] = json!(plan.stream.domain);
         report["input_tokens"] = json!(plan.stream.tokens.len());
+        report["input_tokens_sha256"] = json!(token_digest(&plan.stream.tokens));
+        report["full_logits_sha256"] = json!(logit_hash.map(|h| hex::encode(h.finalize())));
         report["unscored_tokens"] = json!(1);
         report["record_count"] = json!(aggregate.scored);
         report["seconds"] = json!(started.elapsed().as_secs_f64());
@@ -224,7 +230,12 @@ impl Runner<'_, '_, '_, '_> {
     }
 
     /// One window from fresh state. Returns (scored, total NLL, encoded records).
-    fn score_window(&mut self, tokens: &[u32], window: &Window) -> Result<(usize, f64, Vec<u8>)> {
+    fn score_window(
+        &mut self,
+        tokens: &[u32],
+        window: &Window,
+        logit_hash: Option<&mut Sha256>,
+    ) -> Result<(usize, f64, Vec<u8>)> {
         let inputs = &tokens[window.input_begin..window.input_end];
         let targets = &tokens[window.target_begin..window.target_end];
         let mut session = Session::new(self.context, self.config)?;
@@ -247,9 +258,9 @@ impl Runner<'_, '_, '_, '_> {
             self.context,
             self.module,
             &hidden,
-            rows,
             window.first_row(),
             targets,
+            logit_hash,
         )?;
         ensure!(
             records.len() == targets.len()
@@ -319,4 +330,32 @@ fn environment() -> Value {
             .map(|(name, value)| (name, Value::String(value)))
             .collect::<Map<_, _>>(),
     )
+}
+
+fn logit_hash_enabled() -> Result<bool> {
+    match std::env::var("MESH_SPECIALIZE_SCORE_LOGITS_HASH").as_deref() {
+        Err(std::env::VarError::NotPresent) | Ok("off") => Ok(false),
+        Ok("on") => Ok(true),
+        _ => anyhow::bail!("MESH_SPECIALIZE_SCORE_LOGITS_HASH must be on or off"),
+    }
+}
+
+fn token_digest(tokens: &[u32]) -> String {
+    let mut hash = Sha256::new();
+    for token in tokens {
+        hash.update(token.to_le_bytes());
+    }
+    hex::encode(hash.finalize())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::token_digest;
+
+    #[test]
+    fn token_hash_covers_unscored_context_and_order() {
+        assert_ne!(token_digest(&[1, 2, 3]), token_digest(&[4, 2, 3]));
+        assert_ne!(token_digest(&[1, 2]), token_digest(&[2, 1]));
+        assert_eq!(token_digest(&[1, 2]), token_digest(&[1, 2]));
+    }
 }

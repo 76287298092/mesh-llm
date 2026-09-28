@@ -1,6 +1,6 @@
 //! Layer-zero FP8 QKV/Z and BF16 A/B projections from resident normalized activations.
 use crate::{
-    artifact::reader::VerifiedArtifact,
+    artifact::model_source::ModelArtifact,
     kernels::{
         Bf16Projection, CausalConv4Weights, EmbeddingNormInput, Fp8Projection, GdnOutputWeights,
         GdnWeights, Nvfp4Mlp, Nvfp4Projection, ProjectionInput, ResidualNormWeights,
@@ -11,7 +11,7 @@ use serde_json::{Value, json};
 use std::path::Path;
 
 pub fn trial(path: &Path, ptx: &str, device: i32) -> Result<Value> {
-    let mut artifact = VerifiedArtifact::open(path)?;
+    let mut artifact = ModelArtifact::open(path)?;
     let inventory = super::inventory::validate(artifact.directory())?;
     let identity = artifact.identity().clone();
     let input = load_input(&mut artifact)?;
@@ -29,7 +29,8 @@ pub fn trial(path: &Path, ptx: &str, device: i32) -> Result<Value> {
     Ok(report)
 }
 
-pub(super) fn load_input(artifact: &mut VerifiedArtifact) -> Result<ProjectionInput> {
+pub(super) fn load_input(artifact: &mut ModelArtifact) -> Result<ProjectionInput> {
+    artifact.require_legacy_reference()?;
     let mut table = Vec::with_capacity(248320 * 5120 * 2);
     artifact.copy_object(
         "tensors/model.language_model.embed_tokens.weight",
@@ -147,7 +148,7 @@ pub(super) fn load_input(artifact: &mut VerifiedArtifact) -> Result<ProjectionIn
 }
 
 fn load_nvfp4(
-    artifact: &mut VerifiedArtifact,
+    artifact: &mut ModelArtifact,
     name: &str,
     channels: usize,
 ) -> Result<Nvfp4Projection> {
@@ -166,7 +167,7 @@ fn load_nvfp4(
     })
 }
 
-fn load_scalar(artifact: &mut VerifiedArtifact, key: &str) -> Result<f32> {
+fn load_scalar(artifact: &mut ModelArtifact, key: &str) -> Result<f32> {
     let mut bytes = Vec::new();
     artifact.copy_object(key, &mut bytes)?;
     let raw: [u8; 4] = bytes

@@ -1,4 +1,4 @@
-//! Resident BF16 embedding lookup and input normalization.
+//! Resident encoded embedding lookup with the existing BF16 normalization boundary.
 
 use super::{
     driver::{Buffer, Context, Module},
@@ -12,6 +12,7 @@ use std::ffi::c_void;
 pub(super) struct Embedding<'w, 'ctx> {
     owner: &'w ResidentWeights<'ctx>,
     table: u64,
+    scale: Option<u64>,
     norm: u64,
     vocabulary: usize,
     width: usize,
@@ -27,20 +28,14 @@ impl<'w, 'ctx> Embedding<'w, 'ctx> {
         epsilon: f32,
     ) -> Result<Self> {
         let [vocabulary, width] = shape;
-        let (table_bytes, norm_bytes) = validate_shape(vocabulary, width, epsilon)?;
-        let vocabulary_u64 =
-            u64::try_from(vocabulary).context("embedding vocabulary does not fit u64")?;
+        let (_, norm_bytes) = validate_shape(vocabulary, width, epsilon)?;
         let width_u64 = u64::try_from(width).context("embedding width does not fit u64")?;
-        let table = owner.tensor(
-            table_name,
-            DType::Bf16,
-            &[vocabulary_u64, width_u64],
-            table_bytes,
-        )?;
+        let (table, scale) = bind_table(owner, table_name, vocabulary, width)?;
         let norm = owner.tensor(norm_name, DType::Bf16, &[width_u64], norm_bytes)?;
         Ok(Self {
             owner,
             table,
+            scale,
             norm,
             vocabulary,
             width,
@@ -72,9 +67,15 @@ impl<'w, 'ctx> Embedding<'w, 'ctx> {
         let normalized = Buffer::new(context, bf16_bytes)?;
         let unrounded = Buffer::new(context, fp32_bytes)?;
 
+        let gathered = self.gather(context, module, &ids, tokens.len(), bf16_bytes)?;
+        let (table, row_ids) = gathered
+            .as_ref()
+            .map_or((self.table, ids.pointer()), |(table, ids)| {
+                (table.pointer(), ids.pointer())
+            });
         let mut pointers = [
-            self.table,
-            ids.pointer(),
+            table,
+            row_ids,
             self.norm,
             residual.pointer(),
             normalized.pointer(),
@@ -106,6 +107,91 @@ impl<'w, 'ctx> Embedding<'w, 'ctx> {
             residual,
             normalized,
         })
+    }
+
+    /// Dequantize only requested rows, retaining temporaries through the norm launch.
+    fn gather<'a>(
+        &self,
+        context: &'a Context,
+        module: &Module<'_>,
+        tokens: &Buffer<'_>,
+        rows: usize,
+        bytes: usize,
+    ) -> Result<Option<(Buffer<'a>, Buffer<'a>)>> {
+        let Some(scale) = self.scale else {
+            return Ok(None);
+        };
+        let output = Buffer::new(context, bytes)?;
+        let ids = Buffer::new(context, rows * 4)?;
+        let sequential: Vec<u32> = (0..u32::try_from(rows)?).collect();
+        ids.upload(&token_bytes(&sequential, rows * 4)?)?;
+        let mut pointers = [self.table, scale, tokens.pointer(), output.pointer()];
+        let mut width = u32::try_from(self.width)?;
+        let mut args: Vec<*mut c_void> = pointers
+            .iter_mut()
+            .map(|p| (p as *mut u64).cast())
+            .collect();
+        args.push((&mut width as *mut u32).cast());
+        // SAFETY: Constructor verified the encoded table/scale extents; run checked
+        // token IDs and contexts. Output is rows*width BF16, not a vocabulary table.
+        unsafe {
+            module.function("fp8_embedding_gather")?.launch(
+                [u32::try_from(rows)?, 1, 1],
+                [256, 1, 1],
+                0,
+                &mut args,
+            )?;
+        }
+        context.synchronize()?;
+        Ok(Some((output, ids)))
+    }
+}
+
+/// Bind normalized logical views, independently of their source container.
+/// Both execution paths use this exact dtype/layout/shape/extent validation.
+pub(super) fn bind_table(
+    owner: &ResidentWeights<'_>,
+    name: &str,
+    vocabulary: usize,
+    width: usize,
+) -> Result<(u64, Option<u64>)> {
+    let (bf16_bytes, _) = validate_shape(vocabulary, width, 1e-6)?;
+    let dtype = &owner.object(name)?.dtype;
+    let encoded = encoded_table(dtype, vocabulary, width)?;
+    let shape = [u64::try_from(vocabulary)?, u64::try_from(width)?];
+    let table = owner.tensor(
+        name,
+        dtype.clone(),
+        &shape,
+        if encoded { bf16_bytes / 2 } else { bf16_bytes },
+    )?;
+    let scale = if encoded {
+        let prefix = name
+            .strip_suffix(".weight")
+            .context("embedding name must end in .weight")?;
+        Some(owner.tensor(
+            &format!("{prefix}.weight_scale"),
+            DType::Bf16,
+            &[shape[0], 1],
+            shape[0] * 2,
+        )?)
+    } else {
+        None
+    };
+    Ok((table, scale))
+}
+
+fn encoded_table(dtype: &DType, vocabulary: usize, width: usize) -> Result<bool> {
+    match dtype {
+        DType::Bf16 => Ok(false),
+        DType::Fp8E4m3 => {
+            ensure!(
+                [vocabulary, width] == [248_320, 5120],
+                "encoded embedding requires exact [248320, 5120] shape"
+            );
+            Ok(true)
+        }
+        _ => anyhow::bail!("unsupported embedding dtype: {}", dtype.as_str()),
     }
 }
 
@@ -186,6 +272,16 @@ fn token_bytes(tokens: &[u32], expected_bytes: usize) -> Result<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use super::{output_extents, token_bytes, validate_shape, validate_tokens};
+
+    #[test]
+    fn representation_dispatch_is_explicit_and_bounded() {
+        use crate::artifact::schema::DType;
+        assert!(!super::encoded_table(&DType::Bf16, 3, 2).unwrap());
+        assert!(super::encoded_table(&DType::Fp8E4m3, 248_320, 5120).unwrap());
+        assert!(super::encoded_table(&DType::Fp8E4m3, 248_320, 5119).is_err());
+        assert!(super::encoded_table(&DType::Fp8E4m3, 248_319, 5120).is_err());
+        assert!(super::encoded_table(&DType::F32, 248_320, 5120).is_err());
+    }
 
     #[test]
     fn validates_minimum_and_maximum_embedding_shapes() {

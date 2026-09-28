@@ -1,6 +1,6 @@
 //! Independent layer-zero validation of the reference-free resident decoder path.
 use crate::{
-    artifact::reader::VerifiedArtifact,
+    artifact::model_source::ModelArtifact,
     kernels::{GdnShape, ResidentGdnCase, ResidentGdnConfig},
 };
 use anyhow::Result;
@@ -8,7 +8,7 @@ use serde_json::{Value, json};
 use std::path::Path;
 
 pub fn trial(path: &Path, ptx: &str, device: i32) -> Result<Value> {
-    let mut artifact = VerifiedArtifact::open(path)?;
+    let mut artifact = ModelArtifact::open(path)?;
     let objects = super::schedule::text_objects(artifact.directory())?;
     let input = super::projections::load_input(&mut artifact)?;
     let mut cases = Vec::new();

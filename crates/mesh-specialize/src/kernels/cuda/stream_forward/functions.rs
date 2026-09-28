@@ -5,6 +5,7 @@ use anyhow::{Context as _, Result};
 
 /// Every kernel the default exact profile can launch in a whole forward.
 pub(super) struct Functions<'m, 'ctx> {
+    pub(super) fp8_embedding_gather: Function<'m, 'ctx>,
     pub(super) embedding_norm: Function<'m, 'ctx>,
     pub(super) residual_norm: Function<'m, 'ctx>,
     pub(super) residual_add: Function<'m, 'ctx>,
@@ -19,6 +20,7 @@ pub(super) struct Functions<'m, 'ctx> {
     pub(super) bf16_linear_decode: Function<'m, 'ctx>,
     pub(super) causal_conv4: Function<'m, 'ctx>,
     pub(super) gdn_qk_norm: Function<'m, 'ctx>,
+    pub(super) gdn_gates_f32_params: Function<'m, 'ctx>,
     pub(super) gdn_gates: Function<'m, 'ctx>,
     pub(super) gdn_recurrent: Function<'m, 'ctx>,
     pub(super) gdn_gated_rms_norm: Function<'m, 'ctx>,
@@ -31,7 +33,8 @@ pub(super) struct Functions<'m, 'ctx> {
     pub(super) greedy_finish: Function<'m, 'ctx>,
 }
 
-pub(super) const KERNEL_NAMES: [&str; 24] = [
+pub(super) const KERNEL_NAMES: [&str; 26] = [
+    "fp8_embedding_gather",
     "embedding_norm_bf16",
     "residual_norm_bf16",
     "residual_add_bf16",
@@ -47,6 +50,7 @@ pub(super) const KERNEL_NAMES: [&str; 24] = [
     "causal_conv4_bf16",
     "gdn_qk_norm",
     "gdn_gates",
+    "gdn_gates_f32_params",
     "gdn_recurrent",
     "gdn_gated_rms_norm",
     "attention_qk_prepare",
@@ -66,6 +70,7 @@ impl<'m, 'ctx> Functions<'m, 'ctx> {
                 .with_context(|| format!("resolve stream forward kernel {name}"))
         };
         Ok(Self {
+            fp8_embedding_gather: get("fp8_embedding_gather")?,
             embedding_norm: get("embedding_norm_bf16")?,
             residual_norm: get("residual_norm_bf16")?,
             residual_add: get("residual_add_bf16")?,
@@ -80,6 +85,7 @@ impl<'m, 'ctx> Functions<'m, 'ctx> {
             bf16_linear_decode: get("bf16_linear_decode")?,
             causal_conv4: get("causal_conv4_bf16")?,
             gdn_qk_norm: get("gdn_qk_norm")?,
+            gdn_gates_f32_params: get("gdn_gates_f32_params")?,
             gdn_gates: get("gdn_gates")?,
             gdn_recurrent: get("gdn_recurrent")?,
             gdn_gated_rms_norm: get("gdn_gated_rms_norm")?,

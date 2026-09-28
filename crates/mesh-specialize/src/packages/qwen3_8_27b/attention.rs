@@ -1,7 +1,7 @@
 //! Resident complete layer-three full-attention trial on synthetic hidden input.
 
 use crate::{
-    artifact::reader::VerifiedArtifact,
+    artifact::model_source::ModelArtifact,
     kernels::{
         AttentionInput, EmbeddingNormInput, Fp8Projection, Nvfp4Mlp, Nvfp4Projection,
         ResidualNormWeights,
@@ -20,7 +20,7 @@ const MLP_CHANNELS: usize = 17_408;
 const ATTENTION_OUTPUT_WIDTH: usize = 6_144;
 
 pub fn trial(path: &Path, ptx: &str, device: i32) -> Result<Value> {
-    let mut artifact = VerifiedArtifact::open(path)?;
+    let mut artifact = ModelArtifact::open(path)?;
     let inventory = super::inventory::validate(artifact.directory())?;
     let identity = artifact.identity().clone();
     let input = load_input(&mut artifact)?;
@@ -47,7 +47,8 @@ pub fn trial(path: &Path, ptx: &str, device: i32) -> Result<Value> {
     Ok(report)
 }
 
-pub(super) fn load_input(artifact: &mut VerifiedArtifact) -> Result<AttentionInput> {
+pub(super) fn load_input(artifact: &mut ModelArtifact) -> Result<AttentionInput> {
+    artifact.require_legacy_reference()?;
     let mut table = Vec::with_capacity(VOCABULARY * HIDDEN * 2);
     artifact.copy_object(
         "tensors/model.language_model.embed_tokens.weight",
@@ -119,7 +120,7 @@ pub(super) fn load_input(artifact: &mut VerifiedArtifact) -> Result<AttentionInp
 }
 
 fn load_fp8_projection(
-    artifact: &mut VerifiedArtifact,
+    artifact: &mut ModelArtifact,
     name: &str,
     channels: usize,
     input_width: usize,
@@ -145,7 +146,7 @@ fn load_fp8_projection(
 }
 
 fn load_nvfp4_projection(
-    artifact: &mut VerifiedArtifact,
+    artifact: &mut ModelArtifact,
     name: &str,
     channels: usize,
     input_width: usize,
@@ -184,7 +185,7 @@ fn load_nvfp4_projection(
     })
 }
 
-fn load_positive_global_scale(artifact: &mut VerifiedArtifact, key: &str) -> Result<f32> {
+fn load_positive_global_scale(artifact: &mut ModelArtifact, key: &str) -> Result<f32> {
     let mut bytes = Vec::with_capacity(4);
     artifact.copy_object(key, &mut bytes)?;
     let raw: [u8; 4] = bytes
@@ -198,7 +199,7 @@ fn load_positive_global_scale(artifact: &mut VerifiedArtifact, key: &str) -> Res
     Ok(scale)
 }
 
-fn load_bf16_weight(artifact: &mut VerifiedArtifact, name: &str) -> Result<Vec<u8>> {
+fn load_bf16_weight(artifact: &mut ModelArtifact, name: &str) -> Result<Vec<u8>> {
     let key = format!("tensors/model.language_model.layers.3.self_attn.{name}.weight");
     let mut weight = Vec::with_capacity(HEAD_WIDTH * 2);
     artifact.copy_object(&key, &mut weight)?;

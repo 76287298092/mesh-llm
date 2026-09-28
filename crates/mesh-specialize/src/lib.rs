@@ -102,3 +102,14 @@ pub mod row_logprob_topk_reference;
 pub mod fp8_a16_head_reference;
 #[path = "../reference/nvfp4_prefill_tiled.rs"]
 pub mod nvfp4_prefill_tiled_reference;
+
+#[path = "../reference/bf16_ab_decode_fp32.rs"]
+pub mod bf16_ab_decode_reference;
+
+#[path = "../reference/attention_v2.rs"]
+pub mod attention_v2_reference;
+
+#[path = "../reference/fp8_embedding_gather.rs"]
+pub mod fp8_embedding_gather_reference;
+#[path = "../reference/gdn_gates_f32_params.rs"]
+pub mod gdn_gates_f32_params_reference;

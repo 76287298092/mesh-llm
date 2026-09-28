@@ -197,7 +197,7 @@ fn normalize_head(
     Ok(())
 }
 
-fn prepare_gate(a: f32, b: f32, a_log: f32, dt_bias: f32) -> Result<(u16, f32, f32)> {
+pub(crate) fn prepare_gate(a: f32, b: f32, a_log: f32, dt_bias: f32) -> Result<(u16, f32, f32)> {
     let beta = round_bf16(sigmoid(b));
     let beta_value = bf16_to_f32(beta);
     ensure!(

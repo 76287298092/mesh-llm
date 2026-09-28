@@ -1,7 +1,7 @@
 //! Independent whole-model CPU evidence, generated while the GPU service stays online.
 use super::model_weights as weights;
 use crate::{
-    artifact::reader::VerifiedArtifact, decoder_attention_reference, decoder_gdn_reference,
+    artifact::model_source::ModelArtifact, decoder_attention_reference, decoder_gdn_reference,
     decoder_ops_reference as ops, kernels::DecoderBlockKind, resident_entry_reference,
 };
 use anyhow::{Result, ensure};
@@ -42,7 +42,8 @@ pub fn add_layer_diagnostic(
         reference.schema_version == 1 && (1..=17).contains(&reference.tokens.len()),
         "invalid diagnostic model reference"
     );
-    let mut artifact = VerifiedArtifact::open(path)?;
+    let mut artifact = ModelArtifact::open(path)?;
+    artifact.require_legacy_reference()?;
     super::inventory::validate(artifact.directory())?;
     ensure!(
         reference.model_id == artifact.identity().model_id
@@ -98,7 +99,8 @@ pub fn trial(
     ptx: &str,
     device: i32,
 ) -> Result<serde_json::Value> {
-    let mut artifact = VerifiedArtifact::open(path)?;
+    let mut artifact = ModelArtifact::open(path)?;
+    artifact.require_legacy_reference()?;
     super::inventory::validate(artifact.directory())?;
     let objects = super::schedule::text_objects(artifact.directory())?;
     let config = super::decoder::config(reference.tokens.len())?;
@@ -118,7 +120,8 @@ pub fn run(
         "model reference is bounded to 1..17 tokens"
     );
     let start = Instant::now();
-    let mut artifact = VerifiedArtifact::open(path)?;
+    let mut artifact = ModelArtifact::open(path)?;
+    artifact.require_legacy_reference()?;
     super::inventory::validate(artifact.directory())?;
     let config = super::decoder::config(tokens.len())?;
     let mut hidden = ops::words(&resident_entry_reference::embedding_rows(

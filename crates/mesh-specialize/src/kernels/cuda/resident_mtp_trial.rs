@@ -7,7 +7,7 @@ use super::{
     resident_weights::ResidentWeights,
 };
 use crate::{
-    artifact::{reader::VerifiedArtifact, schema::Object},
+    artifact::{model_source::ModelArtifact, schema::Object},
     decoder_ops_reference as ops,
     engine::sampling,
     kernels::{DecoderConfig, SpeculationRequest},
@@ -21,7 +21,7 @@ use std::time::Instant;
 pub(in crate::kernels) fn run(
     ptx: &str,
     device: i32,
-    artifact: &mut VerifiedArtifact,
+    artifact: &mut ModelArtifact,
     objects: &[Object],
     config: &DecoderConfig,
     reference: &Reference,

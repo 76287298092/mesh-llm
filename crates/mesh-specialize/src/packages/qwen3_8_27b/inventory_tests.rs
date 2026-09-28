@@ -107,6 +107,109 @@ fn rejects_wrong_model_weights_repository_and_revision() {
     assert_rejected(&wrong_revision);
 }
 
+#[test]
+fn native_virtual_inventory_has_exact_text_only_contract() {
+    let directory = native_directory();
+    let inventory = validate(&directory).unwrap();
+    assert_eq!(
+        (inventory.text_tensors, inventory.text_bytes),
+        (1589, 20_375_588_160)
+    );
+    assert_eq!((inventory.mtp_tensors, inventory.mtp_bytes), (0, 0));
+    let selected = super::super::schedule::text_objects(&directory).unwrap();
+    assert_eq!(selected.len(), 1589);
+    assert!(!selected.iter().any(|o| o.name.starts_with("tensors/mtp.")
+        || o.name.ends_with(".k_scale")
+        || o.name.ends_with(".v_scale")));
+}
+
+#[test]
+fn native_rejects_missing_wrong_precision_extent_and_source_identity() {
+    let original = native_directory();
+    let mut missing = original.clone();
+    missing.objects.pop();
+    assert_rejected(&missing);
+    for name in [
+        "tensors/model.language_model.embed_tokens.weight",
+        "tensors/model.language_model.layers.0.linear_attn.A_log",
+        "tensors/model.language_model.layers.0.linear_attn.dt_bias",
+    ] {
+        let mut wrong = original.clone();
+        tensor_mut(&mut wrong, name).dtype = DType::Bf16;
+        assert_rejected(&wrong);
+    }
+    let mut wrong_scale = original.clone();
+    tensor_mut(
+        &mut wrong_scale,
+        "tensors/model.language_model.embed_tokens.weight_scale",
+    )
+    .shape = vec![1];
+    assert_rejected(&wrong_scale);
+    let mut extra = original.clone();
+    extra.objects.push(captured_directory().objects[0].clone());
+    assert_rejected(&extra);
+    let mut wrong_source = original.clone();
+    wrong_source.source.revision = "0".repeat(64);
+    assert_rejected(&wrong_source);
+    let mut wrong_weights = original;
+    wrong_weights.identity.weights_id = WEIGHTS_ID.into();
+    assert_rejected(&wrong_weights);
+}
+
+#[test]
+fn raw_and_preserved_profiles_are_not_accidentally_promoted() {
+    let mut changed_raw = captured_directory();
+    tensor_mut(
+        &mut changed_raw,
+        "tensors/model.language_model.layers.0.linear_attn.A_log",
+    )
+    .dtype = DType::F32;
+    assert_rejected(&changed_raw);
+    let mut preserved = native_directory();
+    preserved.identity.model_id = "qwen3.8-27b:ninfer-preserved-v1".into();
+    assert_rejected(&preserved);
+    assert!(super::super::schedule::text_objects(&preserved).is_err());
+    // The original independently captured upstream headers still pass unchanged.
+    assert_eq!(validate(&captured_directory()).unwrap().text_tensors, 1620);
+}
+
+// Metadata-only fixture: independently adapt the captured upstream headers to
+// the declared native encoding. These zero hashes do not assert payload integrity.
+fn native_directory() -> Directory {
+    let mut directory = captured_directory();
+    directory.identity.model_id = super::super::native_views::MODEL_ID.into();
+    directory.identity.weights_id = format!("sha256:{}", super::super::native_views::SOURCE_SHA256);
+    directory.source.repository = "Neroued/ninfer:artifact".into();
+    directory.source.revision = super::super::native_views::SOURCE_SHA256.into();
+    directory.objects.retain(|o| {
+        !o.name.starts_with("tensors/mtp.")
+            && !o.name.ends_with(".k_scale")
+            && !o.name.ends_with(".v_scale")
+    });
+    for object in &mut directory.objects {
+        if object.name == "tensors/model.language_model.embed_tokens.weight" {
+            object.dtype = DType::Fp8E4m3;
+            object.length /= 2;
+        } else if object.name.ends_with(".linear_attn.A_log")
+            || object.name.ends_with(".linear_attn.dt_bias")
+        {
+            object.dtype = DType::F32;
+            object.length *= 2;
+        }
+    }
+    directory.objects.push(Object {
+        name: "tensors/model.language_model.embed_tokens.weight_scale".into(),
+        kind: ObjectKind::Tensor,
+        dtype: DType::Bf16,
+        shape: vec![248320, 1],
+        length: 496640,
+        layout: "safetensors-row-major-v1".into(),
+        offset: 0,
+        sha256: ZERO_SHA256.into(),
+    });
+    directory
+}
+
 fn assert_rejected(directory: &Directory) {
     assert!(validate(directory).is_err());
 }

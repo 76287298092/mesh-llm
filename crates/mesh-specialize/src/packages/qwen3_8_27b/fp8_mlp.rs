@@ -1,7 +1,7 @@
 //! Last-eight-layer FP8 MLP qualification using synthetic normalized hidden input.
 
 use crate::{
-    artifact::reader::VerifiedArtifact,
+    artifact::model_source::ModelArtifact,
     fp8_mlp_reference::{self, Projection, Weights},
     kernels::Fp8MlpCase,
 };
@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 use std::path::Path;
 
 pub fn trial(path: &Path, ptx: &str, device: i32) -> Result<Value> {
-    let mut artifact = VerifiedArtifact::open(path)?;
+    let mut artifact = ModelArtifact::open(path)?;
     let objects = super::schedule::text_objects(artifact.directory())?;
     let mut cases = Vec::new();
     for layer in [56, 63] {
@@ -58,7 +58,7 @@ pub fn trial(path: &Path, ptx: &str, device: i32) -> Result<Value> {
 }
 
 fn load(
-    artifact: &mut VerifiedArtifact,
+    artifact: &mut ModelArtifact,
     prefix: &str,
     name: &str,
     channels: usize,

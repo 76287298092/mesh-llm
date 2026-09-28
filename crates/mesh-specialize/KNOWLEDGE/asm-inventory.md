@@ -252,3 +252,32 @@ pure Rust (FP32 exp, FP64 ln). Independent oracle: `reference/row_logprob_topk.r
 (FP64 over the same BF16 logits). The scorer also checks the first four rows of
 the first chunk against that oracle on GPU. GPU execution, JIT resources and
 sanitizers are pending.
+
+## BF16 split attention v2 (unqualified)
+
+`kernels/nvptx/attention_split_math.rs` adds nine sites: coordinates, static
+16KiB shared declaration/address, CTA barrier, shared word store/halfword load,
+full-warp butterfly shuffle, approximate exp2, BF16 RNE conversion and FP32
+division. Partial/reduce sources only call these helpers. Complete ABI, ownership,
+reference and per-site contracts: [attention v2](optimizations/attention-v2.md#complete-assembly-inventory).
+Independent FP64 oracle semantics are unchanged. No PTX/GPU evidence yet.
+
+## BF16 paired A/B FP32 candidate (unqualified)
+
+`kernels/nvptx/bf16_ab_decode_fp32.rs`: special-register coordinates; aligned
+`ld.global.v4.u32`; `fma.rn.f32`; `add.rn.f32`; full-mask butterfly shuffle;
+16-byte shared declaration/address; shared store/load; CTA barrier. Independent
+logical FP64 oracle: `reference/bf16_ab_decode_fp32.rs`. ABI and admission
+contracts: [BF16 A/B candidate](optimizations/decode-a16-pack.md). Rust PTX
+compilation and host checks pass locally; GPU results are pending.
+
+## Native encoded embedding and F32 GDN parameters
+
+`fp8_embedding_gather` and `gdn_gates_f32_params` add entry points but no new
+inline assembly sites. They reuse inventoried indexing/rounding helpers from
+`embedding_norm.rs` and `gdn_prepare.rs`; the existing BF16 gate entry calls the
+same factored arithmetic body with BF16 loads. Independent oracles are
+`reference/fp8_embedding_gather.rs` and `reference/gdn_gates_f32_params.rs`.
+See [consumer contract](optimizations/ninfer-parameter-consumers.md) for parameter
+order, round-before-norm boundary, alias contract and the nine-case harness.
+Host tests and Rust PTX compilation pass; GPU qualification is pending.

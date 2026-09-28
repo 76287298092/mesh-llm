@@ -481,3 +481,25 @@ assigned to the same dedicated NVFP4 worker, still Astra low. It reuses A fragme
 and preserves K64 arithmetic. Parent owns all integration and qualification.
 Current512 diagnostic ranks FP8, attention and GDN above NVFP4; runtime parity
 requires progressing these costs and quality, not merely passing tile tests.
+
+## September 28: direct Ninfer artifact loading
+
+The user explicitly selected native `.ninfer` input, superseding the previous
+runtime-parser exclusion and the briefly approved offline-conversion prerequisite.
+The offline bundle and unfinished optional assembler are preserved, not deployed.
+The runtime remains independently implemented Rust with CUDA driver loading only.
+
+The v3 single-file reader and model-source adapter now compile; 353 macOS library
+tests, Linux-target Clippy, native Clippy, Just PTX build and no-console check pass.
+Ordinary commands accept the exact pinned Ninfer file through checked canonical
+views, encoded FP8 embedding gather, and FP32 GDN parameters. This is a new source
+identity, not a reassignment of the raw `.mspec` control identity. Packed MTP and
+proposal data remain in the source, with execution explicitly rejected for now.
+
+Qualification order: compare independent Rust whole/object hashes to official
+reader evidence; run parameter oracles and sanitizers; run same-source legacy/
+stream state and logit checks; score fixed text and measure matched workloads.
+All arithmetic differences listed in `KNOWLEDGE/findings/ninfer-import-contract.md`
+remain explicit. No direct-file model correctness or throughput is established
+by the host checks alone. Shared-GPU claims and earlier invalid host-overhead/
+converter-provenance inferences were corrected in the knowledge entries.

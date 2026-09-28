@@ -657,13 +657,13 @@ impl ActiveStream<'_, '_> {
 
     /// Enqueue a stream-ordered copy from pageable host memory.
     ///
-    /// CUDA stages pageable sources before this call returns, so `source` may be
-    /// released afterwards; the device write itself is ordered on this stream.
-    /// Pageable copies are not graph-capturable, so this rejects active capture.
+    /// Pageable uploads may stage or block in the driver; this does not promise
+    /// host-asynchronous progress. Capture is rejected for this upload path.
     ///
     /// # Safety
-    /// The destination range must lie in a live allocation of this context that no
-    /// in-flight work on another stream reads or writes.
+    /// Keep `source` allocated and unchanged until this stream completes, even if
+    /// the driver stages it before returning. The destination must remain live
+    /// through completion and no other stream may access it concurrently.
     pub(in super::super) unsafe fn copy_from_host(
         &self,
         destination: u64,
