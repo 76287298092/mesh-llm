@@ -356,4 +356,29 @@ mod tests {
         manager.set_test_capability_providers(providers);
         Ok(manager)
     }
+
+    /// An embedded stop/start must release the ledger process lock. The
+    /// in-process runner captures a Node clone; without detaching the manager
+    /// the cycle keeps `service.lock` held and the next open fails with
+    /// "payment service is already running".
+    #[tokio::test]
+    async fn detaching_plugin_manager_releases_payment_engine() -> anyhow::Result<()> {
+        let node = Node::new_for_tests(crate::mesh::NodeRole::Client).await?;
+        let manager = attach_payments_plugin(&node).await?;
+        let weak = Arc::downgrade(&node.payments);
+        drop(node.payment_engine().await?);
+        manager.shutdown().await;
+        drop(manager);
+        drop(node.take_plugin_manager().await);
+        drop(node);
+        // Serving tasks unwind asynchronously; the leak never resolves.
+        for _ in 0..100 {
+            if weak.upgrade().is_none() {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        }
+        assert!(weak.upgrade().is_none(), "payments slot leaked after shutdown");
+        Ok(())
+    }
 }
