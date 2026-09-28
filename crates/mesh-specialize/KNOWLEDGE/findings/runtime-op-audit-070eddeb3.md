@@ -138,8 +138,9 @@ ceiling**. Ninfer's recorded 164-201 tok/s used MTP4 and FP8 KV
 | other glue (NVFP4 quant, SiLU, conv, gated norm, add, prep, gates) | 552 | 2.25 | n/a | n/a | n/a |
 | **Total events / wall** | 1,476 | 31.63 / **40.67** | n/a | n/a | n/a |
 
-- **Host/driver gap = 9.0 ms of the 40.67 ms wall** (22%, INFERENCE: wall minus
-  events). That is about 8.5 µs per cuCtxSynchronize and alloc/free cycle.
+- **Correction, 2026-09-28:** the 9.0 ms numerical difference between unprofiled
+  wall time and separately instrumented event sums is not host/driver attribution.
+  Profiling changes execution. No per-call host costs were measured here.
 - **Decode at 513 positions** (`profile-512-baseline.json`): attention rises to
   **22.06 ms of 52.40 event ms**, wall 59.48 ms. KV read is 512 × 4 KiB × 16 layers
   = 33.5 MB, about 1.5 GB/s, roughly 0.1% of bandwidth. All other classes are
@@ -159,7 +160,8 @@ ceiling**. Ninfer's recorded 164-201 tok/s used MTP4 and FP8 KV
 | NVFP4 quantize, conv, gated norm, FP8 quantize | 56.2 | 3.6% | n/a | n/a |
 | Everything else | 5.8 | 0.4% | n/a | n/a |
 
-- Wall: 512/305.6 tok/s = 1.675 s, so the **host gap is about 110 ms**.
+- Wall: 512/305.6 tok/s is about 1.675 s in the cited benchmark. Its difference
+  from instrumented event sums cannot quantify host overhead.
 - Comparators (FACT, measured):
   - Native FP8 at 128 rows: 43.6 ms vs exact 212.7 ms (about 55 TFLOPS).
   - Wide NVFP4 at 512 rows: 101.4 ms vs 195.8 ms.
@@ -297,8 +299,9 @@ State of the prepared explicit-stream path:
 
 ## 7. Top rebuild candidates
 
-Ranked by derived removable time divided by engineering cost. Savings are
-event-time or wall-gap bounds from sections 2-3, not promises.
+Historical candidate ranking from source and event profiles. These event costs
+are prioritization clues, not removable wall-time bounds. New model measurements
+in `../optimizations/stream-forward.md` supersede the execution-path speculation.
 
 | Rank | Candidate | Removable time (derivation) | Cost / risk | Files |
 | --: | --- | --- | --- | --- |
@@ -306,23 +309,16 @@ event-time or wall-gap bounds from sections 2-3, not promises.
 | 2 | Replace BF16 A/B `bf16_linear_decode` (FP64, 12 CTAs) | Decode 2.70 of 40.7 ms (6.6%): 47 MB should take 0.03 ms. Prefill 59.6 ms (3.6%). Fold the 96 channels into the QKV/Z pass or use a tiled BF16 kernel | Low. Arithmetic changes from FP64 to FP32, so it needs a tolerance decision | `resident_bf16.rs`, `kernels/nvptx/bf16_linear_decode.rs`, `resident_gdn.rs:179-182` |
 | 3 | Tensor-core flash attention: prefill tiles plus split-sequence decode | Prefill 243.9 ms (14.6%). Decode is small at short context but 22.06 of 59.5 ms (37%) at 513 positions, and it dominates at 8K+ (about 350 ms per token). FLOP floor below 1 ms | Medium. Replaces FP64 exactness, as online already does | `kernels/nvptx/causal_attention.rs`, `attention_online.rs`, `resident_attention_core.rs` |
 | 4 | Real tiled FP8 prefill GEMM (shared-memory pipeline, large tiles) | 724.7 ms (43% of wall). Native already cuts the class about 4.9x (212.7 to 43.6 ms at 128). At 55 TFLOPS the floor is 174 ms; at 200 TFLOPS it is 48 ms | **Policy gate:** exact 9xINT8 cannot be fast. Native arithmetic needs a quality basis first | `resident_fp8.rs:111-123`, `kernels/nvptx/fp8_native_prefill.rs` |
-| 5 | Prepared single-stream decode plus graph replay | Up to 9.0 ms of 40.7 ms decode wall (22%) and about 110 ms prefill. Also removes eager launch-latency inflation in about 980 tiny launches. Arena alone measured +5.8% | High: every `resident_*.rs` op, `resident_model.rs`, device-position attention, `driver.rs` function cache. Design in `ordinary-decode-graph-plan.md` | as listed in section 4 |
+| 5 | Prepared single-stream decode plus graph replay | Host share unmeasured. Stable storage, fewer waits and prepared submission require a whole-model ablation; event sums cannot bound the gain. Arena alone measured +5.8% | High: every `resident_*.rs` op, `resident_model.rs`, device-position attention, `driver.rs` function cache. Design in `ordinary-decode-graph-plan.md` | as listed in section 4 |
 | 6 | Faster weight-streaming GEMV (wide loads, more bytes in flight, fused quantize) | 20.85 ms at 51%. At 85% of peak, 12.6 ms, saving about 8.3 ms (20% of decode). Worst classes: attention QKV 45%, NVFP4 57% | Medium. Keep exact integer NVFP4. FP8 A16 is a numerics change | `nvfp4_decode_exact.rs`, `fp8_linear_exact.rs`, `resident_fp8.rs`, `resident_nvfp4.rs` |
 | 7 | Chunked GDN prefill plus a wider decode recurrence | Prefill 237.6 ms (14.2%). Decode 2.48 ms vs 0.17 ms state-traffic floor (6% of decode). Mandatory for long prompts | Medium-high. Candidate kernels exist but are unwired | `resident_gdn_core.rs:335-386`, `kernels/nvptx/gdn_recurrent.rs`, `gdn_chunked.rs` |
 | 8 | Fuse glue: quantize into norm, drop diagnostic writes, conv writes state in place | Decode about 5.1 ms (FP8 quantize 2.61, norms 1.93, NVFP4 quantize 0.62). Prefill about 95 ms (SiLU 39.0, quantizes 28.4, conv 17.3, gated norm 10.5) | Medium. Diagnostic outputs are part of current audit tooling | `resident_norm.rs`, `resident_activation.rs`, `resident_conv.rs`, quantize kernels |
 
-- **Combined decode bound (INFERENCE):**
-  - Ranks 2, 5, 6 and 8 at full effect put decode near 12.6 ms of GEMV plus
-    about 2 ms of fused glue, roughly 65 tok/s.
-  - The absolute one-token ceiling is 93.7 tok/s.
-  - Matching Ninfer's 164-201 tok/s therefore **requires** accepted multi-token
-    verification (MTP), which in turn needs cheap state fork and recovery
-    (section 4 item 8).
-- **Combined 512-prefill bound (INFERENCE):**
-  - Ranks 1-4, 7 and 8 at the floors shown leave roughly 150-300 ms, or
-    about 1.7-3.4K tok/s.
-  - Ninfer's 6-10K tok/s additionally needs larger-M GEMM efficiency and
-    chunked long-context support.
+No combined speed forecast is established. The former 65 tok/s decode and
+1.7–3.4K tok/s prefill estimates added hypothetical component improvements and
+unsupported host-gap estimates; they are withdrawn. Use isolated whole-model
+measurements instead. The weight-traffic calculation above is an idealized
+bandwidth model, not a measured performance ceiling.
 
 ## Could not determine
 

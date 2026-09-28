@@ -1,0 +1,13 @@
+Perplexity result
+artifact: qwen3.8-27b
+kv: bf16, corpus: ninfer-ppl-1m-v1-slice12k / full, context/stride: 512/256
+
+domain                            tokens        mean_nll             ppl
+chinese_reference                  12287        1.944369        6.989217
+english_long_form                  12287        1.935350        6.926465
+english_reference                  12287        1.894918        6.652004
+ninfer_code                        12287        0.708471        2.030884
+overall                            49148        1.620777        5.057017
+
+score rate: 4619.9 tok/s
+report: "/home/ndizazzo/dev/mesh/mesh-llm/target/specialize/reassess-20260927/ninfer-matched-2/ppl-bf16-c512-s256/report.json"

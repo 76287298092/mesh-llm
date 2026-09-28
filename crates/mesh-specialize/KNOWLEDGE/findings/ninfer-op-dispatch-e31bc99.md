@@ -1,7 +1,7 @@
 # Ninfer per-operation dispatch for Qwen3.8-27B NVFP4 at e31bc99
 
 Status: read-only source trace, September 27, 2026. Ninfer commit `e31bc99b13f517c8aae70b997b7c4a49b4dcdc5d`
-(the source of the running binary). Configuration traced: `--kv-dtype fp8 --max-concurrency 2
+(source checkout observed on Carrack; binary-to-source correspondence unverified). Configuration traced: `--kv-dtype fp8 --max-concurrency 2
 --prefill-chunk 2048 --spec mtp --draft-tokens 4 --lm-head-draft`, CUDA graphs on (default,
 `src/serve/serve_options.h:50`). No build, GPU run, or measurement was made. Byte and launch counts are
 source arithmetic.
@@ -21,14 +21,16 @@ proposal extent is 0 (`decode.cpp:505-506`, `program/speculative/mtp.cpp:81`). W
 
 ## 1. Weight format inventory and bytes read per token
 
-**Provenance.** `LC:convert_nvfp4_nvidia.py:1-7` and `LC:modelopt_source.py:3-17` state the format
-assignment: NVFP4 for the MLP of layers 0-55 and row-scaled FP8 for everything else. NVIDIA's NVFP4 MLP 56-63
-and output head are re-encoded from BF16 with the row-scaled FP8 encoder (`modelopt_source.py:96-106,188-202`).
-Every other NVIDIA FP8 matrix has a **per-tensor** scalar scale, broadcast to a per-row BF16 column
-(`modelopt_source.py:107-111,136-147`). Its FP32 scalar is rounded to BF16 at line 144, so the claimed "exact
-re-expression" (line 14) does not hold exactly for that scale. The recipe modules (`recipe_nvfp4`,
-`convert_nvfp4`, `fp8_embedding`) are absent. Therefore the rows below also rely on the in-tree official recipe
-(`tools/convert/official_recipes.py:151-174`) and on whether the loader would accept the format.
+**Provenance correction, 2026-09-28.** The trial's fresh artifact SHA-256 is
+`74d2c57145e6ff11d1d2faa79594477f9bc903a611af1fb20218189fbbb77d82`, exactly
+matching `model-cards/Qwen3.8-27B-nvfp4-NInfer/artifact-manifest.json:7` and the
+September 26 artifact. Its declared quantized source is unsloth, as recorded
+in `ninfer-model-format.md`. The local NVIDIA adapter has not been linked to
+these bytes. Its per-tensor-scale behavior is a fact about that adapter only,
+not evidence about the benchmarked model. Table cells supported solely by
+`LC:` must therefore be treated as unverified for this artifact. No container
+parser was added. Recipe-derived format assignments remain conditional until
+confirmed against the artifact or a trusted conversion record.
 
 | Weight class (per layer) | Logical shape | Stored format | Evidence |
 |---|---|---|---|
@@ -217,13 +219,13 @@ PDL (`src/core/pdl.cuh`) is used only by Q4, Q5 and Q8 SIMT/GEMV and MoE kernels
 
 ## 7. Corrections to the existing findings
 
-- `ninfer-runtime-deep-dive.md`: "Ninfer's installed binary is still not connected to either source pin". Per this task's premise, the running binary is e31bc99.
+- The task premise incorrectly identified the running binary with e31bc99. Source HEAD and executable timestamp/hash were observed separately; a verified build record is still missing.
 - deep-dive §5: "gated_delta_net.cpp:244-275" does not exist; the file has 242 lines. Dispatch is at `:206-240`. "Parallel chunk algorithms" overstates it. The chunks are processed **serially** in one 96-CTA kernel. Tensor cores apply only within a chunk, and the triangular solve is scalar FP32 forward substitution.
 - deep-dive §4: the GDN projection+conv plan under AllowA8 is fused for widths 1-3 and 7-**9**. Width 10 is MaterializedA8, because the `width>=10` A8 check runs first (`fp8_gdn_conv_plan.cpp:88-91`). The fused Qwen27 norm/control kernel is used only for ≤42 columns. Prefill uses a composed RMSNorm plus a cooperative split-K MMA.
 - deep-dive §2 and `ninfer-performance-comparison.md` cite the generic `ops::linear` shape tables (`LF/shapes/n5120_k17408.cu`, `n5120_k6144.cu`, `n14336`, `n16384`; `LN/shapes/n5120_k17408.cu`) as the routes that execute. In this model **only the lm_head goes through `ops::linear`**. The executed plans are the fused-op plans, with different thresholds. Attention input reaches A8 at **T≥5**, not 12. GDN input in prefill reaches A8 at T≥8, and in verify at width≥10 (or B·W≥9). FP8 O/GDN-out with K=6144 reaches A8 at **T≥22**, not 25.
 - performance-comparison: the "A16 T=1 GEMV pairs gate/up … SiLU epilogue" route is not taken. The artifact policy is AllowA8, so FP8 MLP 56-63 at decode runs **A8** (quantize + 16×64 MMA tile).
 - `ninfer-feature-parity.md` F04 describes "chunk preparation, state passing and output kernels". At e31bc99 there are 2 kernels, prepare and a fused recurrence/output kernel. F05's "separate packed-prefill" is wrong for this model: prefill uses the `causal_cache` prompt kernel, not `dense/packed`. F06 omits the D256 Hadamard rotation of K, V and Q, which is essential to the FP8 KV scheme.
-- `ninfer-model-format.md` provenance (unsloth revision, manifest SHA) is stale for the running artifact. The current file comes from NVIDIA ModelOpt through the local converter, with NVIDIA-sourced FP8 matrices carrying **per-tensor** scales broadcast to rows. Its byte size equals the old manifest's, which follows from having the same format assignment and does not prove identical bytes. The adapter's claim of an exact re-expression is contradicted by the BF16 rounding of the scale (`modelopt_source.py:144`).
+- The previous claim that `ninfer-model-format.md` provenance was stale is withdrawn: the newly measured SHA-256 matches its published manifest. Local converter presence is not provenance.
 - The earlier findings do not mention that `--spec mtp` makes **every** decode round a 5-column MTP round, and that the draft side (Q8 MTP ×4 + Q4 shortlist head ×4) reads ~3.2 GB per round.
 
 ## 8. Implications for a competitor (ranked by likely time share; reasoning, not measurement)
@@ -245,9 +247,20 @@ PDL (`src/core/pdl.cuh`) is used only by Q4, Q5 and Q8 SIMT/GEMV and MoE kernels
 
 ## Unverified
 
-- The recipe modules for the local artifact are absent. The MTP=Q8 and proposal=Q4-131072 assignments come from elimination and defaults. The embedding=FP8 and conv=BF16 assignments come from the recipe.
+- The local adapter recipe modules are absent and the adapter is not linked to the benchmarked artifact. The MTP=Q8 and proposal=Q4-131072 assignments come from elimination and defaults. The embedding=FP8 and conv=BF16 assignments come from the recipe.
 - `layer_types` placement and the 170-SM count (taken from code comments `bf16_gdn_gating_proj_plan.cpp:33`, `small_t.cu:229`) are assumed.
 - The MTP KV cache storage dtype is assumed to be FP8.
 - The Q8/Q4 draft tile choices were only sampled.
 - Exact launch counts for the draft and sampling are approximate. No measured timings exist.
 - Per-q-head KV re-read in the prompt kernel is inferred from its grid, not traced line-by-line.
+
+## Artifact identity follow-up, September 28
+
+Ninfer's existing read-only Python inspector/reader was run against the actual
+hashed artifact; no parser entered the Rust runtime. Evidence is
+`evidence/reassess-20260928/ninfer-identity/`. Metadata confirms every fourth
+layer is full attention, FP8 embedding/head, Q8 MTP projections, Q4 group64
+proposal head of 131,072 rows, and its INT32 token mapping. Embedded tokenizer
+and template assets give identical IDs for all nine campaign inputs under the
+pinned Python tokenizer/Jinja versions. This closes those artifact assumptions,
+not binary-to-source provenance or canonical weight equality.

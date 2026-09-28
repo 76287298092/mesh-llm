@@ -1,8 +1,35 @@
 # StreamForward: whole-model single-stream execution
 
-Status: implemented, unqualified (2026-09-28, issue 1393). Source written by a
-worker without running Cargo, a GPU, sanitizers or `qwen-stream-check`. Nothing
-here is measured. The default execution path is unchanged (`legacy`).
+Status: limited model-equivalence and timing evidence for an opt-in (2026-09-28, issue 1393), source
+`ab33f730e`, PTX SHA256 `04f03b9b…`. Default remains `legacy`. Bounded sanitizer checks now pass with the scope below; graph capture
+is still pending.
+
+## Qualification, 2026-09-28
+
+Carrack RTX 5090 (GPU0), exclusive: Ninfer and ComfyUI stopped and restored.
+`qwen-stream-check` compares legacy and stream forwards from identical state.
+Both the 106-token prompt plus 32 decode steps and the 512-token prompt plus 8
+steps pass: every step's selected token, BF16 logit hash and every KV, conv,
+recurrent and other state-region hash are bit identical.
+
+`qwen-model-bench`, 256 fixed outputs, three repetitions each (spread under
+0.2%), matched prompts from `reassess-20260927/matched-prompts.json`:
+
+| Prompt | Execution | Prefill tok/s | Decode tok/s | Decode step first → last |
+|---|---|---:|---:|---:|
+| story, 106 tokens | legacy | 238.9 | 20.35 | 43.6 → 54.4 ms |
+| story, 106 tokens | stream | 306.2 | 26.48 | 32.3 → 43.1 ms |
+| pg19, 512 tokens | legacy | 295.0 | 15.07 | 61.3 → 71.7 ms |
+| pg19, 512 tokens | stream | 328.4 | 18.17 | 49.8 → 60.4 ms |
+
+Generated tokens are identical between executions for both prompts. Removing
+per-operation allocation, synchronization, per-launch context push and name
+lookup gives +30%/+21% decode and +28%/+11% prefill. The remaining decode step
+grows about 11 ms over 255 positions. Existing event profiles make FP64 causal
+attention the leading explanation, but this trial did not isolate that cause.
+Long-context model performance is not yet measured for this path. Matched Ninfer MTP0 decode is 76.3
+tok/s at both prompt lengths ([matched reference](../findings/ninfer-matched-20260928.md)).
+Evidence: `evidence/reassess-20260928/stream-trial-2/`.
 
 ## What it is
 
@@ -136,3 +163,18 @@ bytes (for example 65,664 B at capacity 513, 32 MiB at 262,144).
 Type-check, host unit tests, `qwen-stream-check` at short and 512-token prompts
 with decode steps, compute-sanitizer memcheck/racecheck on the stream path,
 and matched `qwen-model-bench` timings for both executions.
+
+## Bounded sanitizer follow-up
+
+At source `ab33f730e`, `stream-sanitizers-1` passed memcheck on a 17-input,
+two-decode-step legacy/stream comparison; scorer memcheck also passed on a
+17-token window. Racecheck reached the 8 GiB cgroup memory cap and was OOM-killed
+before completion, not a correctness pass. The failure is retained.
+
+`stream-sanitizers-2` passed racecheck and synccheck on a two-input,
+one-decode-step legacy/stream comparison and on the 17-token scoring window.
+Racecheck used `--force-synchronization-limit 1 --racecheck-num-workers 1` to
+bound instrumentation memory: zero errors/warnings. Synccheck used default
+scheduling and reported zero errors. These short instrumented checks do not
+cover the complete 106/512-input timing trials or prove arbitrary-context safety.
+Both services were restored to their initial active states after each trial.

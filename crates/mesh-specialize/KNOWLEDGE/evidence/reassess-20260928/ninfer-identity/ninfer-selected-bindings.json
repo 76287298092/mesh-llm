@@ -1,0 +1,340 @@
+{
+  "text/token_embedding": {
+    "binding": {
+      "object": "weight/000242"
+    },
+    "stored": {
+      "format": "fp8_e4m3fn_row_bf16",
+      "layout": "row_scale_v1",
+      "shape": [
+        248320,
+        5120
+      ],
+      "bytes": 1271895040
+    }
+  },
+  "text/output_head": {
+    "binding": {
+      "object": "weight/000243"
+    },
+    "stored": {
+      "format": "fp8_e4m3fn_row_bf16",
+      "layout": "row_scale_v1",
+      "shape": [
+        248320,
+        5120
+      ],
+      "bytes": 1271895040
+    }
+  },
+  "mtp/input_projection": {
+    "binding": {
+      "object": "weight/000725"
+    },
+    "stored": {
+      "format": "q8_g32_fp16",
+      "layout": "row_split_k128_v1",
+      "shape": [
+        5120,
+        10240
+      ],
+      "bytes": 55705600
+    }
+  },
+  "mtp/embedding_norm": {
+    "binding": {
+      "object": "weight/000726"
+    },
+    "stored": {
+      "format": "bf16",
+      "layout": "contiguous_le_v1",
+      "shape": [
+        5120
+      ],
+      "bytes": 10240
+    }
+  },
+  "mtp/hidden_norm": {
+    "binding": {
+      "object": "weight/000727"
+    },
+    "stored": {
+      "format": "bf16",
+      "layout": "contiguous_le_v1",
+      "shape": [
+        5120
+      ],
+      "bytes": 10240
+    }
+  },
+  "mtp/final_norm": {
+    "binding": {
+      "object": "weight/000728"
+    },
+    "stored": {
+      "format": "bf16",
+      "layout": "contiguous_le_v1",
+      "shape": [
+        5120
+      ],
+      "bytes": 10240
+    }
+  },
+  "mtp/layers/0/input_norm": {
+    "binding": {
+      "object": "weight/000729"
+    },
+    "stored": {
+      "format": "bf16",
+      "layout": "contiguous_le_v1",
+      "shape": [
+        5120
+      ],
+      "bytes": 10240
+    }
+  },
+  "mtp/layers/0/attention/query": {
+    "binding": {
+      "parts": [
+        {
+          "object": "weight/000176",
+          "range": [
+            0,
+            31457280
+          ]
+        }
+      ]
+    },
+    "parents": [
+      {
+        "id": "weight/000176",
+        "format": "q8_g32_fp16",
+        "layout": "row_split_k128_v1",
+        "shape": [
+          14336,
+          5120
+        ],
+        "bytes": 77987840
+      }
+    ]
+  },
+  "mtp/layers/0/attention/gate": {
+    "binding": {
+      "parts": [
+        {
+          "object": "weight/000176",
+          "range": [
+            36700160,
+            68157440
+          ]
+        }
+      ]
+    },
+    "parents": [
+      {
+        "id": "weight/000176",
+        "format": "q8_g32_fp16",
+        "layout": "row_split_k128_v1",
+        "shape": [
+          14336,
+          5120
+        ],
+        "bytes": 77987840
+      }
+    ]
+  },
+  "mtp/layers/0/attention/key": {
+    "binding": {
+      "parts": [
+        {
+          "object": "weight/000176",
+          "range": [
+            31457280,
+            36700160
+          ]
+        }
+      ]
+    },
+    "parents": [
+      {
+        "id": "weight/000176",
+        "format": "q8_g32_fp16",
+        "layout": "row_split_k128_v1",
+        "shape": [
+          14336,
+          5120
+        ],
+        "bytes": 77987840
+      }
+    ]
+  },
+  "mtp/layers/0/attention/value": {
+    "binding": {
+      "parts": [
+        {
+          "object": "weight/000176",
+          "range": [
+            68157440,
+            73400320
+          ]
+        }
+      ]
+    },
+    "parents": [
+      {
+        "id": "weight/000176",
+        "format": "q8_g32_fp16",
+        "layout": "row_split_k128_v1",
+        "shape": [
+          14336,
+          5120
+        ],
+        "bytes": 77987840
+      }
+    ]
+  },
+  "mtp/layers/0/attention/query_norm": {
+    "binding": {
+      "object": "weight/000730"
+    },
+    "stored": {
+      "format": "bf16",
+      "layout": "contiguous_le_v1",
+      "shape": [
+        256
+      ],
+      "bytes": 512
+    }
+  },
+  "mtp/layers/0/attention/key_norm": {
+    "binding": {
+      "object": "weight/000731"
+    },
+    "stored": {
+      "format": "bf16",
+      "layout": "contiguous_le_v1",
+      "shape": [
+        256
+      ],
+      "bytes": 512
+    }
+  },
+  "mtp/layers/0/attention/output": {
+    "binding": {
+      "object": "weight/000732"
+    },
+    "stored": {
+      "format": "q8_g32_fp16",
+      "layout": "row_split_k128_v1",
+      "shape": [
+        5120,
+        6144
+      ],
+      "bytes": 33423360
+    }
+  },
+  "mtp/layers/0/post_attention_norm": {
+    "binding": {
+      "object": "weight/000733"
+    },
+    "stored": {
+      "format": "bf16",
+      "layout": "contiguous_le_v1",
+      "shape": [
+        5120
+      ],
+      "bytes": 10240
+    }
+  },
+  "mtp/layers/0/mlp/gate": {
+    "binding": {
+      "parts": [
+        {
+          "object": "weight/000177",
+          "range": [
+            0,
+            89128960
+          ]
+        }
+      ]
+    },
+    "parents": [
+      {
+        "id": "weight/000177",
+        "format": "q8_g32_fp16",
+        "layout": "row_split_k128_v1",
+        "shape": [
+          34816,
+          5120
+        ],
+        "bytes": 189399040
+      }
+    ]
+  },
+  "mtp/layers/0/mlp/up": {
+    "binding": {
+      "parts": [
+        {
+          "object": "weight/000177",
+          "range": [
+            89128960,
+            178257920
+          ]
+        }
+      ]
+    },
+    "parents": [
+      {
+        "id": "weight/000177",
+        "format": "q8_g32_fp16",
+        "layout": "row_split_k128_v1",
+        "shape": [
+          34816,
+          5120
+        ],
+        "bytes": 189399040
+      }
+    ]
+  },
+  "mtp/layers/0/mlp/down": {
+    "binding": {
+      "object": "weight/000734"
+    },
+    "stored": {
+      "format": "q8_g32_fp16",
+      "layout": "row_split_k128_v1",
+      "shape": [
+        5120,
+        17408
+      ],
+      "bytes": 94699520
+    }
+  },
+  "proposal/head": {
+    "binding": {
+      "object": "weight/001070"
+    },
+    "stored": {
+      "format": "q4_g64_fp16",
+      "layout": "row_split_k128_v1",
+      "shape": [
+        131072,
+        5120
+      ],
+      "bytes": 356515840
+    }
+  },
+  "proposal/token_ids": {
+    "binding": {
+      "object": "weight/001071"
+    },
+    "stored": {
+      "format": "int32",
+      "layout": "contiguous_le_v1",
+      "shape": [
+        131072
+      ],
+      "bytes": 524288
+    }
+  }
+}

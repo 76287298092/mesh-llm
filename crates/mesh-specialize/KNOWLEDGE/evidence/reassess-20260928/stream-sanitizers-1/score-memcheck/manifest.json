@@ -1,0 +1,138 @@
+{
+  "all_passed": true,
+  "artifact_path": "/data/ai/models/mesh-specialize/qwen3.8-27b-f0b7c9e7-raw-v1.mspec",
+  "artifact_sha256": "f2982d23cbc7f795f6607a63b89ed3b104009959e789b415db6a2dd36035444e",
+  "check": {
+    "chunk_rows": 16,
+    "head_bit_exact": true,
+    "head_rows_vs_one_row_head": [
+      {
+        "bf16_differences": 0,
+        "row": 0
+      },
+      {
+        "bf16_differences": 0,
+        "row": 15
+      }
+    ],
+    "passed": true,
+    "reference": "reference/row_logprob_topk.rs FP64 host exp/ln, exact top-64 ids",
+    "reference_error": null,
+    "reference_max_abs_error": 4.403596864932524e-7,
+    "reference_rows": 4
+  },
+  "context_tokens": 17,
+  "corpus_id": "sanitizer-smoke-17",
+  "device": {
+    "driver_version": 13040,
+    "major": 12,
+    "minor": 0,
+    "name": "NVIDIA GeForce RTX 5090",
+    "ordinal": 0,
+    "total_bytes": 33731248128,
+    "uuid": "GPU-80ded6bd-1a89-2628-3d94-902187dbab1d"
+  },
+  "domains": [
+    {
+      "domain": "english_reference",
+      "mean_nll": 4.413229141522606,
+      "scored_tokens": 16,
+      "total_nll": 70.6116662643617
+    }
+  ],
+  "environment": {},
+  "head_chunk_rows": 128,
+  "identity": {
+    "model_id": "qwen3.8-27b:text:nvfp4-fp8:upstream-raw-v1",
+    "weights_id": "sha256:f49713878a072f8c9043060dc0e2f3b28421301e49471bee0c13c7570e59e81e"
+  },
+  "kind": "resident-teacher-forced-scores",
+  "metric": {
+    "log_base": "natural",
+    "name": "fixed-window truncated-context causal perplexity"
+  },
+  "overall": {
+    "mean_nll": 4.413229141522606,
+    "scored_tokens": 16,
+    "total_nll": 70.6116662643617
+  },
+  "profiles": {
+    "attention": "bf16-fp64-v1",
+    "fp8": "exact-a8-v1",
+    "fp8_split_k": null,
+    "mlp_workspace": false,
+    "nvfp4": "nvfp4-native-prefill-integer-decode-v1"
+  },
+  "ptx_sha256": "04f03b9b0e7124fce67d878c917c38693a0d9dd0b073cbbe7e04536dd1665f1d",
+  "record_format": {
+    "arithmetic": "BF16 head logits; FP32 exp of (x - max), FP64 accumulation and log, FP32 outputs",
+    "byte_order": "little-endian",
+    "fields": [
+      {
+        "count": 1,
+        "name": "target_id",
+        "type": "u32"
+      },
+      {
+        "count": 1,
+        "name": "target_logprob",
+        "type": "f32"
+      },
+      {
+        "count": 1,
+        "name": "logsumexp",
+        "type": "f32"
+      },
+      {
+        "count": 64,
+        "name": "top_ids",
+        "type": "u32"
+      },
+      {
+        "count": 64,
+        "name": "top_logprobs",
+        "type": "f32"
+      }
+    ],
+    "order": "scored positions in stream order; top-k by logit descending, lower id first on ties",
+    "record_bytes": 524
+  },
+  "schema_version": 1,
+  "scope": "Teacher-forced scoring of fixed token streams; score timing includes the forward, head, statistics and host transfers and is not a prefill benchmark.",
+  "state_policy": "fresh zeroed ResidentState and cursor per window; no carry-over between windows or streams",
+  "streams": [
+    {
+      "domain": "english_reference",
+      "id": "wikitext-00",
+      "input_tokens": 17,
+      "mean_nll": 4.413229141522606,
+      "record_count": 16,
+      "records": "wikitext-00.scores.bin",
+      "scored_tokens": 16,
+      "seconds": 13.39394017,
+      "total_nll": 70.6116662643617,
+      "unscored_tokens": 1,
+      "windows": [
+        {
+          "first_target": 1,
+          "index": 0,
+          "input_begin": 0,
+          "input_end": 17,
+          "mean_nll": 4.413229141522606,
+          "scored_tokens": 16,
+          "seconds": 13.393938456,
+          "target_begin": 1,
+          "target_end": 17,
+          "total_nll": 70.6116662643617
+        }
+      ]
+    }
+  ],
+  "stride_tokens": 8,
+  "timing": {
+    "load_seconds": 11.825756614,
+    "score_seconds": 13.393942032,
+    "scored_tokens_per_second": 1.1945699004649837
+  },
+  "wall_seconds": 35.653240386
+}

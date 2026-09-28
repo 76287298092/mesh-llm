@@ -1,0 +1,395 @@
+{
+  "artifact": {
+    "architecture": "Qwen3_5ForCausalLM",
+    "formats": [
+      "bf16",
+      "fp32",
+      "fp8_e4m3fn_row_bf16",
+      "nvfp4"
+    ],
+    "name": "qwen3.8-27b",
+    "path": "/data/ai/ninfer/models/qwen3_8_27b_nvfp4.ninfer",
+    "prefill_signature": "e6eae48276e11c15c932cb90d258b51b81e144dc13fb461e7ffa202d2caa440a"
+  },
+  "corpus": {
+    "id": "ninfer-ppl-1m-v1-slice12k",
+    "mode": "full",
+    "source": "/home/ndizazzo/dev/mesh/mesh-llm/target/specialize/reassess-20260927/ppl-slice/manifest.json",
+    "stream_count": 4
+  },
+  "domains": [
+    {
+      "domain": "chinese_reference",
+      "mean_nll": 1.8437374812997043,
+      "perplexity": 6.320115487305884,
+      "scored_tokens": 12287,
+      "total_nll": 22654.002432729467
+    },
+    {
+      "domain": "english_long_form",
+      "mean_nll": 1.8176833244912218,
+      "perplexity": 6.157576805923902,
+      "scored_tokens": 12287,
+      "total_nll": 22333.875008023642
+    },
+    {
+      "domain": "english_reference",
+      "mean_nll": 1.7190418638071399,
+      "perplexity": 5.579180287984156,
+      "scored_tokens": 12287,
+      "total_nll": 21121.867380598327
+    },
+    {
+      "domain": "ninfer_code",
+      "mean_nll": 0.47829653837674446,
+      "perplexity": 1.6133238248850061,
+      "scored_tokens": 12287,
+      "total_nll": 5876.829567035059
+    }
+  ],
+  "execution": {
+    "context_tokens": 4096,
+    "device": 0,
+    "kv_dtype": "bf16",
+    "prefill_chunk_tokens": 1024,
+    "purpose": "causal_scoring",
+    "score_tile_tokens": 1024,
+    "stride_tokens": 2048
+  },
+  "metric": {
+    "log_base": "natural",
+    "name": "fixed-window truncated-context causal perplexity"
+  },
+  "overall": {
+    "mean_nll": 1.464689801993703,
+    "perplexity": 4.326201053198112,
+    "scored_tokens": 49148,
+    "total_nll": 71986.5743883865
+  },
+  "schema_version": 2,
+  "streams": [
+    {
+      "domain": "english_reference",
+      "id": "wikitext-00",
+      "input_tokens": 12288,
+      "mean_nll": 1.7190418638071399,
+      "path": "data/wikitext/00.txt",
+      "perplexity": 5.579180287984156,
+      "scored_tokens": 12287,
+      "seconds": 2.429789261,
+      "total_nll": 21121.867380598327,
+      "unscored_tokens": 1,
+      "windows": [
+        {
+          "first_target": 1,
+          "index": 0,
+          "input_begin": 0,
+          "input_end": 4096,
+          "mean_nll": 1.8028374186661729,
+          "perplexity": 6.066837222790065,
+          "scored_tokens": 4095,
+          "seconds": 0.815190196,
+          "target_begin": 1,
+          "target_end": 4096,
+          "total_nll": 7382.619229437978
+        },
+        {
+          "first_target": 2048,
+          "index": 1,
+          "input_begin": 2048,
+          "input_end": 6144,
+          "mean_nll": 2.0600743260865464,
+          "perplexity": 7.846552992222157,
+          "scored_tokens": 2048,
+          "seconds": 0.403223623,
+          "target_begin": 4096,
+          "target_end": 6144,
+          "total_nll": 4219.032219825247
+        },
+        {
+          "first_target": 2048,
+          "index": 2,
+          "input_begin": 4096,
+          "input_end": 8192,
+          "mean_nll": 1.884324616610148,
+          "perplexity": 6.581907629445958,
+          "scored_tokens": 2048,
+          "seconds": 0.403539564,
+          "target_begin": 6144,
+          "target_end": 8192,
+          "total_nll": 3859.096814817583
+        },
+        {
+          "first_target": 2048,
+          "index": 3,
+          "input_begin": 6144,
+          "input_end": 10240,
+          "mean_nll": 1.506842409294831,
+          "perplexity": 4.512459774110985,
+          "scored_tokens": 2048,
+          "seconds": 0.403890216,
+          "target_begin": 8192,
+          "target_end": 10240,
+          "total_nll": 3086.0132542358137
+        },
+        {
+          "first_target": 2048,
+          "index": 4,
+          "input_begin": 8192,
+          "input_end": 12288,
+          "mean_nll": 1.2573759093172385,
+          "perplexity": 3.516182588842819,
+          "scored_tokens": 2048,
+          "seconds": 0.403932508,
+          "target_begin": 10240,
+          "target_end": 12288,
+          "total_nll": 2575.1058622817045
+        }
+      ]
+    },
+    {
+      "domain": "english_long_form",
+      "id": "pg19-00",
+      "input_tokens": 12288,
+      "mean_nll": 1.8176833244912218,
+      "path": "data/pg19/00.txt",
+      "perplexity": 6.157576805923902,
+      "scored_tokens": 12287,
+      "seconds": 2.047780096,
+      "total_nll": 22333.875008023642,
+      "unscored_tokens": 1,
+      "windows": [
+        {
+          "first_target": 1,
+          "index": 0,
+          "input_begin": 0,
+          "input_end": 4096,
+          "mean_nll": 1.875068861453472,
+          "perplexity": 6.5212681688734575,
+          "scored_tokens": 4095,
+          "seconds": 0.432220289,
+          "target_begin": 1,
+          "target_end": 4096,
+          "total_nll": 7678.406987651968
+        },
+        {
+          "first_target": 2048,
+          "index": 1,
+          "input_begin": 2048,
+          "input_end": 6144,
+          "mean_nll": 1.8943679235197166,
+          "perplexity": 6.6483448138877295,
+          "scored_tokens": 2048,
+          "seconds": 0.403861408,
+          "target_begin": 4096,
+          "target_end": 6144,
+          "total_nll": 3879.6655073683796
+        },
+        {
+          "first_target": 2048,
+          "index": 2,
+          "input_begin": 4096,
+          "input_end": 8192,
+          "mean_nll": 1.7109556147920593,
+          "perplexity": 5.5342475603238865,
+          "scored_tokens": 2048,
+          "seconds": 0.403874653,
+          "target_begin": 6144,
+          "target_end": 8192,
+          "total_nll": 3504.0370990941374
+        },
+        {
+          "first_target": 2048,
+          "index": 3,
+          "input_begin": 6144,
+          "input_end": 10240,
+          "mean_nll": 1.795482510882499,
+          "perplexity": 6.022379884697441,
+          "scored_tokens": 2048,
+          "seconds": 0.403876094,
+          "target_begin": 8192,
+          "target_end": 10240,
+          "total_nll": 3677.148182287358
+        },
+        {
+          "first_target": 2048,
+          "index": 4,
+          "input_begin": 8192,
+          "input_end": 12288,
+          "mean_nll": 1.7551841951278322,
+          "perplexity": 5.784513122968899,
+          "scored_tokens": 2048,
+          "seconds": 0.403932087,
+          "target_begin": 10240,
+          "target_end": 12288,
+          "total_nll": 3594.6172316218003
+        }
+      ]
+    },
+    {
+      "domain": "ninfer_code",
+      "id": "ninfer-00",
+      "input_tokens": 12288,
+      "mean_nll": 0.47829653837674446,
+      "path": "data/ninfer/00.txt",
+      "perplexity": 1.6133238248850061,
+      "scored_tokens": 12287,
+      "seconds": 2.048063515,
+      "total_nll": 5876.829567035059,
+      "unscored_tokens": 1,
+      "windows": [
+        {
+          "first_target": 1,
+          "index": 0,
+          "input_begin": 0,
+          "input_end": 4096,
+          "mean_nll": 0.615549050332336,
+          "perplexity": 1.8506724329753406,
+          "scored_tokens": 4095,
+          "seconds": 0.432441538,
+          "target_begin": 1,
+          "target_end": 4096,
+          "total_nll": 2520.6733611109157
+        },
+        {
+          "first_target": 2048,
+          "index": 1,
+          "input_begin": 2048,
+          "input_end": 6144,
+          "mean_nll": 0.44088756199006,
+          "perplexity": 1.554085954186358,
+          "scored_tokens": 2048,
+          "seconds": 0.403898197,
+          "target_begin": 4096,
+          "target_end": 6144,
+          "total_nll": 902.9377269556429
+        },
+        {
+          "first_target": 2048,
+          "index": 2,
+          "input_begin": 4096,
+          "input_end": 8192,
+          "mean_nll": 0.537477130184115,
+          "perplexity": 1.7116830567608698,
+          "scored_tokens": 2048,
+          "seconds": 0.404004799,
+          "target_begin": 6144,
+          "target_end": 8192,
+          "total_nll": 1100.7531626170676
+        },
+        {
+          "first_target": 2048,
+          "index": 3,
+          "input_begin": 6144,
+          "input_end": 10240,
+          "mean_nll": 0.41495829790938643,
+          "perplexity": 1.5143075895829732,
+          "scored_tokens": 2048,
+          "seconds": 0.403855483,
+          "target_begin": 8192,
+          "target_end": 10240,
+          "total_nll": 849.8345941184234
+        },
+        {
+          "first_target": 2048,
+          "index": 4,
+          "input_begin": 8192,
+          "input_end": 12288,
+          "mean_nll": 0.24542515734033668,
+          "perplexity": 1.2781646187713571,
+          "scored_tokens": 2048,
+          "seconds": 0.403853278,
+          "target_begin": 10240,
+          "target_end": 12288,
+          "total_nll": 502.6307222330095
+        }
+      ]
+    },
+    {
+      "domain": "chinese_reference",
+      "id": "zhwiki-00",
+      "input_tokens": 12288,
+      "mean_nll": 1.8437374812997043,
+      "path": "data/zhwiki/00.txt",
+      "perplexity": 6.320115487305884,
+      "scored_tokens": 12287,
+      "seconds": 2.047207313,
+      "total_nll": 22654.002432729467,
+      "unscored_tokens": 1,
+      "windows": [
+        {
+          "first_target": 1,
+          "index": 0,
+          "input_begin": 0,
+          "input_end": 4096,
+          "mean_nll": 2.07081037273478,
+          "perplexity": 7.931247781266588,
+          "scored_tokens": 4095,
+          "seconds": 0.432547091,
+          "target_begin": 1,
+          "target_end": 4096,
+          "total_nll": 8479.968476348924
+        },
+        {
+          "first_target": 2048,
+          "index": 1,
+          "input_begin": 2048,
+          "input_end": 6144,
+          "mean_nll": 2.0917768911161914,
+          "perplexity": 8.099293949220035,
+          "scored_tokens": 2048,
+          "seconds": 0.403467783,
+          "target_begin": 4096,
+          "target_end": 6144,
+          "total_nll": 4283.95907300596
+        },
+        {
+          "first_target": 2048,
+          "index": 2,
+          "input_begin": 4096,
+          "input_end": 8192,
+          "mean_nll": 2.2075308020134554,
+          "perplexity": 9.093235650600658,
+          "scored_tokens": 2048,
+          "seconds": 0.403865111,
+          "target_begin": 6144,
+          "target_end": 8192,
+          "total_nll": 4521.023082523557
+        },
+        {
+          "first_target": 2048,
+          "index": 3,
+          "input_begin": 6144,
+          "input_end": 10240,
+          "mean_nll": 1.7710013692668447,
+          "perplexity": 5.876735197962537,
+          "scored_tokens": 2048,
+          "seconds": 0.403705086,
+          "target_begin": 8192,
+          "target_end": 10240,
+          "total_nll": 3627.010804258498
+        },
+        {
+          "first_target": 2048,
+          "index": 4,
+          "input_begin": 8192,
+          "input_end": 12288,
+          "mean_nll": 0.8506059553674452,
+          "perplexity": 2.341065003118612,
+          "scored_tokens": 2048,
+          "seconds": 0.403608707,
+          "target_begin": 10240,
+          "target_end": 12288,
+          "total_nll": 1742.0409965925278
+        }
+      ]
+    }
+  ],
+  "timing": {
+    "load_seconds": 3.558447108,
+    "read_and_tokenize_seconds": 0.016138186,
+    "score_seconds": 8.572934393,
+    "scored_tokens_per_second": 5732.926177544352,
+    "total_seconds": 12.254161933
+  }
+}

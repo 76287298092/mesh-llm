@@ -53,18 +53,18 @@ All must hold, overall and per domain unless stated.
 | 99.9th-percentile KL | at most 1.0 nat |
 | Same-profile determinism | identical inputs give identical logits |
 
-Rationale: per-row FP8 activation quantization is typically reported at a few
-tenths of a percent of perplexity, and pure accumulation-order changes far
-below that. These thresholds allow a numerical change of that size and reject
-anything approaching NVFP4 activation-quantization damage (percent-level).
+These are project screening thresholds, not literature-backed universal
+tolerances. The earlier justification about typical FP8/NVFP4 quality damage
+was unsupported and is withdrawn; the numeric thresholds are unchanged.
 A lower NLL than the control passes the NLL rows but not the distribution rows.
 
 ## External comparison: Ninfer on the same text
 
 Ninfer scores the same slice with `ninfer-perplexity` at matched context,
-stride and KV type. Its weights come from a different NVFP4 checkpoint
-(NVIDIA ModelOpt via a local converter, versus our unsloth-derived import), so
-the comparison mixes weights and runtime. It is reported, not used as a
+stride and KV type. Its artifact hash matches the published unsloth-based conversion manifest.
+Our intake pins a different unsloth revision, and canonical logical tensor
+equality is unresolved. Runtime, embedding precision, and potentially source
+weight differences confound this external comparison. It is reported, not used as a
 pass/fail gate for arithmetic, alongside the exact control's gap to Ninfer.
 Scored token counts must match per stream, or the tokenization differs and the
 comparison is invalid.
@@ -81,3 +81,13 @@ regardless of the metrics above.
 Perplexity and teacher-forced agreement do not measure reasoning or long
 answers. A small checkable task set remains a follow-up before any default
 change is described as quality-equivalent for serving.
+
+## Measurement limits identified on September 28
+
+Top-64 records cannot prove the full-logit determinism gate or full-vocabulary
+KL. Byte-identical repeated score records establish only score-record
+repeatability. The comparator leaves full-logit determinism NOT RUN, so these
+records alone cannot produce an overall PASS or justify profile promotion.
+The common-partition KL is explicitly a lower bound, not an estimate of the
+unobserved tail; a small lower bound does not prove a small full KL. The
+thresholds remain unchanged. No arithmetic candidate was promoted.

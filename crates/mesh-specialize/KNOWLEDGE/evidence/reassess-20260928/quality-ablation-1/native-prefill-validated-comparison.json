@@ -1,0 +1,218 @@
+{
+ "schema_version": 1,
+ "thresholds": {
+  "nll_overall": 0.005,
+  "nll_domain": 0.01,
+  "top1": 0.98,
+  "mean_kl": 0.02,
+  "p999_kl": 1.0
+ },
+ "control": "/Users/ndizazzo/.codex/worktrees/ninfer-performance/mesh-llm/target/specialize/reassess-20260927/stream-trial-2/score-exact",
+ "candidate": "/Users/ndizazzo/.codex/worktrees/ninfer-performance/mesh-llm/target/specialize/reassess-20260927/quality-ablation-1/native-prefill",
+ "repeat": null,
+ "control_profiles": {
+  "attention": "bf16-fp64-v1",
+  "fp8": "exact-a8-v1",
+  "fp8_split_k": null,
+  "mlp_workspace": false,
+  "nvfp4": "nvfp4-native-prefill-integer-decode-v1"
+ },
+ "candidate_profiles": {
+  "attention": "bf16-fp64-v1",
+  "fp8": "native-fp8-prefill-v1",
+  "fp8_split_k": null,
+  "mlp_workspace": false,
+  "nvfp4": "nvfp4-native-prefill-integer-decode-v1"
+ },
+ "overall": {
+  "scored_tokens": 49148,
+  "control_mean_nll": 1.621506378365512,
+  "candidate_mean_nll": 1.6203577592846587,
+  "nll_relative_increase": -0.0007083654410357545,
+  "top1_agreement": 0.9392447302026532,
+  "mean_kl": 0.019600882668106303,
+  "p999_kl": 0.839130762478296,
+  "max_kl": 3.258278360193646,
+  "mean_union_estimate_kl": 0.01989394387386819,
+  "p999_union_estimate_kl": 0.8847015739765697
+ },
+ "domains": {
+  "chinese_reference": {
+   "scored_tokens": 12287,
+   "control_mean_nll": 1.9453078829927961,
+   "candidate_mean_nll": 1.9448469278670395,
+   "nll_relative_increase": -0.00023695741418959719,
+   "top1_agreement": 0.9243102466020998,
+   "mean_kl": 0.026971039111272507,
+   "p999_kl": 1.2875705966037714,
+   "max_kl": 3.258278360193646,
+   "mean_union_estimate_kl": 0.02736839250824754,
+   "p999_union_estimate_kl": 1.3031327520698934
+  },
+  "english_long_form": {
+   "scored_tokens": 12287,
+   "control_mean_nll": 1.9366953735014558,
+   "candidate_mean_nll": 1.9360569230982636,
+   "nll_relative_increase": -0.0003296596934797885,
+   "top1_agreement": 0.9314722877838366,
+   "mean_kl": 0.016877418236893676,
+   "p999_kl": 0.3415195726454477,
+   "max_kl": 1.002328992181516,
+   "mean_union_estimate_kl": 0.01706024226891055,
+   "p999_union_estimate_kl": 0.3485012717499456
+  },
+  "english_reference": {
+   "scored_tokens": 12287,
+   "control_mean_nll": 1.8930982597776274,
+   "candidate_mean_nll": 1.8929040552557594,
+   "nll_relative_increase": -0.00010258554772044721,
+   "top1_agreement": 0.931146740457394,
+   "mean_kl": 0.022113120571380967,
+   "p999_kl": 0.6368722719945306,
+   "max_kl": 2.4527634156482234,
+   "mean_union_estimate_kl": 0.02255601824746726,
+   "p999_union_estimate_kl": 0.6563572823961027
+  },
+  "ninfer_code": {
+   "scored_tokens": 12287,
+   "control_mean_nll": 0.710923997190166,
+   "candidate_mean_nll": 0.7076231309175868,
+   "nll_relative_increase": -0.004643064920618008,
+   "top1_agreement": 0.9700496459672825,
+   "mean_kl": 0.012441952752877962,
+   "p999_kl": 0.7159701559399858,
+   "max_kl": 2.839499637373622,
+   "mean_union_estimate_kl": 0.012591122470847496,
+   "p999_union_estimate_kl": 0.7164747644787761
+  }
+ },
+ "gates": [
+  {
+   "gate": "NLL increase overall",
+   "value": -0.0007083654410357545,
+   "op": "<=",
+   "threshold": 0.005,
+   "status": "PASS"
+  },
+  {
+   "gate": "NLL increase chinese_reference",
+   "value": -0.00023695741418959719,
+   "op": "<=",
+   "threshold": 0.01,
+   "status": "PASS"
+  },
+  {
+   "gate": "NLL increase english_long_form",
+   "value": -0.0003296596934797885,
+   "op": "<=",
+   "threshold": 0.01,
+   "status": "PASS"
+  },
+  {
+   "gate": "NLL increase english_reference",
+   "value": -0.00010258554772044721,
+   "op": "<=",
+   "threshold": 0.01,
+   "status": "PASS"
+  },
+  {
+   "gate": "NLL increase ninfer_code",
+   "value": -0.004643064920618008,
+   "op": "<=",
+   "threshold": 0.01,
+   "status": "PASS"
+  },
+  {
+   "gate": "Top-1 agreement overall",
+   "value": 0.9392447302026532,
+   "op": ">=",
+   "threshold": 0.98,
+   "status": "FAIL"
+  },
+  {
+   "gate": "Mean KL overall",
+   "value": 0.019600882668106303,
+   "op": "<=",
+   "threshold": 0.02,
+   "status": "PASS"
+  },
+  {
+   "gate": "99.9th pct KL overall",
+   "value": 0.839130762478296,
+   "op": "<=",
+   "threshold": 1.0,
+   "status": "PASS"
+  },
+  {
+   "gate": "Mean KL chinese_reference",
+   "value": 0.026971039111272507,
+   "op": "<=",
+   "threshold": 0.02,
+   "status": "FAIL"
+  },
+  {
+   "gate": "99.9th pct KL chinese_reference",
+   "value": 1.2875705966037714,
+   "op": "<=",
+   "threshold": 1.0,
+   "status": "FAIL"
+  },
+  {
+   "gate": "Mean KL english_long_form",
+   "value": 0.016877418236893676,
+   "op": "<=",
+   "threshold": 0.02,
+   "status": "PASS"
+  },
+  {
+   "gate": "99.9th pct KL english_long_form",
+   "value": 0.3415195726454477,
+   "op": "<=",
+   "threshold": 1.0,
+   "status": "PASS"
+  },
+  {
+   "gate": "Mean KL english_reference",
+   "value": 0.022113120571380967,
+   "op": "<=",
+   "threshold": 0.02,
+   "status": "FAIL"
+  },
+  {
+   "gate": "99.9th pct KL english_reference",
+   "value": 0.6368722719945306,
+   "op": "<=",
+   "threshold": 1.0,
+   "status": "PASS"
+  },
+  {
+   "gate": "Mean KL ninfer_code",
+   "value": 0.012441952752877962,
+   "op": "<=",
+   "threshold": 0.02,
+   "status": "PASS"
+  },
+  {
+   "gate": "99.9th pct KL ninfer_code",
+   "value": 0.7159701559399858,
+   "op": "<=",
+   "threshold": 1.0,
+   "status": "PASS"
+  },
+  {
+   "gate": "Score-record repeatability",
+   "value": null,
+   "op": "==",
+   "threshold": true,
+   "status": "NOT RUN"
+  },
+  {
+   "gate": "Full-logit determinism",
+   "value": null,
+   "op": "==",
+   "threshold": true,
+   "status": "NOT RUN"
+  }
+ ],
+ "verdict": "FAIL"
+}

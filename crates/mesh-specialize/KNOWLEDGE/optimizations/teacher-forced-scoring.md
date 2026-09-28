@@ -1,10 +1,12 @@
 # Teacher-forced scoring
 
-Status: implemented, unqualified (2026-09-28). Source is authored but no Cargo
-build, PTX build, host test run, GPU run or sanitizer has been performed by the
-worker. Nothing here is quality evidence until the parent records a run. The
-policy it serves is [quality gates](../findings/quality-gates.md); follow its
-protocol and thresholds exactly.
+Status: first full-corpus measurement at `ab33f730e`, September 28. Four sampled
+rows pass the independent FP64 scorer oracle and sampled batched heads agree
+with the one-row head. The exact, native-prefill and online-attention runs each
+scored 49,148 targets. Both candidates fail the fixed agreement gates; see
+[arithmetic reassessment](../findings/arithmetic-quality-20260928.md). Bounded
+model/scorer memcheck passes. Racecheck initially hit its memory cap; the smaller bounded retry and
+synccheck pass (see the stream entry for the serialization caveat). No arithmetic default changed.
 
 ## What it does
 
@@ -103,19 +105,25 @@ timing, artifact identity, artifact file sha256 and PTX sha256.
 internal gate row: NLL relative increase overall (0.5%) and per domain (1.0%),
 top-1 agreement overall (98.0%), mean KL (0.02) and nearest-rank 99.9th
 percentile KL (1.0) overall and per domain, and byte-identical `--repeat`
-records for determinism (NOT RUN without it; verdict INCOMPLETE). The
+records for score repeatability (NOT RUN without it). Full-logit determinism
+requires separate full-vocabulary hashes; compact-record equality is not enough. The
 comparison against Ninfer checks context/stride, per-stream scored counts and
 per-window bounds (INVALID on mismatch) and reports NLL differences; it is not
 a gate.
 
-KL support rule: the union of both top-64 sets plus one tail bucket. A record
-only holds its own top-64, so a union id missing from one profile's top-64 is
-assigned `min(p64, raw_tail / (n_unknown + 1))` in that profile (p64 is its
-64th probability, an upper bound for any id outside the set); the tail bucket
-keeps the rest. The intersection-plus-tail KL, a lower bound on the full KL,
-is reported as a diagnostic. This estimate for unknown ids is an
-interpretation of the policy wording and should be confirmed before results
-are cited.
+The gated KL is the common top-64 intersection plus one remaining-mass bucket,
+a lower bound on full-vocabulary KL. The union-with-imputed-missing-mass estimate
+is informational only. Neither is a full-vocabulary distribution comparison.
+The thresholds in the quality policy are unchanged. The comparator now rejects
+mismatched artifact identity, protocols, domains and malformed probabilities;
+12 stdlib tests cover these contracts and the lower-bound limitation.
+
+Optional full-logit evidence: `MESH_SPECIALIZE_SCORE_LOGITS_HASH=on` downloads
+and SHA-256 hashes every BF16 vocabulary value at each scored position, in
+window order. One digest per stream is stored as `full_logits_sha256`, together
+with an input-token digest covering even unscored context. It adds diagnostic
+transfer cost and is off by default. The first campaign predates these fields;
+it cannot retrospectively establish full-logit determinism.
 
 ## Limits
 
@@ -123,8 +131,8 @@ are cited.
   prefill. Enforced in the xtask, package and harness.
 - The last-row head and a 496,640 B logit download per window are wasted work
   kept to avoid touching the forward's execution path.
-- Records carry derived statistics, not logits; the determinism row compares
-  records, which is weaker than logit identity.
+- Records alone carry derived statistics. Full-logit determinism is NOT RUN
+  unless both repeated runs explicitly capture all-vocabulary hashes.
 - Timing covers forward, head, statistics and host transfers; it is not a
   prefill benchmark.
 
