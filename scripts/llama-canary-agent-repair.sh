@@ -373,6 +373,11 @@ snapshot_candidate_tree() {
     return 1
   fi
   VERIFICATION_TREE="$(git write-tree)"
+  if [[ "$HARNESS_MODE" == "repair-build" && -n "${CANARY_INPUT_BUNDLE:-}" ]] &&
+      [[ "$VERIFICATION_TREE" == "$(git rev-parse "${CANARY_CANDIDATE_SHA}^{tree}")" ]]; then
+    echo "agent made no changes to the restored candidate" >&2
+    return 1
+  fi
   CERTIFIED_SHA="$(
     printf '%s\n\n%s\n' \
       "fix(llama): certify upstream ${UPSTREAM_SHA:0:10}" \
