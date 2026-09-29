@@ -48,6 +48,15 @@ pub fn synthetic_direct_gguf_package(
     if let Some(root) = safetensors_checkpoint_root(model_path) {
         return synthetic_safetensors_package(model_id, &root, digest_cache);
     }
+    if model_path
+        .extension()
+        .is_some_and(|extension| extension == "safetensors")
+    {
+        anyhow::bail!(
+            "incomplete SafeTensors checkpoint near {}: config.json and model.safetensors or model.safetensors.index.json must be in the same directory",
+            model_path.display()
+        );
+    }
     synthetic_gguf_package(model_id, model_path)
 }
 
@@ -84,10 +93,7 @@ fn safetensors_checkpoint_root(model_path: &Path) -> Option<PathBuf> {
     } else {
         model_path.parent()?
     };
-    (root.join("config.json").is_file()
-        && (root.join("model.safetensors").is_file()
-            || root.join("model.safetensors.index.json").is_file()))
-    .then(|| root.to_path_buf())
+    skippy_runtime::is_safetensors_checkpoint(model_path).then(|| root.to_path_buf())
 }
 
 fn synthetic_safetensors_package(
@@ -104,6 +110,14 @@ fn synthetic_safetensors_package(
             .with_context(|| format!("read checkpoint config {}", config_path.display()))?,
     )
     .with_context(|| format!("parse checkpoint config {}", config_path.display()))?;
+    skippy_model::gguf_template::validate_native_checkpoint_architecture(&config).with_context(
+        || {
+            format!(
+                "prepare SafeTensors checkpoint {}",
+                checkpoint_root.display()
+            )
+        },
+    )?;
     let config_u32 = |key: &str| -> Result<u32> {
         let value = config
             .get(key)
@@ -578,6 +592,42 @@ mod tests {
         assert_eq!(identity.activation_width, 4);
         assert_eq!(identity.tensor_count, 1);
         assert_eq!(identity.source_files.len(), 2);
+    }
+
+    #[test]
+    fn incomplete_checkpoint_does_not_fall_through_to_gguf_parser() {
+        let root = tempfile::tempdir().unwrap();
+        let weight = root.path().join("model.safetensors");
+        std::fs::write(&weight, b"weights").unwrap();
+
+        let error = synthetic_direct_gguf_package("test", &weight, None).unwrap_err();
+
+        assert!(
+            error
+                .to_string()
+                .contains("incomplete SafeTensors checkpoint")
+        );
+    }
+
+    #[test]
+    fn unsupported_qwen35_checkpoint_fails_before_tensor_inspection() {
+        let root = tempfile::tempdir().unwrap();
+        std::fs::write(
+            root.path().join("config.json"),
+            r#"{"model_type":"qwen3_5","text_config":{"num_hidden_layers":24}}"#,
+        )
+        .unwrap();
+        std::fs::write(root.path().join("model.safetensors"), b"not a tensor").unwrap();
+
+        let error = synthetic_direct_gguf_package("test", root.path(), None).unwrap_err();
+        let detail = format!("{error:#}");
+
+        assert!(
+            detail.contains("Qwen3.5/Qwen3Next/Qwen3VL-specific"),
+            "{detail}"
+        );
+        assert!(detail.contains("GGUF variant"), "{detail}");
+        assert!(!detail.contains("no safetensors files"), "{detail}");
     }
 
     #[test]

@@ -76,6 +76,8 @@ unchanged.
 - resolve branch/tag names to immutable Hugging Face revisions
 - list model repository files at a resolved revision
 - download the selected artifact file set
+- download complete SafeTensors checkpoints (indexed shards, config, tokenizer,
+  and available sidecars) while returning named snapshot paths to model loaders
 - locate the default Hugging Face cache directory
 - derive `HfModelIdentity` and `ModelIdentity` from cached snapshot paths
 

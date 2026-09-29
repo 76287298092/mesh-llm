@@ -30,7 +30,7 @@ pub async fn run(mut args: ServeCommandArgs) -> Result<()> {
             let cache = skippy_config::paths::model_cache_dir(None)?;
             skippy_commands::models::download_model(&cache, &model, None, None)
                 .await?
-                .primary_path
+                .load_path
         };
         args.public.model_path = Some(path);
         if !local {

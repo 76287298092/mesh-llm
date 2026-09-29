@@ -21,8 +21,12 @@ skippy serve --model Qwen3-0.6B-Q4_K_M
 ```
 
 `--model` also accepts a Hugging Face repository reference such as
-`unsloth/Qwen3-8B-GGUF:Q4_K_M`, or an existing local GGUF path. Remote model
-files are resolved to an immutable revision and cached before loading. Skippy
+`unsloth/Qwen3-8B-GGUF:Q4_K_M`, or an existing local model path. Remote GGUF
+files and complete SafeTensors checkpoints are resolved to an immutable revision
+and cached before loading. Direct SafeTensors serving requires a model family
+supported by Skippy's native checkpoint loader; Qwen3.5 checkpoints are not yet
+supported, so use a GGUF variant such as
+`unsloth/Qwen3.5-0.8B-GGUF:Q4_K_M` for that family. Skippy
 reports the model ID and API address after `GET /v1/models` succeeds.
 
 To start the server and immediately chat with the model in the same terminal:

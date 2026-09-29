@@ -1,5 +1,6 @@
 pub mod blocking;
 mod cache_paths;
+mod checkpoint;
 pub mod local_cache;
 pub mod store;
 mod tls;
@@ -10,6 +11,7 @@ pub use cache_paths::{
     huggingface_xet_cache_dir, prepare_download_directories,
     prepare_download_directories_with_data_roots, skippy_cache_dir,
 };
+pub use checkpoint::DownloadedCheckpointFile;
 pub use tls::{HfTlsProvider, configure_hf_tls_provider};
 
 use std::{
@@ -27,7 +29,7 @@ use hf_hub::{
 };
 use serde::{Deserialize, Serialize};
 use skippy_model_artifact::{
-    ModelArtifactFile, ModelIdentity, ModelRepository, ResolvedModelArtifact,
+    ModelArtifactFile, ModelFormat, ModelIdentity, ModelRepository, ResolvedModelArtifact,
 };
 use skippy_model_ref::{
     format_canonical_ref, format_model_ref, normalize_gguf_distribution_id,
@@ -98,6 +100,22 @@ impl HfModelRepository {
         artifact: &ResolvedModelArtifact,
         progress: Option<hf_hub::progress::Progress>,
     ) -> Result<Vec<PathBuf>> {
+        if artifact.format == ModelFormat::Safetensors {
+            let checkpoint = self
+                .download_checkpoint_with_progress(artifact, progress)
+                .await?;
+            return artifact
+                .files
+                .iter()
+                .map(|file| {
+                    checkpoint
+                        .iter()
+                        .find(|downloaded| downloaded.file.path == file.path)
+                        .map(|downloaded| downloaded.path.clone())
+                        .with_context(|| format!("checkpoint download omitted {}", file.path))
+                })
+                .collect();
+        }
         let mut paths = Vec::with_capacity(artifact.files.len());
         for file in &artifact.files {
             paths.push(

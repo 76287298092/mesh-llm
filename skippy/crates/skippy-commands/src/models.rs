@@ -38,6 +38,7 @@ pub enum ModelAction {
 
 pub struct DownloadedModel {
     pub primary_path: PathBuf,
+    pub load_path: PathBuf,
     pub report: serde_json::Value,
 }
 
@@ -96,16 +97,31 @@ pub async fn download_model(
     let progress = hf_hub::progress::Progress::new(DownloadProgress {
         last_percent: Mutex::new(None),
     });
-    let paths = repository
-        .download_artifact_files_with_progress(&artifact, Some(progress))
-        .await?;
-    ensure!(
-        paths.len() == artifact.files.len(),
-        "downloaded artifact file count mismatch"
-    );
+    let paths = if artifact.format == skippy_model_artifact::ModelFormat::Safetensors {
+        repository
+            .download_checkpoint_with_progress(&artifact, Some(progress))
+            .await?
+            .into_iter()
+            .map(|downloaded| (downloaded.file, downloaded.path))
+            .collect::<Vec<_>>()
+    } else {
+        let downloaded_paths = repository
+            .download_artifact_files_with_progress(&artifact, Some(progress))
+            .await?;
+        ensure!(
+            downloaded_paths.len() == artifact.files.len(),
+            "downloaded artifact file count mismatch"
+        );
+        downloaded_paths
+            .into_iter()
+            .zip(artifact.files.iter().cloned())
+            .map(|(path, file)| (file, path))
+            .collect::<Vec<_>>()
+    };
+    ensure!(!paths.is_empty(), "downloaded artifact file list is empty");
     let mut files = Vec::with_capacity(paths.len());
     let mut primary_path = None;
-    for (file, path) in artifact.files.iter().zip(paths) {
+    for (file, path) in paths {
         let primary = file.path == artifact.primary_file;
         let expected_size = if primary {
             size_bytes.or(file.size_bytes)
@@ -123,11 +139,21 @@ pub async fn download_model(
         }
     }
     let primary_path = primary_path.context("download did not include the primary model file")?;
+    let load_path = if artifact.format == skippy_model_artifact::ModelFormat::Safetensors {
+        primary_path
+            .parent()
+            .context("SafeTensors checkpoint has no parent directory")?
+            .to_path_buf()
+    } else {
+        primary_path.clone()
+    };
     let report = serde_json::json!({
-        "cache_dir": cache, "artifact": artifact, "primary_path": primary_path, "files": files
+        "cache_dir": cache, "artifact": artifact, "primary_path": primary_path,
+        "load_path": load_path, "files": files
     });
     Ok(DownloadedModel {
         primary_path,
+        load_path,
         report,
     })
 }

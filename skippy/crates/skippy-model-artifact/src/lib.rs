@@ -1,3 +1,4 @@
+pub mod checkpoint;
 pub mod gguf;
 
 use std::path::Path;

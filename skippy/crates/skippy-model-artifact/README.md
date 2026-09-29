@@ -33,6 +33,8 @@ flowchart LR
 - Without a selector, prefer `model.safetensors`, then split safetensors, then
   GGUF first shards, then single GGUF files.
 - Split GGUF shards are grouped by matching shard prefix and total count.
+- SafeTensors checkpoint planning reads the index when present, selects only
+  referenced weight shards, and requires config and tokenizer metadata.
 - Known GGUF sidecars are ignored during default selection.
 
 ## Main Types
