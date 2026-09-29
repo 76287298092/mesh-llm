@@ -1,0 +1,74 @@
+{
+  "all_passed": true,
+  "arithmetic": "signed Q8 codes, little-endian FP16 group-32 scales, BF16 activations, FP32 warp reduction",
+  "cases": [
+    {
+      "all_passed": true,
+      "case": "k128",
+      "max_abs_error": 0.0,
+      "max_scaled_error": 0.0,
+      "max_scaled_error_limit": 0.0001,
+      "outputs": 2
+    },
+    {
+      "all_passed": true,
+      "case": "k160-tail",
+      "max_abs_error": 0.0,
+      "max_scaled_error": 0.0,
+      "max_scaled_error_limit": 0.0001,
+      "outputs": 2
+    },
+    {
+      "all_passed": true,
+      "case": "k256-two-splits",
+      "max_abs_error": 0.0,
+      "max_scaled_error": 0.0,
+      "max_scaled_error_limit": 0.0001,
+      "outputs": 2
+    },
+    {
+      "all_passed": true,
+      "case": "k5120",
+      "max_abs_error": 0.0,
+      "max_scaled_error": 0.0,
+      "max_scaled_error_limit": 0.0001,
+      "outputs": 2
+    },
+    {
+      "all_passed": true,
+      "case": "k10240",
+      "max_abs_error": 0.0,
+      "max_scaled_error": 0.0,
+      "max_scaled_error_limit": 0.0001,
+      "outputs": 2
+    },
+    {
+      "all_passed": true,
+      "case": "k17408",
+      "max_abs_error": 0.0,
+      "max_scaled_error": 0.0,
+      "max_scaled_error_limit": 0.0001,
+      "outputs": 2
+    }
+  ],
+  "device": {
+    "driver_version": 13040,
+    "major": 12,
+    "minor": 0,
+    "name": "NVIDIA GeForce RTX 5090",
+    "ordinal": 0,
+    "total_bytes": 33731248128,
+    "uuid": "GPU-80ded6bd-1a89-2628-3d94-902187dbab1d"
+  },
+  "jit_log": "info: ptxas info    : (C7508) Potential Performance Loss: 'setmaxnreg' ignored; unable to determine register count at entry.\n",
+  "kernel_resources": {
+    "local_bytes": 0,
+    "max_threads_per_block": 1024,
+    "registers": 40,
+    "static_shared_bytes": 0
+  },
+  "kind": "native-mtp-row-split-k128-q8-gemv-operator-check-v1",
+  "ptx_path": "/home/ndizazzo/dev/mesh/mesh-llm/target/specialize/reassess-20260927/ptx/native-q8-48cbc42e7.ptx",
+  "ptx_sha256": "e482363228aa8eaedb146d12d5263edd4aabab6245e93d252dad0888f7eb80b9",
+  "scope": "synthetic single-vector matrix-row operator only; native MTP integration and GPU qualification are not established"
+}
