@@ -124,11 +124,19 @@ fn run_case(
         )?;
         context.synchronize()?;
         let (weight, weight_scales) = &weights[baseline.len()];
-        let output = projections::run_linear(
+        let output = projections::run_linear_geometry(
             context,
             &module.function("fp8_linear_exact")?,
             &[&codes, weight, &scales, weight_scales],
             [rows, channels, width],
+            [
+                [
+                    u32::try_from(channels.div_ceil(4))?,
+                    u32::try_from(rows)?,
+                    1,
+                ],
+                [128, 1, 1],
+            ],
         )?;
         baseline_outputs.push(output.read(rows * channels)?);
         baseline.push((codes, scales));
@@ -175,15 +183,31 @@ fn run_case(
         "shared FP8 quantization differs from the independent oracle"
     );
     for (index, (weight, weight_scales)) in weights.iter().enumerate() {
-        let output = projections::run_linear(
+        let output = projections::run_linear_geometry(
             context,
             &module.function("fp8_linear_exact")?,
             &[&shared_codes, weight, &shared_scales, weight_scales],
             [rows, channels, width],
+            [
+                [
+                    u32::try_from(channels.div_ceil(4))?,
+                    u32::try_from(rows)?,
+                    1,
+                ],
+                [128, 1, 1],
+            ],
         )?;
+        let actual = output.read(rows * channels)?;
+        let expected = &baseline_outputs[index];
         ensure!(
-            baseline_outputs[index] == output.read(rows * channels)?,
-            "shared FP8 projection output differs from separately quantized baseline"
+            expected.0 == actual.0
+                && expected
+                    .1
+                    .iter()
+                    .map(|value| value.to_bits())
+                    .eq(actual.1.iter().map(|value| value.to_bits())),
+            "shared FP8 projection output differs from separately quantized baseline: rows={rows} width={width} pattern={} consumer={index}",
+            pattern.name()
         );
     }
     Ok(json!({
@@ -245,7 +269,7 @@ pub(in crate::kernels) fn run(ptx: &str, device: i32) -> Result<Value> {
     Ok(json!({
         "kind": "fp8-exact-activation-reuse-v1",
         "device": context.info(),
-        "widths": [5120, 6144, 10240, 12288, 17408, 32768],
+        "widths": [2048, 5120, 6144, 10240, 12288, 17408, 32768],
         "all_passed": cases.iter().all(|case| case["all_passed"] == true),
         "cases": cases,
         "quantizer": "unchanged fp8_quantize_bf16: per-row amax/448, zero scale one, software E4M3FN RNE",
