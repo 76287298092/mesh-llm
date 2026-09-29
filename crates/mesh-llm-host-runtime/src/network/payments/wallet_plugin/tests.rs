@@ -548,3 +548,30 @@ async fn concurrent_queries_recover_after_restart_and_preserve_pin() {
     let pin = WalletPin::load(dir.path()).unwrap().unwrap();
     assert_eq!(pin.wallet_id, "w1");
 }
+
+/// An opened wallet must not keep the plugin manager alive. The manager's
+/// in-process runner holds a `Node`, and the node holds this wallet through
+/// the payments engine, so a wallet that owns a manager clone keeps the
+/// engine and its `service.lock` alive after an embedded stop. Once the node
+/// empties its slot, the manager (and the plugin bridge it owns) must be free.
+#[tokio::test]
+async fn opened_wallet_does_not_keep_the_plugin_manager_alive() {
+    let dir = tempfile::tempdir().unwrap();
+    let plugin = FakeWalletPlugin::new("wallet-a");
+    let manager_slot = slot(manager_for(&plugin).await);
+    let wallet = PluginWalletFactory::new(Arc::clone(&manager_slot))
+        .open(dir.path())
+        .await
+        .unwrap();
+    assert_eq!(plugin.opens.load(Ordering::SeqCst), 1);
+    let baseline = Arc::strong_count(&plugin);
+
+    drop(manager_slot.lock().await.take());
+
+    assert!(
+        Arc::strong_count(&plugin) < baseline,
+        "the opened wallet still owns the plugin manager after the slot was emptied"
+    );
+    let error = wallet.balance().await.unwrap_err().to_string();
+    assert!(error.contains("plugin manager is stopped"), "{error}");
+}

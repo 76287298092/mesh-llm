@@ -86,15 +86,16 @@ impl WalletFactory for PluginWalletFactory {
     }
 
     async fn open(&self, payment_directory: &Path) -> Result<Arc<dyn WalletProvider>> {
-        let plugin_manager = self.plugin_manager().await?;
-        let provider = plugin_manager
+        let provider = self
+            .plugin_manager()
+            .await?
             .available_provider_for_capability(CAPABILITY)
             .await?
             .ok_or_else(|| {
                 anyhow!("no wallet plugin is running (capability '{CAPABILITY}' unavailable)")
             })?;
         let wallet = PluginWalletProvider {
-            plugin_manager,
+            plugin_manager: Arc::clone(&self.plugin_manager),
             plugin_name: provider.plugin_name,
             payment_directory: payment_directory.to_path_buf(),
             wallet_directory: Self::wallet_directory(payment_directory),
@@ -107,7 +108,11 @@ impl WalletFactory for PluginWalletFactory {
 
 /// One opened wallet, bound to a specific plugin and payment directory.
 pub struct PluginWalletProvider {
-    plugin_manager: PluginManager,
+    /// The node's slot, never a manager clone. The manager's in-process
+    /// runner holds a `Node`, and the node holds this wallet through the
+    /// payments engine: owning a manager here closes that cycle, so an
+    /// embedded stop never frees the engine or its `service.lock`.
+    plugin_manager: PluginManagerSlot,
     plugin_name: String,
     payment_directory: PathBuf,
     wallet_directory: PathBuf,
@@ -182,8 +187,16 @@ impl PluginWalletProvider {
     ) -> Result<Res, WalletError> {
         let input = serde_json::to_string(request)
             .map_err(|err| WalletError::invalid(format!("encode {operation}: {err}")))?;
-        let result = self
-            .plugin_manager
+        let plugin_manager = self.plugin_manager.lock().await.clone().ok_or_else(|| {
+            WalletError::new(
+                WalletErrorKind::Uncertain,
+                format!(
+                    "wallet plugin '{}' {operation}: plugin manager is stopped",
+                    self.plugin_name
+                ),
+            )
+        })?;
+        let result = plugin_manager
             .invoke_operation_with_timeout(&self.plugin_name, operation, &input, timeout)
             .await
             .map_err(|err| {
