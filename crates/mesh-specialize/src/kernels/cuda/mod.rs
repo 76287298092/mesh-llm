@@ -3,6 +3,7 @@
 pub(super) mod a16_head_trial;
 pub(super) mod bf16_ab_decode_trial;
 pub(super) mod native_parameter_trial;
+pub(super) mod native_mtp_q8_operator;
 pub(super) mod nvfp4_pipeline_trial;
 
 pub(super) mod attention;

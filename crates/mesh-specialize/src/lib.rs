@@ -123,3 +123,6 @@ pub mod exponential_unrolled_reference;
 pub mod fp8_embedding_gather_reference;
 #[path = "../reference/gdn_gates_f32_params.rs"]
 pub mod gdn_gates_f32_params_reference;
+
+#[path = "../reference/native_mtp_q8_gemv.rs"]
+pub mod native_mtp_q8_gemv_reference;

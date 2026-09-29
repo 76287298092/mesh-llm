@@ -732,6 +732,16 @@ pub fn nvfp4_prmt_real_trial(
     }
 }
 
+pub fn native_mtp_q8_gemv_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::native_mtp_q8_operator::driver_entry::synthetic(ptx, device);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device);
+        anyhow::bail!("Native MTP Q8 GEMV qualification requires Linux")
+    }
+}
+
 /// Qualify the standalone FP32 BF16 A/B decode candidate without changing dispatch.
 pub fn bf16_ab_decode_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json::Value> {
     #[cfg(target_os = "linux")]

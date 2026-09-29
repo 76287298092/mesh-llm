@@ -102,6 +102,10 @@ pub(super) fn nvfp4_pipeline(args: &[String]) -> DynResult<()> {
     run_probe(args, mesh_specialize::kernels::nvfp4_pipeline_trial)
 }
 
+pub(super) fn native_mtp_q8_gemv(args: &[String]) -> DynResult<()> {
+    run_probe(args, mesh_specialize::kernels::native_mtp_q8_gemv_trial)
+}
+
 pub(super) fn bf16_ab_decode(args: &[String]) -> DynResult<()> {
     run_probe(args, mesh_specialize::kernels::bf16_ab_decode_trial)
 }

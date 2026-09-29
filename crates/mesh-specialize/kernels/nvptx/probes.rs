@@ -127,6 +127,7 @@ mod nvfp4_decode_prmt;
 mod nvfp4_linear;
 mod nvfp4_prefill_tiled;
 mod nvfp4_prefill_wide;
+mod native_mtp_q8;
 
 mod mlp_activation;
 mod residual_add;

@@ -48,6 +48,9 @@ pub(crate) fn run(args: &[String]) -> DynResult<()> {
         [command, rest @ ..] if command == "nvfp4-probe" => probe::run(rest),
         [command, rest @ ..] if command == "nvfp4-prmt-check" => nvfp4_prmt::synthetic(rest),
         [command, rest @ ..] if command == "nvfp4-prmt-real-check" => nvfp4_prmt::real(rest),
+        [command, rest @ ..] if command == "native-mtp-q8-gemv-check" => {
+            probe::native_mtp_q8_gemv(rest)
+        }
         [command, rest @ ..] if command == "attention-v2-check" => probe::attention_v2(rest),
         [command, rest @ ..] if command == "attention-warp-check" => probe::attention_warp(rest),
         [command, rest @ ..] if command == "attention-staged-check" => {
