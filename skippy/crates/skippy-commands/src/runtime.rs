@@ -1,8 +1,8 @@
 //! Standalone native-runtime command execution.
 
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result};
 use skippy_runtime_install::{NativeRuntimeCache, NativeRuntimeManifest};
 
 /// Resolved native runtime inputs for command execution, decoupled from clap.
@@ -32,11 +32,6 @@ pub enum RuntimeAction {
         source: PathBuf,
         dry_run: bool,
     },
-    /// Explicitly migrate a Mesh-era runtime cache without modifying its contents.
-    ImportLegacy {
-        source: PathBuf,
-        dry_run: bool,
-    },
 }
 
 pub async fn run(command: RuntimeAction, options: &RuntimeRunOptions) -> Result<()> {
@@ -47,7 +42,23 @@ pub async fn run(command: RuntimeAction, options: &RuntimeRunOptions) -> Result<
             .context("runtime cache not resolved")?,
     );
     match command {
-        RuntimeAction::List => crate::console::write_json(&cache.installed()?),
+        RuntimeAction::List => {
+            let installed = cache.installed()?;
+            crate::console::present(&installed, |output| {
+                if installed.is_empty() {
+                    writeln!(output, "No native runtimes installed.")?;
+                }
+                for runtime in &installed {
+                    writeln!(
+                        output,
+                        "⚙️  {} ({})",
+                        runtime.native_runtime_id, runtime.flavor
+                    )?;
+                    writeln!(output, "   {}", runtime.path.display())?;
+                }
+                Ok(())
+            })
+        }
         RuntimeAction::Install {
             manifest,
             manifest_url,
@@ -79,27 +90,44 @@ pub async fn run(command: RuntimeAction, options: &RuntimeRunOptions) -> Result<
             install.skippy_abi_version = Some(skippy_runtime_install::current_skippy_abi_version());
             install.bundle_install_policy =
                 NativeRuntimeBundleInstallPolicy::InstallExplicitBundlesIntoCache;
+            install.progress = Some(Arc::new(|progress| {
+                if let Some(total) = progress.total_bytes {
+                    let _ = crate::console::progress(
+                        "Native runtime",
+                        progress.downloaded_bytes,
+                        total,
+                    );
+                }
+            }));
             let outcome = skippy_runtime_install::install_native_runtime_explicit(install).await?;
-            crate::console::write_json(&outcome)
+            crate::console::present(&outcome, |output| {
+                writeln!(
+                    output,
+                    "✅ Native runtime ready: {}",
+                    outcome.runtime.native_runtime_id
+                )?;
+                writeln!(output, "   {}", outcome.runtime.path.display())
+            })
         }
         RuntimeAction::Import { source, dry_run } => {
             let manifest = NativeRuntimeManifest::read_from_dir(&source)?;
             let outcome =
                 skippy_runtime_install::import_runtime_copy(&source, &manifest, &cache, dry_run)?;
-            crate::console::write_json(&outcome)
-        }
-        RuntimeAction::ImportLegacy { source, dry_run } => {
-            let report = skippy_runtime_install::import_legacy_runtime_cache(
-                &source,
-                &cache,
-                &skippy_runtime_install::current_skippy_abi_version(),
-                dry_run,
-            )?;
-            crate::console::write_json(&report)?;
-            if report.has_failures() {
-                bail!("one or more legacy runtime imports failed; see the JSON report");
-            }
-            Ok(())
+            crate::console::present(&outcome, |output| {
+                if dry_run {
+                    writeln!(
+                        output,
+                        "🔎 Would import runtime to {}",
+                        outcome.destination.display()
+                    )
+                } else {
+                    writeln!(
+                        output,
+                        "✅ Imported runtime to {}",
+                        outcome.destination.display()
+                    )
+                }
+            })
         }
     }
 }

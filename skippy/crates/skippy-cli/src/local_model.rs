@@ -58,19 +58,18 @@ mod tests {
 
     fn args(values: &[&str]) -> ServeOpenAiArgs {
         let cli = Cli::try_parse_from(values).unwrap();
-        let Command::ServeOpenAi(args) = cli.command else {
-            panic!("expected serve-openai")
+        let Command::Serve(args) = cli.command else {
+            panic!("expected serve")
         };
-        args
+        args.public
     }
 
     #[test]
     fn local_source_and_stage_config_are_exclusive() {
         for values in [
-            vec!["skippy", "serve-openai"],
             vec![
                 "skippy",
-                "serve-openai",
+                "serve",
                 "--config",
                 "stage.json",
                 "--model-path",
@@ -78,7 +77,7 @@ mod tests {
             ],
             vec![
                 "skippy",
-                "serve-openai",
+                "serve",
                 "--config",
                 "stage.json",
                 "--ctx-size",
@@ -93,7 +92,7 @@ mod tests {
     fn local_model_rejects_invalid_options_before_reading_weights() {
         let args = args(&[
             "skippy",
-            "serve-openai",
+            "serve",
             "--model-path",
             "missing.gguf",
             "--ctx-size",
@@ -134,7 +133,7 @@ mod tests {
         std::fs::write(&path, bytes).unwrap();
         let args = args(&[
             "skippy",
-            "serve-openai",
+            "serve",
             "--model-path",
             path.to_str().unwrap(),
             "--model-id",

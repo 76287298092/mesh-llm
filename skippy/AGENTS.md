@@ -14,7 +14,7 @@ These instructions apply under `skippy/` in addition to the root `AGENTS.md`. Pa
 
 ## Building and native runtimes
 
-- `just skippy` builds the standalone `skippy` CLI and one locally packaged native runtime; it does not build MeshLLM. Supply the runtime to Skippy with `--runtime-bundle target/debug/native-runtimes`.
+- `just skippy` builds the standalone `skippy` CLI and one locally packaged native runtime; it does not build MeshLLM. The CLI discovers `target/debug/native-runtimes` beside the executable automatically. Use `--runtime-bundle` only to select a different bundle explicitly.
 - `just skippy-cli-build` builds only the debug CLI. `just skippy-cli-release-build` builds only the release CLI. Those commands do not package a runtime.
 - `just skippy-release` builds the release CLI and selected native runtime without MeshLLM. `just release-runtime-build <backend>` builds one packageable native runtime under `dist/native-runtimes/`.
 - `just release-build` builds Skippy before MeshLLM. Release CI publishes one backend-neutral Skippy CLI archive per platform and native runtimes per backend. Static backend linkage is not a release or packaging lane.

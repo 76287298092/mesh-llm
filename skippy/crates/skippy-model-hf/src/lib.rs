@@ -57,12 +57,24 @@ impl HfModelRepository {
     }
 
     pub async fn download_file(&self, repo: &str, revision: &str, file: &str) -> Result<PathBuf> {
+        self.download_file_with_progress(repo, revision, file, None)
+            .await
+    }
+
+    pub async fn download_file_with_progress(
+        &self,
+        repo: &str,
+        revision: &str,
+        file: &str,
+        progress: Option<hf_hub::progress::Progress>,
+    ) -> Result<PathBuf> {
         let (owner, name) = repo_parts(repo);
         self.api
             .model(owner, name)
             .download_file()
             .filename(file.to_string())
             .revision(revision.to_string())
+            .maybe_progress(progress)
             .send()
             .await
             .with_context(|| {
@@ -77,11 +89,25 @@ impl HfModelRepository {
         &self,
         artifact: &ResolvedModelArtifact,
     ) -> Result<Vec<PathBuf>> {
+        self.download_artifact_files_with_progress(artifact, None)
+            .await
+    }
+
+    pub async fn download_artifact_files_with_progress(
+        &self,
+        artifact: &ResolvedModelArtifact,
+        progress: Option<hf_hub::progress::Progress>,
+    ) -> Result<Vec<PathBuf>> {
         let mut paths = Vec::with_capacity(artifact.files.len());
         for file in &artifact.files {
             paths.push(
-                self.download_file(&artifact.source_repo, &artifact.source_revision, &file.path)
-                    .await?,
+                self.download_file_with_progress(
+                    &artifact.source_repo,
+                    &artifact.source_revision,
+                    &file.path,
+                    progress.clone(),
+                )
+                .await?,
             );
         }
         Ok(paths)

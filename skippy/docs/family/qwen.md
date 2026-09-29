@@ -96,7 +96,7 @@ occupied lab ports, or low disk.
 ## Benchmark Entry Point
 
 All customer-readiness benchmark numbers must go through the chat-completions
-frontend. Use `skippy serve-openai`, backed by the shared
+frontend. Use `skippy serve`, backed by the shared
 `skippy-inference-api` crate, and send benchmark traffic to `/v1/chat/completions`.
 
 Direct `skippy-correctness` or binary protocol runs are allowed for
@@ -111,8 +111,8 @@ usage-accounting path as benchmark and customer traffic.
 
 Chat-completions frontend benchmark requirements:
 
-- start `serve-openai` with an explicit `--model-id` matching the package id;
-- start `serve-openai` with an explicit `--generation-concurrency` and record
+- start `skippy serve` with an explicit `--model-id` matching the package id;
+- start `skippy serve` with an explicit `--generation-concurrency` and record
   the value in the result;
 - set request `max_tokens` for the benchmark lane, or set
   `--default-max-tokens` to the lane value;

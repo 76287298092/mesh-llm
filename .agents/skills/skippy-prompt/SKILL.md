@@ -23,8 +23,9 @@ startup, observation, prompt driving, and teardown.
 - Public OpenAI compatibility belongs in `skippy-inference-api`. The
   interactive client uses stage-0's OpenAI endpoint; raw protocol and cache
   checks belong in `skippy-correctness`.
-- Start `skippy serve-binary` stages directly, enabling
-  `--openai-bind-addr` on stage 0. Attach with `skippy prompt --endpoint`.
+- Start stages with `skippy serve --config <stage.json> --stage-transport binary`.
+  Use `--worker-only` on downstream stages. Stage 0 exposes the public API by
+  default; attach with `skippy prompt --endpoint` or add `--prompt` to stage 0.
 
 ## Launch Workflow
 

@@ -17,14 +17,11 @@ just skippy-cli-build
 ./target/debug/skippy --help
 ```
 
-Serving commands require a separately packaged native runtime. A typical local
-invocation is:
+`skippy serve` selects a verified local native runtime or installs a compatible
+release runtime when needed. A typical local invocation is:
 
 ```bash
-./target/debug/skippy \
-  --runtime-bundle /path/to/native-runtime \
-  serve-openai \
-  --model-path /path/to/model.gguf
+./target/debug/skippy serve --model /path/to/model.gguf
 ```
 
 See the [CLI guide](crates/skippy-cli/README.md) for runtime management, model

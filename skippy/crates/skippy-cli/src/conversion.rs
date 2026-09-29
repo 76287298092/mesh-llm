@@ -83,32 +83,39 @@ pub fn binary_stage_options(args: ServeBinaryArgs) -> Result<BinaryStageOptions>
     if openai_speculative.ngram_fallback_draft && args.openai_draft_model_path.is_none() {
         bail!("ngram_fallback_draft requires --openai-draft-model-path");
     }
-    let openai = args
-        .openai_bind_addr
-        .map(|bind_addr| EmbeddedOpenAiStageOptions {
-            bind_addr,
-            model_id: args.openai_model_id,
-            default_max_tokens: args.openai_default_max_tokens,
-            generation_concurrency: openai_generation_concurrency,
-            adaptive_generation_min_concurrency,
-            generation_queue_capacity: openai_generation_queue_capacity,
-            generation_admission_timeout_secs: args.openai_generation_admission_timeout_secs,
-            prefill_chunk_size: args.openai_prefill_chunk_size,
-            prefill_chunk_policy: args.openai_prefill_chunk_policy,
-            prefill_chunk_schedule: args.openai_prefill_chunk_schedule,
-            prefill_adaptive_start: args.openai_prefill_adaptive_start,
-            prefill_adaptive_step: args.openai_prefill_adaptive_step,
-            prefill_adaptive_max: args.openai_prefill_adaptive_max,
-            prefill_adaptive_target_ms: args.openai_prefill_adaptive_target_ms,
-            draft_model_path: args.openai_draft_model_path,
-            speculative_window: args.openai_speculative_window,
-            adaptive_speculative_window: args.openai_adaptive_speculative_window,
-            draft_n_gpu_layers: args.openai_draft_n_gpu_layers,
-            native_mtp_draft_model_path: args.openai_native_mtp_draft_model_path,
-            native_mtp_max_tokens: 3,
-            native_mtp_min_tokens: 0,
-            speculative: openai_speculative,
-        });
+    let openai_bind_addr = if args.worker_only {
+        None
+    } else {
+        args.openai_bind_addr.or_else(|| {
+            (config.stage_index == 0)
+                .then_some(args.api_bind_addr)
+                .flatten()
+        })
+    };
+    let openai = openai_bind_addr.map(|bind_addr| EmbeddedOpenAiStageOptions {
+        bind_addr,
+        model_id: args.openai_model_id,
+        default_max_tokens: args.openai_default_max_tokens,
+        generation_concurrency: openai_generation_concurrency,
+        adaptive_generation_min_concurrency,
+        generation_queue_capacity: openai_generation_queue_capacity,
+        generation_admission_timeout_secs: args.openai_generation_admission_timeout_secs,
+        prefill_chunk_size: args.openai_prefill_chunk_size,
+        prefill_chunk_policy: args.openai_prefill_chunk_policy,
+        prefill_chunk_schedule: args.openai_prefill_chunk_schedule,
+        prefill_adaptive_start: args.openai_prefill_adaptive_start,
+        prefill_adaptive_step: args.openai_prefill_adaptive_step,
+        prefill_adaptive_max: args.openai_prefill_adaptive_max,
+        prefill_adaptive_target_ms: args.openai_prefill_adaptive_target_ms,
+        draft_model_path: args.openai_draft_model_path,
+        speculative_window: args.openai_speculative_window,
+        adaptive_speculative_window: args.openai_adaptive_speculative_window,
+        draft_n_gpu_layers: args.openai_draft_n_gpu_layers,
+        native_mtp_draft_model_path: args.openai_native_mtp_draft_model_path,
+        native_mtp_max_tokens: 3,
+        native_mtp_min_tokens: 0,
+        speculative: openai_speculative,
+    });
     let native_mtp_enabled = config.native_mtp_enabled;
     Ok(BinaryStageOptions {
         config,
@@ -133,11 +140,6 @@ pub fn binary_stage_options(args: ServeBinaryArgs) -> Result<BinaryStageOptions>
 pub fn local_openai_options(
     args: crate::cli::ServeOpenAiArgs,
 ) -> Result<skippy_api::serving::LocalOpenAiOptions> {
-    if args.first_stage_addr.is_some() {
-        bail!(
-            "--first-stage-addr is no longer supported; direct prediction return requires embedded stage-0 OpenAI serving via serve-binary --openai-bind-addr"
-        );
-    }
     let config = crate::local_model::prepare_openai_stage(&args)?;
     let topology = args
         .topology
@@ -222,6 +224,15 @@ mod tests {
         NativeMtpProposalConfig, NgramExtensionConfig, NgramProposalConfig, NgramProposerKind,
         VerifyWindowConfig,
     };
+
+    fn binary_args(cli: Cli) -> ServeBinaryArgs {
+        let Command::Serve(mut args) = cli.command else {
+            panic!("expected serve command");
+        };
+        args.stage.config = args.public.config.expect("stage config");
+        args.stage.api_bind_addr = Some(args.public.bind_addr);
+        args.stage
+    }
 
     fn stage_config() -> StageConfig {
         StageConfig {
@@ -322,20 +333,18 @@ mod tests {
 
         let cli = Cli::try_parse_from([
             "skippy",
-            "serve-binary",
+            "serve",
             "--config",
             stage_path.to_str().expect("UTF-8 stage path"),
+            "--stage-transport",
+            "binary",
             "--openai-bind-addr",
             "127.0.0.1:9337",
             "--openai-speculative-config",
             plan_path.to_str().expect("UTF-8 plan path"),
         ])
         .expect("parse binary stage CLI");
-        let Command::ServeBinary(args) = cli.command else {
-            panic!("expected serve-binary command");
-        };
-
-        let options = binary_stage_options(args).expect("resolve binary stage");
+        let options = binary_stage_options(binary_args(cli)).expect("resolve binary stage");
         assert_eq!(options.resolved_mtp_source(), MtpSource::Integrated);
         let openai = options.openai.expect("embedded OpenAI configuration");
 
@@ -360,9 +369,11 @@ mod tests {
 
         let cli = Cli::try_parse_from([
             "skippy",
-            "serve-binary",
+            "serve",
             "--config",
             stage_path.to_str().expect("UTF-8 stage path"),
+            "--stage-transport",
+            "binary",
             "--openai-bind-addr",
             "127.0.0.1:9337",
             "--openai-generation-concurrency",
@@ -373,10 +384,7 @@ mod tests {
             "90",
         ])
         .expect("parse binary stage CLI");
-        let Command::ServeBinary(args) = cli.command else {
-            panic!("expected serve-binary command");
-        };
-        let openai = binary_stage_options(args)
+        let openai = binary_stage_options(binary_args(cli))
             .expect("resolve binary stage")
             .openai
             .expect("embedded OpenAI configuration");
@@ -406,9 +414,11 @@ mod tests {
 
         let cli = Cli::try_parse_from([
             "skippy",
-            "serve-binary",
+            "serve",
             "--config",
             stage_path.to_str().expect("UTF-8 stage path"),
+            "--stage-transport",
+            "binary",
             "--openai-bind-addr",
             "127.0.0.1:9337",
             "--openai-speculative-config",
@@ -417,11 +427,7 @@ mod tests {
             sidecar_path.to_str().expect("UTF-8 sidecar path"),
         ])
         .expect("parse binary stage CLI");
-        let Command::ServeBinary(args) = cli.command else {
-            panic!("expected serve-binary command");
-        };
-
-        let options = binary_stage_options(args).expect("resolve binary stage");
+        let options = binary_stage_options(binary_args(cli)).expect("resolve binary stage");
         assert_eq!(options.resolved_mtp_source(), MtpSource::External);
         let openai = options.openai.expect("embedded OpenAI configuration");
 
@@ -448,16 +454,14 @@ mod tests {
 
         let cli = Cli::try_parse_from([
             "skippy",
-            "serve-binary",
+            "serve",
             "--config",
             stage_path.to_str().expect("UTF-8 stage path"),
+            "--stage-transport",
+            "binary",
         ])
         .expect("parse binary stage CLI");
-        let Command::ServeBinary(args) = cli.command else {
-            panic!("expected serve-binary command");
-        };
-
-        let options = binary_stage_options(args).expect("resolve binary stage");
+        let options = binary_stage_options(binary_args(cli)).expect("resolve binary stage");
         assert_eq!(options.resolved_mtp_source(), MtpSource::Disabled);
     }
 
@@ -489,20 +493,18 @@ mod tests {
 
         let cli = Cli::try_parse_from([
             "skippy",
-            "serve-binary",
+            "serve",
             "--config",
             stage_path.to_str().expect("UTF-8 stage path"),
+            "--stage-transport",
+            "binary",
             "--openai-bind-addr",
             "127.0.0.1:9337",
             "--openai-speculative-config",
             plan_path.to_str().expect("UTF-8 speculative path"),
         ])
         .expect("parse binary stage CLI");
-        let Command::ServeBinary(args) = cli.command else {
-            panic!("expected serve-binary command");
-        };
-
-        let error = match binary_stage_options(args) {
+        let error = match binary_stage_options(binary_args(cli)) {
             Ok(_) => panic!("draft fallback without a draft model must fail"),
             Err(error) => error.to_string(),
         };

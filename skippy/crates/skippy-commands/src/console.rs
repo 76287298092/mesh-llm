@@ -1,13 +1,52 @@
 //! Standalone command output formatting.
 use skippy_events::diagnostics::{DiagnosticSink, ServingDiagnostic, set_diagnostic_sink};
 use std::{
-    io::{self, Write},
-    sync::Arc,
+    io::{self, IsTerminal, Write},
+    sync::{
+        Arc, OnceLock,
+        atomic::{AtomicU64, Ordering},
+    },
 };
 
-struct StandaloneDiagnostics;
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum OutputMode {
+    Auto,
+    Human,
+    Json,
+    Jsonl,
+}
+
+impl OutputMode {
+    fn resolved(self) -> Self {
+        match self {
+            Self::Auto if io::stdout().is_terminal() => Self::Human,
+            Self::Auto => Self::Json,
+            explicit => explicit,
+        }
+    }
+}
+
+static MODE: OnceLock<OutputMode> = OnceLock::new();
+static SEQUENCE: AtomicU64 = AtomicU64::new(0);
+
+pub fn mode() -> OutputMode {
+    *MODE.get().unwrap_or(&OutputMode::Json)
+}
+
+struct StandaloneDiagnostics(OutputMode);
 impl DiagnosticSink for StandaloneDiagnostics {
     fn emit(&self, diagnostic: ServingDiagnostic) -> io::Result<()> {
+        if self.0 == OutputMode::Jsonl {
+            let (kind, message, context) = match diagnostic {
+                ServingDiagnostic::Info { message, context } => ("info", message, context),
+                ServingDiagnostic::Warning { message, context } => ("warning", message, context),
+                ServingDiagnostic::Status { message } => ("status", message, None),
+            };
+            return event(
+                kind,
+                &serde_json::json!({"message":message,"context":context}),
+            );
+        }
         render(&mut io::stderr().lock(), diagnostic)
     }
 }
@@ -32,15 +71,63 @@ fn render(output: &mut impl Write, diagnostic: ServingDiagnostic) -> io::Result<
     }
 }
 
-pub fn install() {
-    set_diagnostic_sink(Arc::new(StandaloneDiagnostics));
+pub fn install(requested: OutputMode) {
+    let resolved = requested.resolved();
+    let _ = MODE.set(resolved);
+    set_diagnostic_sink(Arc::new(StandaloneDiagnostics(resolved)));
 }
 
 pub fn write_json(value: &impl serde::Serialize) -> anyhow::Result<()> {
+    if mode() == OutputMode::Jsonl {
+        event("result", value)?;
+        return Ok(());
+    }
     let mut output = io::stdout().lock();
     serde_json::to_writer_pretty(&mut output, value)?;
     writeln!(output)?;
     Ok(())
+}
+
+pub fn present(
+    value: &impl serde::Serialize,
+    render_human: impl FnOnce(&mut dyn Write) -> io::Result<()>,
+) -> anyhow::Result<()> {
+    if mode() == OutputMode::Human {
+        render_human(&mut io::stdout().lock())?;
+        Ok(())
+    } else {
+        write_json(value)
+    }
+}
+
+/// Emit one versioned machine event. Human output stays on stderr.
+pub fn event(kind: &str, data: &impl serde::Serialize) -> io::Result<()> {
+    if mode() == OutputMode::Jsonl {
+        let mut output = io::stdout().lock();
+        let sequence = SEQUENCE.fetch_add(1, Ordering::Relaxed) + 1;
+        serde_json::to_writer(
+            &mut output,
+            &serde_json::json!({
+                "schema_version": 1, "sequence": sequence, "type": kind, "data": data
+            }),
+        )
+        .map_err(io::Error::other)?;
+        writeln!(output)?;
+        output.flush()
+    } else {
+        Ok(())
+    }
+}
+
+pub fn failure(error: &anyhow::Error) -> io::Result<()> {
+    if mode() == OutputMode::Jsonl {
+        event(
+            "error",
+            &serde_json::json!({"message": format!("{error:#}")}),
+        )
+    } else {
+        writeln!(io::stderr().lock(), "error: {error:#}")
+    }
 }
 
 /// Write streamed interactive output without waiting for a newline.
@@ -55,7 +142,51 @@ pub(crate) fn write_line(text: &str) -> io::Result<()> {
 }
 
 pub(crate) fn write_status(message: &str) -> io::Result<()> {
+    if mode() == OutputMode::Jsonl {
+        return event("status", &serde_json::json!({"message":message}));
+    }
     writeln!(io::stderr().lock(), "{message}")
+}
+
+pub fn status(message: &str) -> io::Result<()> {
+    write_status(message)
+}
+
+pub fn progress(label: &str, current: u64, total: u64) -> io::Result<()> {
+    if total == 0 {
+        return Ok(());
+    }
+    if mode() == OutputMode::Jsonl {
+        return event(
+            "progress",
+            &serde_json::json!({
+                "phase": label, "current": current, "total": total, "unit": "bytes"
+            }),
+        );
+    }
+    if mode() != OutputMode::Human {
+        return Ok(());
+    }
+    let width = 24;
+    let completed = ((current.min(total) as f64 / total as f64) * width as f64) as usize;
+    let percent = current.min(total).saturating_mul(100) / total;
+    let mut output = io::stderr().lock();
+    if io::stderr().is_terminal() {
+        write!(
+            output,
+            "\r📥 {label} [{}{}] {percent:>3}% ({:.1}/{:.1} MB)",
+            "█".repeat(completed),
+            "░".repeat(width - completed),
+            current as f64 / 1e6,
+            total as f64 / 1e6
+        )?;
+        if current >= total {
+            writeln!(output)?;
+        }
+        output.flush()
+    } else {
+        writeln!(output, "{label}: {percent}% ({current}/{total} bytes)")
+    }
 }
 
 #[cfg(test)]

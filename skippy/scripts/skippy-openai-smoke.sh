@@ -38,7 +38,7 @@ require_cmd() {
 cleanup() {
   if [[ -n "$SERVER_PID" ]] && kill -0 "$SERVER_PID" >/dev/null 2>&1; then
     if [[ "$KEEP_SERVER" == "1" ]]; then
-      echo "leaving serve-openai running on ${BASE_URL} with pid ${SERVER_PID}"
+      echo "leaving skippy serve running on ${BASE_URL} with pid ${SERVER_PID}"
     else
       kill "$SERVER_PID" >/dev/null 2>&1 || true
       wait "$SERVER_PID" >/dev/null 2>&1 || true
@@ -139,10 +139,10 @@ if lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
   exit 1
 fi
 
-SERVER_LOG="${WORK_DIR}/serve-openai.log"
-echo "starting serve-openai on ${BASE_URL}"
+SERVER_LOG="${WORK_DIR}/serve.log"
+echo "starting skippy serve on ${BASE_URL}"
 SKIPPY_TELEMETRY_STDERR=1 LLAMA_STAGE_BUILD_DIR="$LLAMA_BUILD_DIR" \
-  target/debug/skippy serve-openai \
+  target/debug/skippy serve \
     --config "$CONFIG_PATH" \
     --bind-addr "${HOST}:${PORT}" \
     --default-max-tokens "$DEFAULT_MAX_TOKENS" \
@@ -155,7 +155,7 @@ for _ in {1..120}; do
     break
   fi
   if ! kill -0 "$SERVER_PID" >/dev/null 2>&1; then
-    echo "serve-openai exited early; log follows" >&2
+    echo "skippy serve exited early; log follows" >&2
     sed -n '1,220p' "$SERVER_LOG" >&2 || true
     exit 1
   fi
@@ -163,7 +163,7 @@ for _ in {1..120}; do
 done
 
 if ! curl -fsS --max-time 2 "${BASE_URL}/models" >/dev/null; then
-  echo "serve-openai did not become ready; log follows" >&2
+  echo "skippy serve did not become ready; log follows" >&2
   sed -n '1,220p' "$SERVER_LOG" >&2 || true
   exit 1
 fi

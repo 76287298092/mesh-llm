@@ -7,20 +7,42 @@ use clap::{Parser, Subcommand, ValueEnum};
 #[derive(Parser)]
 #[command(about = "Skippy model serving and runtime management")]
 pub struct Cli {
+    /// Output presentation for humans or automation.
+    #[arg(long, global = true, value_enum, default_value_t = OutputFormat::Auto)]
+    pub output: OutputFormat,
     #[command(flatten)]
     pub native_runtime: NativeRuntimeArgs,
     #[command(subcommand)]
     pub command: Command,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
+pub enum OutputFormat {
+    Auto,
+    Human,
+    Json,
+    Jsonl,
+}
+
+impl From<OutputFormat> for skippy_commands::console::OutputMode {
+    fn from(value: OutputFormat) -> Self {
+        match value {
+            OutputFormat::Auto => Self::Auto,
+            OutputFormat::Human => Self::Human,
+            OutputFormat::Json => Self::Json,
+            OutputFormat::Jsonl => Self::Jsonl,
+        }
+    }
+}
+
 #[derive(Subcommand)]
 pub enum Command {
+    /// Inspect hardware, caches, and the selected native runtime.
+    Doctor,
     /// Prompt a running Skippy OpenAI endpoint interactively.
     Prompt(PromptArgs),
-    Serve(ServeArgs),
-    ServeBinary(ServeBinaryArgs),
-    #[command(name = "serve-openai")]
-    ServeOpenAi(ServeOpenAiArgs),
+    /// Serve OpenAI and Anthropic APIs, or an explicitly selected stage transport.
+    Serve(Box<ServeCommandArgs>),
     ExampleConfig,
     /// Download verified model artifacts or inspect the standalone model cache.
     Models {
@@ -37,6 +59,34 @@ pub enum Command {
         #[command(subcommand)]
         command: RuntimeCommand,
     },
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
+pub enum StageTransport {
+    Binary,
+    Http,
+}
+
+#[derive(Parser)]
+pub struct ServeCommandArgs {
+    /// Local model path or Hugging Face repository reference.
+    #[arg(long, conflicts_with_all = ["model_path", "config"])]
+    pub model: Option<String>,
+    /// Open an interactive prompt after the public API is ready.
+    #[arg(long)]
+    pub prompt: bool,
+    /// Internal stage transport for a prepared stage configuration.
+    #[arg(long, value_enum, requires = "config")]
+    pub stage_transport: Option<StageTransport>,
+    /// Run an internal stage without a public inference API.
+    #[arg(long, requires = "config")]
+    pub worker_only: bool,
+    #[command(flatten)]
+    #[command(next_help_heading = "Model and public API")]
+    pub public: ServeOpenAiArgs,
+    #[command(flatten)]
+    #[command(next_help_heading = "Binary stage tuning")]
+    pub stage: ServeBinaryArgs,
 }
 
 #[derive(Parser)]
@@ -74,20 +124,24 @@ pub struct ServeArgs {
     pub telemetry_level: TelemetryLevel,
 }
 
-#[derive(Parser)]
+#[derive(clap::Args)]
 pub struct ServeBinaryArgs {
-    #[arg(long)]
+    #[arg(skip)]
     pub config: PathBuf,
-    #[arg(long)]
+    #[arg(skip)]
     pub topology: Option<PathBuf>,
-    #[arg(long)]
+    #[arg(skip)]
     pub bind_addr: Option<SocketAddr>,
-    #[arg(long)]
+    #[arg(skip)]
     pub metrics_otlp_grpc: Option<String>,
-    #[arg(long, default_value_t = 1024)]
+    #[arg(skip)]
     pub telemetry_queue_capacity: usize,
-    #[arg(long, value_enum, default_value_t = TelemetryLevel::Summary)]
+    #[arg(skip)]
     pub telemetry_level: TelemetryLevel,
+    #[arg(skip)]
+    pub worker_only: bool,
+    #[arg(skip)]
+    pub api_bind_addr: Option<SocketAddr>,
     #[arg(long, default_value_t = 4)]
     pub max_inflight: usize,
     #[arg(long)]
@@ -222,31 +276,22 @@ pub struct ServeBinaryArgs {
     pub openai_speculative_config: Option<PathBuf>,
 }
 
-#[derive(Parser)]
+#[derive(clap::Args)]
 pub struct ServeOpenAiArgs {
-    /// Prepared stage configuration; mutually exclusive with --model-path.
-    #[arg(
-        long,
-        required_unless_present = "model_path",
-        conflicts_with = "model_path"
-    )]
+    /// Prepared stage configuration; mutually exclusive with --model-path and --model.
+    #[arg(long, conflicts_with = "model_path")]
     pub config: Option<PathBuf>,
     /// Local GGUF (first shard) or safetensors checkpoint to prepare and serve.
-    #[arg(long, required_unless_present = "config", conflicts_with = "config")]
+    #[arg(long, conflicts_with = "config")]
     pub model_path: Option<PathBuf>,
     /// Context size for a local model. Defaults to 4096.
-    #[arg(long, requires = "model_path", conflicts_with = "config")]
+    #[arg(long, conflicts_with = "config")]
     pub ctx_size: Option<u32>,
     /// GPU layers for a local model; -1 offloads all supported layers.
-    #[arg(
-        long,
-        requires = "model_path",
-        conflicts_with = "config",
-        allow_hyphen_values = true
-    )]
+    #[arg(long, conflicts_with = "config", allow_hyphen_values = true)]
     pub n_gpu_layers: Option<i32>,
     /// Optional advisory digest cache directory for local checkpoint files.
-    #[arg(long, requires = "model_path", conflicts_with = "config")]
+    #[arg(long, conflicts_with = "config")]
     pub hash_cache: Option<PathBuf>,
     #[arg(long)]
     pub topology: Option<PathBuf>,
@@ -290,11 +335,6 @@ pub struct ServeOpenAiArgs {
         help = "Maximum seconds a generation request may wait for admission; 0 waits until cancellation."
     )]
     pub generation_admission_timeout_secs: u64,
-    #[arg(
-        long,
-        help = "Deprecated and unsupported. Direct prediction return requires embedded stage-0 OpenAI serving via serve-binary --openai-bind-addr."
-    )]
-    pub first_stage_addr: Option<String>,
     #[arg(long, default_value_t = 256)]
     pub prefill_chunk_size: usize,
     #[arg(
@@ -356,9 +396,10 @@ pub struct NativeRuntimeArgs {
     pub selection: Option<String>,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, ValueEnum)]
 pub enum TelemetryLevel {
     Off,
+    #[default]
     Summary,
     Debug,
 }
@@ -383,12 +424,6 @@ pub enum RuntimeCommand {
     },
     /// Copy a verified bundle into the Skippy cache; leave the source unchanged.
     Import {
-        source: PathBuf,
-        #[arg(long)]
-        dry_run: bool,
-    },
-    /// Explicitly migrate a Mesh-era runtime cache without modifying its contents.
-    ImportLegacy {
         source: PathBuf,
         #[arg(long)]
         dry_run: bool,
@@ -418,17 +453,20 @@ pub struct PlanSplitArgs {
 impl From<ModelCommand> for skippy_commands::models::ModelAction {
     fn from(command: ModelCommand) -> Self {
         match command {
-            ModelCommand::Pull {
+            ModelCommand::Download {
                 model_ref,
                 sha256,
                 size_bytes,
-            } => Self::Pull {
+            } => Self::Download {
                 model_ref,
                 sha256,
                 size_bytes,
             },
             ModelCommand::Remove { repo, dry_run } => Self::Remove { repo, dry_run },
-            ModelCommand::List => Self::List,
+            ModelCommand::Installed => Self::Installed,
+            ModelCommand::Recommended => Self::Recommended,
+            ModelCommand::Search { query, limit } => Self::Search { query, limit },
+            ModelCommand::Show { model_ref } => Self::Show { model_ref },
         }
     }
 }
@@ -445,9 +483,6 @@ impl From<RuntimeCommand> for skippy_commands::runtime::RuntimeAction {
                 manifest_url,
             },
             RuntimeCommand::Import { source, dry_run } => Self::Import { source, dry_run },
-            RuntimeCommand::ImportLegacy { source, dry_run } => {
-                Self::ImportLegacy { source, dry_run }
-            }
         }
     }
 }
@@ -489,13 +524,44 @@ mod tests {
     }
 
     #[test]
-    fn openai_prefill_policy_defaults_to_adaptive_ramp() {
-        let cli =
-            Cli::try_parse_from(["skippy", "serve-binary", "--config", "stage.json"]).unwrap();
-
-        let Command::ServeBinary(args) = cli.command else {
-            panic!("expected serve-binary command");
+    fn model_reference_accepts_local_serving_tuning() {
+        let cli = Cli::try_parse_from([
+            "skippy",
+            "serve",
+            "--model",
+            "Qwen3-0.6B-Q4_K_M",
+            "--ctx-size",
+            "8192",
+            "--n-gpu-layers",
+            "-1",
+            "--prompt",
+        ])
+        .unwrap();
+        let Command::Serve(args) = cli.command else {
+            panic!("expected serve command");
         };
+        assert_eq!(args.model.as_deref(), Some("Qwen3-0.6B-Q4_K_M"));
+        assert_eq!(args.public.ctx_size, Some(8192));
+        assert_eq!(args.public.n_gpu_layers, Some(-1));
+        assert!(args.prompt);
+    }
+
+    #[test]
+    fn openai_prefill_policy_defaults_to_adaptive_ramp() {
+        let cli = Cli::try_parse_from([
+            "skippy",
+            "serve",
+            "--config",
+            "stage.json",
+            "--stage-transport",
+            "binary",
+        ])
+        .unwrap();
+
+        let Command::Serve(args) = cli.command else {
+            panic!("expected serve command");
+        };
+        let args = args.stage;
         assert_eq!(args.openai_prefill_chunk_policy, "adaptive-ramp");
         assert_eq!(args.openai_prefill_adaptive_start, 128);
         assert_eq!(args.openai_prefill_adaptive_step, 128);
@@ -507,12 +573,12 @@ mod tests {
         assert_eq!(args.openai_generation_queue_capacity, None);
         assert_eq!(args.openai_generation_admission_timeout_secs, 0);
 
-        let cli =
-            Cli::try_parse_from(["skippy", "serve-openai", "--config", "stage.json"]).unwrap();
+        let cli = Cli::try_parse_from(["skippy", "serve", "--config", "stage.json"]).unwrap();
 
-        let Command::ServeOpenAi(args) = cli.command else {
-            panic!("expected serve-openai command");
+        let Command::Serve(args) = cli.command else {
+            panic!("expected serve command");
         };
+        let args = args.public;
         assert_eq!(args.prefill_chunk_policy, "adaptive-ramp");
         assert_eq!(args.prefill_adaptive_start, 128);
         assert_eq!(args.prefill_adaptive_step, 128);
@@ -530,7 +596,7 @@ mod tests {
     fn serve_openai_accepts_explicit_guardrail_mode() {
         let cli = Cli::try_parse_from([
             "skippy",
-            "serve-openai",
+            "serve",
             "--config",
             "stage.json",
             "--openai-guardrails",
@@ -538,45 +604,50 @@ mod tests {
         ])
         .unwrap();
 
-        let Command::ServeOpenAi(args) = cli.command else {
-            panic!("expected serve-openai command");
+        let Command::Serve(args) = cli.command else {
+            panic!("expected serve command");
         };
-        assert_eq!(args.openai_guardrails, OpenAiGuardrailsCliMode::Enforce);
+        assert_eq!(
+            args.public.openai_guardrails,
+            OpenAiGuardrailsCliMode::Enforce
+        );
     }
 
     #[test]
     fn standalone_commands_accept_resolved_speculative_config_files() {
         let cli = Cli::try_parse_from([
             "skippy",
-            "serve-binary",
+            "serve",
             "--config",
             "stage.json",
+            "--stage-transport",
+            "binary",
             "--openai-speculative-config",
             "decode-plan.json",
         ])
         .unwrap();
-        let Command::ServeBinary(args) = cli.command else {
-            panic!("expected serve-binary command");
+        let Command::Serve(args) = cli.command else {
+            panic!("expected serve command");
         };
         assert_eq!(
-            args.openai_speculative_config,
+            args.stage.openai_speculative_config,
             Some(PathBuf::from("decode-plan.json"))
         );
 
         let cli = Cli::try_parse_from([
             "skippy",
-            "serve-openai",
+            "serve",
             "--config",
             "stage.json",
             "--speculative-config",
             "decode-plan.json",
         ])
         .unwrap();
-        let Command::ServeOpenAi(args) = cli.command else {
-            panic!("expected serve-openai command");
+        let Command::Serve(args) = cli.command else {
+            panic!("expected serve command");
         };
         assert_eq!(
-            args.speculative_config,
+            args.public.speculative_config,
             Some(PathBuf::from("decode-plan.json"))
         );
     }
@@ -585,7 +656,7 @@ mod tests {
 #[derive(Subcommand)]
 pub enum ModelCommand {
     /// Resolve a Hub revision and download its selected model files.
-    Pull {
+    Download {
         /// Hub reference: org/repo@revision:filename-or-quantization.
         model_ref: String,
         /// Expected SHA-256 of the primary model file; checked on cache hits too.
@@ -602,5 +673,15 @@ pub enum ModelCommand {
         dry_run: bool,
     },
     /// List local model repositories and snapshots without contacting the Hub.
-    List,
+    Installed,
+    /// Show a short list of starter models.
+    Recommended,
+    /// Find GGUF repositories on Hugging Face.
+    Search {
+        query: String,
+        #[arg(long, default_value_t = 20)]
+        limit: usize,
+    },
+    /// Resolve one model reference and show its selected artifact.
+    Show { model_ref: String },
 }

@@ -21,9 +21,15 @@ fn standalone_rejects_missing_runtime_before_reading_stage_config() {
             "MESH_LLM_NATIVE_RUNTIME_BUNDLE_DIR",
             "/nonexistent/mesh-runtime",
         )
-        .args(["--runtime-release", "999.999.999-test", "--runtime-cache"])
+        .args([
+            "--output",
+            "human",
+            "--runtime-release",
+            "999.999.999-test",
+            "--runtime-cache",
+        ])
         .arg(temp.path())
-        .args(["serve-openai", "--config", "/nonexistent/skippy-stage.json"])
+        .args(["serve", "--config", "/nonexistent/skippy-stage.json"])
         .output()
         .unwrap();
     assert!(!output.status.success());
@@ -76,9 +82,15 @@ fn standalone_selection_uses_verified_bundle_and_rejects_abi_mismatch() {
                 "MESH_LLM_NATIVE_RUNTIME_BUNDLE_DIR",
                 "/nonexistent/mesh-runtime",
             )
-            .args(["--runtime-release", "999.999.999-test", "--runtime-cache"])
+            .args([
+                "--output",
+                "human",
+                "--runtime-release",
+                "999.999.999-test",
+                "--runtime-cache",
+            ])
             .arg(temp.path().join("empty-cache"))
-            .args(["serve-openai", "--config", "/nonexistent/skippy-stage.json"])
+            .args(["serve", "--config", "/nonexistent/skippy-stage.json"])
             .output()
             .unwrap();
         assert!(!output.status.success());
@@ -100,30 +112,86 @@ fn standalone_selection_uses_verified_bundle_and_rejects_abi_mismatch() {
 }
 
 #[test]
-fn legacy_import_reports_entry_failures_with_nonzero_exit_and_preserves_source() {
-    let dir = tempfile::tempdir().unwrap();
-    let source = dir.path().join("legacy");
-    let broken = source.join("0.1.0/broken");
-    std::fs::create_dir_all(&broken).unwrap();
-    let manifest = broken.join("native-runtime.json");
-    // Use the reader's actual filename, so this is a failed entry rather than a skip.
-    let manifest = manifest.with_file_name(skippy_runtime_install::NATIVE_RUNTIME_MANIFEST_FILE);
-    std::fs::write(&manifest, b"{broken").unwrap();
-    let destination = dir.path().join("new-cache");
+fn legacy_import_is_not_a_subcommand() {
     let output = std::process::Command::new(env!("CARGO_BIN_EXE_skippy"))
-        .arg("--runtime-cache")
-        .arg(&destination)
         .args(["runtime", "import-legacy"])
-        .arg(&source)
-        .arg("--dry-run")
         .output()
         .unwrap();
     assert!(!output.status.success());
-    let report: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-    assert_eq!(report["entries"][0]["status"], "failed", "{report}");
-    assert!(String::from_utf8_lossy(&output.stderr).contains("legacy runtime imports failed"));
-    assert_eq!(std::fs::read(manifest).unwrap(), b"{broken");
-    assert!(!destination.exists());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("unrecognized subcommand"));
+}
+
+#[test]
+fn old_serve_commands_are_not_subcommands() {
+    for command in ["serve-openai", "serve-binary"] {
+        let output = std::process::Command::new(env!("CARGO_BIN_EXE_skippy"))
+            .arg(command)
+            .output()
+            .unwrap();
+        assert!(!output.status.success());
+        assert!(String::from_utf8_lossy(&output.stderr).contains("unrecognized subcommand"));
+    }
+}
+
+#[test]
+fn jsonl_error_is_one_versioned_event() {
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_skippy"))
+        .args(["--output", "jsonl", "serve"])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert!(output.stderr.is_empty());
+    let lines = output
+        .stdout
+        .split(|byte| *byte == b'\n')
+        .filter(|line| !line.is_empty())
+        .collect::<Vec<_>>();
+    assert_eq!(lines.len(), 1);
+    let event: serde_json::Value = serde_json::from_slice(lines[0]).unwrap();
+    assert_eq!(event["schema_version"], 1);
+    assert_eq!(event["sequence"], 1);
+    assert_eq!(event["type"], "error");
+    assert!(
+        event["data"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("provide --model")
+    );
+}
+
+#[test]
+fn jsonl_syntax_error_is_structured_too() {
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_skippy"))
+        .args(["--output=jsonl", "serve", "--not-a-switch"])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert!(output.stderr.is_empty());
+    let event: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(event["type"], "error");
+    assert!(
+        event["data"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("unexpected argument")
+    );
+}
+
+#[test]
+fn recommended_models_have_human_and_json_presentations() {
+    let human = std::process::Command::new(env!("CARGO_BIN_EXE_skippy"))
+        .args(["--output", "human", "models", "recommended"])
+        .output()
+        .unwrap();
+    assert!(human.status.success());
+    assert!(String::from_utf8_lossy(&human.stdout).contains("⭐ Qwen3-0.6B-Q4_K_M"));
+    let json = std::process::Command::new(env!("CARGO_BIN_EXE_skippy"))
+        .args(["--output", "json", "models", "recommended"])
+        .output()
+        .unwrap();
+    assert!(json.status.success());
+    let models: serde_json::Value = serde_json::from_slice(&json.stdout).unwrap();
+    assert!(models.as_array().unwrap().len() >= 3);
 }
 
 #[test]
@@ -153,7 +221,7 @@ fn models_list_uses_explicit_cache_without_native_runtime_or_network() {
         .env("SKIPPY_MODEL_CACHE_DIR", root.path().join("ignored"))
         .args(["models", "--cache-dir"])
         .arg(&cache)
-        .arg("list")
+        .arg("installed")
         .output()
         .unwrap();
     assert!(
@@ -174,7 +242,7 @@ fn model_pull_rejects_invalid_pin_without_contacting_hub() {
         .env("HF_ENDPOINT", "http://127.0.0.1:1")
         .args(["models", "--cache-dir"])
         .arg(root.path())
-        .args(["pull", "org/repo", "--sha256", "bad"])
+        .args(["download", "org/repo", "--sha256", "bad"])
         .output()
         .unwrap();
     assert!(!output.status.success());
