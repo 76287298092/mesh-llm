@@ -1,0 +1,5 @@
+baseline: staged-fp64, serial-v1, vector16, paired-fp64, prmt
+combined: staged-fp64, prefix-parallel-v2, vector16, paired-fp64, prmt, reuse-input
+prompts: wiki-2k=2048 pg19-8k=8192
+output_tokens=32 repetitions_per_run=2 rounds=2 order=forward_then_reverse
+partition_check: not_run for prompts longer than 512 tokens
