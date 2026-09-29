@@ -556,7 +556,8 @@ The five lane workflows organize the catalog without changing selected rows:
 runtime, composition and smoke dependency chain inside one run, so native
 runtime producers are not duplicated.
 
-- `ci-quality-slice.yml` — action/packaging/consistency contracts, format,
+- `ci-quality-slice.yml` — action/packaging/consistency contracts (including
+  product-crate README presence, manifest descriptions, and local Markdown links), format,
   unused-dependency check (cargo-machete), bounded Clippy batches and
   generated CLI inventory freshness.
 - `ci-web-slice.yml` — console lint/type/test, console Playwright E2E, public

@@ -270,7 +270,7 @@ deadline handling.
   work are visible on OpenAI-path spans. The draft runner is
   single-session guarded; use this first as a depth-1 measurement knob before
   promoting it for concurrent serving.
-- Benchy usage lives in [`skippy/docs/LLAMA_BENCHY.md`](../../docs/skippy/LLAMA_BENCHY.md).
+- Benchy usage lives in [`skippy/docs/LLAMA_BENCHY.md`](../../docs/LLAMA_BENCHY.md).
 - The local OpenAI smoke harness is `scripts/openai-smoke.sh`.
 - `serve-binary` forwards eligible non-final prefill activation frames on a
   bounded background writer by default. Use `--no-async-prefill-forward` only
