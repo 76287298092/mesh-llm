@@ -30,6 +30,11 @@ fn valid(length: u32, capacity: u32) -> bool {
     length > 0 && length <= capacity && capacity <= 262_144
 }
 
+#[inline(always)]
+fn earlier_max(earlier: f64, later: f64) -> f64 {
+    if later > earlier { later } else { earlier }
+}
+
 /// # Safety
 /// Fixed M1/24Q/4KV/D256. Grid[length,24,1], block[32,1,1]. Q covers6144 BF16,
 /// K covers capacity*1024 BF16; initialized prefix [0,length) and Q are finite.
@@ -113,6 +118,119 @@ pub unsafe extern "ptx-kernel" fn attention_staged_coefficients_fp64(
         }
     }
     // SAFETY: Normalizers are the final24 separate workspace elements, one per head.
+    unsafe {
+        workspace.add(3 * plane + head as usize).write(normalizer);
+    }
+}
+
+/// # Safety
+/// Grid[24,1,1], block[32,1,1]. Scores are initialized and workspace
+/// contains an additional capacity-strided running-maximum plane.
+#[unsafe(no_mangle)]
+pub unsafe extern "ptx-kernel" fn attention_staged_max_prefix_fp64(
+    workspace: *mut f64,
+    length: u32,
+    capacity: u32,
+) {
+    let (head, y, lane, threads) = coordinates();
+    if !valid(length, capacity) || head >= 24 || y != 0 || lane != 0 || threads != 32 {
+        return;
+    }
+    let plane = 24 * capacity as usize;
+    let base = head as usize * capacity as usize;
+    let max_base = 3 * plane + 24;
+    let mut maximum = f64::NEG_INFINITY;
+    for key in 0..length {
+        // SAFETY: The ordered score launch initialized this head's score prefix.
+        let score = unsafe { *workspace.add(base + key as usize) };
+        maximum = earlier_max(maximum, score);
+        // SAFETY: Lane zero owns each running-maximum element for this head.
+        unsafe {
+            workspace.add(max_base + base + key as usize).write(maximum);
+        }
+    }
+}
+
+/// # Safety
+/// Grid[ceil(length/128),24,1], block[128,1,1]. Score and running-maximum prefixes
+/// are initialized; each lane evaluates one key's FP64 exponentials.
+#[unsafe(no_mangle)]
+pub unsafe extern "ptx-kernel" fn attention_staged_coefficients_parallel_fp64(
+    workspace: *mut f64,
+    length: u32,
+    capacity: u32,
+) {
+    let (tile, head, thread, threads) = coordinates();
+    if !valid(length, capacity) || tile >= length.div_ceil(128) || head >= 24 || threads != 128 {
+        return;
+    }
+    let plane = 24 * capacity as usize;
+    let base = head as usize * capacity as usize;
+    let max_base = 3 * plane + 24;
+    let start = tile * 128;
+    let key = start + thread;
+    if key < length {
+        let index = base + key as usize;
+        // SAFETY: The max-prefix stage initialized this key and its predecessor.
+        let (score, next, prior) = unsafe {
+            (
+                *workspace.add(index),
+                *workspace.add(max_base + index),
+                if key == 0 {
+                    f64::NEG_INFINITY
+                } else {
+                    *workspace.add(max_base + index - 1)
+                },
+            )
+        };
+        let alpha = if key == 0 {
+            0.0
+        } else {
+            exp_nonpositive(subtract_rn(prior, next))
+        };
+        let beta = exp_nonpositive(subtract_rn(score, next));
+        // SAFETY: This CTA thread exclusively owns this key's coefficient pair.
+        unsafe {
+            workspace.add(plane + index).write(alpha);
+            workspace.add(2 * plane + index).write(beta);
+        }
+    }
+}
+
+/// # Safety
+/// Grid[24,1,1], block[32,1,1]. Coefficients for the complete prefix are ready
+/// on this stream. Lane zero retains the v1 rounded normalizer recurrence order.
+#[unsafe(no_mangle)]
+pub unsafe extern "ptx-kernel" fn attention_staged_normalizer_fp64(
+    workspace: *mut f64,
+    length: u32,
+    capacity: u32,
+) {
+    let (head, y, lane, threads) = coordinates();
+    if !valid(length, capacity) || head >= 24 || y != 0 || lane != 0 || threads != 32 {
+        return;
+    }
+    let plane = 24 * capacity as usize;
+    let base = head as usize * capacity as usize;
+    let mut normalizer = 0.0_f64;
+    for key in 0..length {
+        let index = base + key as usize;
+        // SAFETY: The preceding same-stream prefix kernel wrote candidate alpha and beta.
+        let (candidate_alpha, beta) = unsafe {
+            (*workspace.add(plane + index), *workspace.add(2 * plane + index))
+        };
+        let alpha = if normalizer == 0.0 {
+            0.0
+        } else {
+            candidate_alpha
+        };
+        normalizer = add_rn(multiply_rn(normalizer, alpha), beta);
+        // SAFETY: This lane owns the head's alpha plane throughout the ordered scan.
+        unsafe {
+            workspace.add(plane + index).write(alpha);
+        }
+    }
+    // SAFETY: One lane writes this head's final normalizer.
     unsafe {
         workspace.add(3 * plane + head as usize).write(normalizer);
     }

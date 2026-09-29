@@ -303,6 +303,8 @@ pub(super) mod attention_warp_trial;
 pub(super) mod exponential_trial;
 
 mod attention_staged_launch;
+mod attention_staged_trial_execution;
+mod attention_staged_trial_support;
 pub(super) mod attention_staged_trial;
 mod resident_attention_split;
 mod resident_attention_staged;

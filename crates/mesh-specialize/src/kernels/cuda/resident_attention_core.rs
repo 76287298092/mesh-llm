@@ -80,7 +80,15 @@ pub(super) fn run<'a>(
         .transpose()?;
     let staged = profile
         .uses_staged(shape.rows)
-        .then(|| super::resident_attention_staged::Prepared::new(context, module, shape))
+        .then(|| {
+            crate::kernels::attention_staged_plan::CoefficientSchedule::current().and_then(
+                |schedule| {
+                    super::resident_attention_staged::Prepared::new(
+                        context, module, shape, schedule,
+                    )
+                },
+            )
+        })
         .transpose()?;
     let attention = module.function(profile.kernel_for_rows(shape.rows))?;
     let output = Buffer::new(context, extents.output_bytes)?;

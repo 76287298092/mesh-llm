@@ -1,7 +1,9 @@
 # Three-stage exact-order FP64 attention
 
-Status: implemented, unqualified, 2026-09-28. This is a separate M=1 schedule,
-not a default change or a claim of faster model decode. Earlier warp, unrolled,
+Status: serial-v1 GPU-qualified at 106/512 inputs; prefix-parallel-v2 remains
+unqualified. See [measured model evidence](staged-attention-model-qualification.md)
+and [long-context limitations](staged-long-context-qualification.md).
+This is a separate opt-in M=1 schedule. Earlier warp, unrolled,
 FP32 split and online profiles remain available and unchanged.
 
 The parent reported bit-identical whole-model results with modest gains from
@@ -85,7 +87,27 @@ inside sanitizers merely to reproduce a normal timing report.
 
 Parent gates remain: host/Linux tests and Clippy; emitted PTX/SASS order/resources;
 short timing-off memcheck/racecheck/synccheck; full normal context matrix; same
-whole-model inputs/logits/all-state identity before matched model timing. No
-Cargo, PTX build, SSH, GPU execution, exact source revision lookup or performance
-measurement was run by this worker. Device/driver/clock results for this schedule
-are not measured. Preserve failed evidence and retain all earlier candidates.
+whole-model inputs/logits/all-state identity before matched model timing.
+Serial-v1 results are recorded in the linked findings above. Preserve failed
+evidence and retain all earlier candidates.
+
+## Prefix-parallel coefficient candidate
+
+`PrefixParallelV2` is an opt-in candidate selected only by
+`MESH_SPECIALIZE_STAGED_FP64_SCHEDULE=prefix-parallel-v2`; the default remains
+`SerialV1`. It keeps the exact score kernel and value kernel, and splits the
+coefficient work into ascending running maxima, independent per-key exponentials,
+then the original ascending normalizer recurrence and alpha correction. Five
+launches remain ordered on the same stream. Workspace adds one capacity-strided
+FP64 running-maximum plane after the existing normalizers. Legacy trial scratch
+is sized per schedule; stream execution retains its matching persistent workspace.
+
+The host bit-level recurrence test checks alpha, beta, and final normalizer
+against the serial calculation for signed zeros, exponent extremes, and prefix
+lengths through 8,191, including the 128/129 tile boundary. Prefix-parallel GPU
+short/full matrices also include length 129; serial defaults are unchanged.
+The isolated prefix candidate passes 417 host tests and Linux-target Clippy.
+This proves only that tested host calculations agree and the source compiles. The
+device candidate remains unqualified: no GPU comparison, sanitizer run, model
+identity check, or timing claim is recorded here. The independent attention
+oracle and strict serial-control checks are wired into the operator trial.

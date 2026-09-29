@@ -11,8 +11,54 @@ pub const KERNELS: [&str; 3] = [
     "attention_staged_values_fp64",
 ];
 pub const BLOCKS: [[u32; 3]; 3] = [[32, 1, 1], [32, 1, 1], [64, 1, 1]];
+pub const PREFIX_SCAN_TILE: usize = 128;
+pub const PREFIX_KERNELS: [&str; 3] = [
+    "attention_staged_max_prefix_fp64",
+    "attention_staged_coefficients_parallel_fp64",
+    "attention_staged_normalizer_fp64",
+];
+pub const PREFIX_SCHEDULE_KERNELS: [&str; 5] = [
+    KERNELS[0],
+    PREFIX_KERNELS[0],
+    PREFIX_KERNELS[1],
+    PREFIX_KERNELS[2],
+    KERNELS[2],
+];
+pub const PREFIX_BLOCKS: [[u32; 3]; 4] = [[32, 1, 1], [128, 1, 1], [32, 1, 1], [64, 1, 1]];
 pub const SHORT_TRIAL_PASTS: [usize; 5] = [0, 1, 32, 105, 127];
 pub const FULL_TRIAL_PASTS: [usize; 7] = [0, 1, 32, 105, 127, 511, 8190];
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CoefficientSchedule {
+    SerialV1,
+    PrefixParallelV2,
+}
+impl CoefficientSchedule {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::SerialV1 => "serial-v1",
+            Self::PrefixParallelV2 => "prefix-parallel-v2",
+        }
+    }
+
+    pub fn parse(value: Option<&str>) -> Result<Self> {
+        match value {
+            None | Some("serial-v1") => Ok(Self::SerialV1),
+            Some("prefix-parallel-v2") => Ok(Self::PrefixParallelV2),
+            _ => anyhow::bail!(
+                "MESH_SPECIALIZE_STAGED_FP64_SCHEDULE must be serial-v1 or prefix-parallel-v2"
+            ),
+        }
+    }
+
+    pub fn current() -> Result<Self> {
+        match std::env::var("MESH_SPECIALIZE_STAGED_FP64_SCHEDULE") {
+            Ok(value) => Self::parse(Some(&value)),
+            Err(std::env::VarError::NotPresent) => Self::parse(None),
+            Err(error) => anyhow::bail!("invalid MESH_SPECIALIZE_STAGED_FP64_SCHEDULE: {error}"),
+        }
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Plan {
@@ -21,9 +67,17 @@ pub struct Plan {
     pub head_elements: usize,
     pub workspace_bytes: usize,
     pub grids: [[u32; 3]; 3],
+    pub coefficient_schedule: CoefficientSchedule,
 }
 impl Plan {
     pub fn new(dimensions: [usize; 6]) -> Result<Self> {
+        Self::new_with_schedule(dimensions, CoefficientSchedule::SerialV1)
+    }
+
+    pub fn new_with_schedule(
+        dimensions: [usize; 6],
+        coefficient_schedule: CoefficientSchedule,
+    ) -> Result<Self> {
         let [rows, qh, kh, width, past, capacity] = dimensions;
         ensure!(
             [rows, qh, kh, width] == [1, HEADS, KV_HEADS, WIDTH],
@@ -43,10 +97,20 @@ impl Plan {
         let head_elements = HEADS
             .checked_mul(capacity)
             .context("staged score extent overflow")?;
-        let workspace_bytes = head_elements
+        let base_workspace_bytes = head_elements
             .checked_mul(3)
             .and_then(|n| n.checked_add(HEADS))
             .and_then(|n| n.checked_mul(8))
+            .context("staged workspace extent overflow")?;
+        let prefix_elements = match coefficient_schedule {
+            CoefficientSchedule::SerialV1 => 0,
+            CoefficientSchedule::PrefixParallelV2 => head_elements,
+        };
+        let prefix_bytes = prefix_elements
+            .checked_mul(8)
+            .context("staged prefix byte extent overflow")?;
+        let workspace_bytes = base_workspace_bytes
+            .checked_add(prefix_bytes)
             .context("staged workspace extent overflow")?;
         Ok(Self {
             length,
@@ -55,8 +119,24 @@ impl Plan {
             workspace_bytes,
             // Keys are x, heads y: y never exceeds CUDA's 65535 grid limit.
             grids: [[u32::try_from(length)?, 24, 1], [24, 1, 1], [24, 4, 1]],
+            coefficient_schedule,
         })
     }
+
+    pub fn prefix_grids(self) -> Result<[[u32; 3]; 5]> {
+        Ok([
+            self.grids[0],
+            [24, 1, 1],
+            [
+                u32::try_from(self.length.div_ceil(PREFIX_SCAN_TILE))?,
+                24,
+                1,
+            ],
+            [24, 1, 1],
+            self.grids[2],
+        ])
+    }
+
     pub fn dimensions(self) -> [u32; 2] {
         [self.length as u32, self.capacity as u32]
     }
@@ -69,12 +149,21 @@ impl Plan {
             self.head_elements * 24,
         ]
     }
+    pub fn prefix_offset(self) -> usize {
+        3 * self.head_elements + HEADS
+    }
     /// Head-strided initialized prefix; tails remain untouched and must never be read.
     pub fn initialized(self, element: usize) -> bool {
         if element < 3 * self.head_elements {
             element % self.capacity < self.length
+        } else if element < 3 * self.head_elements + HEADS {
+            true
+        } else if self.coefficient_schedule == CoefficientSchedule::PrefixParallelV2 {
+            let prefix = self.prefix_offset();
+            (prefix..prefix + self.head_elements).contains(&element)
+                && (element - prefix) % self.capacity < self.length
         } else {
-            element < 3 * self.head_elements + HEADS
+            false
         }
     }
 }
@@ -135,106 +224,5 @@ impl TrialOptions {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn workspace_and_grid_are_linear_and_capacity_strided() {
-        let p = Plan::new([1, 24, 4, 256, 8191, 131072]).unwrap();
-        assert_eq!(p.grids, [[8192, 24, 1], [24, 1, 1], [24, 4, 1]]);
-        assert_eq!(BLOCKS, [[32, 1, 1], [32, 1, 1], [64, 1, 1]]);
-        assert_eq!(p.workspace_bytes, 72 * 1024 * 1024 + 24 * 8);
-        assert_eq!(
-            p.offsets(),
-            [0, 24 * 1024 * 1024, 48 * 1024 * 1024, 72 * 1024 * 1024]
-        );
-        let max = Plan::new([1, 24, 4, 256, 262143, 262144]).unwrap();
-        assert_eq!(max.grids[0], [262144, 24, 1]);
-    }
-    #[test]
-    fn rejects_other_rows_shapes_capacity_and_overflows() {
-        for d in [
-            [5, 24, 4, 256, 0, 5],
-            [1, 12, 4, 256, 0, 1],
-            [1, 24, 8, 256, 0, 1],
-            [1, 24, 4, 128, 0, 1],
-            [1, 24, 4, 256, 1, 1],
-            [1, 24, 4, 256, 0, 0],
-            [1, 24, 4, 256, 0, 262145],
-            [1, 24, 4, 256, usize::MAX, 131072],
-        ] {
-            assert!(Plan::new(d).is_err());
-        }
-    }
-    #[test]
-    fn initialized_prefix_is_separate_in_every_head_and_array() {
-        let p = Plan::new([1, 24, 4, 256, 1, 9]).unwrap();
-        for array in 0..3 {
-            for head in 0..24 {
-                for key in 0..9 {
-                    assert_eq!(
-                        p.initialized(array * p.head_elements + head * 9 + key),
-                        key < 2
-                    );
-                }
-            }
-        }
-        assert!(p.initialized(3 * p.head_elements + 23));
-        assert!(!p.initialized(3 * p.head_elements + 24));
-    }
-    #[test]
-    fn addresses_must_be_aligned_bounded_and_disjoint() {
-        let p = Plan::new([1, 24, 4, 256, 0, 1]).unwrap();
-        let good = [0x10000, 0x20000, 0x30000, 0x40000, 0x50000, 0x60000];
-        assert!(validate_addresses(p, good).is_ok());
-        for i in 0..6 {
-            let mut bad = good;
-            bad[i] += 1;
-            assert!(validate_addresses(p, bad).is_err());
-        }
-        let mut overlap = good;
-        overlap[5] = good[1];
-        assert!(validate_addresses(p, overlap).is_err());
-        let mut overflow = good;
-        overflow[5] = u64::MAX - 7;
-        assert!(validate_addresses(p, overflow).is_err());
-    }
-    #[test]
-    fn source_keeps_exact_tree_serial_recurrences_and_capacity_planes() {
-        let source = include_str!("../../kernels/nvptx/attention_staged_fp64.rs");
-        let compact: String = source.chars().filter(|c| !c.is_whitespace()).collect();
-        for required in [
-            "warp_dot(local_tree(products))",
-            "lane!=0",
-            "for key in 0..length",
-            "normalizer=add_rn(multiply_rn(normalizer,alpha),beta)",
-            "accumulator=add_rn(multiply_rn(accumulator,alpha),multiply_rn(beta,value))",
-            "3*plane+head as usize",
-            "let plane=24*capacity as usize",
-        ] {
-            let required: String = required.chars().filter(|c| !c.is_whitespace()).collect();
-            assert!(compact.contains(&required), "missing {required}");
-        }
-        for forbidden in ["bar.sync", ".shared", "fma.", "ex2."] {
-            assert!(!source.contains(forbidden));
-        }
-    }
-
-    #[test]
-    fn sanitizer_defaults_disable_expensive_trial_work() {
-        let options = TrialOptions::parse(None, None).unwrap();
-        assert!(!options.long_cases && !options.timing);
-        let full = TrialOptions::parse(Some("full"), Some("on")).unwrap();
-        assert!(full.long_cases && full.timing);
-        assert!(TrialOptions::parse(Some("all"), None).is_err());
-        assert!(TrialOptions::parse(None, Some("yes")).is_err());
-    }
-
-    #[test]
-    fn trial_pasts_cover_requested_attention_lengths() {
-        assert_eq!(SHORT_TRIAL_PASTS.map(|past| past + 1), [1, 2, 33, 106, 128]);
-        assert_eq!(
-            FULL_TRIAL_PASTS.map(|past| past + 1),
-            [1, 2, 33, 106, 128, 512, 8191]
-        );
-    }
-}
+#[path = "attention_staged_plan_tests.rs"]
+mod tests;

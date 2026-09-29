@@ -41,6 +41,7 @@ use super::{
     resident_state::ResidentState,
     resident_weights::ResidentWeights,
 };
+use crate::kernels::attention_staged_plan::CoefficientSchedule;
 use crate::{
     engine::rope::TextRope,
     kernels::{
@@ -123,7 +124,11 @@ impl<'m, 'w, 'ctx> StreamForward<'m, 'w, 'ctx> {
             .transpose()?;
         let staged_attention = attention_profile
             .uses_staged(1)
-            .then(|| StagedAttention::new(context, module, &shapes, config.capacity))
+            .then(|| {
+                CoefficientSchedule::current().and_then(|staged_schedule| {
+                    StagedAttention::new(context, module, &shapes, config.capacity, staged_schedule)
+                })
+            })
             .transpose()?;
         let bound = ModelWeights::bind(weights, config)?;
         let mut specs = forward_program(&shapes, max_rows)?;

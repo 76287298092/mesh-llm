@@ -1,6 +1,9 @@
 //! Resolved stage handles and allocation-free default-stream launch ABI.
 use super::driver::{Function, Module};
-use crate::kernels::attention_staged_plan::{BLOCKS, KERNELS, Plan, SCALE, validate_addresses};
+use crate::kernels::attention_staged_plan::{
+    BLOCKS, CoefficientSchedule, KERNELS, PREFIX_BLOCKS, PREFIX_KERNELS, PREFIX_SCHEDULE_KERNELS,
+    Plan, SCALE, validate_addresses,
+};
 use anyhow::{Result, ensure};
 use std::{ffi::c_void, ptr};
 
@@ -8,6 +11,17 @@ pub(super) struct Kernels<'m, 'ctx> {
     pub(super) scores: Function<'m, 'ctx>,
     pub(super) coefficients: Function<'m, 'ctx>,
     pub(super) values: Function<'m, 'ctx>,
+}
+pub(super) struct PrefixKernels<'m, 'ctx> {
+    pub(super) scores: Function<'m, 'ctx>,
+    pub(super) coefficients: Function<'m, 'ctx>,
+    pub(super) prefix_maxima: Function<'m, 'ctx>,
+    pub(super) normalizer: Function<'m, 'ctx>,
+    pub(super) values: Function<'m, 'ctx>,
+}
+pub(super) enum ScheduleKernels<'m, 'ctx> {
+    Serial(Kernels<'m, 'ctx>),
+    PrefixParallel(PrefixKernels<'m, 'ctx>),
 }
 impl<'m, 'ctx> Kernels<'m, 'ctx> {
     pub(super) fn new(module: &'m Module<'ctx>) -> Result<Self> {
@@ -54,6 +68,126 @@ impl<'m, 'ctx> Kernels<'m, 'ctx> {
                 plan.grids[2],
                 BLOCKS[2],
                 &mut [v, workspace, output, raw, length, capacity],
+            )
+        }
+    }
+}
+impl<'m, 'ctx> ScheduleKernels<'m, 'ctx> {
+    pub(super) fn new(module: &'m Module<'ctx>, schedule: CoefficientSchedule) -> Result<Self> {
+        match schedule {
+            CoefficientSchedule::SerialV1 => Ok(Self::Serial(Kernels::new(module)?)),
+            CoefficientSchedule::PrefixParallelV2 => Ok(Self::PrefixParallel(PrefixKernels {
+                scores: module.function(KERNELS[0])?,
+                prefix_maxima: module.function(PREFIX_KERNELS[0])?,
+                coefficients: module.function(PREFIX_KERNELS[1])?,
+                normalizer: module.function(PREFIX_KERNELS[2])?,
+                values: module.function(KERNELS[2])?,
+            })),
+        }
+    }
+
+    pub(super) unsafe fn launch(&self, pointers: [u64; 6], plan: Plan) -> Result<()> {
+        match self {
+            Self::Serial(kernels) => unsafe { kernels.launch(pointers, plan) },
+            Self::PrefixParallel(kernels) => unsafe { kernels.launch(pointers, plan) },
+        }
+    }
+
+    pub(super) fn resources(&self) -> Result<Vec<super::driver::FunctionResources>> {
+        match self {
+            Self::Serial(kernels) => Ok(vec![
+                kernels.scores.resources()?,
+                kernels.coefficients.resources()?,
+                kernels.values.resources()?,
+            ]),
+            Self::PrefixParallel(kernels) => Ok(vec![
+                kernels.scores.resources()?,
+                kernels.prefix_maxima.resources()?,
+                kernels.coefficients.resources()?,
+                kernels.normalizer.resources()?,
+                kernels.values.resources()?,
+            ]),
+        }
+    }
+
+    pub(super) fn kernel_names(&self) -> &'static [&'static str] {
+        match self {
+            Self::Serial(_) => &KERNELS,
+            Self::PrefixParallel(_) => &PREFIX_SCHEDULE_KERNELS,
+        }
+    }
+
+    pub(super) fn serial(&self) -> Option<&Kernels<'m, 'ctx>> {
+        match self {
+            Self::Serial(kernels) => Some(kernels),
+            Self::PrefixParallel(_) => None,
+        }
+    }
+
+    pub(super) fn prefix(&self) -> Option<&PrefixKernels<'m, 'ctx>> {
+        match self {
+            Self::Serial(_) => None,
+            Self::PrefixParallel(kernels) => Some(kernels),
+        }
+    }
+}
+
+impl PrefixKernels<'_, '_> {
+    unsafe fn launch(&self, pointers: [u64; 6], plan: Plan) -> Result<()> {
+        validate_addresses(plan, pointers)?;
+        let [q, k, v, output, raw, workspace] = pointers;
+        let [length, capacity] = plan.dimensions();
+        let grids = plan.prefix_grids()?;
+        let (maxima, coefficients, normalizer, values) = (
+            &self.prefix_maxima,
+            &self.coefficients,
+            &self.normalizer,
+            &self.values,
+        );
+        unsafe {
+            enqueue(
+                &self.scores,
+                plan.grids[0],
+                BLOCKS[0],
+                &mut [
+                    q,
+                    k,
+                    workspace,
+                    u64::from(length),
+                    u64::from(capacity),
+                    u64::from(SCALE.to_bits()),
+                ],
+            )?;
+            enqueue(
+                maxima,
+                grids[1],
+                PREFIX_BLOCKS[0],
+                &mut [workspace, u64::from(length), u64::from(capacity)],
+            )?;
+            enqueue(
+                coefficients,
+                grids[2],
+                PREFIX_BLOCKS[1],
+                &mut [workspace, u64::from(length), u64::from(capacity)],
+            )?;
+            enqueue(
+                normalizer,
+                grids[3],
+                PREFIX_BLOCKS[2],
+                &mut [workspace, u64::from(length), u64::from(capacity)],
+            )?;
+            enqueue(
+                values,
+                grids[4],
+                PREFIX_BLOCKS[3],
+                &mut [
+                    v,
+                    workspace,
+                    output,
+                    raw,
+                    u64::from(length),
+                    u64::from(capacity),
+                ],
             )
         }
     }

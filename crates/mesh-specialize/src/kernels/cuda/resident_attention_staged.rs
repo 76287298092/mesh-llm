@@ -1,14 +1,14 @@
 //! Legacy staged scratch is prepared before KV mutation and retained through final drain.
 use super::{
-    attention_staged_launch::Kernels,
+    attention_staged_launch::ScheduleKernels,
     driver::{Buffer, Context, Module},
     resident_attention_core::Shape,
 };
-use crate::kernels::attention_staged_plan::Plan;
+use crate::kernels::attention_staged_plan::{CoefficientSchedule, Plan};
 use anyhow::{Result, ensure};
 
 pub(super) struct Prepared<'m, 'module_ctx, 'workspace> {
-    kernels: Kernels<'m, 'module_ctx>,
+    kernels: ScheduleKernels<'m, 'module_ctx>,
     workspace: Buffer<'workspace>,
     plan: Plan,
 }
@@ -17,20 +17,24 @@ impl<'m, 'module_ctx, 'workspace> Prepared<'m, 'module_ctx, 'workspace> {
         context: &'workspace Context,
         module: &'m Module<'module_ctx>,
         shape: &Shape,
+        schedule: CoefficientSchedule,
     ) -> Result<Self> {
         ensure!(
             module.belongs_to(context),
             "staged attention module/context mismatch"
         );
-        let plan = Plan::new([
-            shape.rows,
-            shape.query_heads,
-            shape.kv_heads,
-            shape.width,
-            shape.past,
-            shape.capacity,
-        ])?;
-        let kernels = Kernels::new(module)?;
+        let plan = Plan::new_with_schedule(
+            [
+                shape.rows,
+                shape.query_heads,
+                shape.kv_heads,
+                shape.width,
+                shape.past,
+                shape.capacity,
+            ],
+            schedule,
+        )?;
+        let kernels = ScheduleKernels::new(module, schedule)?;
         let workspace = Buffer::new(context, plan.workspace_bytes)?;
         Ok(Self {
             kernels,
