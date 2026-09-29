@@ -6,7 +6,8 @@ These instructions apply under `skippy/` in addition to the root `AGENTS.md`. Pa
 
 | Doc | What it covers |
 |---|---|
-| `skippy/docs/SKIPPY.md` | Integration readiness and parity |
+| `skippy/docs/ARCHITECTURE.md` | Current product and API boundaries |
+| `skippy/docs/SKIPPY.md` | Historical Mesh integration plan |
 | `skippy/docs/SKIPPY_SPLITS.md` | Running large models with split serving |
 | `skippy/docs/LAYER_PACKAGE_REPOS.md` | Layer-package publishing |
 | `skippy/docs/design/LLAMA_STAGE_INTEGRATION_PLAN.md` | llama.cpp staged-runtime plan and patch-queue background |

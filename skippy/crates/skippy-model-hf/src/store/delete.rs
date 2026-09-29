@@ -7,8 +7,8 @@ use hf_hub::{RepoType, RepoTypeModel};
 use skippy_model_artifact::{ModelArtifactFile, select_primary_artifact_file};
 
 use super::local::{
-    find_model_path, gguf_metadata_cache_path, huggingface_hub_cache_dir,
-    huggingface_identity_for_path, mesh_llm_cache_dir, scan_hf_cache_info, split_gguf_base_name,
+    find_model_path, gguf_metadata_cache_path_in, huggingface_hub_cache_dir,
+    huggingface_identity_for_path, scan_hf_cache_info, split_gguf_base_name,
 };
 use super::usage;
 
@@ -347,22 +347,30 @@ fn find_related_hf_cache_paths(cache_info: &HFCacheInfo, path: &Path) -> Vec<Pat
 }
 
 pub fn collect_delete_paths(resolved_paths: &[PathBuf]) -> Result<Vec<PathBuf>> {
+    collect_delete_paths_in(resolved_paths, &crate::skippy_cache_dir())
+}
+
+pub fn collect_delete_paths_in(
+    resolved_paths: &[PathBuf],
+    cache_root: &Path,
+) -> Result<Vec<PathBuf>> {
     let mut to_delete: BTreeSet<PathBuf> = BTreeSet::new();
     if resolved_paths.is_empty() {
         return Ok(Vec::new());
     }
 
     for path in resolved_paths {
-        ensure_delete_path_allowed(path)?;
+        ensure_delete_path_allowed(path, cache_root)?;
         to_delete.insert(normalize_path(path));
     }
 
     let primary_path = &resolved_paths[0];
-    if let Some(record) = usage::load_model_usage_record_for_path(primary_path)
+    if let Some(record) = usage::load_model_usage_record_for_path_in(primary_path, cache_root)
         && record.mesh_managed
         && !record.managed_paths.is_empty()
     {
         for p in &record.managed_paths {
+            ensure_delete_path_allowed(p, cache_root)?;
             to_delete.insert(normalize_path(p));
         }
     }
@@ -378,13 +386,22 @@ pub async fn delete_model_by_identifier_with_catalog(
     identifier: &str,
     catalog: &impl DeleteModelCatalog,
 ) -> Result<DeleteResult> {
+    delete_model_by_identifier_with_catalog_in(identifier, catalog, &crate::skippy_cache_dir())
+        .await
+}
+
+pub async fn delete_model_by_identifier_with_catalog_in(
+    identifier: &str,
+    catalog: &impl DeleteModelCatalog,
+    cache_root: &Path,
+) -> Result<DeleteResult> {
     let resolved_paths = resolve_model_identifier_with_catalog(identifier, catalog).await?;
 
     if resolved_paths.is_empty() {
         bail!("Model not found: {}", identifier);
     }
 
-    let all_paths = collect_delete_paths(&resolved_paths)?;
+    let all_paths = collect_delete_paths_in(&resolved_paths, cache_root)?;
 
     if all_paths.is_empty() {
         bail!(
@@ -407,7 +424,7 @@ pub async fn delete_model_by_identifier_with_catalog(
             std::fs::remove_file(path).with_context(|| format!("Remove {}", path.display()))?;
             deleted_paths.push(path.clone());
 
-            if let Some(metadata_path) = gguf_metadata_cache_path(path)
+            if let Some(metadata_path) = gguf_metadata_cache_path_in(path, cache_root)
                 && metadata_path.exists()
             {
                 std::fs::remove_file(&metadata_path).with_context(|| {
@@ -421,8 +438,8 @@ pub async fn delete_model_by_identifier_with_catalog(
     }
 
     for path in &all_paths {
-        if let Some(record) = load_model_usage_record_for_path(path) {
-            let usage_dir = usage::model_usage_cache_dir();
+        if let Some(record) = usage::load_model_usage_record_for_path_in(path, cache_root) {
+            let usage_dir = usage::model_usage_cache_dir_in(cache_root);
             let record_path = usage::usage_record_path(&usage_dir, &record.lookup_key);
             if removed_record_paths.insert(record_path.clone()) && record_path.exists() {
                 std::fs::remove_file(&record_path)
@@ -470,16 +487,11 @@ pub async fn delete_model_by_identifier_with_catalog(
     })
 }
 
-/// Load a model usage record for a given path.
-fn load_model_usage_record_for_path(path: &std::path::Path) -> Option<usage::ModelUsageRecord> {
-    usage::load_model_usage_record_for_path(path)
-}
-
-fn ensure_delete_path_allowed(path: &Path) -> Result<()> {
+fn ensure_delete_path_allowed(path: &Path, cache_root: &Path) -> Result<()> {
     let normalized = normalize_path(path);
     let hf_root = normalize_path(&huggingface_hub_cache_dir());
-    let mesh_root = normalize_path(&mesh_llm_cache_dir());
-    if normalized.starts_with(&hf_root) || normalized.starts_with(&mesh_root) {
+    let app_root = normalize_path(cache_root);
+    if normalized.starts_with(&hf_root) || normalized.starts_with(&app_root) {
         Ok(())
     } else {
         bail!(
@@ -525,5 +537,23 @@ mod tests {
             "GLM-5-UD-IQ2_XXS"
         );
         assert_eq!(normalized_gguf_stem("Qwen3-8B-Q4_K_M"), "Qwen3-8B-Q4_K_M");
+    }
+
+    #[test]
+    fn deletion_only_accepts_the_supplied_application_cache_root() {
+        let temp = tempfile::tempdir().expect("temp directory");
+        let skippy_root = temp.path().join("skippy");
+        let mesh_root = temp.path().join("mesh");
+        std::fs::create_dir_all(&skippy_root).expect("skippy root");
+        std::fs::create_dir_all(&mesh_root).expect("mesh root");
+        let skippy_model = skippy_root.join("model.gguf");
+        let mesh_model = mesh_root.join("model.gguf");
+        std::fs::write(&skippy_model, b"skippy").expect("skippy model");
+        std::fs::write(&mesh_model, b"mesh").expect("mesh model");
+
+        assert!(collect_delete_paths_in(std::slice::from_ref(&skippy_model), &skippy_root).is_ok());
+        assert!(collect_delete_paths_in(std::slice::from_ref(&mesh_model), &mesh_root).is_ok());
+        assert!(collect_delete_paths_in(std::slice::from_ref(&mesh_model), &skippy_root).is_err());
+        assert!(collect_delete_paths_in(std::slice::from_ref(&skippy_model), &mesh_root).is_err());
     }
 }

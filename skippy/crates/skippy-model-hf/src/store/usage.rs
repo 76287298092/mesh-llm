@@ -1,5 +1,5 @@
 use super::local::{
-    gguf_metadata_cache_path, huggingface_hub_cache_dir, huggingface_identity_for_path,
+    gguf_metadata_cache_path_in, huggingface_hub_cache_dir, huggingface_identity_for_path,
 };
 use anyhow::{Context, Result};
 use chrono::{DateTime, Duration as ChronoDuration, Utc};
@@ -87,11 +87,22 @@ struct PathHuggingFaceIdentity {
 }
 
 pub fn model_usage_cache_dir() -> PathBuf {
-    super::mesh_llm_cache_dir().join("model-usage")
+    model_usage_cache_dir_in(&crate::skippy_cache_dir())
+}
+
+pub fn model_usage_cache_dir_in(cache_root: &Path) -> PathBuf {
+    cache_root.join("model-usage")
 }
 
 pub fn load_model_usage_record_for_path(path: &Path) -> Option<ModelUsageRecord> {
-    let usage_dir = model_usage_cache_dir();
+    load_model_usage_record_for_path_in(path, &crate::skippy_cache_dir())
+}
+
+pub fn load_model_usage_record_for_path_in(
+    path: &Path,
+    cache_root: &Path,
+) -> Option<ModelUsageRecord> {
+    let usage_dir = model_usage_cache_dir_in(cache_root);
     let root = huggingface_hub_cache_dir();
     let lookup_key = usage_lookup_key(path, &root)?;
     resolve_record_location(&usage_dir, &lookup_key, &[normalize_path(path)]).record
@@ -103,7 +114,23 @@ pub fn track_model_usage(
     model_ref: Option<&str>,
     source: Option<&str>,
 ) -> Result<()> {
-    let usage_dir = model_usage_cache_dir();
+    track_model_usage_in(
+        &crate::skippy_cache_dir(),
+        path,
+        display_name,
+        model_ref,
+        source,
+    )
+}
+
+pub fn track_model_usage_in(
+    cache_root: &Path,
+    path: &Path,
+    display_name: Option<&str>,
+    model_ref: Option<&str>,
+    source: Option<&str>,
+) -> Result<()> {
+    let usage_dir = model_usage_cache_dir_in(cache_root);
     let root = huggingface_hub_cache_dir();
     record_model_usage_in_dir(
         &usage_dir,
@@ -124,7 +151,25 @@ pub fn track_managed_model_usage(
     model_ref: Option<&str>,
     source: &str,
 ) -> Result<()> {
-    let usage_dir = model_usage_cache_dir();
+    track_managed_model_usage_in(
+        &crate::skippy_cache_dir(),
+        primary_path,
+        managed_paths,
+        display_name,
+        model_ref,
+        source,
+    )
+}
+
+pub fn track_managed_model_usage_in(
+    cache_root: &Path,
+    primary_path: &Path,
+    managed_paths: &[PathBuf],
+    display_name: &str,
+    model_ref: Option<&str>,
+    source: &str,
+) -> Result<()> {
+    let usage_dir = model_usage_cache_dir_in(cache_root);
     let root = huggingface_hub_cache_dir();
     record_model_usage_in_dir(
         &usage_dir,
@@ -139,13 +184,27 @@ pub fn track_managed_model_usage(
 }
 
 pub fn plan_model_cleanup(unused_since: Option<Duration>) -> Result<ModelCleanupPlan> {
-    let usage_dir = model_usage_cache_dir();
+    plan_model_cleanup_in(&crate::skippy_cache_dir(), unused_since)
+}
+
+pub fn plan_model_cleanup_in(
+    cache_root: &Path,
+    unused_since: Option<Duration>,
+) -> Result<ModelCleanupPlan> {
+    let usage_dir = model_usage_cache_dir_in(cache_root);
     let root = huggingface_hub_cache_dir();
     plan_model_cleanup_in_dir(&usage_dir, &root, unused_since)
 }
 
 pub fn execute_model_cleanup(unused_since: Option<Duration>) -> Result<ModelCleanupResult> {
-    let usage_dir = model_usage_cache_dir();
+    execute_model_cleanup_in(&crate::skippy_cache_dir(), unused_since)
+}
+
+pub fn execute_model_cleanup_in(
+    cache_root: &Path,
+    unused_since: Option<Duration>,
+) -> Result<ModelCleanupResult> {
+    let usage_dir = model_usage_cache_dir_in(cache_root);
     let root = huggingface_hub_cache_dir();
     let records = load_model_usage_records_from_dir(&usage_dir);
     let cutoff = unused_since
@@ -154,7 +213,7 @@ pub fn execute_model_cleanup(unused_since: Option<Duration>) -> Result<ModelClea
         .map(|age| Utc::now() - age);
     let mut skipped_recent = 0usize;
     let entries = plan_cleanup_entries(records, &usage_dir, &root, cutoff, &mut skipped_recent);
-    execute_model_cleanup_entries(entries)
+    execute_model_cleanup_entries(entries, cache_root)
 }
 
 fn load_model_usage_records_from_dir(dir: &Path) -> Vec<ModelUsageRecord> {
@@ -360,7 +419,10 @@ fn plan_cleanup_entries(
     entries
 }
 
-fn execute_model_cleanup_entries(entries: Vec<CleanupEntry>) -> Result<ModelCleanupResult> {
+fn execute_model_cleanup_entries(
+    entries: Vec<CleanupEntry>,
+    cache_root: &Path,
+) -> Result<ModelCleanupResult> {
     let mut result = ModelCleanupResult::default();
     for entry in entries {
         for path in &entry.removable_paths {
@@ -371,7 +433,7 @@ fn execute_model_cleanup_entries(entries: Vec<CleanupEntry>) -> Result<ModelClea
                 std::fs::remove_file(path).with_context(|| format!("Remove {}", path.display()))?;
                 result.removed_files += 1;
             }
-            if let Some(cache_path) = gguf_metadata_cache_path(path)
+            if let Some(cache_path) = gguf_metadata_cache_path_in(path, cache_root)
                 && cache_path.exists()
             {
                 std::fs::remove_file(&cache_path)
@@ -615,6 +677,32 @@ fn prune_empty_ancestors(path: &Path, stop_at: &Path) {
 mod tests {
     use super::*;
     use std::sync::atomic::{AtomicU64, Ordering};
+
+    #[test]
+    fn usage_records_are_isolated_by_cache_root() {
+        let temp = tempfile::tempdir().expect("temp directory");
+        let hf_root = temp.path().join("hf");
+        let model = hf_root.join("model.gguf");
+        std::fs::create_dir_all(&hf_root).expect("hf root");
+        std::fs::write(&model, b"fixture").expect("model fixture");
+        let skippy_dir = model_usage_cache_dir_in(&temp.path().join("skippy"));
+        let mesh_dir = model_usage_cache_dir_in(&temp.path().join("mesh"));
+
+        record_model_usage_in_dir(
+            &mesh_dir,
+            &hf_root,
+            &model,
+            &[],
+            Some("Mesh model"),
+            None,
+            Some("test"),
+            false,
+        )
+        .expect("record model usage");
+
+        assert_eq!(load_model_usage_records_from_dir(&mesh_dir).len(), 1);
+        assert!(load_model_usage_records_from_dir(&skippy_dir).is_empty());
+    }
 
     static TEMP_DIR_COUNTER: AtomicU64 = AtomicU64::new(0);
 
@@ -910,7 +998,8 @@ mod tests {
             None,
             &mut skipped_recent,
         );
-        let result = execute_model_cleanup_entries(entries).expect("cleanup should succeed");
+        let result =
+            execute_model_cleanup_entries(entries, &usage_dir).expect("cleanup should succeed");
         assert_eq!(result.removed_candidates, 1);
         assert_eq!(result.removed_files, 1);
         assert_eq!(result.removed_records, 1);

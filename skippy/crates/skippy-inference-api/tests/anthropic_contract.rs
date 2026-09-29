@@ -545,10 +545,22 @@ fn review_preserves_mesh_hooks() {
     )
     .unwrap();
     assert!(
-        skippy_inference_api::chat_mesh_hooks_enabled(&req),
+        skippy_inference_api::chat_skippy_hooks_enabled(&req),
         "mesh_hooks flag discarded"
     );
 }
+
+#[test]
+fn review_preserves_skippy_hooks() {
+    let mut body = messages_body();
+    body["skippy_hooks"] = json!(true);
+    let req = skippy_inference_api::anthropic::messages_request_to_chat_request(
+        serde_json::from_value(body).unwrap(),
+    )
+    .unwrap();
+    assert!(skippy_inference_api::chat_skippy_hooks_enabled(&req));
+}
+
 #[test]
 fn review_preserves_image_content() {
     let mut body = messages_body();

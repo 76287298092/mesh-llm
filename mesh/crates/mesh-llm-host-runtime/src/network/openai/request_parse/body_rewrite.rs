@@ -70,7 +70,7 @@ fn replace_body(raw: &mut Vec<u8>, header_end: usize, body: &[u8]) {
 
 /// Set the hook flag only on an actual JSON object. Multipart and binary
 /// requests remain byte-identical, even when their media contains `{`.
-pub fn inject_mesh_hooks_flag(raw: &mut Vec<u8>, enabled: bool) {
+pub fn inject_skippy_hooks_flag(raw: &mut Vec<u8>, enabled: bool) {
     let Some(headers) = body_headers(raw) else {
         return;
     };
@@ -94,6 +94,8 @@ pub fn inject_mesh_hooks_flag(raw: &mut Vec<u8>, enabled: bool) {
     let Some(object) = json.as_object_mut() else {
         return;
     };
+    object.insert("skippy_hooks".into(), enabled.into());
+    // Keep the old field for peers that have not yet learned `skippy_hooks`.
     object.insert("mesh_hooks".into(), enabled.into());
     let Ok(body) = serde_json::to_vec(&json) else {
         return;

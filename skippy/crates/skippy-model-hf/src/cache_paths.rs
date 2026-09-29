@@ -12,8 +12,9 @@ const HUB_CACHE_ALIAS_ENV: &str = "HUGGINGFACE_HUB_CACHE";
 const HF_HOME_ENV: &str = "HF_HOME";
 const XET_CACHE_ENV: &str = "HF_XET_CACHE";
 const XDG_CACHE_HOME_ENV: &str = "XDG_CACHE_HOME";
-const MESH_LLM_DATA_DIR_ENV: &str = "MESH_LLM_DATA_DIR";
-const WRITE_PROBE_PREFIX: &str = ".mesh-llm-write-probe";
+const SKIPPY_DATA_DIR_ENV: &str = "SKIPPY_DATA_DIR";
+const SKIPPY_CACHE_DIR_ENV: &str = "SKIPPY_CACHE_DIR";
+const WRITE_PROBE_PREFIX: &str = ".skippy-write-probe";
 
 static WRITE_PROBE_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
@@ -45,7 +46,7 @@ impl fmt::Display for DownloadDirectoryFallback {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             formatter,
-            "{} {} is not writable ({}); using {}. Set {} or {} to choose a different writable location.",
+            "{} {} is not writable ({}); using {}. Set {} to choose a different writable location.",
             self.kind,
             self.requested.display(),
             self.error,
@@ -54,7 +55,6 @@ impl fmt::Display for DownloadDirectoryFallback {
                 DownloadDirectoryKind::HuggingFaceHub => HUB_CACHE_ENV,
                 DownloadDirectoryKind::HuggingFaceXet => XET_CACHE_ENV,
             },
-            MESH_LLM_DATA_DIR_ENV,
         )
     }
 }
@@ -91,18 +91,32 @@ pub fn huggingface_xet_cache_dir() -> PathBuf {
     requested_xet_cache_dir()
 }
 
-pub fn mesh_llm_cache_dir() -> PathBuf {
+pub fn skippy_cache_dir() -> PathBuf {
+    if let Some(path) = env_path(SKIPPY_CACHE_DIR_ENV) {
+        return path;
+    }
     dirs::cache_dir()
         .or_else(|| dirs::home_dir().map(|home| home.join(".cache")))
-        .unwrap_or_else(|| std::env::temp_dir().join("mesh-llm-cache"))
-        .join("mesh-llm")
+        .unwrap_or_else(|| std::env::temp_dir().join("skippy-cache"))
+        .join("skippy")
 }
 
 pub fn prepare_download_directories() -> Result<PreparedDownloadDirectories> {
+    prepare_download_directories_with_data_roots(&fallback_data_roots())
+}
+
+/// Prepare the Hub caches using fallback application-data roots chosen by the caller.
+/// Mesh supplies its own roots; standalone Skippy uses `prepare_download_directories`.
+pub fn prepare_download_directories_with_data_roots(
+    fallback_roots: &[PathBuf],
+) -> Result<PreparedDownloadDirectories> {
+    let default_root = fallback_roots.first().ok_or_else(|| {
+        anyhow::anyhow!("at least one application-data fallback root is required")
+    })?;
     prepare_download_directories_in(
-        requested_hub_cache_dir(),
-        requested_xet_cache_dir(),
-        fallback_data_roots(),
+        requested_hub_cache_dir_in(default_root),
+        requested_xet_cache_dir_in(default_root),
+        fallback_roots.to_vec(),
     )
 }
 
@@ -112,28 +126,35 @@ pub fn download_cache_diagnostic() -> String {
 
 pub fn download_cache_diagnostic_for(hub_cache: &Path) -> String {
     format!(
-        "Hub cache: {}; Xet cache: {}. Ensure both paths are writable, or set {} to a writable application-data directory",
+        "Hub cache: {}; Xet cache: {}. Ensure both paths are writable, or set HF_HUB_CACHE and HF_XET_CACHE to writable directories",
         hub_cache.display(),
         huggingface_xet_cache_dir().display(),
-        MESH_LLM_DATA_DIR_ENV,
     )
 }
 
 fn requested_hub_cache_dir() -> PathBuf {
+    requested_hub_cache_dir_in(&default_data_root())
+}
+
+fn requested_hub_cache_dir_in(data_root: &Path) -> PathBuf {
     env_path(HUB_CACHE_ENV)
         .or_else(|| env_path(HUB_CACHE_ALIAS_ENV))
         .or_else(|| env_path(HF_HOME_ENV).map(|path| path.join("hub")))
         .or_else(|| env_path(XDG_CACHE_HOME_ENV).map(|path| path.join("huggingface").join("hub")))
         .or_else(|| dirs::cache_dir().map(|path| path.join("huggingface").join("hub")))
-        .unwrap_or_else(|| default_data_root().join("huggingface").join("hub"))
+        .unwrap_or_else(|| data_root.join("huggingface").join("hub"))
 }
 
 fn requested_xet_cache_dir() -> PathBuf {
+    requested_xet_cache_dir_in(&default_data_root())
+}
+
+fn requested_xet_cache_dir_in(data_root: &Path) -> PathBuf {
     env_path(XET_CACHE_ENV)
         .or_else(|| env_path(HF_HOME_ENV).map(|path| path.join("xet")))
         .or_else(|| env_path(XDG_CACHE_HOME_ENV).map(|path| path.join("huggingface").join("xet")))
         .or_else(|| dirs::cache_dir().map(|path| path.join("huggingface").join("xet")))
-        .unwrap_or_else(|| default_data_root().join("huggingface").join("xet"))
+        .unwrap_or_else(|| data_root.join("huggingface").join("xet"))
 }
 
 fn env_path(key: &str) -> Option<PathBuf> {
@@ -150,24 +171,24 @@ fn nonempty_path(value: OsString) -> Option<PathBuf> {
 }
 
 fn default_data_root() -> PathBuf {
-    env_path(MESH_LLM_DATA_DIR_ENV)
-        .or_else(|| dirs::data_local_dir().map(|path| path.join("mesh-llm")))
-        .or_else(|| dirs::home_dir().map(|path| path.join(".mesh-llm").join("data")))
-        .unwrap_or_else(|| std::env::temp_dir().join("mesh-llm-data"))
+    env_path(SKIPPY_DATA_DIR_ENV)
+        .or_else(|| dirs::data_local_dir().map(|path| path.join("skippy")))
+        .or_else(|| dirs::home_dir().map(|path| path.join(".skippy").join("data")))
+        .unwrap_or_else(|| std::env::temp_dir().join("skippy-data"))
 }
 
 fn fallback_data_roots() -> Vec<PathBuf> {
     let mut roots = Vec::new();
-    if let Some(path) = env_path(MESH_LLM_DATA_DIR_ENV) {
+    if let Some(path) = env_path(SKIPPY_DATA_DIR_ENV) {
         roots.push(path);
     }
     if let Some(path) = dirs::data_local_dir() {
-        roots.push(path.join("mesh-llm"));
+        roots.push(path.join("skippy"));
     }
     if let Some(path) = dirs::home_dir() {
-        roots.push(path.join(".mesh-llm").join("data"));
+        roots.push(path.join(".skippy").join("data"));
     }
-    roots.push(std::env::temp_dir().join("mesh-llm-data"));
+    roots.push(std::env::temp_dir().join("skippy-data"));
     deduplicate_paths(roots)
 }
 
@@ -358,6 +379,6 @@ mod tests {
         assert!(message.contains(&os_error));
         assert!(message.contains("/writable/data/huggingface/xet"));
         assert!(message.contains("HF_XET_CACHE"));
-        assert!(message.contains("MESH_LLM_DATA_DIR"));
+        assert!(!message.contains("MESH_LLM_DATA_DIR"));
     }
 }

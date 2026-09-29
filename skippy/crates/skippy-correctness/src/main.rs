@@ -25,7 +25,7 @@ fn prepare_model_download_directories() {
         Err(error) => {
             eprintln!(
                 "⚠ Unable to prepare model download directories: {error:#}. \
-                 Model downloads may fail; set MESH_LLM_DATA_DIR to a writable directory."
+                 Model downloads may fail; set SKIPPY_DATA_DIR to a writable directory."
             );
             return;
         }

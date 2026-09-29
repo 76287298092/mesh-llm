@@ -6,7 +6,7 @@ pub use skippy_api::package::acquisition::{
 use std::path::{Path, PathBuf};
 
 fn integrity_cache_dir() -> PathBuf {
-    skippy_model_hf::store::mesh_llm_cache_dir().join("skippy-package-integrity")
+    crate::mesh_cache_dir().join("skippy-package-integrity")
 }
 
 pub fn verify_resolved_hf_package_files(

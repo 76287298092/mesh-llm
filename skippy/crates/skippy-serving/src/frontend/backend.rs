@@ -79,7 +79,7 @@ use skippy_inference_api::TerminalGuard;
 use skippy_inference_api::TerminalGuardedChatStream;
 use skippy_inference_api::apply_chat_hook_outcome;
 use skippy_inference_api::capsule_id_is_valid;
-use skippy_inference_api::chat_mesh_hooks_enabled;
+use skippy_inference_api::chat_skippy_hooks_enabled;
 use skippy_metrics::attr as attr_key;
 use skippy_protocol::StageConfig;
 use skippy_runtime::{
@@ -1671,7 +1671,7 @@ impl StageOpenAiBackend {
         let hooks = self
             .hook_policy
             .clone()
-            .filter(|_| chat_mesh_hooks_enabled(&request));
+            .filter(|_| chat_skippy_hooks_enabled(&request));
         let exchange_id = uuid::Uuid::new_v4().to_string();
         let mut guard = hooks
             .as_ref()
@@ -1758,7 +1758,7 @@ impl StageOpenAiBackend {
         let hooks = self
             .hook_policy
             .clone()
-            .filter(|_| chat_mesh_hooks_enabled(&request));
+            .filter(|_| chat_skippy_hooks_enabled(&request));
         let exchange_id = uuid::Uuid::new_v4().to_string();
         let mut guard = hooks
             .as_ref()

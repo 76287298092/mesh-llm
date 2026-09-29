@@ -23,9 +23,10 @@ pub async fn resolve_model_identifier(identifier: &str) -> anyhow::Result<Vec<st
 }
 
 pub async fn delete_model_by_identifier(identifier: &str) -> anyhow::Result<DeleteResult> {
-    skippy_model_hf::store::delete::delete_model_by_identifier_with_catalog(
+    skippy_model_hf::store::delete::delete_model_by_identifier_with_catalog_in(
         identifier,
         &HostDeleteCatalog,
+        &crate::models::local::mesh_llm_cache_dir(),
     )
     .await
 }

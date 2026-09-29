@@ -17,7 +17,7 @@ use skippy_inference_api::OpenAiError;
 use skippy_inference_api::OpenAiResult;
 use skippy_inference_api::PrefillHookSignals;
 use skippy_inference_api::apply_chat_hook_outcome;
-use skippy_inference_api::chat_mesh_hooks_enabled;
+use skippy_inference_api::chat_skippy_hooks_enabled;
 use skippy_runtime::ChatTemplateJsonOptions;
 use skippy_runtime::ChatTemplateOptions;
 use skippy_runtime::GenerationSignalWindow;
@@ -336,7 +336,7 @@ impl StageOpenAiBackend {
         let Some(request) = hook_request.as_mut() else {
             return Ok(None);
         };
-        if !chat_mesh_hooks_enabled(request) {
+        if !chat_skippy_hooks_enabled(request) {
             return Ok(None);
         }
 
@@ -389,7 +389,7 @@ impl StageOpenAiBackend {
     ) -> bool {
         self.hook_policy.is_some()
             && hook_runtime.is_some()
-            && hook_request.as_ref().is_some_and(chat_mesh_hooks_enabled)
+            && hook_request.as_ref().is_some_and(chat_skippy_hooks_enabled)
     }
 }
 

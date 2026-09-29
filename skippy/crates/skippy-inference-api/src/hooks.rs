@@ -21,7 +21,12 @@ use crate::{
     system_one::{SystemOneRequest, SystemOneResponse},
 };
 
-pub const MESH_HOOKS_FIELD: &str = "mesh_hooks";
+/// Canonical request extension that enables Skippy serving hooks.
+pub const SKIPPY_HOOKS_FIELD: &str = "skippy_hooks";
+/// Accepted for requests created by older Mesh clients and peers.
+pub const LEGACY_MESH_HOOKS_FIELD: &str = "mesh_hooks";
+/// Transitional Rust API alias. New callers should use `SKIPPY_HOOKS_FIELD`.
+pub const MESH_HOOKS_FIELD: &str = LEGACY_MESH_HOOKS_FIELD;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ChatHookOutcome {
@@ -670,18 +675,33 @@ impl OpenAiBackend for HookedOpenAiBackend {
     }
 }
 
-pub fn chat_mesh_hooks_enabled(request: &ChatCompletionRequest) -> bool {
+pub fn chat_skippy_hooks_enabled(request: &ChatCompletionRequest) -> bool {
     request
         .extra
-        .get(MESH_HOOKS_FIELD)
+        .get(SKIPPY_HOOKS_FIELD)
+        .or_else(|| request.extra.get(LEGACY_MESH_HOOKS_FIELD))
         .and_then(Value::as_bool)
         .unwrap_or(false)
 }
 
-pub fn set_chat_mesh_hooks_enabled(request: &mut ChatCompletionRequest, enabled: bool) {
+pub fn set_chat_skippy_hooks_enabled(request: &mut ChatCompletionRequest, enabled: bool) {
     request
         .extra
-        .insert(MESH_HOOKS_FIELD.to_string(), Value::Bool(enabled));
+        .insert(SKIPPY_HOOKS_FIELD.to_string(), Value::Bool(enabled));
+    // A request sent to an older peer must still control its hook pipeline.
+    request
+        .extra
+        .insert(LEGACY_MESH_HOOKS_FIELD.to_string(), Value::Bool(enabled));
+}
+
+/// Transitional Rust API alias for callers compiled against older releases.
+pub fn chat_mesh_hooks_enabled(request: &ChatCompletionRequest) -> bool {
+    chat_skippy_hooks_enabled(request)
+}
+
+/// Transitional Rust API alias for callers compiled against older releases.
+pub fn set_chat_mesh_hooks_enabled(request: &mut ChatCompletionRequest, enabled: bool) {
+    set_chat_skippy_hooks_enabled(request, enabled);
 }
 
 pub fn inject_text_into_chat_messages(messages: &mut Vec<ChatMessage>, text: impl Into<String>) {

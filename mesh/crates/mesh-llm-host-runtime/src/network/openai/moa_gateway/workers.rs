@@ -293,6 +293,7 @@ impl moa::ModelBackend for LocalModelBackend {
             "temperature": sampling.temperature,
             "top_p": sampling.top_p,
             "stream": false,
+            "skippy_hooks": false,
             "mesh_hooks": false,
         });
         if let Some(tools) = tools {
@@ -354,6 +355,7 @@ impl moa::ModelBackend for RemoteModelBackend {
             "temperature": sampling.temperature,
             "top_p": sampling.top_p,
             "stream": false,
+            "skippy_hooks": false,
             "mesh_hooks": false,
         });
         if let Some(tools) = tools {

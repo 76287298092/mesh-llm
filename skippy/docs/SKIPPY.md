@@ -1,5 +1,8 @@
 # Skippy Integration Plan
 
+> Historical Mesh integration plan. For the current standalone Skippy product,
+> ownership, and API contracts, see [Skippy architecture](ARCHITECTURE.md).
+
 Track the migration plan here for fully replacing mesh-llm's current
 `llama-server` + `rpc-server` serving path with the skippy staged runtime.
 

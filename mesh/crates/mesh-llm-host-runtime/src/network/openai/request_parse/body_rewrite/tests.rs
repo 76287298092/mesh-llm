@@ -58,13 +58,13 @@ async fn automatic_audio_rewrite_preserves_binary_bytes_and_replaces_chunk_frami
             assert_eq!(request.model_name.as_deref(), Some("auto"));
             // Host ingress injects first; the passive path injects after rewriting.
             let original = request.raw.clone();
-            inject_mesh_hooks_flag(&mut request.raw, true);
+            inject_skippy_hooks_flag(&mut request.raw, true);
             assert_eq!(
                 request.raw, original,
                 "hooks must not modify audio or framing"
             );
             rewrite_model_field(&mut request, "audio-model");
-            inject_mesh_hooks_flag(&mut request.raw, true);
+            inject_skippy_hooks_flag(&mut request.raw, true);
             let headers = body_headers(&request.raw).unwrap();
             assert!(!headers.chunked);
             let body = &request.raw[headers.end..];
@@ -92,7 +92,7 @@ fn hook_injection_rejects_non_json_and_sets_one_valid_flag() {
     ] {
         let mut raw = raw_request("/v1/chat/completions", content_type, body, false);
         let before = raw.clone();
-        inject_mesh_hooks_flag(&mut raw, true);
+        inject_skippy_hooks_flag(&mut raw, true);
         assert_eq!(raw, before);
     }
     for body in [
@@ -106,14 +106,21 @@ fn hook_injection_rejects_non_json_and_sets_one_valid_flag() {
                 body,
                 chunked,
             );
-            inject_mesh_hooks_flag(&mut raw, true);
+            inject_skippy_hooks_flag(&mut raw, true);
             let headers = body_headers(&raw).unwrap();
             assert!(!headers.chunked);
             let json: serde_json::Value = serde_json::from_slice(&raw[headers.end..]).unwrap();
             assert_eq!(json["mesh_hooks"], true);
+            assert_eq!(json["skippy_hooks"], true);
             assert_eq!(
                 String::from_utf8_lossy(&raw[headers.end..])
                     .matches("mesh_hooks")
+                    .count(),
+                1
+            );
+            assert_eq!(
+                String::from_utf8_lossy(&raw[headers.end..])
+                    .matches("skippy_hooks")
                     .count(),
                 1
             );

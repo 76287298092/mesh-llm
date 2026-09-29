@@ -38,9 +38,8 @@
 //! Persistence is best-effort: a failure to read or write the record falls
 //! back to re-hashing, never to a fabricated digest.
 //!
-//! The cache directory is injected rather than resolved here because the
-//! host's `mesh_llm_cache_dir()` lives in `skippy-model-hf` -- a Skippy
-//! crate this Mesh-layer module must not import. The host passes
+//! The cache directory is injected rather than resolved here because Mesh's
+//! product cache policy lives in `mesh-llm-skippy-adapter`. The host passes
 //! `mesh_llm_cache_dir().join("weights-digest")`; tests pass a temp dir.
 
 use serde::{Deserialize, Serialize};

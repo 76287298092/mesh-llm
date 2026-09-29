@@ -55,10 +55,11 @@ pub use guardrails::{
 };
 pub use hooks::{
     ChatCompletionOutcome, ChatExchangeRoute, ChatHookAction, ChatHookOutcome, ChatMediaKind,
-    ChatMediaRef, GenerationHookSignals, HookedOpenAiBackend, MESH_HOOKS_FIELD, OpenAiHookPolicy,
-    PrefillHookSignals, TerminalGuard, TerminalGuardedChatStream, apply_chat_hook_outcome,
-    chat_mesh_hooks_enabled, first_chat_media, inject_text_into_chat_messages,
-    set_chat_mesh_hooks_enabled,
+    ChatMediaRef, GenerationHookSignals, HookedOpenAiBackend, LEGACY_MESH_HOOKS_FIELD,
+    MESH_HOOKS_FIELD, OpenAiHookPolicy, PrefillHookSignals, SKIPPY_HOOKS_FIELD, TerminalGuard,
+    TerminalGuardedChatStream, apply_chat_hook_outcome, chat_mesh_hooks_enabled,
+    chat_skippy_hooks_enabled, first_chat_media, inject_text_into_chat_messages,
+    set_chat_mesh_hooks_enabled, set_chat_skippy_hooks_enabled,
 };
 pub use lifecycle::{
     OpenAiBackendOperation, OpenAiFailure, OpenAiFrontendRoute, OpenAiLifecycleContext,

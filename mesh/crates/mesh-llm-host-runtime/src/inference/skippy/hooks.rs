@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use serde_json::Value;
 use skippy_inference_api::{
     ChatCompletionRequest, ChatHookOutcome, ChatMediaKind, GenerationHookSignals, OpenAiHookPolicy,
-    OpenAiResult, PrefillHookSignals, chat_mesh_hooks_enabled, first_chat_media,
+    OpenAiResult, PrefillHookSignals, chat_skippy_hooks_enabled, first_chat_media,
 };
 
 use crate::{inference::virtual_llm, mesh};
@@ -43,7 +43,7 @@ impl OpenAiHookPolicy for MeshAutoHookPolicy {
         &self,
         request: &mut ChatCompletionRequest,
     ) -> OpenAiResult<ChatHookOutcome> {
-        if !chat_mesh_hooks_enabled(request) {
+        if !chat_skippy_hooks_enabled(request) {
             return Ok(ChatHookOutcome::none());
         }
 
@@ -68,7 +68,7 @@ impl OpenAiHookPolicy for MeshAutoHookPolicy {
         request: &mut ChatCompletionRequest,
         signals: PrefillHookSignals,
     ) -> OpenAiResult<ChatHookOutcome> {
-        if !chat_mesh_hooks_enabled(request) {
+        if !chat_skippy_hooks_enabled(request) {
             return Ok(ChatHookOutcome::none());
         }
 
@@ -100,7 +100,7 @@ impl OpenAiHookPolicy for MeshAutoHookPolicy {
         request: &mut ChatCompletionRequest,
         signals: GenerationHookSignals,
     ) -> OpenAiResult<ChatHookOutcome> {
-        if !chat_mesh_hooks_enabled(request) {
+        if !chat_skippy_hooks_enabled(request) {
             return Ok(ChatHookOutcome::none());
         }
 

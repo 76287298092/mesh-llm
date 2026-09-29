@@ -16,7 +16,7 @@ use skippy_inference_api::ChatHookOutcome;
 use skippy_inference_api::FinishReason;
 use skippy_inference_api::OpenAiHookPolicy;
 use skippy_inference_api::Usage;
-use skippy_inference_api::set_chat_mesh_hooks_enabled;
+use skippy_inference_api::set_chat_skippy_hooks_enabled;
 use tokio::runtime::Runtime;
 
 /// A disabled telemetry sink for `StreamEventSender` construction in tests.
@@ -1330,7 +1330,7 @@ fn mesh_hooks_request(model: &str) -> ChatCompletionRequest {
         "messages": [{"role": "user", "content": "hi"}],
     }))
     .expect("minimal chat completion request");
-    set_chat_mesh_hooks_enabled(&mut request, true);
+    set_chat_skippy_hooks_enabled(&mut request, true);
     request
 }
 

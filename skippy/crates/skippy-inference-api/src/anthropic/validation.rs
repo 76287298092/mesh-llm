@@ -30,6 +30,7 @@ pub(super) fn validate_request(request: &AnthropicMessagesRequest) -> Result<(),
         &request.extra,
         &[
             "mesh_hooks",
+            "skippy_hooks",
             "mesh_guardrails",
             "mesh_agent_session",
             "mesh_agent_session_source",

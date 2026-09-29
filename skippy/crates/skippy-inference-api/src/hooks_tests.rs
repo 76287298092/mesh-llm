@@ -157,7 +157,7 @@ impl OpenAiHookPolicy for MediaRescueHook {
 }
 
 #[test]
-fn chat_mesh_hooks_enabled_reads_extra_flag() {
+fn chat_skippy_hooks_enabled_reads_canonical_and_legacy_flags() {
     let mut request: ChatCompletionRequest = serde_json::from_value(json!({
         "model": "auto",
         "messages": [{"role": "user", "content": "hello"}],
@@ -165,11 +165,23 @@ fn chat_mesh_hooks_enabled_reads_extra_flag() {
     }))
     .unwrap();
 
-    assert!(chat_mesh_hooks_enabled(&request));
+    assert!(chat_skippy_hooks_enabled(&request));
 
-    set_chat_mesh_hooks_enabled(&mut request, false);
+    set_chat_skippy_hooks_enabled(&mut request, false);
 
-    assert!(!chat_mesh_hooks_enabled(&request));
+    assert!(!chat_skippy_hooks_enabled(&request));
+    assert_eq!(request.extra.get(SKIPPY_HOOKS_FIELD), Some(&json!(false)));
+    assert_eq!(
+        request.extra.get(LEGACY_MESH_HOOKS_FIELD),
+        Some(&json!(false))
+    );
+
+    request.extra.insert(SKIPPY_HOOKS_FIELD.into(), json!(true));
+    assert!(chat_skippy_hooks_enabled(&request));
+    request
+        .extra
+        .insert(LEGACY_MESH_HOOKS_FIELD.into(), json!(false));
+    assert!(chat_skippy_hooks_enabled(&request));
 }
 
 #[test]

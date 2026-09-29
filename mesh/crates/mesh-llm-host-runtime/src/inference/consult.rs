@@ -167,6 +167,7 @@ fn consultation_request_body(model: &str, messages: Vec<Value>, max_tokens: u32)
         // Disable hooks on the peer — prevent recursive consultation loops.
         // Without this, the peer could consult another peer about our request,
         // which could consult another, etc.
+        "skippy_hooks": false,
         "mesh_hooks": false,
     })
 }
@@ -454,7 +455,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn consultation_request_body_disables_recursive_mesh_hooks() {
+    fn consultation_request_body_disables_recursive_skippy_hooks() {
         let body = consultation_request_body(
             "vision-model",
             vec![json!({"role": "user", "content": "describe"})],
@@ -462,6 +463,7 @@ mod tests {
         );
 
         assert_eq!(body["mesh_hooks"], false);
+        assert_eq!(body["skippy_hooks"], false);
         assert_eq!(body["model"], "vision-model");
         assert_eq!(body["stream"], false);
     }
@@ -472,6 +474,7 @@ mod tests {
         let body = consultation_request_body("audio-model", messages, 512);
 
         assert_eq!(body["mesh_hooks"], false);
+        assert_eq!(body["skippy_hooks"], false);
         assert_eq!(body["model"], "audio-model");
         assert_eq!(
             body["messages"][0]["content"][1]["input_audio"]["url"],

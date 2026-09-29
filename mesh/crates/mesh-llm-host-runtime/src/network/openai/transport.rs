@@ -22,8 +22,8 @@ use std::time::{Duration, Instant};
 pub use super::request_normalize::{ResponseAdapter, release_request_objects};
 pub(crate) use super::request_parse::read_http_request_with_plugin_manager_with_context;
 pub use super::request_parse::{
-    BufferedHttpRequest, inject_mesh_hooks_flag, is_legacy_lifecycle_path, is_models_list_request,
-    read_http_request, rewrite_model_field, rewrite_public_model_alias,
+    BufferedHttpRequest, inject_skippy_hooks_flag, is_legacy_lifecycle_path,
+    is_models_list_request, read_http_request, rewrite_model_field, rewrite_public_model_alias,
 };
 pub(crate) use super::response::{
     PeerCapsuleIdSink, PipelineCapsuleNonce, PipelineProxyResult, append_safe_header,
@@ -608,7 +608,7 @@ async fn build_mesh_request_plan(
     }
     rewrite_effective_model(request, effective_model.as_deref());
     if is_auto_request {
-        inject_mesh_hooks_flag(&mut request.raw, true);
+        inject_skippy_hooks_flag(&mut request.raw, true);
     }
     if track_demand && let Some(name) = effective_model.as_deref() {
         node.record_request(name);

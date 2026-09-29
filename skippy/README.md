@@ -49,6 +49,7 @@ shared HTTP surface in
 
 ## Key guides
 
+- [Architecture and API boundaries](docs/ARCHITECTURE.md)
 - [Configuration reference](docs/CONFIGURATION.md)
 - [Split serving](docs/SKIPPY_SPLITS.md)
 - [Layer package repositories](docs/LAYER_PACKAGE_REPOS.md)

@@ -731,7 +731,7 @@ fn maybe_enable_auto_route_hooks(
     if !is_automatic {
         return;
     }
-    proxy::inject_mesh_hooks_flag(&mut request.raw, true);
+    proxy::inject_skippy_hooks_flag(&mut request.raw, true);
     // The directive itself is not a model. Committee mode keeps it in the body
     // for the MoA gateway; only a resolved concrete model gets written back.
     if let Some(model) = effective_model.filter(|name| !automatic::is_directive(name)) {

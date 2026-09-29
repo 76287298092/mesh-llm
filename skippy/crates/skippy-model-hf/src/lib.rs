@@ -7,7 +7,8 @@ mod tls;
 pub use cache_paths::{
     DownloadDirectoryFallback, DownloadDirectoryKind, PreparedDownloadDirectories,
     download_cache_diagnostic, download_cache_diagnostic_for, huggingface_hub_cache_dir,
-    huggingface_xet_cache_dir, mesh_llm_cache_dir, prepare_download_directories,
+    huggingface_xet_cache_dir, prepare_download_directories,
+    prepare_download_directories_with_data_roots, skippy_cache_dir,
 };
 pub use tls::{HfTlsProvider, configure_hf_tls_provider};
 

@@ -770,12 +770,13 @@ async fn test_read_http_request_truncates_pipelined_follow_up_bytes() {
 /// This test sends a response after a 2s delay and verifies that
 /// `probe_http_response_local` waits for it (well within its 10-min
 #[test]
-fn test_inject_mesh_hooks_enabled() {
+fn test_inject_skippy_hooks_enabled() {
     let mut raw = b"POST /v1/chat/completions HTTP/1.1\r\nContent-Length: 25\r\n\r\n{\"model\":\"auto\",\"n\":1}".to_vec();
-    inject_mesh_hooks_flag(&mut raw, true);
+    inject_skippy_hooks_flag(&mut raw, true);
     let body_start = raw.windows(4).position(|w| w == b"\r\n\r\n").unwrap() + 4;
     let body = std::str::from_utf8(&raw[body_start..]).unwrap();
-    assert!(body.starts_with("{\"mesh_hooks\":true,"), "body: {body}");
+    assert!(body.contains("\"mesh_hooks\":true"), "body: {body}");
+    assert!(body.contains("\"skippy_hooks\":true"), "body: {body}");
     // Content-Length must match actual body length
     let cl_line = std::str::from_utf8(&raw[..body_start])
         .unwrap()
@@ -787,19 +788,20 @@ fn test_inject_mesh_hooks_enabled() {
 }
 
 #[test]
-fn test_inject_mesh_hooks_disabled() {
+fn test_inject_skippy_hooks_disabled() {
     let mut raw = b"POST /v1/chat/completions HTTP/1.1\r\nContent-Length: 25\r\n\r\n{\"model\":\"auto\",\"n\":1}".to_vec();
-    inject_mesh_hooks_flag(&mut raw, false);
+    inject_skippy_hooks_flag(&mut raw, false);
     let body_start = raw.windows(4).position(|w| w == b"\r\n\r\n").unwrap() + 4;
     let body = std::str::from_utf8(&raw[body_start..]).unwrap();
-    assert!(body.starts_with("{\"mesh_hooks\":false,"), "body: {body}");
+    assert!(body.contains("\"mesh_hooks\":false"), "body: {body}");
+    assert!(body.contains("\"skippy_hooks\":false"), "body: {body}");
 }
 
 #[test]
-fn test_inject_mesh_hooks_no_body() {
+fn test_inject_skippy_hooks_no_body() {
     let mut raw = b"GET /v1/models HTTP/1.1\r\nHost: localhost\r\n\r\n".to_vec();
     let before = raw.clone();
-    inject_mesh_hooks_flag(&mut raw, true);
+    inject_skippy_hooks_flag(&mut raw, true);
     assert_eq!(raw, before, "GET with no body should be unchanged");
 }
 

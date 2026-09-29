@@ -10,8 +10,13 @@ use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 use std::time::UNIX_EPOCH;
 
+mod metadata_cache;
 mod mmproj;
 
+pub use metadata_cache::{
+    gguf_metadata_cache_path, gguf_metadata_cache_path_in, model_metadata_cache_dir,
+    model_metadata_cache_dir_in,
+};
 pub use mmproj::find_mmproj_path;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -157,14 +162,6 @@ pub fn scan_hf_cache_info(cache_root: &Path) -> Option<HFCacheInfo> {
 
 fn cache_repo_id(repo: &CachedRepoInfo) -> Option<&str> {
     (repo.repo_type == RepoTypeModel.singular()).then_some(repo.repo_id.as_str())
-}
-
-pub fn mesh_llm_cache_dir() -> PathBuf {
-    crate::mesh_llm_cache_dir()
-}
-
-pub fn model_metadata_cache_dir() -> PathBuf {
-    mesh_llm_cache_dir().join("model-meta")
 }
 
 fn parse_model_repo_folder_name(folder: &str) -> Option<String> {
@@ -328,28 +325,6 @@ pub fn huggingface_identity_for_path(path: &Path) -> Option<HuggingFaceModelIden
         return Some(identity);
     }
     scan_hf_cache_identity_for_path(path, &cache_root)
-}
-
-pub fn gguf_metadata_cache_path(path: &Path) -> Option<PathBuf> {
-    let key = if let Some(identity) = huggingface_identity_for_path(path) {
-        format!("hf:{}", identity.canonical_ref)
-    } else {
-        let metadata = std::fs::metadata(path).ok()?;
-        let modified = metadata
-            .modified()
-            .ok()?
-            .duration_since(UNIX_EPOCH)
-            .ok()?
-            .as_nanos();
-        format!(
-            "local:{}:{}:{}",
-            path.to_string_lossy(),
-            metadata.len(),
-            modified
-        )
-    };
-    let digest = Sha256::digest(key.as_bytes());
-    Some(model_metadata_cache_dir().join(format!("{}.json", hex::encode(digest))))
 }
 
 pub fn direct_hf_cache_root_gguf_paths(root: &Path) -> Vec<PathBuf> {

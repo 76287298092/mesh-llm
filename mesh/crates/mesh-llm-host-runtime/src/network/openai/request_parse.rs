@@ -15,7 +15,7 @@ mod audio_multipart;
 use audio_multipart::multipart_model_field;
 mod body_rewrite;
 mod chunked;
-pub use body_rewrite::{inject_mesh_hooks_flag, rewrite_model_field};
+pub use body_rewrite::{inject_skippy_hooks_flag, rewrite_model_field};
 use chunked::{ChunkedDecoder, try_decode_chunked_body};
 
 pub(crate) const MAX_HEADER_BYTES: usize = 64 * 1024;
