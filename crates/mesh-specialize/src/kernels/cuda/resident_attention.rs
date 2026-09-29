@@ -168,11 +168,19 @@ impl<'w, 'ctx> Layer<'w, 'ctx> {
         let sin = upload_words(ctx, &tables.sin)?;
         let normalized = self.norm.run(ctx, module, hidden, step.rows)?;
         observe(&mut observer, "normalized", &normalized)?;
-        let q_linear = self.q.run(ctx, module, &normalized, step.rows)?;
+        let shared_input = self.q.shared_input(ctx, module, &normalized, step.rows)?;
+        let shared_input_ref = shared_input.as_ref();
+        let q_linear =
+            self.q
+                .run_with_input(ctx, module, &normalized, step.rows, shared_input_ref)?;
         observe(&mut observer, "q_linear", &q_linear.values)?;
-        let k_linear = self.k.run(ctx, module, &normalized, step.rows)?;
+        let k_linear =
+            self.k
+                .run_with_input(ctx, module, &normalized, step.rows, shared_input_ref)?;
         observe(&mut observer, "k_linear", &k_linear.values)?;
-        let v_linear = self.v.run(ctx, module, &normalized, step.rows)?;
+        let v_linear =
+            self.v
+                .run_with_input(ctx, module, &normalized, step.rows, shared_input_ref)?;
         observe(&mut observer, "v_linear", &v_linear.values)?;
         let prepared_q = self.q_prepare.run(
             ctx,

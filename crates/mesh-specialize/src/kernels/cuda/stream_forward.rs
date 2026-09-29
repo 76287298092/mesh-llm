@@ -131,7 +131,11 @@ impl<'m, 'w, 'ctx> StreamForward<'m, 'w, 'ctx> {
             })
             .transpose()?;
         let bound = ModelWeights::bind(weights, config)?;
-        let mut specs = forward_program(&shapes, max_rows)?;
+        let mut specs = forward_program(
+            &shapes,
+            max_rows,
+            crate::kernels::fp8_quantize_schedule::current()?.reuses_inputs(),
+        )?;
         let paired_ab = PairedAb::new(ab_schedule, module, &shapes, &mut specs)?;
         let plan = ArenaPlan::place(&specs)?;
         if let Some(paired) = &paired_ab {
@@ -178,6 +182,7 @@ impl<'m, 'w, 'ctx> StreamForward<'m, 'w, 'ctx> {
             "attention_warp_fp64_handle_resolved": self.kernels.causal_attention_warp.is_some(),
             "attention_unrolled_fp64_handle_resolved": self.kernels.causal_attention_unrolled.is_some(),
             "fp8_decode_schedule": self.kernels.fp8_decode_report(),
+            "fp8_quantize_schedule": self.kernels.fp8_quantize_schedule.name(),
             "attention_workspace_bytes": self.split_attention.as_ref().map_or(0, SplitAttention::workspace_bytes)
                 + self.staged_attention.as_ref().map_or(0, StagedAttention::workspace_bytes),
             "split_attention": self.split_attention.as_ref().map(SplitAttention::report),

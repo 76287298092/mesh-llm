@@ -22,6 +22,7 @@ pub(super) struct Projection<'w, 'ctx> {
     channels: usize,
     profile: crate::kernels::fp8_profile::Profile,
     decode_schedule: crate::kernels::fp8_decode_schedule::Schedule,
+    quantize_schedule: crate::kernels::fp8_quantize_schedule::Schedule,
 }
 
 impl<'w, 'ctx> Projection<'w, 'ctx> {
@@ -35,6 +36,13 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
         let weight_bytes = validate_dimensions(width, channels)?;
         let weight_name = format!("{prefix}.weight");
         let scale_name = format!("{prefix}.weight_scale");
+        let profile = crate::kernels::fp8_profile::current()?;
+        let quantize_schedule = crate::kernels::fp8_quantize_schedule::current()?;
+        ensure!(
+            !(profile == crate::kernels::fp8_profile::Profile::A16Decode
+                && quantize_schedule.reuses_inputs()),
+            "MESH_SPECIALIZE_FP8_QUANTIZE_SCHEDULE=reuse-input does not support MESH_SPECIALIZE_FP8_PROFILE=a16-decode"
+        );
         let weight = owner.object(&weight_name)?;
         let scales = owner.object(&scale_name)?;
         validate_metadata(
@@ -52,8 +60,9 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
             scale_name,
             width,
             channels,
-            profile: crate::kernels::fp8_profile::current()?,
+            profile,
             decode_schedule: crate::kernels::fp8_decode_schedule::current()?,
+            quantize_schedule,
         })
     }
 
@@ -70,6 +79,55 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
             channels: self.channels,
             arithmetic: super::mlp_workspace_projection::Arithmetic::Fp8,
         })
+    }
+
+    pub(super) fn quantize_input<'a>(
+        &self,
+        context: &'a Context,
+        module: &Module<'_>,
+        input: &Buffer<'_>,
+        rows: usize,
+    ) -> Result<QuantizedInput<'a>> {
+        ensure!(
+            self.owner.belongs_to(context) && module.belongs_to(context),
+            "FP8 quantizer context mismatch"
+        );
+        QuantizedInput::new(context, module, input, rows, self.width)
+    }
+
+    pub(super) fn reuses_input_quantization(&self) -> bool {
+        self.quantize_schedule.reuses_inputs()
+    }
+
+    pub(super) fn shared_input<'a>(
+        &self,
+        context: &'a Context,
+        module: &Module<'_>,
+        input: &Buffer<'_>,
+        rows: usize,
+    ) -> Result<Option<QuantizedInput<'a>>> {
+        if self.reuses_input_quantization() {
+            return Ok(Some(self.quantize_input(context, module, input, rows)?));
+        }
+        Ok(None)
+    }
+
+    pub(super) fn run_with_input<'a>(
+        &self,
+        context: &'a Context,
+        module: &Module<'_>,
+        input: &Buffer<'_>,
+        rows: usize,
+        shared: Option<&QuantizedInput<'_>>,
+    ) -> Result<Output<'a>> {
+        if let Some(activation) = shared {
+            return self
+                .run_quantized(context, module, activation)
+                .map_err(|error| {
+                    synchronize_after_failed_launch(context, "shared FP8 projection", error)
+                });
+        }
+        self.run(context, module, input, rows)
     }
 
     /// Quantize resident BF16 input rows, run the selected FP8 projection, and return device outputs.
@@ -91,7 +149,10 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
 
         let weight_pointer = self.owner.pointer(&self.weight_name)?;
         let scale_pointer = self.owner.pointer(&self.scale_name)?;
-        if rows == 1 && self.profile == crate::kernels::fp8_profile::Profile::A16Decode {
+        if rows == 1
+            && self.profile == crate::kernels::fp8_profile::Profile::A16Decode
+            && !self.quantize_schedule.reuses_inputs()
+        {
             return super::resident_fp8_a16::run(
                 context,
                 module,
@@ -219,10 +280,203 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
             unrounded,
         })
     }
+
+    pub(super) fn run_quantized<'a>(
+        &self,
+        context: &'a Context,
+        module: &Module<'_>,
+        activation: &QuantizedInput<'_>,
+    ) -> Result<Output<'a>> {
+        ensure!(
+            self.owner.belongs_to(context)
+                && activation.rows > 0
+                && activation.width == self.width
+                && activation.codes.belongs_to(context)
+                && activation.scales.belongs_to(context)
+                && module.belongs_to(context),
+            "shared FP8 activation does not match projection geometry/context"
+        );
+        let rows = activation.rows;
+        let extents = run_extents(rows, self.width, self.channels)?;
+        ensure!(
+            activation.codes.len() == extents.code_bytes
+                && activation.scales.len() == extents.row_scale_bytes,
+            "shared FP8 activation has an invalid extent"
+        );
+        let weight_pointer = self.owner.pointer(&self.weight_name)?;
+        let scale_pointer = self.owner.pointer(&self.scale_name)?;
+        if let Some(splits) = super::resident_fp8_splitk::selected_splits(rows, self.channels)? {
+            return run_split_quantized(
+                context,
+                module,
+                [
+                    activation.codes.pointer(),
+                    weight_pointer,
+                    activation.scales.pointer(),
+                    scale_pointer,
+                ],
+                [rows, self.channels, self.width],
+                splits,
+            );
+        }
+        let (tile_rows, tile_columns, threads, kernel) =
+            if let Some(kernel) = self.profile.native_kernel().filter(|_| rows >= 16) {
+                (32, 64, 128, kernel)
+            } else if rows >= 16 {
+                (16, 8, 32, "fp8_prefill_exact")
+            } else if rows >= 4 && self.channels >= 16_384 {
+                (8, 16, 32, "fp8_verify_exact")
+            } else if rows >= 4 {
+                (4, 4, 128, "fp8_linear_exact4")
+            } else {
+                (1, 4, 128, "fp8_linear_exact")
+            };
+        let selection = self.decode_schedule.select(
+            self.profile,
+            rows,
+            self.width,
+            [activation.codes.pointer(), weight_pointer],
+        );
+        let kernel = if kernel == crate::kernels::fp8_decode_schedule::BASELINE_KERNEL {
+            selection.kernel()
+        } else {
+            kernel
+        };
+        if self.decode_schedule == crate::kernels::fp8_decode_schedule::Schedule::Vector16 {
+            tracing::debug!(
+                requested = "vector16",
+                actual_kernel = kernel,
+                reason = selection.reason(),
+                rows,
+                width = self.width,
+                channels = self.channels,
+                "FP8 decode schedule selection"
+            );
+        }
+        let linear = module.function(kernel)?;
+        let output = Buffer::new(context, extents.output_bytes)?;
+        let unrounded = Buffer::new(context, extents.unrounded_bytes)?;
+
+        let mut pointers = [
+            activation.codes.pointer(),
+            weight_pointer,
+            activation.scales.pointer(),
+            scale_pointer,
+            output.pointer(),
+            unrounded.pointer(),
+        ];
+        let mut dimensions = [
+            u32::try_from(rows)?,
+            u32::try_from(self.channels)?,
+            u32::try_from(self.width)?,
+        ];
+        let mut arguments: Vec<*mut c_void> = pointers
+            .iter_mut()
+            .map(|pointer| (pointer as *mut u64).cast())
+            .collect();
+        arguments.extend(
+            dimensions
+                .iter_mut()
+                .map(|dimension| (dimension as *mut u32).cast()),
+        );
+        let grid = [
+            u32::try_from(self.channels.div_ceil(tile_columns))?,
+            u32::try_from(rows.div_ceil(tile_rows))?,
+            1,
+        ];
+        // SAFETY: Metadata and run extents validate the row-major inputs, resident weights,
+        // temporary FP8/scales, BF16/FP32 outputs, and u32 dimensions. All buffers live through
+        // the synchronization below; the selected kernel receives its exact tile/block geometry.
+        if let Err(error) = unsafe { linear.launch(grid, [threads, 1, 1], 0, &mut arguments) } {
+            return Err(synchronize_after_failed_launch(
+                context,
+                "FP8 projection",
+                error,
+            ));
+        }
+        context.synchronize()?;
+        if rows >= 16 && self.profile.is_audit() {
+            super::fp8_projection_audit::compare(
+                context,
+                module,
+                super::fp8_projection_audit::Case {
+                    owner: self.owner,
+                    weight_name: &self.weight_name,
+                    scale_name: &self.scale_name,
+                    codes: &activation.codes,
+                    row_scales: &activation.scales,
+                    output: &output,
+                    raw: &unrounded,
+                    shape: [rows, self.channels, self.width],
+                },
+            )?;
+        }
+        Ok(Output {
+            values: output,
+            unrounded,
+        })
+    }
+}
+
+pub(super) struct QuantizedInput<'ctx> {
+    codes: Buffer<'ctx>,
+    scales: Buffer<'ctx>,
+    rows: usize,
+    width: usize,
+}
+
+impl<'ctx> QuantizedInput<'ctx> {
+    pub(super) fn new(
+        context: &'ctx Context,
+        module: &Module<'_>,
+        input: &Buffer<'_>,
+        rows: usize,
+        width: usize,
+    ) -> Result<Self> {
+        ensure!(
+            module.belongs_to(context) && input.belongs_to(context),
+            "FP8 activation input/module context mismatch"
+        );
+        let extents = run_extents(rows, width, 1)?;
+        validate_input_length(input.len(), extents.input_bytes)?;
+        let codes = Buffer::new(context, extents.code_bytes)?;
+        let scales = Buffer::new(context, extents.row_scale_bytes)?;
+        if let Err(error) = projections::quantize(
+            &module.function("fp8_quantize_bf16")?,
+            input,
+            &codes,
+            &scales,
+            rows,
+            width,
+        ) {
+            return Err(synchronize_after_failed_launch(
+                context,
+                "FP8 input quantization",
+                error,
+            ));
+        }
+        Ok(Self {
+            codes,
+            scales,
+            rows,
+            width,
+        })
+    }
+}
+
+fn run_split_quantized<'a>(
+    ctx: &'a Context,
+    module: &Module<'_>,
+    inputs: [u64; 4],
+    shape: [usize; 3],
+    splits: usize,
+) -> Result<Output<'a>> {
+    super::resident_fp8_splitk::run(ctx, module, inputs, shape, splits)
+        .map_err(|error| synchronize_after_failed_launch(ctx, "split-K projection", error))
 }
 
 fn run_split<'a>(
-    ctx: &'a Context,
+    context: &'a Context,
     module: &Module<'_>,
     input: &Buffer<'_>,
     weights: [u64; 2],
@@ -230,8 +484,8 @@ fn run_split<'a>(
     splits: usize,
 ) -> Result<Output<'a>> {
     let [rows, _, width] = shape;
-    let codes = Buffer::new(ctx, rows * width)?;
-    let scales = Buffer::new(ctx, rows * 4)?;
+    let codes = Buffer::new(context, checked_product(rows, width, "FP8 split-K codes")?)?;
+    let scales = Buffer::new(context, checked_product(rows, 4, "FP8 split-K scales")?)?;
     if let Err(error) = projections::quantize(
         &module.function("fp8_quantize_bf16")?,
         input,
@@ -241,19 +495,18 @@ fn run_split<'a>(
         width,
     ) {
         return Err(synchronize_after_failed_launch(
-            ctx,
+            context,
             "split-K input quantization",
             error,
         ));
     }
-    super::resident_fp8_splitk::run(
-        ctx,
+    run_split_quantized(
+        context,
         module,
         [codes.pointer(), weights[0], scales.pointer(), weights[1]],
         shape,
         splits,
     )
-    .map_err(|error| synchronize_after_failed_launch(ctx, "split-K projection", error))
 }
 
 fn synchronize_after_failed_launch(

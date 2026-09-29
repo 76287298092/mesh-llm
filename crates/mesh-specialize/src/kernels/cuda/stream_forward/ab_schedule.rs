@@ -187,7 +187,7 @@ mod tests {
     fn paired_plans_keep_all_outputs_and_input_disjoint_at_all_requested_capacities() {
         for max_rows in [1, 16, 512] {
             let shapes = qwen();
-            let original = forward_program(&shapes, max_rows).unwrap();
+            let original = forward_program(&shapes, max_rows, false).unwrap();
             let mut paired = original.clone();
             let [a, b] = prepare_lifetimes(Schedule::PairedFp64, &shapes, &mut paired)
                 .unwrap()
@@ -220,7 +220,7 @@ mod tests {
     fn baseline_plan_is_unchanged_and_unsupported_shape_falls_back() {
         for max_rows in [1, 16, 512] {
             let mut shapes = qwen();
-            let original = forward_program(&shapes, max_rows).unwrap();
+            let original = forward_program(&shapes, max_rows, false).unwrap();
             let mut specs = original.clone();
             assert!(
                 prepare_lifetimes(Schedule::Baseline, &shapes, &mut specs)
@@ -241,7 +241,7 @@ mod tests {
     #[test]
     fn rejects_short_output_slot_even_with_nonoverlapping_placement() {
         let shapes = qwen();
-        let mut specs = forward_program(&shapes, 16).unwrap();
+            let mut specs = forward_program(&shapes, 16, false).unwrap();
         prepare_lifetimes(Schedule::PairedFp64, &shapes, &mut specs).unwrap();
         specs
             .iter_mut()
@@ -255,7 +255,7 @@ mod tests {
     #[test]
     fn malformed_template_rejected_before_mutation() {
         let shapes = qwen();
-        let mut specs = forward_program(&shapes, 1).unwrap();
+            let mut specs = forward_program(&shapes, 1, false).unwrap();
         specs.iter_mut().find(|s| s.name == INPUT).unwrap().last = 0;
         let before = specs.clone();
         assert!(prepare_lifetimes(Schedule::PairedFp64, &shapes, &mut specs).is_err());

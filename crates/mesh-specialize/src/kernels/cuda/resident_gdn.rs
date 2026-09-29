@@ -178,9 +178,15 @@ impl<'w, 'ctx> Layer<'w, 'ctx> {
         let (rows, record) = step;
         let normalized = self.norm.run(ctx, module, hidden, rows)?;
         observe(&mut observer, "normalized", &normalized)?;
-        let qkv = self.qkv.run(ctx, module, &normalized, rows)?;
+        let shared_input = self.qkv.shared_input(ctx, module, &normalized, rows)?;
+        let shared_input_ref = shared_input.as_ref();
+        let qkv = self
+            .qkv
+            .run_with_input(ctx, module, &normalized, rows, shared_input_ref)?;
         observe(&mut observer, "qkv", &qkv.values)?;
-        let z = self.z.run(ctx, module, &normalized, rows)?;
+        let z = self
+            .z
+            .run_with_input(ctx, module, &normalized, rows, shared_input_ref)?;
         observe(&mut observer, "z", &z.values)?;
         let paired =
             self.a

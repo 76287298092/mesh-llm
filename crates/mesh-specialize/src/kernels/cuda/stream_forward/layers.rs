@@ -83,8 +83,9 @@ pub(super) fn gdn(
     let recurrent = state.pointer(&w.recurrent, vh * width * width * 4)?;
     let rows_u32 = to_u32(rows)?;
     e.embedding_norm([s.hidden, s.row_ids, w.norm], &g.norm, rows, h)?;
-    e.projection(&w.qkv, g.norm.out, &g.qkv, rows)?;
-    e.projection(&w.z, g.norm.out, &g.z, rows)?;
+    let shared_fp8 = e.prepare_projection_input(&w.qkv, g.norm.out, &g.qkv, rows)?;
+    e.projection_with_input(&w.qkv, g.norm.out, &g.qkv, rows, shared_fp8)?;
+    e.projection_with_input(&w.z, g.norm.out, &g.z, rows, shared_fp8)?;
     if let Some(paired) = paired_ab.filter(|_| rows == 1) {
         paired.enqueue(
             e,
@@ -215,9 +216,10 @@ pub(super) fn attention(
     let key_state = state.pointer(&w.key_state, cache_bytes)?;
     let value_state = state.pointer(&w.value_state, cache_bytes)?;
     e.embedding_norm([s.hidden, s.row_ids, w.norm], &a.norm, rows, h)?;
-    e.projection(&w.q, a.norm.out, &a.q, rows)?;
-    e.projection(&w.k, a.norm.out, &a.k, rows)?;
-    e.projection(&w.v, a.norm.out, &a.v, rows)?;
+    let shared_fp8 = e.prepare_projection_input(&w.q, a.norm.out, &a.q, rows)?;
+    e.projection_with_input(&w.q, a.norm.out, &a.q, rows, shared_fp8)?;
+    e.projection_with_input(&w.k, a.norm.out, &a.k, rows, shared_fp8)?;
+    e.projection_with_input(&w.v, a.norm.out, &a.v, rows, shared_fp8)?;
     for (input, weight, outputs, heads, with_gate) in [
         (a.q.values, w.q_norm, a.q_prepared, qh, 1),
         (a.k.values, w.k_norm, a.k_prepared, kvh, 0),
@@ -337,8 +339,9 @@ pub(super) fn mlp(
     rows: usize,
 ) -> Result<()> {
     let m = if w.nvfp4 { &s.mlp_nvfp4 } else { &s.mlp_fp8 };
-    e.projection(&w.gate, s.post_x, &m.gate, rows)?;
-    e.projection(&w.up, s.post_x, &m.up, rows)?;
+    let shared_fp8 = e.prepare_projection_input(&w.gate, s.post_x, &m.gate, rows)?;
+    e.projection_with_input(&w.gate, s.post_x, &m.gate, rows, shared_fp8)?;
+    e.projection_with_input(&w.up, s.post_x, &m.up, rows, shared_fp8)?;
     e.silu_product(
         m.gate.values,
         m.up.values,

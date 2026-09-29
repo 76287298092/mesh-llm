@@ -4,6 +4,7 @@ use super::super::driver::{Function, Module};
 use crate::kernels::{
     fp8_decode_schedule::{self, Decisions, Schedule, Selection},
     fp8_profile::Profile,
+    fp8_quantize_schedule,
 };
 use anyhow::{Context as _, Result};
 
@@ -14,6 +15,7 @@ pub(super) struct Functions<'m, 'ctx> {
     pub(super) residual_norm: Function<'m, 'ctx>,
     pub(super) residual_add: Function<'m, 'ctx>,
     pub(super) fp8_quantize: Function<'m, 'ctx>,
+    pub(super) fp8_quantize_schedule: fp8_quantize_schedule::Schedule,
     pub(super) fp8_linear_exact: Function<'m, 'ctx>,
     fp8_linear_exact_vector16: Option<Function<'m, 'ctx>>,
     fp8_decode_schedule: Schedule,
@@ -106,6 +108,7 @@ impl<'m, 'ctx> Functions<'m, 'ctx> {
                 .with_context(|| format!("resolve stream forward kernel {name}"))
         };
         let fp8_decode_schedule = fp8_decode_schedule::current()?;
+        let fp8_quantize_schedule = fp8_quantize_schedule::current()?;
         let fp8_linear_exact_vector16 = (fp8_decode_schedule == Schedule::Vector16)
             .then(|| get(fp8_decode_schedule::VECTOR16_KERNEL))
             .transpose()?;
@@ -122,6 +125,7 @@ impl<'m, 'ctx> Functions<'m, 'ctx> {
             causal_attention_warp,
             fp8_linear_exact_vector16,
             fp8_decode_schedule,
+            fp8_quantize_schedule,
             fp8_decode_decisions: Decisions::default(),
             fp8_embedding_gather: get("fp8_embedding_gather")?,
             embedding_norm: get("embedding_norm_bf16")?,

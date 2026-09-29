@@ -4,6 +4,7 @@ pub mod ab_schedule;
 pub mod attention_profile;
 pub mod fp8_decode_schedule;
 pub mod fp8_profile;
+pub mod fp8_quantize_schedule;
 pub mod nvfp4_decode_schedule;
 pub mod nvfp4_profile;
 #[cfg(any(test, target_os = "linux"))]
@@ -624,6 +625,16 @@ pub fn fp8_exact_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json::Val
     {
         let _ = (ptx, device);
         anyhow::bail!("Exact FP8 qualification requires Linux")
+    }
+}
+
+pub fn fp8_quantize_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::fp8_quantize_trial::run(ptx, device);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device);
+        anyhow::bail!("FP8 quantization qualification requires Linux")
     }
 }
 

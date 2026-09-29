@@ -82,6 +82,10 @@ pub(super) fn fp8_exact(args: &[String]) -> DynResult<()> {
     run_probe(args, mesh_specialize::kernels::fp8_exact_trial)
 }
 
+pub(super) fn fp8_quantize(args: &[String]) -> DynResult<()> {
+    run_probe(args, mesh_specialize::kernels::fp8_quantize_trial)
+}
+
 pub(super) fn feature_fusion(args: &[String]) -> DynResult<()> {
     run_probe(args, mesh_specialize::kernels::feature_fusion_trial)
 }

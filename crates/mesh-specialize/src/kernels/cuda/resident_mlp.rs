@@ -105,8 +105,14 @@ impl<'w, 'ctx> Mlp<'w, 'ctx> {
         input: &Buffer<'_>,
         rows: usize,
     ) -> Result<ResultBuffers<'a>> {
-        let gate = self.gate.run(ctx, module, input, rows)?;
-        let up = self.up.run(ctx, module, input, rows)?;
+        let shared_input = self.gate.shared_input(ctx, module, input, rows)?;
+        let shared_input_ref = shared_input.as_ref();
+        let gate = self
+            .gate
+            .run_with_input(ctx, module, input, rows, shared_input_ref)?;
+        let up = self
+            .up
+            .run_with_input(ctx, module, input, rows, shared_input_ref)?;
         let activation =
             resident_activation::run(ctx, module, &gate.values, &up.values, rows * self.channels)?;
         let down = self.down.run(ctx, module, &activation, rows)?;

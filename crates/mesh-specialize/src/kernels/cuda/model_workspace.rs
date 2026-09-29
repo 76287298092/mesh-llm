@@ -26,6 +26,11 @@ pub(super) fn shared(ctx: &Context) -> Result<Option<Shared<'_>>> {
             && super::resident_fp8_splitk::configured_splits()?.is_none(),
         "model MLP workspace requires exact decoder projections and split-K off"
     );
+    ensure!(
+        crate::kernels::fp8_quantize_schedule::current()?
+            == crate::kernels::fp8_quantize_schedule::Schedule::Baseline,
+        "model MLP workspace does not support MESH_SPECIALIZE_FP8_QUANTIZE_SCHEDULE=reuse-input"
+    );
     Ok(Some(Rc::new(RefCell::new(Cache {
         ctx,
         shape: [0; 3],

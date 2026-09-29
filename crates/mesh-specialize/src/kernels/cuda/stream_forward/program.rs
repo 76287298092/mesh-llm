@@ -12,6 +12,7 @@
 
 use super::plan::{ArenaPlan, BufferSpec, Program};
 use crate::kernels::DecoderConfig;
+use crate::kernels::fp8_quantize_schedule::{Schedule as Fp8QuantizeSchedule, SharedInputGroup};
 use anyhow::{Context as _, Result, ensure};
 
 pub(super) const MAX_ROWS: usize = 512;
@@ -73,7 +74,11 @@ impl Shapes {
 }
 
 /// Build buffer lifetimes for a forward of `rows` rows.
-pub(super) fn forward_program(shapes: &Shapes, rows: usize) -> Result<Vec<BufferSpec>> {
+pub(super) fn forward_program(
+    shapes: &Shapes,
+    rows: usize,
+    reuse_fp8_input: bool,
+) -> Result<Vec<BufferSpec>> {
     ensure!(
         (1..=MAX_ROWS).contains(&rows),
         "stream forward rows must be in 1..={MAX_ROWS}"
@@ -91,10 +96,15 @@ pub(super) fn forward_program(shapes: &Shapes, rows: usize) -> Result<Vec<Buffer
             ("entry.raw", rows * h * 4),
         ],
     )?;
-    gdn_section(&mut p, shapes, rows)?;
-    attention_section(&mut p, shapes, rows)?;
-    mlp_section(&mut p, shapes, rows, "mlp8", false)?;
-    mlp_section(&mut p, shapes, rows, "mlp4", true)?;
+    let quantize_schedule = if reuse_fp8_input {
+        Fp8QuantizeSchedule::ReuseInput
+    } else {
+        Fp8QuantizeSchedule::Baseline
+    };
+    gdn_section(&mut p, shapes, rows, quantize_schedule)?;
+    attention_section(&mut p, shapes, rows, quantize_schedule)?;
+    mlp_section(&mut p, shapes, rows, "mlp8", false, quantize_schedule)?;
+    mlp_section(&mut p, shapes, rows, "mlp4", true, quantize_schedule)?;
     norm(&mut p, "head.norm", "hidden", 1, h)?;
     projection(
         &mut p,
@@ -102,6 +112,7 @@ pub(super) fn forward_program(shapes: &Shapes, rows: usize) -> Result<Vec<Buffer
         "head.norm.out",
         [1, h, shapes.vocabulary],
         false,
+        None,
     )?;
     p.op(
         &["head.values"],
@@ -132,6 +143,7 @@ fn projection(
     input: &str,
     shape: [usize; 3],
     nvfp4: bool,
+    shared_quantized: Option<&str>,
 ) -> Result<()> {
     let [rows, width, channels] = shape;
     let n = |suffix: &str| format!("{name}.{suffix}");
@@ -144,14 +156,15 @@ fn projection(
                 (&n("effective"), rows * width / 16 * 4),
             ],
         )?;
-    } else {
+    } else if shared_quantized.is_none() {
         p.op(
             &[input],
             &[(&n("codes"), rows * width), (&n("scales"), rows * 4)],
         )?;
     }
+    let codes = shared_quantized.unwrap_or(name);
     p.op(
-        &[&n("codes"), &n("scales")],
+        &[&format!("{codes}.codes"), &format!("{codes}.scales")],
         &[
             (&n("values"), rows * channels * 2),
             (&n("raw"), rows * channels * 4),
@@ -159,7 +172,13 @@ fn projection(
     )
 }
 
-fn bf16_projection(p: &mut Program, name: &str, input: &str, rows: usize, channels: usize) -> Result<()> {
+fn bf16_projection(
+    p: &mut Program,
+    name: &str,
+    input: &str,
+    rows: usize,
+    channels: usize,
+) -> Result<()> {
     p.op(
         &[input],
         &[
@@ -169,12 +188,24 @@ fn bf16_projection(p: &mut Program, name: &str, input: &str, rows: usize, channe
     )
 }
 
-fn gdn_section(p: &mut Program, s: &Shapes, m: usize) -> Result<()> {
+fn gdn_section(
+    p: &mut Program,
+    s: &Shapes,
+    m: usize,
+    quantize_schedule: Fp8QuantizeSchedule,
+) -> Result<()> {
     let (h, qkv, inner, vh) = (s.hidden, s.gdn_qkv(), s.gdn_inner(), s.gdn_value_heads);
     let qk = m * s.gdn_key_heads * s.gdn_head_width * 4;
     norm(p, "gdn.norm", "hidden", m, h)?;
-    projection(p, "gdn.qkv", "gdn.norm.out", [m, h, qkv], false)?;
-    projection(p, "gdn.z", "gdn.norm.out", [m, h, inner], false)?;
+    projection(p, "gdn.qkv", "gdn.norm.out", [m, h, qkv], false, None)?;
+    projection(
+        p,
+        "gdn.z",
+        "gdn.norm.out",
+        [m, h, inner],
+        false,
+        quantize_schedule.shared_source(SharedInputGroup::GdnQkvZ),
+    )?;
     bf16_projection(p, "gdn.a", "gdn.norm.out", m, vh)?;
     bf16_projection(p, "gdn.b", "gdn.norm.out", m, vh)?;
     p.op(
@@ -198,7 +229,10 @@ fn gdn_section(p: &mut Program, s: &Shapes, m: usize) -> Result<()> {
     )?;
     p.op(
         &["gdn.q", "gdn.k", "gdn.conv.values", "gdn.beta", "gdn.decay"],
-        &[("gdn.rec.values", m * inner * 2), ("gdn.rec.raw", m * inner * 4)],
+        &[
+            ("gdn.rec.values", m * inner * 2),
+            ("gdn.rec.raw", m * inner * 4),
+        ],
     )?;
     p.op(
         &["gdn.rec.values", "gdn.z.values"],
@@ -210,7 +244,7 @@ fn gdn_section(p: &mut Program, s: &Shapes, m: usize) -> Result<()> {
             ("gdn.gated.raw", m * inner * 4),
         ],
     )?;
-    projection(p, "gdn.out", "gdn.gated.values", [m, inner, h], false)?;
+    projection(p, "gdn.out", "gdn.gated.values", [m, inner, h], false, None)?;
     p.op(
         &["hidden", "gdn.out.values"],
         &[
@@ -221,13 +255,35 @@ fn gdn_section(p: &mut Program, s: &Shapes, m: usize) -> Result<()> {
     )
 }
 
-fn attention_section(p: &mut Program, s: &Shapes, m: usize) -> Result<()> {
+fn attention_section(
+    p: &mut Program,
+    s: &Shapes,
+    m: usize,
+    quantize_schedule: Fp8QuantizeSchedule,
+) -> Result<()> {
     let (h, qw, kvw) = (s.hidden, s.query_width(), s.kv_width());
     norm(p, "attn.norm", "hidden", m, h)?;
-    projection(p, "attn.q", "attn.norm.out", [m, h, 2 * qw], false)?;
-    projection(p, "attn.k", "attn.norm.out", [m, h, kvw], false)?;
-    projection(p, "attn.v", "attn.norm.out", [m, h, kvw], false)?;
-    for (name, input, width) in [("attn.qp", "attn.q.values", qw), ("attn.kp", "attn.k.values", kvw)] {
+    projection(p, "attn.q", "attn.norm.out", [m, h, 2 * qw], false, None)?;
+    projection(
+        p,
+        "attn.k",
+        "attn.norm.out",
+        [m, h, kvw],
+        false,
+        quantize_schedule.shared_source(SharedInputGroup::AttentionQkv),
+    )?;
+    projection(
+        p,
+        "attn.v",
+        "attn.norm.out",
+        [m, h, kvw],
+        false,
+        quantize_schedule.shared_source(SharedInputGroup::AttentionQkv),
+    )?;
+    for (name, input, width) in [
+        ("attn.qp", "attn.q.values", qw),
+        ("attn.kp", "attn.k.values", kvw),
+    ] {
         let n = |suffix: &str| format!("{name}.{suffix}");
         p.op(
             &[input],
@@ -253,7 +309,7 @@ fn attention_section(p: &mut Program, s: &Shapes, m: usize) -> Result<()> {
             ("attn.gated.raw", m * qw * 4),
         ],
     )?;
-    projection(p, "attn.out", "attn.gated.values", [m, qw, h], false)?;
+    projection(p, "attn.out", "attn.gated.values", [m, qw, h], false, None)?;
     p.op(
         &["hidden", "attn.out.values"],
         &[
@@ -264,11 +320,29 @@ fn attention_section(p: &mut Program, s: &Shapes, m: usize) -> Result<()> {
     )
 }
 
-fn mlp_section(p: &mut Program, s: &Shapes, m: usize, name: &str, nvfp4: bool) -> Result<()> {
+fn mlp_section(
+    p: &mut Program,
+    s: &Shapes,
+    m: usize,
+    name: &str,
+    nvfp4: bool,
+    quantize_schedule: Fp8QuantizeSchedule,
+) -> Result<()> {
     let (h, i) = (s.hidden, s.intermediate);
     let n = |suffix: &str| format!("{name}.{suffix}");
-    projection(p, &n("gate"), "post.x", [m, h, i], nvfp4)?;
-    projection(p, &n("up"), "post.x", [m, h, i], nvfp4)?;
+    let shared_gate = (!nvfp4)
+        .then(|| quantize_schedule.shared_source(SharedInputGroup::Fp8MlpGateUp))
+        .flatten()
+        .map(|_| n("gate"));
+    projection(p, &n("gate"), "post.x", [m, h, i], nvfp4, None)?;
+    projection(
+        p,
+        &n("up"),
+        "post.x",
+        [m, h, i],
+        nvfp4,
+        shared_gate.as_deref(),
+    )?;
     p.op(
         &[&n("gate.values"), &n("up.values")],
         &[
@@ -278,8 +352,9 @@ fn mlp_section(p: &mut Program, s: &Shapes, m: usize, name: &str, nvfp4: bool) -
             (&n("act.raw"), m * i * 4),
         ],
     )?;
-    projection(p, &n("down"), &n("act.values"), [m, i, h], nvfp4)?;
-    p.op(&["post.sum", &n("down.values")], &[("hidden", m * h * 2)])
+    projection(p, &n("down"), &n("act.values"), [m, i, h], nvfp4, None)?;
+    p.op(&["post.sum", &n("down.values")], &[("hidden", m * h * 2)])?;
+    Ok(())
 }
 
 /// Device addresses for one projection's quantized input and outputs.
@@ -400,8 +475,8 @@ impl Resolver<'_> {
     }
     fn projection(&self, name: &str) -> Result<ProjectionSlots> {
         Ok(ProjectionSlots {
-            codes: self.at(&format!("{name}.codes"))?,
-            scales: self.at(&format!("{name}.scales"))?,
+            codes: self.optional(&format!("{name}.codes"))?,
+            scales: self.optional(&format!("{name}.scales"))?,
             effective: self.optional(&format!("{name}.effective"))?,
             values: self.at(&format!("{name}.values"))?,
             raw: self.at(&format!("{name}.raw"))?,
@@ -421,7 +496,11 @@ impl Resolver<'_> {
             conv: self.many("gdn.conv", ["next", "values", "raw", "silu"])?,
             q: self.at("gdn.q")?,
             k: self.at("gdn.k")?,
-            gates: [self.at("gdn.beta")?, self.at("gdn.g")?, self.at("gdn.decay")?],
+            gates: [
+                self.at("gdn.beta")?,
+                self.at("gdn.g")?,
+                self.at("gdn.decay")?,
+            ],
             recurrent: self.many("gdn.rec", ["values", "raw"])?,
             gated: self.many(
                 "gdn.gated",
@@ -487,8 +566,8 @@ impl Slots {
 
 #[cfg(test)]
 mod tests {
-    use super::{MAX_ROWS, Shapes, Slots, forward_program};
     use super::super::plan::{ArenaPlan, BufferSpec, peak_live_bytes};
+    use super::{MAX_ROWS, Shapes, Slots, forward_program};
 
     fn qwen() -> Shapes {
         Shapes {
@@ -512,7 +591,7 @@ mod tests {
     #[test]
     fn qwen_program_places_and_resolves_every_slot() {
         for rows in [1, 2, 4, 15, 16, 17, 128, MAX_ROWS] {
-            let specs = forward_program(&qwen(), rows).unwrap();
+            let specs = forward_program(&qwen(), rows, false).unwrap();
             let plan = ArenaPlan::place(&specs).unwrap();
             plan.validate(&specs).unwrap();
             assert!(plan.total_bytes >= plan.peak_live_bytes);
@@ -527,7 +606,7 @@ mod tests {
 
     #[test]
     fn carried_buffers_are_never_reused_during_the_forward() {
-        let specs = forward_program(&qwen(), 16).unwrap();
+        let specs = forward_program(&qwen(), 16, false).unwrap();
         let end = specs.iter().map(|s| s.last).max().unwrap();
         for name in ["tokens", "row_ids", "hidden"] {
             let spec = find(&specs, name);
@@ -545,8 +624,8 @@ mod tests {
 
     #[test]
     fn slot_extents_grow_with_rows_so_max_rows_plans_cover_smaller_forwards() {
-        let small = forward_program(&qwen(), 1).unwrap();
-        let large = forward_program(&qwen(), MAX_ROWS).unwrap();
+        let small = forward_program(&qwen(), 1, false).unwrap();
+        let large = forward_program(&qwen(), MAX_ROWS, false).unwrap();
         assert_eq!(small.len(), large.len());
         for spec in &small {
             let other = find(&large, &spec.name);
@@ -557,11 +636,50 @@ mod tests {
 
     #[test]
     fn peak_live_bound_matches_the_widest_step() {
-        let specs = forward_program(&qwen(), MAX_ROWS).unwrap();
+        let specs = forward_program(&qwen(), MAX_ROWS, false).unwrap();
         // The MLP SiLU product at 512 rows keeps gate, up, and four outputs live.
         let activation = 512 * 17408 * (2 + 2 + 2 + 4 + 2 + 4);
         assert!(peak_live_bytes(&specs) >= activation);
-        assert!(forward_program(&qwen(), 0).is_err());
-        assert!(forward_program(&qwen(), MAX_ROWS + 1).is_err());
+        assert!(forward_program(&qwen(), 0, false).is_err());
+        assert!(forward_program(&qwen(), MAX_ROWS + 1, false).is_err());
+    }
+
+    #[test]
+    fn reuse_plan_keeps_group_quantization_alive_and_omits_duplicate_buffers() {
+        let reused_specs = forward_program(&qwen(), 1, true).unwrap();
+        let baseline_specs = forward_program(&qwen(), 1, false).unwrap();
+        let reused = ArenaPlan::place(&reused_specs).unwrap();
+        let baseline = ArenaPlan::place(&baseline_specs).unwrap();
+        for (source, followers) in [
+            ("gdn.qkv", vec!["gdn.z"]),
+            ("attn.q", vec!["attn.k", "attn.v"]),
+            ("mlp8.gate", vec!["mlp8.up"]),
+        ] {
+            assert!(reused.offset(&format!("{source}.codes")).is_some());
+            assert!(reused.offset(&format!("{source}.scales")).is_some());
+            assert!(baseline.offset(&format!("{source}.codes")).is_some());
+            assert!(baseline.offset(&format!("{source}.scales")).is_some());
+            let source_codes = find(&reused_specs, &format!("{source}.codes"));
+            let source_scales = find(&reused_specs, &format!("{source}.scales"));
+            let last_follower = followers
+                .iter()
+                .map(|follower| find(&reused_specs, &format!("{follower}.values")).first)
+                .max()
+                .unwrap();
+            assert_eq!(source_codes.last, last_follower, "{source} codes lifetime");
+            assert_eq!(
+                source_scales.last, last_follower,
+                "{source} scales lifetime"
+            );
+            for follower in followers {
+                assert!(reused.offset(&format!("{follower}.codes")).is_none());
+                assert!(reused.offset(&format!("{follower}.scales")).is_none());
+                assert!(baseline.offset(&format!("{follower}.codes")).is_some());
+                assert!(baseline.offset(&format!("{follower}.scales")).is_some());
+            }
+        }
+        assert!(reused.total_bytes <= baseline.total_bytes);
+        assert!(reused.offset("mlp4.gate.codes").is_some());
+        assert!(reused.offset("mlp4.up.codes").is_some());
     }
 }

@@ -10,7 +10,10 @@ use super::{
     program::{NormSlots, ProjectionSlots},
     weights::{Arithmetic, ProjectionWeights},
 };
-use crate::kernels::cuda::driver::{Function, graph::ActiveStream};
+use crate::kernels::{
+    cuda::driver::{Function, graph::ActiveStream},
+    fp8_quantize_schedule::Schedule as Fp8QuantizeSchedule,
+};
 use anyhow::{Result, ensure};
 use std::{ffi::c_void, ptr};
 
@@ -257,41 +260,138 @@ impl<'a, 's, 'm, 'ctx> Enqueue<'a, 's, 'm, 'ctx> {
         rows: usize,
     ) -> Result<()> {
         match weights.arithmetic {
-            Arithmetic::Fp8 => self.fp8_projection(weights, input, slots, rows),
+            Arithmetic::Fp8 => {
+                let shared = self.fp8_group_input(input, slots, rows, weights.width, None)?;
+                self.fp8_projection_with_input(weights, input, slots, rows, shared)
+            }
             Arithmetic::Nvfp4 {
                 input_scale,
                 factor,
+                ..
             } => self.nvfp4_projection(weights, input, slots, rows, [input_scale, factor]),
         }
     }
 
-    fn fp8_projection(
+    pub(super) fn projection_with_input(
+        &self,
+        weights: &ProjectionWeights,
+        input: u64,
+        slots: &ProjectionSlots,
+        rows: usize,
+        quantized: Option<[u64; 2]>,
+    ) -> Result<()> {
+        match weights.arithmetic {
+            Arithmetic::Fp8 => self.fp8_projection_with_input(
+                weights,
+                input,
+                slots,
+                rows,
+                self.fp8_group_input(input, slots, rows, weights.width, quantized)?,
+            ),
+            Arithmetic::Nvfp4 {
+                input_scale,
+                factor,
+                ..
+            } => self.nvfp4_projection(weights, input, slots, rows, [input_scale, factor]),
+        }
+    }
+
+    pub(super) fn quantize_fp8_input(
+        &self,
+        input: u64,
+        codes: u64,
+        scales: u64,
+        rows: usize,
+        width: usize,
+    ) -> Result<()> {
+        self.launch(
+            &self.kernels.fp8_quantize,
+            [to_u32(rows)?, 1, 1],
+            [256, 1, 1],
+            Args::new()
+                .ptrs(&[input, codes, scales])
+                .u32(to_u32(width)?),
+        )
+    }
+
+    pub(super) fn prepare_fp8_input(
+        &self,
+        input: u64,
+        codes: u64,
+        scales: u64,
+        rows: usize,
+        width: usize,
+    ) -> Result<Option<[u64; 2]>> {
+        if self.kernels.fp8_quantize_schedule != Fp8QuantizeSchedule::ReuseInput {
+            return Ok(None);
+        }
+        self.quantize_fp8_input(input, codes, scales, rows, width)?;
+        Ok(Some([codes, scales]))
+    }
+
+    pub(super) fn prepare_projection_input(
+        &self,
+        weights: &ProjectionWeights,
+        input: u64,
+        slots: &ProjectionSlots,
+        rows: usize,
+    ) -> Result<Option<[u64; 2]>> {
+        match weights.arithmetic {
+            Arithmetic::Fp8 => {
+                self.prepare_fp8_input(input, slots.codes, slots.scales, rows, weights.width)
+            }
+            Arithmetic::Nvfp4 { .. } => Ok(None),
+        }
+    }
+
+    fn fp8_group_input(
+        &self,
+        input: u64,
+        slots: &ProjectionSlots,
+        rows: usize,
+        width: usize,
+        shared: Option<[u64; 2]>,
+    ) -> Result<Option<[u64; 2]>> {
+        if self.kernels.fp8_quantize_schedule != Fp8QuantizeSchedule::ReuseInput {
+            return Ok(None);
+        }
+        if let Some(shared) = shared {
+            return Ok(Some(shared));
+        }
+        self.prepare_fp8_input(input, slots.codes, slots.scales, rows, width)
+    }
+
+    fn fp8_projection_with_input(
         &self,
         w: &ProjectionWeights,
         input: u64,
         s: &ProjectionSlots,
         rows: usize,
+        quantized: Option<[u64; 2]>,
     ) -> Result<()> {
-        let quantize = Args::new()
-            .ptrs(&[input, s.codes, s.scales])
-            .u32(to_u32(w.width)?);
-        self.launch(
-            &self.kernels.fp8_quantize,
-            [to_u32(rows)?, 1, 1],
-            [256, 1, 1],
-            quantize,
-        )?;
+        let (codes, scales) = if let Some([codes, scales]) = quantized {
+            (codes, scales)
+        } else {
+            let (codes, scales) = (s.codes, s.scales);
+            self.launch(
+                &self.kernels.fp8_quantize,
+                [to_u32(rows)?, 1, 1],
+                [256, 1, 1],
+                Args::new()
+                    .ptrs(&[input, codes, scales])
+                    .u32(to_u32(w.width)?),
+            )?;
+            (codes, scales)
+        };
         let (kernel, tile_rows, tile_columns, threads) = fp8_schedule(rows, w.channels);
         let function = match kernel {
-            Fp8Kernel::Exact => self
-                .kernels
-                .fp8_decode(rows, w.width, [s.codes, w.weight])?,
+            Fp8Kernel::Exact => self.kernels.fp8_decode(rows, w.width, [codes, w.weight])?,
             Fp8Kernel::Exact4 => &self.kernels.fp8_linear_exact4,
             Fp8Kernel::Verify => &self.kernels.fp8_verify_exact,
             Fp8Kernel::Prefill => &self.kernels.fp8_prefill_exact,
         };
         let linear = Args::new()
-            .ptrs(&[s.codes, w.weight, s.scales, w.scale, s.values, s.raw])
+            .ptrs(&[codes, w.weight, scales, w.scale, s.values, s.raw])
             .u32(to_u32(rows)?)
             .u32(to_u32(w.channels)?)
             .u32(to_u32(w.width)?);

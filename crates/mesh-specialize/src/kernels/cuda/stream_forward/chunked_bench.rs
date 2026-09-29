@@ -223,7 +223,11 @@ fn canonical_state_bytes(config: &DecoderConfig) -> Result<u64> {
 
 fn arena_bytes(config: &DecoderConfig, rows: usize) -> Result<u64> {
     let shapes = program::Shapes::from_config(config)?;
-    let plan = ArenaPlan::place(&program::forward_program(&shapes, rows)?)?;
+    let plan = ArenaPlan::place(&program::forward_program(
+        &shapes,
+        rows,
+        crate::kernels::fp8_quantize_schedule::current()?.reuses_inputs(),
+    )?)?;
     Ok(u64::try_from(plan.total_bytes)?)
 }
 

@@ -19,6 +19,7 @@ pub(super) mod embedding_norm;
 mod fp8_decode_trial;
 pub(super) mod fp8_exact_trial;
 pub(super) mod fp8_mlp_trial;
+pub(super) mod fp8_quantize_trial;
 mod gdn_output;
 mod gdn_prepare;
 mod gdn_recurrent;
