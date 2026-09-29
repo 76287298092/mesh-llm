@@ -5,7 +5,7 @@ Start with [the implementation plan](../PLAN.md) and the
 
 | Entry | Status |
 | --- | --- |
-| [Native MTP packed views](findings/native-mtp-views.md) | Checked parent-plane selection, Q/gate row mapping and signed shortlist-ID validation; numeric Q8/Q4 decode blocked on missing local codec equations |
+| [Native MTP packed views](findings/native-mtp-views.md) | Checked parent-plane selection, test-only Q8/Q4 numeric decode and CPU indexed Q4 head step; full native MTP and GPU packed consumers remain open |
 | [Three-stage FP64 attention](findings/attention-staged-fp64.md) | Implemented, unqualified: exact-order M1 score/serial-scan/value stages, persistent linear workspace, sanitizer-safe trial scope; default unchanged |
 | [Isolated unrolled FP64 exponential](findings/attention-unrolled-fp64.md) | Implemented, unqualified: original attention schedule, explicit scalar coefficients, raw-bit helper/control/oracle trials; default unchanged |
 | [Exact-order FP64 warp attention](findings/attention-warp-fp64.md) | Implemented, unqualified: M=1 four-shard warp schedule, strict control bits plus independent oracle; graph rejected, default unchanged |

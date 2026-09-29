@@ -3,6 +3,9 @@
 #[cfg(test)]
 #[path = "../../../reference/native_mtp_quantized.rs"]
 mod cpu_reference;
+#[cfg(test)]
+#[path = "native_mtp_views/head_tests.rs"]
+mod head_tests;
 mod selection;
 #[cfg(test)]
 mod test_fixtures;
@@ -53,8 +56,7 @@ pub struct Q4MatrixView {
     pub padded_k: usize,
     /// Quantization group width, 64 for Q4_g64_FP16.
     pub group_size: usize,
-    /// Packed-code plane in the parent object. Nibble interpretation is not
-    /// exposed until its signed code convention is established.
+    /// Packed-code plane in the parent object, even K in the low nibble and odd K in the high.
     pub codes: BytePlane,
     /// Raw FP16 group-scale bits in the parent object.
     pub scale_bits: BytePlane,

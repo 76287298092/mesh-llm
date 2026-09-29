@@ -1,12 +1,9 @@
 use super::{
-    BytePlane,
-    cpu_reference::{
-        PackedRow, q4_g64_fp16_dot, q4_g64_fp16_row, q8_g32_fp16_decode_row, q8_g32_fp16_dot,
-        q8_g32_fp16_encoded_row,
-    },
+    BytePlane, Q8MatrixView,
     selection::{parse_token_map, plan},
     test_fixtures::{exact_map, observed_directory, synthetic_directory},
 };
+
 #[test]
 fn selected_q8_view_has_expected_parent_planes() {
     let directory = synthetic_directory();
@@ -125,133 +122,28 @@ fn unsupported_row_split_codec_is_rejected_at_the_selected_projection() {
 }
 
 #[test]
-fn independent_q8_reference_decodes_signed_codes_scale_bits_and_dots() {
-    let mut codes = vec![0; 128];
-    codes[0] = 0xff;
-    codes[1] = 2;
-    codes[2] = 0x80;
-    codes[3] = 0x7f;
-    let scale_bytes = [0x00, 0x3c, 0x00, 0x3c, 0x00, 0x3c, 0x00, 0x3c];
-    let encoded = q8_g32_fp16_encoded_row(PackedRow {
-        codes: &codes,
-        scale_bytes: &scale_bytes,
-        logical_k: 4,
+fn q8_view_decodes_rows_from_separate_aligned_parent_planes() {
+    let view = Q8MatrixView {
+        object_id: "q8".into(),
+        shape: [1, 128],
         padded_k: 128,
-    })
-    .expect("Q8 codes sign-extend");
-    assert_eq!(encoded.signed_codes, [-1, 2, i8::MIN, i8::MAX]);
-    assert_eq!(encoded.scale_bits, [0x3c00; 4]);
-    assert!(
-        q8_g32_fp16_decode_row(PackedRow {
-            codes: &codes,
-            scale_bytes: &scale_bytes,
-            logical_k: 2,
-            padded_k: 128,
-        })
-        .is_err()
-    );
-    assert!(
-        q8_g32_fp16_dot(
-            PackedRow {
-                codes: &codes,
-                scale_bytes: &scale_bytes,
-                logical_k: 2,
-                padded_k: 128,
-            },
-            &[2.0, 3.0],
-        )
-        .is_err()
-    );
-}
-
-#[test]
-fn independent_q8_reference_handles_extreme_scale_and_bad_buffers() {
-    let mut codes = vec![0; 128];
-    codes[0] = 0x7f;
-    assert!(
-        q8_g32_fp16_decode_row(PackedRow {
-            codes: &codes,
-            scale_bytes: &[0xff, 0x7b, 0xff, 0x7b, 0xff, 0x7b, 0xff, 0x7b],
-            logical_k: 1,
-            padded_k: 128,
-        })
-        .is_err()
-    );
-    assert!(
-        q8_g32_fp16_decode_row(PackedRow {
-            codes: &codes,
-            scale_bytes: &[0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00],
-            logical_k: 1,
-            padded_k: 128,
-        })
-        .is_err()
-    );
-    assert!(
-        q8_g32_fp16_decode_row(PackedRow {
-            codes: &[0; 127],
-            scale_bytes: &[0x00, 0x3c, 0x00, 0x3c, 0x00, 0x3c, 0x00, 0x3c],
-            logical_k: 1,
-            padded_k: 128,
-        })
-        .is_err()
-    );
-    assert!(
-        q8_g32_fp16_decode_row(PackedRow {
-            codes: &[0; 128],
-            scale_bytes: &[0x00, 0x7c, 0x00, 0x7c, 0x00, 0x7c, 0x00, 0x7c],
-            logical_k: 1,
-            padded_k: 128,
-        })
-        .is_err()
-    );
-}
-
-#[test]
-fn independent_q8_reference_preserves_scale_bits_without_numeric_assumptions() {
-    let codes = [0x80; 128];
-    let scale_bytes = [0xff, 0x7b, 0x01, 0x00, 0x00, 0x7c, 0x00, 0xfc];
-    let encoded = q8_g32_fp16_encoded_row(PackedRow {
-        codes: &codes,
-        scale_bytes: &scale_bytes,
-        logical_k: 1,
-        padded_k: 128,
-    })
-    .expect("well-shaped packed bytes");
-    assert_eq!(encoded.signed_codes, [i8::MIN]);
-    assert_eq!(encoded.scale_bits, [0x7bff, 0x0001, 0x7c00, 0xfc00]);
-}
-
-#[test]
-fn q4_reference_rejects_malformed_geometry_and_undocumented_codec() {
-    let scales = [0x00, 0x3c, 0x00, 0x3c];
-    assert!(
-        q4_g64_fp16_row(PackedRow {
-            codes: &[0; 63],
-            scale_bytes: &scales,
-            logical_k: 1,
-            padded_k: 128,
-        })
-        .is_err()
-    );
-    assert!(
-        q4_g64_fp16_row(PackedRow {
-            codes: &[0; 64],
-            scale_bytes: &scales,
-            logical_k: 128,
-            padded_k: 128,
-        })
-        .is_err()
-    );
-    assert!(
-        q4_g64_fp16_dot(
-            PackedRow {
-                codes: &[0; 64],
-                scale_bytes: &scales,
-                logical_k: 1,
-                padded_k: 128,
-            },
-            &[1.0],
-        )
-        .is_err()
-    );
+        group_size: 32,
+        codes: BytePlane {
+            offset: 0,
+            bytes: 128,
+        },
+        scale_bits: BytePlane {
+            offset: 256,
+            bytes: 8,
+        },
+        scale_count: 4,
+        source_rows: vec![0],
+    };
+    let mut object = vec![0; 264];
+    object[0] = 0xff;
+    object[256..258].copy_from_slice(&0x3c00_u16.to_le_bytes());
+    let decoded = super::cpu_reference::decode_q8_view_row(&object, &view, 0)
+        .expect("checked view decodes its mapped parent row");
+    assert_eq!(decoded[0], -1.0);
+    assert_eq!(decoded[1], 0.0);
 }
