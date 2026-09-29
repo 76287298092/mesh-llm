@@ -12,7 +12,6 @@ use mesh_llm_system::hardware::{self, Metric};
 use mesh_llm_types::models::capabilities::ModelCapabilities;
 use openai_frontend::{ChatCompletionRequest, ChatMessage, MessageContent, OpenAiBackend};
 use std::collections::{BTreeMap, HashMap};
-use std::io::Write;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -21,6 +20,7 @@ use tokio::sync::Mutex;
 
 mod embedded_config;
 pub(crate) mod embedded_logging;
+mod embedded_profile;
 mod embedded_startup;
 
 pub use embedded_config::*;
@@ -140,7 +140,7 @@ impl Drop for EmbeddedServeHandle {
 pub async fn start_embedded_node(
     mut config: EmbeddedMeshNodeConfig,
 ) -> Result<EmbeddedServeHandle> {
-    let isolated_config = prepare_isolated_config(&mut config)?;
+    let isolated_config = embedded_profile::prepare_isolated_config(&mut config)?;
     let config_snapshot =
         embedded_logging::snapshot_validated_config(config.storage.config_path.as_deref())?;
     config.storage.config_path = Some(embedded_logging::snapshot_path(&config_snapshot));
@@ -148,7 +148,6 @@ pub async fn start_embedded_node(
         &config.mode,
         config.storage.config_path.as_deref(),
     )?;
-    drop(isolated_config);
     let (control_tx, control_rx) = tokio::sync::mpsc::unbounded_channel();
     let runtime_options = embedded_runtime_options(&config, Some(control_rx));
     let api_base_url = format!("http://127.0.0.1:{}/v1", config.http.api_port);
@@ -159,6 +158,8 @@ pub async fn start_embedded_node(
         .name("mesh-llm-embedded-serve".to_string())
         .stack_size(stack_size)
         .spawn(move || {
+            // Keep isolated state alive until the worker has actually stopped.
+            let _isolated_config = isolated_config;
             let runtime = tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
                 .thread_name("mesh-llm-embedded-worker")
@@ -193,19 +194,6 @@ pub async fn start_embedded_node(
 
 pub async fn start_embedded_serve(config: EmbeddedServeConfig) -> Result<EmbeddedServeHandle> {
     start_embedded_node(config.into()).await
-}
-
-fn prepare_isolated_config(config: &mut EmbeddedMeshNodeConfig) -> Result<Option<NamedTempFile>> {
-    if config.storage.config_path.is_some() || !config.storage.isolated_config {
-        return Ok(None);
-    }
-    let mut file = NamedTempFile::new().context("create isolated embedded mesh config")?;
-    file.write_all(
-        b"[[plugin]]\nname = \"telemetry\"\nenabled = false\n\n[[plugin]]\nname = \"blobstore\"\nenabled = false\n",
-    )
-        .context("write isolated embedded mesh config")?;
-    config.storage.config_path = Some(file.path().to_path_buf());
-    Ok(Some(file))
 }
 
 fn embedded_runtime_options(
