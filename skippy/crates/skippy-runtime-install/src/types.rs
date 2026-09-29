@@ -65,6 +65,32 @@ impl NativeRuntimeCatalog {
     }
 }
 
+/// Map a runtime ABI release to the product release that publishes its bundle.
+/// Both CLIs use this release-channel policy.
+pub fn publication_catalog(
+    build_version: &str,
+    product_release: &str,
+    runtime_release: &str,
+) -> NativeRuntimeCatalog {
+    let rolling = is_sha_build(build_version);
+    NativeRuntimeCatalog {
+        release_tags: [(runtime_release.to_string(), format!("v{product_release}"))].into(),
+        releases_url: "https://github.com/Mesh-LLM/mesh-llm/releases".to_string(),
+        rolling_release: rolling.then(|| runtime_release.to_string()),
+    }
+}
+
+fn is_sha_build(version: &str) -> bool {
+    let Some((_, metadata)) = version.split_once('+') else {
+        return false;
+    };
+    let sha = metadata.strip_suffix(".dirty").unwrap_or(metadata);
+    let Some(hex) = sha.strip_prefix('g') else {
+        return false;
+    };
+    hex.len() >= 6 && hex.bytes().all(|byte| byte.is_ascii_hexdigit())
+}
+
 #[derive(Clone)]
 pub struct NativeRuntimeManifestOptions {
     pub catalog: NativeRuntimeCatalog,

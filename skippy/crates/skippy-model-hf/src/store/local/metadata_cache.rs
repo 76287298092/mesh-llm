@@ -5,7 +5,7 @@ use std::time::UNIX_EPOCH;
 use super::huggingface_identity_for_path;
 
 pub fn model_metadata_cache_dir() -> PathBuf {
-    model_metadata_cache_dir_in(&crate::skippy_cache_dir())
+    model_metadata_cache_dir_in(&crate::application_cache_dir())
 }
 
 pub fn model_metadata_cache_dir_in(cache_root: &Path) -> PathBuf {
@@ -13,7 +13,7 @@ pub fn model_metadata_cache_dir_in(cache_root: &Path) -> PathBuf {
 }
 
 pub fn gguf_metadata_cache_path(path: &Path) -> Option<PathBuf> {
-    gguf_metadata_cache_path_in(path, &crate::skippy_cache_dir())
+    gguf_metadata_cache_path_in(path, &crate::application_cache_dir())
 }
 
 pub fn gguf_metadata_cache_path_in(path: &Path, cache_root: &Path) -> Option<PathBuf> {

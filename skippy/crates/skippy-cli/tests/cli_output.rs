@@ -6,7 +6,13 @@ fn example_config_is_one_json_document_on_stdout() {
         .output()
         .expect("start standalone command");
     assert!(output.status.success(), "{:?}", output);
-    assert!(output.stderr.is_empty(), "{:?}", output.stderr);
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .lines()
+            .all(|line| line.starts_with("⚠ ")),
+        "{:?}",
+        output.stderr
+    );
     let config: skippy_protocol::StageConfig =
         serde_json::from_slice(&output.stdout).expect("stdout contains only stage config JSON");
     assert!(!config.stage_id.is_empty());
@@ -134,7 +140,7 @@ fn old_serve_commands_are_not_subcommands() {
 }
 
 #[test]
-fn jsonl_error_is_one_versioned_event() {
+fn jsonl_error_is_terminal_versioned_event() {
     let output = std::process::Command::new(env!("CARGO_BIN_EXE_skippy"))
         .args(["--output", "jsonl", "serve"])
         .output()
@@ -146,10 +152,10 @@ fn jsonl_error_is_one_versioned_event() {
         .split(|byte| *byte == b'\n')
         .filter(|line| !line.is_empty())
         .collect::<Vec<_>>();
-    assert_eq!(lines.len(), 1);
-    let event: serde_json::Value = serde_json::from_slice(lines[0]).unwrap();
+    assert!(!lines.is_empty());
+    let event: serde_json::Value = serde_json::from_slice(lines.last().unwrap()).unwrap();
     assert_eq!(event["schema_version"], 1);
-    assert_eq!(event["sequence"], 1);
+    assert_eq!(event["sequence"], lines.len());
     assert_eq!(event["type"], "error");
     assert!(
         event["data"]["message"]
@@ -179,49 +185,68 @@ fn jsonl_syntax_error_is_structured_too() {
 
 #[test]
 fn recommended_models_have_human_and_json_presentations() {
+    let root = tempfile::tempdir().unwrap();
+    let entries = root.path().join("meshllm-catalog/entries/test");
+    std::fs::create_dir_all(&entries).unwrap();
+    std::fs::write(entries.join("tiny.json"), serde_json::to_vec(&serde_json::json!({
+        "schema_version": 1,
+        "source_repo": "test/tiny-GGUF",
+        "variants": {"tiny-Q4_K_M": {
+            "source": {"repo": "test/tiny-GGUF", "revision": "main", "file": "tiny-Q4_K_M.gguf"},
+            "curated": {"name": "Tiny Test", "size": "1GB", "description": "Offline fixture"}
+        }}
+    })).unwrap()).unwrap();
+    std::fs::write(
+        root.path().join("meshllm-catalog/entries/.last_refresh"),
+        b"",
+    )
+    .unwrap();
     let human = std::process::Command::new(env!("CARGO_BIN_EXE_skippy"))
+        .env("HF_HOME", root.path())
         .args(["--output", "human", "models", "recommended"])
         .output()
         .unwrap();
     assert!(human.status.success());
-    assert!(String::from_utf8_lossy(&human.stdout).contains("⭐ Qwen3-0.6B-Q4_K_M"));
+    assert!(String::from_utf8_lossy(&human.stdout).contains("⭐ Tiny Test"));
     let json = std::process::Command::new(env!("CARGO_BIN_EXE_skippy"))
+        .env("HF_HOME", root.path())
         .args(["--output", "json", "models", "recommended"])
         .output()
         .unwrap();
     assert!(json.status.success());
     let models: serde_json::Value = serde_json::from_slice(&json.stdout).unwrap();
-    assert!(models.as_array().unwrap().len() >= 3);
+    assert_eq!(models["source"], "catalog");
+    assert_eq!(models["results"][0]["name"], "Tiny Test");
 }
 
 #[test]
-fn runtime_list_uses_skippy_cache_override_without_loading_native_code() {
+fn runtime_uses_shared_mesh_cache_override_without_loading_native_code() {
     let dir = tempfile::tempdir().unwrap();
     let output = std::process::Command::new(env!("CARGO_BIN_EXE_skippy"))
-        .env("SKIPPY_NATIVE_RUNTIME_CACHE_DIR", dir.path().join("empty"))
         .env(
             "MESH_LLM_NATIVE_RUNTIME_CACHE_DIR",
-            "/nonexistent/mesh-cache",
+            dir.path().join("empty"),
         )
-        .args(["runtime", "list"])
+        .args(["doctor"])
         .output()
         .unwrap();
     assert!(output.status.success(), "{:?}", output);
-    let runtimes: Vec<serde_json::Value> = serde_json::from_slice(&output.stdout).unwrap();
-    assert!(runtimes.is_empty());
+    let report: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(
+        report["runtime_cache"],
+        dir.path().join("empty").to_string_lossy().as_ref()
+    );
     assert!(std::fs::read_dir(dir.path()).unwrap().next().is_none());
 }
 
 #[test]
-fn models_list_uses_explicit_cache_without_native_runtime_or_network() {
+fn models_list_uses_hugging_face_cache_without_native_runtime_or_network() {
     let root = tempfile::tempdir().unwrap();
     let cache = root.path().join("models");
     let output = std::process::Command::new(env!("CARGO_BIN_EXE_skippy"))
         .env("HF_ENDPOINT", "http://127.0.0.1:1")
-        .env("SKIPPY_MODEL_CACHE_DIR", root.path().join("ignored"))
-        .args(["models", "--cache-dir"])
-        .arg(&cache)
-        .arg("installed")
+        .env("HF_HUB_CACHE", &cache)
+        .args(["models", "installed"])
         .output()
         .unwrap();
     assert!(
@@ -231,106 +256,45 @@ fn models_list_uses_explicit_cache_without_native_runtime_or_network() {
     );
     let value: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(value["cache_dir"], cache.to_string_lossy().as_ref());
-    assert_eq!(value["repositories"], serde_json::json!([]));
-    assert!(!cache.exists());
+    assert_eq!(value["models"], serde_json::json!([]));
+    assert!(cache.is_dir());
 }
 
 #[test]
-fn model_pull_rejects_invalid_pin_without_contacting_hub() {
+fn model_download_has_no_skippy_only_pin_flags() {
     let root = tempfile::tempdir().unwrap();
     let output = std::process::Command::new(env!("CARGO_BIN_EXE_skippy"))
         .env("HF_ENDPOINT", "http://127.0.0.1:1")
-        .args(["models", "--cache-dir"])
-        .arg(root.path())
-        .args(["download", "org/repo", "--sha256", "bad"])
+        .env("HF_HUB_CACHE", root.path())
+        .args(["models", "download", "org/repo", "--sha256", "bad"])
         .output()
         .unwrap();
     assert!(!output.status.success());
-    assert!(String::from_utf8_lossy(&output.stderr).contains("64 hexadecimal"));
-    assert!(std::fs::read_dir(root.path()).unwrap().next().is_none());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("unexpected argument"));
+    assert!(!root.path().join("models--org--repo").exists());
 }
 
 #[test]
-fn model_remove_is_local_and_reports_repository_scope() {
+fn model_delete_uses_mesh_preview_first_policy() {
     let root = tempfile::tempdir().unwrap();
-    let repo = root.path().join("models--org--model/snapshots/revision");
-    std::fs::create_dir_all(&repo).unwrap();
-    let run = |dry: bool| {
-        let mut cmd = std::process::Command::new(env!("CARGO_BIN_EXE_skippy"));
-        cmd.env("HF_ENDPOINT", "http://127.0.0.1:1")
-            .args(["models", "--cache-dir"])
-            .arg(root.path())
-            .args(["remove", "org/model"]);
-        if dry {
-            cmd.arg("--dry-run");
-        }
-        let output = cmd.output().unwrap();
-        assert!(
-            output.status.success(),
-            "{}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-        serde_json::from_slice::<serde_json::Value>(&output.stdout).unwrap()
-    };
-    let preview = run(true);
-    assert_eq!(preview["scope"], "all-local-revisions");
-    assert_eq!(preview["status"], "planned");
-    assert!(repo.exists());
-    assert_eq!(run(false)["status"], "removed");
-    assert!(!repo.exists());
-}
-
-#[test]
-fn runtime_install_requires_exactly_one_explicit_catalog() {
-    for args in [
-        vec!["runtime", "install"],
-        vec![
-            "runtime",
-            "install",
-            "--manifest",
-            "a.json",
-            "--manifest-url",
-            "https://example.invalid/catalog.json",
-        ],
-    ] {
-        let output = std::process::Command::new(env!("CARGO_BIN_EXE_skippy"))
-            .args(args)
-            .output()
-            .unwrap();
-        assert!(!output.status.success());
-        assert!(String::from_utf8_lossy(&output.stderr).contains("error:"));
-    }
-}
-
-#[test]
-fn runtime_install_does_not_fall_back_from_explicit_empty_catalog_to_mesh_policy() {
-    let root = tempfile::tempdir().unwrap();
-    let catalog = root.path().join("catalog.json");
-    let empty = skippy_runtime_install::NativeRuntimeReleaseManifest {
-        release_version: skippy_runtime_install::runtime_release_version().into(),
-        skippy_abi: skippy_runtime_install::current_skippy_abi_version(),
-        artifacts: Vec::new(),
-    };
-    std::fs::write(&catalog, serde_json::to_vec(&empty).unwrap()).unwrap();
     let output = std::process::Command::new(env!("CARGO_BIN_EXE_skippy"))
-        .env(
-            "MESH_LLM_NATIVE_RUNTIME_BUNDLE_DIR",
-            "/nonexistent/mesh-bundle",
-        )
-        .env(
-            "MESH_LLM_NATIVE_RUNTIME_MANIFEST_URL",
-            "http://127.0.0.1:1/forbidden-catalog.json",
-        )
-        .args(["--runtime-cache"])
-        .arg(root.path().join("cache"))
-        .args(["runtime", "install", "--manifest"])
-        .arg(&catalog)
+        .env("HF_ENDPOINT", "http://127.0.0.1:1")
+        .env("HF_HUB_CACHE", root.path())
+        .args(["models", "delete", "org/model"])
         .output()
         .unwrap();
     assert!(!output.status.success());
-    assert!(
-        String::from_utf8_lossy(&output.stderr)
-            .contains("no native runtime manifest entries found")
-    );
-    assert!(!root.path().join("cache").exists());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("Model not found"));
+    assert!(!root.path().join("models--org--model").exists());
+}
+
+#[test]
+fn runtime_install_accepts_recommended_or_explicit_selection() {
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_skippy"))
+        .args(["runtime", "install", "--help"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let help = String::from_utf8_lossy(&output.stdout);
+    assert!(help.contains("[RUNTIME]"), "{help}");
 }

@@ -41,18 +41,15 @@ model reference -> artifact/HF adapter -> package format and admission
 Mesh owns its peer discovery, placement, identity, routing, plugins, console,
 and management APIs. It translates those decisions into Skippy lifecycle,
 protocol, and serving inputs. The lifecycle API takes explicit locations rather
-than reading Mesh product configuration. For HF downloads, standalone Skippy
-chooses fallback data roots through
-`SKIPPY_DATA_DIR` and Skippy defaults; Mesh passes its own roots to
-`prepare_download_directories_with_data_roots`. `HF_HUB_CACHE`,
+than reading Mesh product configuration. Both CLIs use the same HF cache
+preflight and fallback data roots, with `MESH_LLM_DATA_DIR` as the optional
+fallback override. `HF_HUB_CACHE`,
 `HUGGINGFACE_HUB_CACHE`, `HF_HOME`, `HF_XET_CACHE`, and `XDG_CACHE_HOME` still
 take precedence where applicable.
 
-`skippy-model-hf::store` defaults to a Skippy cache root, configurable through
-`SKIPPY_CACHE_DIR`. Its `_in` operations take an explicit application cache
-root. Mesh passes its existing platform cache root through those operations,
-so model-usage records and GGUF metadata remain at their historical Mesh paths
-without migration. The persisted `mesh_managed` usage-record field is retained
+`skippy-model-hf::store` uses the same application cache root for both CLIs.
+Its `_in` operations take an explicit application cache root for tests and
+embedding applications. The persisted `mesh_managed` usage-record field is retained
 for compatibility with existing records; it does not select a product path.
 
 Skippy's canonical HTTP request extension for enabling its serving hooks is

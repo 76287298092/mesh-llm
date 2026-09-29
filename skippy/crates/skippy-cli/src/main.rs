@@ -11,9 +11,19 @@ use clap::Parser;
 use cli::{Cli, Command, OutputFormat};
 use std::io::IsTerminal;
 
-#[tokio::main]
-async fn main() -> std::process::ExitCode {
-    match run_main().await {
+fn main() -> std::process::ExitCode {
+    let startup_warnings = prepare_model_download_directories();
+    let runtime = match tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+    {
+        Ok(runtime) => runtime,
+        Err(error) => {
+            let _ = skippy_commands::console::failure(&error.into());
+            return std::process::ExitCode::FAILURE;
+        }
+    };
+    match runtime.block_on(run_main(startup_warnings)) {
         Ok(()) => std::process::ExitCode::SUCCESS,
         Err(error) => {
             let _ = skippy_commands::console::failure(&error);
@@ -22,7 +32,26 @@ async fn main() -> std::process::ExitCode {
     }
 }
 
-async fn run_main() -> Result<()> {
+fn prepare_model_download_directories() -> Vec<String> {
+    let _ = skippy_model_hf::configure_hf_tls_provider();
+    match skippy_model_hf::prepare_cli_download_directories() {
+        Ok(prepared) => {
+            let warnings = prepared
+                .fallbacks
+                .iter()
+                .map(|fallback| format!("⚠ {fallback}"))
+                .collect();
+            // SAFETY: This runs in synchronous main before Tokio creates worker threads.
+            unsafe { prepared.apply_to_process_environment() };
+            warnings
+        }
+        Err(error) => vec![format!(
+            "⚠ Unable to prepare model download directories: {error:#}. Model downloads may fail; set MESH_LLM_DATA_DIR to a writable directory."
+        )],
+    }
+}
+
+async fn run_main(startup_warnings: Vec<String>) -> Result<()> {
     let Some(cli) = parse_cli()? else {
         return Ok(());
     };
@@ -34,6 +63,9 @@ async fn run_main() -> Result<()> {
         _ => cli.output,
     };
     skippy_commands::console::install(output.into());
+    for warning in startup_warnings {
+        skippy_commands::console::status(&warning)?;
+    }
     if matches!(&cli.command, Command::Prompt(_))
         && skippy_commands::console::mode() != skippy_commands::console::OutputMode::Human
     {
@@ -46,13 +78,7 @@ async fn run_main() -> Result<()> {
     let automatic_runtime = cli.native_runtime.bundle_dirs.is_empty()
         && cli.native_runtime.release.is_none()
         && cli.native_runtime.selection.is_none();
-    let include_adjacent = !matches!(
-        &cli.command,
-        Command::Runtime {
-            command: cli::RuntimeCommand::Install { .. }
-        }
-    );
-    let native_options = runtime::resolve_options(cli.native_runtime, include_adjacent)?;
+    let native_options = runtime::resolve_options(cli.native_runtime)?;
     #[cfg(feature = "dynamic-native-runtime")]
     if matches!(&cli.command, Command::Serve(_) | Command::PlanSplit(_)) {
         runtime::prepare_native_runtime(&native_options, automatic_runtime).await?;
@@ -73,9 +99,7 @@ async fn run_main() -> Result<()> {
             .await?
         }
         Command::Serve(args) => serve::run(*args).await,
-        Command::Models { cache_dir, command } => {
-            skippy_commands::models::run(cache_dir, command.into()).await
-        }
+        Command::Models { command } => skippy_commands::models::run(command.into()).await,
         Command::PlanSplit(args) => skippy_commands::split::run(args.into()),
         Command::Runtime { command } => {
             skippy_commands::runtime::run(

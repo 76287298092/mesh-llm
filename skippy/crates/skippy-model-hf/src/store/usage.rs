@@ -87,7 +87,7 @@ struct PathHuggingFaceIdentity {
 }
 
 pub fn model_usage_cache_dir() -> PathBuf {
-    model_usage_cache_dir_in(&crate::skippy_cache_dir())
+    model_usage_cache_dir_in(&crate::application_cache_dir())
 }
 
 pub fn model_usage_cache_dir_in(cache_root: &Path) -> PathBuf {
@@ -95,7 +95,7 @@ pub fn model_usage_cache_dir_in(cache_root: &Path) -> PathBuf {
 }
 
 pub fn load_model_usage_record_for_path(path: &Path) -> Option<ModelUsageRecord> {
-    load_model_usage_record_for_path_in(path, &crate::skippy_cache_dir())
+    load_model_usage_record_for_path_in(path, &crate::application_cache_dir())
 }
 
 pub fn load_model_usage_record_for_path_in(
@@ -115,7 +115,7 @@ pub fn track_model_usage(
     source: Option<&str>,
 ) -> Result<()> {
     track_model_usage_in(
-        &crate::skippy_cache_dir(),
+        &crate::application_cache_dir(),
         path,
         display_name,
         model_ref,
@@ -152,7 +152,7 @@ pub fn track_managed_model_usage(
     source: &str,
 ) -> Result<()> {
     track_managed_model_usage_in(
-        &crate::skippy_cache_dir(),
+        &crate::application_cache_dir(),
         primary_path,
         managed_paths,
         display_name,
@@ -184,7 +184,7 @@ pub fn track_managed_model_usage_in(
 }
 
 pub fn plan_model_cleanup(unused_since: Option<Duration>) -> Result<ModelCleanupPlan> {
-    plan_model_cleanup_in(&crate::skippy_cache_dir(), unused_since)
+    plan_model_cleanup_in(&crate::application_cache_dir(), unused_since)
 }
 
 pub fn plan_model_cleanup_in(
@@ -197,7 +197,7 @@ pub fn plan_model_cleanup_in(
 }
 
 pub fn execute_model_cleanup(unused_since: Option<Duration>) -> Result<ModelCleanupResult> {
-    execute_model_cleanup_in(&crate::skippy_cache_dir(), unused_since)
+    execute_model_cleanup_in(&crate::application_cache_dir(), unused_since)
 }
 
 pub fn execute_model_cleanup_in(

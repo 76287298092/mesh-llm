@@ -12,8 +12,6 @@ const HUB_CACHE_ALIAS_ENV: &str = "HUGGINGFACE_HUB_CACHE";
 const HF_HOME_ENV: &str = "HF_HOME";
 const XET_CACHE_ENV: &str = "HF_XET_CACHE";
 const XDG_CACHE_HOME_ENV: &str = "XDG_CACHE_HOME";
-const SKIPPY_DATA_DIR_ENV: &str = "SKIPPY_DATA_DIR";
-const SKIPPY_CACHE_DIR_ENV: &str = "SKIPPY_CACHE_DIR";
 const WRITE_PROBE_PREFIX: &str = ".skippy-write-probe";
 
 static WRITE_PROBE_SEQUENCE: AtomicU64 = AtomicU64::new(0);
@@ -91,22 +89,38 @@ pub fn huggingface_xet_cache_dir() -> PathBuf {
     requested_xet_cache_dir()
 }
 
-pub fn skippy_cache_dir() -> PathBuf {
-    if let Some(path) = env_path(SKIPPY_CACHE_DIR_ENV) {
-        return path;
-    }
+pub fn application_cache_dir() -> PathBuf {
     dirs::cache_dir()
         .or_else(|| dirs::home_dir().map(|home| home.join(".cache")))
-        .unwrap_or_else(|| std::env::temp_dir().join("skippy-cache"))
-        .join("skippy")
+        .unwrap_or_else(|| std::env::temp_dir().join("mesh-llm-cache"))
+        .join("mesh-llm")
 }
 
 pub fn prepare_download_directories() -> Result<PreparedDownloadDirectories> {
+    prepare_cli_download_directories()
+}
+
+/// CLI cache preparation shared by Mesh and standalone Skippy.
+pub fn prepare_cli_download_directories() -> Result<PreparedDownloadDirectories> {
     prepare_download_directories_with_data_roots(&fallback_data_roots())
 }
 
+fn fallback_data_roots() -> Vec<PathBuf> {
+    let mut roots = Vec::new();
+    if let Some(path) = env_path("MESH_LLM_DATA_DIR") {
+        roots.push(path);
+    }
+    if let Some(path) = dirs::data_local_dir() {
+        roots.push(path.join("mesh-llm"));
+    }
+    if let Some(path) = dirs::home_dir() {
+        roots.push(path.join(".mesh-llm").join("data"));
+    }
+    roots.push(std::env::temp_dir().join("mesh-llm-data"));
+    deduplicate_paths(roots)
+}
+
 /// Prepare the Hub caches using fallback application-data roots chosen by the caller.
-/// Mesh supplies its own roots; standalone Skippy uses `prepare_download_directories`.
 pub fn prepare_download_directories_with_data_roots(
     fallback_roots: &[PathBuf],
 ) -> Result<PreparedDownloadDirectories> {
@@ -171,25 +185,10 @@ fn nonempty_path(value: OsString) -> Option<PathBuf> {
 }
 
 fn default_data_root() -> PathBuf {
-    env_path(SKIPPY_DATA_DIR_ENV)
-        .or_else(|| dirs::data_local_dir().map(|path| path.join("skippy")))
-        .or_else(|| dirs::home_dir().map(|path| path.join(".skippy").join("data")))
-        .unwrap_or_else(|| std::env::temp_dir().join("skippy-data"))
-}
-
-fn fallback_data_roots() -> Vec<PathBuf> {
-    let mut roots = Vec::new();
-    if let Some(path) = env_path(SKIPPY_DATA_DIR_ENV) {
-        roots.push(path);
-    }
-    if let Some(path) = dirs::data_local_dir() {
-        roots.push(path.join("skippy"));
-    }
-    if let Some(path) = dirs::home_dir() {
-        roots.push(path.join(".skippy").join("data"));
-    }
-    roots.push(std::env::temp_dir().join("skippy-data"));
-    deduplicate_paths(roots)
+    fallback_data_roots()
+        .into_iter()
+        .next()
+        .unwrap_or_else(|| std::env::temp_dir().join("mesh-llm-data"))
 }
 
 fn deduplicate_paths(paths: Vec<PathBuf>) -> Vec<PathBuf> {

@@ -11,7 +11,7 @@ paths inside the local Hugging Face cache.
 
 The pure identity and selection crates stay registry-agnostic. This crate owns
 the Hugging Face edge: endpoint, token, cache layout, repo metadata, downloads,
-and cache path identity recovery.
+remote `meshllm/catalog` refresh and caching, and cache path identity recovery.
 
 ```mermaid
 flowchart TB
@@ -38,23 +38,18 @@ HUGGINGFACE_HUB_CACHE
 HF_HOME
 HF_XET_CACHE
 XDG_CACHE_HOME
-SKIPPY_DATA_DIR
-SKIPPY_CACHE_DIR
+MESH_LLM_DATA_DIR
 ```
 
-Standalone Skippy validates both the Hub destination and Xet's independent
-working cache before it starts worker threads. If either configured path is
-read-only, it selects a writable directory under the platform-local Skippy data
-directory, then `~/.skippy/data` or the system temp directory.
-`SKIPPY_DATA_DIR` overrides the first application-data fallback root. Mesh
-passes its own `MESH_LLM_DATA_DIR` and platform roots through
-`prepare_download_directories_with_data_roots`; the shared crate does not read
-that Mesh variable for download fallback selection.
+Both CLIs validate the Hub destination and Xet's independent working cache
+before starting worker threads. If a configured path is read-only, they use the
+same fallback order: `MESH_LLM_DATA_DIR`, the platform-local Mesh data
+directory, `~/.mesh-llm/data`, then the system temp directory. Embedding
+applications can supply explicit fallback roots.
 
-Model-usage records and GGUF metadata default to the Skippy application cache
-(`SKIPPY_CACHE_DIR` overrides it). Store APIs with an `_in` suffix accept an
-explicit application cache root; Mesh supplies its existing Mesh cache root to
-preserve persisted records and metadata.
+Both CLIs use the same application cache root for model-usage records and GGUF
+metadata. Store APIs with an `_in` suffix accept an explicit application cache
+root for tests and embedding applications.
 
 Use `HfModelRepository::builder()` to override the cache directory, endpoint, or
 token explicitly in tests and embedding applications.
@@ -80,6 +75,7 @@ unchanged.
   and available sidecars) while returning named snapshot paths to model loaders
 - locate the default Hugging Face cache directory
 - derive `HfModelIdentity` and `ModelIdentity` from cached snapshot paths
+- refresh and query the shared remote model catalog for both CLIs
 
 Keep artifact ranking in `skippy-model-artifact`, public reference parsing in
 `skippy-model-ref`, and stage materialization in `skippy-runtime` or

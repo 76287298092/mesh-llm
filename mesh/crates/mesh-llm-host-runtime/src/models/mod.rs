@@ -59,20 +59,9 @@ pub use usage::{
 
 pub use skippy_model_hf::PreparedDownloadDirectories;
 
-/// Mesh chooses its own writable fallback roots when using the shared HF cache API.
+/// Prepare the same CLI fallback roots used by standalone Skippy.
 pub fn prepare_download_directories() -> Result<PreparedDownloadDirectories> {
-    let mut roots = Vec::new();
-    if let Some(path) = std::env::var_os("MESH_LLM_DATA_DIR").filter(|path| !path.is_empty()) {
-        roots.push(path.into());
-    }
-    if let Some(path) = dirs::data_local_dir() {
-        roots.push(path.join("mesh-llm"));
-    }
-    if let Some(path) = dirs::home_dir() {
-        roots.push(path.join(".mesh-llm").join("data"));
-    }
-    roots.push(std::env::temp_dir().join("mesh-llm-data"));
-    skippy_model_hf::prepare_download_directories_with_data_roots(&roots)
+    skippy_model_hf::prepare_cli_download_directories()
 }
 
 pub(crate) fn build_hf_api(_progress: bool) -> Result<HFClientSync> {

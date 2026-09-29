@@ -13,6 +13,6 @@ package manifest, or load a model. Those are separate responsibilities of
 [`skippy-model-artifact`](../skippy-model-artifact/README.md),
 [`skippy-package-format`](../skippy-package-format/README.md), and the runtime.
 
-Mesh's host runtime is the current consumer. Callers provide a catalog (an
+Mesh's host runtime and standalone Skippy commands are consumers. Callers provide a catalog (an
 in-memory catalog or an `entries/` checkout through `HfCatalogProvider`) and
 the local search directories; network refresh remains the caller's job.

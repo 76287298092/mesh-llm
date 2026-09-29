@@ -2,14 +2,15 @@ pub mod blocking;
 mod cache_paths;
 mod checkpoint;
 pub mod local_cache;
+pub mod remote_catalog;
 pub mod store;
 mod tls;
 
 pub use cache_paths::{
     DownloadDirectoryFallback, DownloadDirectoryKind, PreparedDownloadDirectories,
-    download_cache_diagnostic, download_cache_diagnostic_for, huggingface_hub_cache_dir,
-    huggingface_xet_cache_dir, prepare_download_directories,
-    prepare_download_directories_with_data_roots, skippy_cache_dir,
+    application_cache_dir, download_cache_diagnostic, download_cache_diagnostic_for,
+    huggingface_hub_cache_dir, huggingface_xet_cache_dir, prepare_cli_download_directories,
+    prepare_download_directories, prepare_download_directories_with_data_roots,
 };
 pub use checkpoint::DownloadedCheckpointFile;
 pub use tls::{HfTlsProvider, configure_hf_tls_provider};

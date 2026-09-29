@@ -44,17 +44,14 @@ pub enum Command {
     /// Serve OpenAI and Anthropic APIs, or an explicitly selected stage transport.
     Serve(Box<ServeCommandArgs>),
     ExampleConfig,
-    /// Download verified model artifacts or inspect the standalone model cache.
+    /// Download models or inspect the shared Hugging Face cache.
     Models {
-        /// Override SKIPPY_MODEL_CACHE_DIR and the platform Skippy model cache.
-        #[arg(long)]
-        cache_dir: Option<PathBuf>,
         #[command(subcommand)]
         command: ModelCommand,
     },
     /// Plan and admit a direct GGUF split for explicit worker endpoints.
     PlanSplit(PlanSplitArgs),
-    /// Inspect or explicitly import verified native runtime bundles.
+    /// List, install, remove, or prune verified native runtime bundles.
     Runtime {
         #[command(subcommand)]
         command: RuntimeCommand,
@@ -406,27 +403,33 @@ pub enum TelemetryLevel {
 
 #[derive(Subcommand)]
 pub enum RuntimeCommand {
-    List,
-    /// Install a checksum-verified runtime from an explicit release catalog.
-    Install {
-        #[arg(
-            long,
-            required_unless_present = "manifest_url",
-            conflicts_with = "manifest_url"
-        )]
-        manifest: Option<PathBuf>,
-        #[arg(
-            long,
-            required_unless_present = "manifest",
-            conflicts_with = "manifest"
-        )]
-        manifest_url: Option<String>,
-    },
-    /// Copy a verified bundle into the Skippy cache; leave the source unchanged.
-    Import {
-        source: PathBuf,
+    /// List locally discoverable or available release runtimes.
+    List {
+        #[arg(long, conflicts_with = "installed")]
+        available: bool,
+        #[arg(long, conflicts_with = "available")]
+        installed: bool,
         #[arg(long)]
-        dry_run: bool,
+        manifest: Option<PathBuf>,
+    },
+    /// Install the recommended runtime or an explicit flavor/runtime ID.
+    Install {
+        runtime: Option<String>,
+        #[arg(long)]
+        manifest: Option<PathBuf>,
+    },
+    /// Remove an installed native runtime.
+    Remove {
+        native_runtime_id: String,
+        #[arg(long)]
+        release: Option<String>,
+    },
+    /// Prune old native runtimes from the cache.
+    Prune {
+        #[arg(long)]
+        active_only: bool,
+        #[arg(long)]
+        release: Option<String>,
     },
 }
 
@@ -453,16 +456,8 @@ pub struct PlanSplitArgs {
 impl From<ModelCommand> for skippy_commands::models::ModelAction {
     fn from(command: ModelCommand) -> Self {
         match command {
-            ModelCommand::Download {
-                model_ref,
-                sha256,
-                size_bytes,
-            } => Self::Download {
-                model_ref,
-                sha256,
-                size_bytes,
-            },
-            ModelCommand::Remove { repo, dry_run } => Self::Remove { repo, dry_run },
+            ModelCommand::Download { model_ref } => Self::Download { model_ref },
+            ModelCommand::Delete { model, yes } => Self::Delete { model, yes },
             ModelCommand::Installed => Self::Installed,
             ModelCommand::Recommended => Self::Recommended,
             ModelCommand::Search { query, limit } => Self::Search { query, limit },
@@ -474,15 +469,29 @@ impl From<ModelCommand> for skippy_commands::models::ModelAction {
 impl From<RuntimeCommand> for skippy_commands::runtime::RuntimeAction {
     fn from(command: RuntimeCommand) -> Self {
         match command {
-            RuntimeCommand::List => Self::List,
-            RuntimeCommand::Install {
+            RuntimeCommand::List {
+                available,
                 manifest,
-                manifest_url,
-            } => Self::Install {
+                ..
+            } => Self::List {
+                available,
                 manifest,
-                manifest_url,
             },
-            RuntimeCommand::Import { source, dry_run } => Self::Import { source, dry_run },
+            RuntimeCommand::Install { runtime, manifest } => Self::Install { runtime, manifest },
+            RuntimeCommand::Remove {
+                native_runtime_id,
+                release,
+            } => Self::Remove {
+                native_runtime_id,
+                release,
+            },
+            RuntimeCommand::Prune {
+                active_only,
+                release,
+            } => Self::Prune {
+                active_only,
+                release,
+            },
         }
     }
 }
@@ -659,22 +668,17 @@ pub enum ModelCommand {
     Download {
         /// Hub reference: org/repo@revision:filename-or-quantization.
         model_ref: String,
-        /// Expected SHA-256 of the primary model file; checked on cache hits too.
-        #[arg(long)]
-        sha256: Option<String>,
-        /// Expected byte count of the primary model file.
-        #[arg(long)]
-        size_bytes: Option<u64>,
     },
-    /// Remove all cached revisions of one local model repository; never deletes from the Hub.
-    Remove {
-        repo: String,
+    /// Preview or delete one installed model, never a remote Hub repository.
+    Delete {
+        model: String,
+        /// Skip the dry-run preview and delete the selected local files.
         #[arg(long)]
-        dry_run: bool,
+        yes: bool,
     },
     /// List local model repositories and snapshots without contacting the Hub.
     Installed,
-    /// Show a short list of starter models.
+    /// Show recommended models from the shared remote catalog.
     Recommended,
     /// Find GGUF repositories on Hugging Face.
     Search {

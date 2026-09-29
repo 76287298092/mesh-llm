@@ -16,10 +16,7 @@ pub use stage::single_stage_config;
 
 /// Preserve Mesh's existing application cache location when calling Skippy.
 pub fn mesh_cache_dir() -> std::path::PathBuf {
-    dirs::cache_dir()
-        .or_else(|| dirs::home_dir().map(|home| home.join(".cache")))
-        .unwrap_or_else(|| std::env::temp_dir().join("mesh-llm-cache"))
-        .join("mesh-llm")
+    skippy_model_hf::application_cache_dir()
 }
 
 pub fn synthetic_direct_gguf_package(

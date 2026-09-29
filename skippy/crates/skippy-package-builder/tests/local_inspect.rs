@@ -20,7 +20,7 @@ fn inspect_local_gguf_does_not_prepare_download_caches() {
         .env("HF_HUB_CACHE", cache.join("hub"))
         .env("HUGGINGFACE_HUB_CACHE", cache.join("hub"))
         .env("HF_XET_CACHE", cache.join("xet"))
-        .env("SKIPPY_DATA_DIR", cache.join("fallback"))
+        .env("MESH_LLM_DATA_DIR", cache.join("fallback"))
         .env("HF_HUB_OFFLINE", "1")
         .output()
         .unwrap();

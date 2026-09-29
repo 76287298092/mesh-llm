@@ -23,17 +23,17 @@ use crate::{
 pub async fn run(mut args: ServeCommandArgs) -> Result<()> {
     validate(&args)?;
     if let Some(model) = args.model.take() {
-        let local = Path::new(&model).is_file() || Path::new(&model).is_dir();
-        let path = if local {
-            model.clone().into()
+        let existing = installed_model_path(&model);
+        let path = if let Some(local_path) = existing {
+            local_path
         } else {
-            let cache = skippy_config::paths::model_cache_dir(None)?;
+            let cache = skippy_commands::models::model_cache_dir();
             skippy_commands::models::download_model(&cache, &model, None, None)
                 .await?
                 .load_path
         };
         args.public.model_path = Some(path);
-        if !local {
+        if !Path::new(&model).exists() {
             args.public.model_id.get_or_insert(model);
         }
     }
@@ -42,6 +42,22 @@ pub async fn run(mut args: ServeCommandArgs) -> Result<()> {
         Some(StageTransport::Binary) => serve_binary_stage(args).await,
         None => serve_public(args).await,
     }
+}
+
+fn installed_model_path(model: &str) -> Option<std::path::PathBuf> {
+    let path = Path::new(model);
+    if path.is_file() || path.is_dir() {
+        return Some(path.to_path_buf());
+    }
+    // Mesh prefers catalog resolution for short curated names, then falls
+    // back to local cache stems. Exact Hub refs can use the cache directly.
+    if model.contains('/') || skippy_model_hf::remote_catalog::find_model_exact(model).is_none() {
+        let cached = skippy_model_hf::store::local::find_model_path(model);
+        if cached.exists() {
+            return Some(cached);
+        }
+    }
+    None
 }
 
 pub(crate) fn validate(args: &ServeCommandArgs) -> Result<()> {
@@ -348,6 +364,14 @@ mod tests {
     use super::*;
     use crate::cli::{Cli, Command};
     use clap::Parser;
+
+    #[test]
+    fn existing_local_model_path_is_used_without_hub_resolution() {
+        let temp = tempfile::tempdir().unwrap();
+        let model = temp.path().join("model.gguf");
+        std::fs::write(&model, b"GGUF").unwrap();
+        assert_eq!(installed_model_path(model.to_str().unwrap()), Some(model));
+    }
 
     #[test]
     fn common_frontend_flags_reach_binary_stage_zero() {

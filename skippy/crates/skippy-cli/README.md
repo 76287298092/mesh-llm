@@ -27,7 +27,8 @@ and cached before loading. Direct SafeTensors serving requires a model family
 supported by Skippy's native checkpoint loader; Qwen3.5 checkpoints are not yet
 supported, so use a GGUF variant such as
 `unsloth/Qwen3.5-0.8B-GGUF:Q4_K_M` for that family. Skippy
-reports the model ID and API address after `GET /v1/models` succeeds.
+reuses installed exact refs from the shared Hugging Face cache and reports the
+model ID and API address after `GET /v1/models` succeeds.
 
 To start the server and immediately chat with the model in the same terminal:
 
@@ -65,21 +66,17 @@ skippy models download unsloth/Qwen3-8B-GGUF:Q4_K_M
 skippy models installed
 ```
 
-`recommended` is a short standalone starter list. `search` queries Hugging
+`recommended` reads the same remote `meshllm/catalog` as Mesh. `search` queries Hugging
 Face for GGUF repositories. `show` resolves an exact artifact and displays its
 revision and file set. `download` verifies the selected files and prints the
-primary local path; serving the same reference reuses the cache. The optional
-`--sha256` and `--size-bytes` pins on `download` apply to the primary file and
-are checked on cache hits too. Without an independent expected digest, the
-reported SHA-256 describes the bytes obtained but is not an external
-authenticity claim.
+primary local path; serving the same reference reuses the cache. The reported
+SHA-256 describes the bytes obtained but is not an external authenticity claim.
 
-The model cache resolves from `models --cache-dir`, then
-`SKIPPY_MODEL_CACHE_DIR`, then the platform cache directory under
-`skippy/models`. Hub endpoint and token configuration follows Hugging Face
-settings. `skippy models remove org/repo --dry-run` previews removal of all
-local revisions of one repository; omit `--dry-run` to remove them. It never
-deletes a remote repository.
+Skippy and Mesh use the same Hugging Face Hub cache, honoring `HF_HUB_CACHE`,
+`HUGGINGFACE_HUB_CACHE`, `HF_HOME`, and `XDG_CACHE_HOME` in that order. Hub
+endpoint and token configuration follows Hugging Face settings. `skippy models
+delete org/repo:Q4_K_M` previews the selected installed GGUF files; add
+`--yes` to remove them. It never deletes a remote repository.
 
 ## Run a split on one machine
 
@@ -131,18 +128,20 @@ wait for it to exit before stopping downstream workers.
 ```sh
 skippy doctor
 skippy runtime list
+skippy runtime list --available
+skippy runtime install
+skippy runtime install metal
 skippy runtime install --manifest /path/to/runtime-catalog.json
-skippy runtime import /path/to/verified-bundle --dry-run
-skippy runtime import /path/to/verified-bundle
+skippy runtime remove <native-runtime-id>
+skippy runtime prune
 ```
 
 Runtime storage resolves from `--runtime-cache`, then
-`SKIPPY_NATIVE_RUNTIME_CACHE_DIR`, then the platform cache directory under
-`skippy/native-runtimes`. `SKIPPY_NATIVE_RUNTIME_BUNDLE_DIR` adds explicit
-bundle roots. A manual `runtime install` requires exactly one `--manifest` or
-`--manifest-url`. `runtime import` copies a verified bundle and leaves its
-source untouched. Mesh environment variables do not select standalone
-runtime storage.
+`MESH_LLM_NATIVE_RUNTIME_CACHE_DIR`, then the same platform cache directory as
+Mesh. `MESH_LLM_NATIVE_RUNTIME_BUNDLE_DIR` adds bundle roots. `runtime install`
+selects the recommended compatible runtime by default; `--manifest` selects an
+explicit release catalog. `runtime prune` keeps the active and previous release
+unless `--active-only` is passed.
 
 ## Output for terminals and automation
 

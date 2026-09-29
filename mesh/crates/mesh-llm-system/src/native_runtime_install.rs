@@ -23,11 +23,7 @@ pub fn mesh_native_runtime_catalog() -> NativeRuntimeCatalog {
 }
 
 fn mesh_catalog_for(build: &str, product: &str, runtime: &str) -> NativeRuntimeCatalog {
-    NativeRuntimeCatalog {
-        release_tags: [(runtime.to_string(), format!("v{product}"))].into(),
-        releases_url: "https://github.com/Mesh-LLM/mesh-llm/releases".to_string(),
-        rolling_release: mesh_llm_build_info::is_sha_build(build).then(|| runtime.to_string()),
-    }
+    publication_catalog(build, product, runtime)
 }
 
 pub fn default_release_manifest_url(mesh_version: &str) -> String {

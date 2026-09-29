@@ -34,6 +34,16 @@ impl DeleteModelCatalog for NoDeleteCatalog {
     }
 }
 
+/// The curated-name lookup used by both product CLIs for model deletion.
+pub struct CuratedDeleteCatalog;
+
+impl DeleteModelCatalog for CuratedDeleteCatalog {
+    fn local_stem_for_identifier(&self, identifier: &str) -> Option<String> {
+        crate::remote_catalog::find_model_exact(identifier)
+            .map(|model| model.file.trim_end_matches(".gguf").to_string())
+    }
+}
+
 async fn parse_delete_model_ref(
     input: &str,
     catalog: &impl DeleteModelCatalog,
@@ -347,7 +357,7 @@ fn find_related_hf_cache_paths(cache_info: &HFCacheInfo, path: &Path) -> Vec<Pat
 }
 
 pub fn collect_delete_paths(resolved_paths: &[PathBuf]) -> Result<Vec<PathBuf>> {
-    collect_delete_paths_in(resolved_paths, &crate::skippy_cache_dir())
+    collect_delete_paths_in(resolved_paths, &crate::application_cache_dir())
 }
 
 pub fn collect_delete_paths_in(
@@ -386,7 +396,7 @@ pub async fn delete_model_by_identifier_with_catalog(
     identifier: &str,
     catalog: &impl DeleteModelCatalog,
 ) -> Result<DeleteResult> {
-    delete_model_by_identifier_with_catalog_in(identifier, catalog, &crate::skippy_cache_dir())
+    delete_model_by_identifier_with_catalog_in(identifier, catalog, &crate::application_cache_dir())
         .await
 }
 

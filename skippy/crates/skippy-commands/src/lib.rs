@@ -6,7 +6,6 @@
 //! serving options types of its own.
 
 pub mod console;
-mod model_catalog;
 pub mod models;
 pub mod prompt;
 pub mod runtime;
