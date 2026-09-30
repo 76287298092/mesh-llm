@@ -67,7 +67,6 @@ WINDOWS_UNVERIFIED_CRATES = {
     "mesh-llm-routing",
     "mesh-llm-system",
     "skippy-bench",
-    "skippy-cache",
     "skippy-model-package",
     "skippy-quantize",
     "skippy-runtime",
