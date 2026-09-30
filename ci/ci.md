@@ -622,6 +622,10 @@ runtime producers are not duplicated.
   and golden reads still exercise the device. The source-checked Laya action
   repeats the exact variable gate so an older protected workflow cannot run
   the smoke on an uncertified PR runner before the workflow gate reaches main.
+  The ungated CUDA Laya row also probes the live NVIDIA runner for its image
+  revisions, installs the Vulkan loader and tools if missing, and checks that
+  `vulkaninfo` enumerates an NVIDIA device. That diagnostic is allowed to fail
+  without hiding a CUDA Laya result; it does not enable Vulkan inference.
   Windows product restore passes LF-terminated manifest fields to Git Bash so
   its runtime path does not retain Python's Windows carriage return. The Laya
   parity driver decodes golden fixtures as UTF-8 on Windows, and the smoke
