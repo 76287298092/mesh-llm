@@ -10,6 +10,7 @@ Plugin-specific documentation:
 
 - [Wallet engineering notes](wallet/README.md) - wallet boundaries, evidence provenance, and fixture expectations
 
+- [DwarfStar (ds4)](dwarfstar.md) - run ds4 models (DeepSeek V4 Flash and others) on Apple Silicon with a bundled alternative engine
 - [Flash-MoE](flash-moe.md) - external OpenAI-compatible backend adapter for single-node SSD expert streaming
 - [Telemetry](telemetry.md) - OTLP metrics-only runtime telemetry and external metrics plugin notes
 - [Virtual models](virtual-models.md) - request-orchestrating models backed by a plugin and host-routed inference
