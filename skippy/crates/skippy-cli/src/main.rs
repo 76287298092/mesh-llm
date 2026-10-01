@@ -23,7 +23,11 @@ fn main() -> std::process::ExitCode {
             return std::process::ExitCode::FAILURE;
         }
     };
-    match runtime.block_on(run_main(startup_warnings)) {
+    let result = runtime.block_on(run_main(startup_warnings));
+    // A serving prompt may still be blocked in readline after the server
+    // stops on SIGTERM. Do not wait indefinitely for that blocking task.
+    runtime.shutdown_timeout(std::time::Duration::from_secs(1));
+    match result {
         Ok(()) => std::process::ExitCode::SUCCESS,
         Err(error) => {
             let _ = skippy_commands::console::failure(&error);

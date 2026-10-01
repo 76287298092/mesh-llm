@@ -23,10 +23,7 @@ fn example_config_is_one_json_document_on_stdout() {
 fn standalone_rejects_missing_runtime_before_reading_stage_config() {
     let temp = tempfile::tempdir().unwrap();
     let output = std::process::Command::new(env!("CARGO_BIN_EXE_skippy"))
-        .env(
-            "MESH_LLM_NATIVE_RUNTIME_BUNDLE_DIR",
-            "/nonexistent/mesh-runtime",
-        )
+        .env_remove("MESH_LLM_NATIVE_RUNTIME_BUNDLE_DIR")
         .args([
             "--output",
             "human",
@@ -84,10 +81,7 @@ fn standalone_selection_uses_verified_bundle_and_rejects_abi_mismatch() {
         let output = std::process::Command::new(env!("CARGO_BIN_EXE_skippy"))
             .arg("--runtime-bundle")
             .arg(&bundle)
-            .env(
-                "MESH_LLM_NATIVE_RUNTIME_BUNDLE_DIR",
-                "/nonexistent/mesh-runtime",
-            )
+            .env_remove("MESH_LLM_NATIVE_RUNTIME_BUNDLE_DIR")
             .args([
                 "--output",
                 "human",

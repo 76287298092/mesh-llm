@@ -241,14 +241,7 @@ async fn serve_worker_with_readiness(
     let mut server = tokio::spawn(server);
     console::status(&format!("🧠 Loading {transport} stage for {model_id}"))?;
     let deadline = Instant::now() + startup_timeout;
-    let probe = SocketAddr::new(
-        if bind_addr.is_ipv4() {
-            "127.0.0.1".parse()?
-        } else {
-            "::1".parse()?
-        },
-        bind_addr.port(),
-    );
+    let probe = readiness_addr(bind_addr);
     loop {
         tokio::select! {
             outcome = &mut server => {
@@ -290,12 +283,7 @@ async fn serve_with_readiness(
     if bind_addr.port() == 0 {
         bail!("--bind-addr must use a fixed port so readiness can be reported");
     }
-    let host = if bind_addr.is_ipv4() {
-        "127.0.0.1"
-    } else {
-        "[::1]"
-    };
-    let api_base = format!("http://{host}:{}/v1", bind_addr.port());
+    let api_base = format!("http://{}/v1", readiness_addr(bind_addr));
     let mut server = tokio::spawn(server);
     console::status("🧠 Loading model and starting the API")?;
     wait_for_ready(&api_base, &model_id, &mut server, startup_timeout).await?;
@@ -317,12 +305,37 @@ async fn serve_with_readiness(
         no_think: false,
         history_path: None,
     };
-    let prompt_task =
+    let mut prompt_task =
         tokio::task::spawn_blocking(move || skippy_commands::prompt::run(prompt_args));
-    let result = prompt_task.await.context("join interactive prompt")?;
-    let _ = stop.send(());
-    server.await.context("join serving task")??;
-    result
+    tokio::select! {
+        result = &mut prompt_task => {
+            let result = result.context("join interactive prompt")?;
+            let _ = stop.send(());
+            server.await.context("join serving task")??;
+            result
+        }
+        result = &mut server => {
+            prompt_task.abort();
+            result.context("join serving task")??;
+            Ok(())
+        }
+    }
+}
+
+fn readiness_addr(bind_addr: SocketAddr) -> SocketAddr {
+    // A wildcard listener accepts loopback; a LAN-only listener does not.
+    if bind_addr.ip().is_unspecified() {
+        SocketAddr::new(
+            if bind_addr.is_ipv4() {
+                std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST)
+            } else {
+                std::net::IpAddr::V6(std::net::Ipv6Addr::LOCALHOST)
+            },
+            bind_addr.port(),
+        )
+    } else {
+        bind_addr
+    }
 }
 
 async fn wait_for_ready(
@@ -364,6 +377,21 @@ mod tests {
     use super::*;
     use crate::cli::{Cli, Command};
     use clap::Parser;
+
+    #[test]
+    fn readiness_uses_the_bound_interface_for_lan_only_listeners() {
+        for (bound, expected) in [
+            ("0.0.0.0:9337", "127.0.0.1:9337"),
+            ("[::]:9337", "[::1]:9337"),
+            ("192.0.2.10:9337", "192.0.2.10:9337"),
+            ("[2001:db8::10]:9337", "[2001:db8::10]:9337"),
+        ] {
+            assert_eq!(
+                readiness_addr(bound.parse().unwrap()),
+                expected.parse().unwrap()
+            );
+        }
+    }
 
     #[test]
     fn existing_local_model_path_is_used_without_hub_resolution() {

@@ -188,7 +188,7 @@ Start with [Mesh workflows](/docs/pages/private-meshes/) for operators, [Running
 - [Mesh design](https://github.com/Mesh-LLM/mesh-llm/blob/main/mesh/docs/design/DESIGN.md) — host architecture, node roles, transport streams, routing, and management APIs.
 - [Mesh workflows](/docs/pages/private-meshes/) — discovery, join tokens, admission policy, and client-only deployment shapes.
 - [Skippy split serving](/docs/pages/running-large-models/) — package refs, stage planning, readiness, caches, and diagnostics.
-- [Model package specification](/docs/pages/skippy-model-package-spec/) — `model-package.json` schema, artifact integrity, stage selection, and compatibility rules.
+- [Model package specification](/docs/pages/model-package-spec/) — `model-package.json` schema, artifact integrity, stage selection, and compatibility rules.
 - [Skippy integration notes](https://github.com/Mesh-LLM/mesh-llm/blob/main/skippy/docs/SKIPPY.md) — execution/runtime ownership and migration boundaries.
 - [Layer package repositories](https://github.com/Mesh-LLM/mesh-llm/blob/main/skippy/docs/LAYER_PACKAGE_REPOS.md) — durable package layout and validation.
 - [Native runtime artifacts](https://github.com/Mesh-LLM/mesh-llm/blob/main/skippy/docs/design/NATIVE_RUNTIMES.md) — platform/backend packaging and ABI compatibility.
