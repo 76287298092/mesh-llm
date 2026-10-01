@@ -1,0 +1,21 @@
+# baseline b188c2925aa05108ebb5b1fe7afd195c60254e6c
+# uncommitted exported source snapshot, not a clean commit
+# original full export: fc-resident-source-20260930-a.sha256
+# scope: FC production sources and exact device/executable identity
+# tests.rs hash is after the test-only chunks_exact_mut -> as_chunks_mut Clippy correction
+# GPU trial ran before that test-only correction; release arithmetic was unchanged
+0dbe930346130345eea9a541451becbae607597e4214b61415df5b8066b09f45  crates/mesh-specialize/src/kernels/cuda/native_mtp_q8_fc_operator.rs
+1505cbd9682b6d539b78f5fcc3b33e8dd5d52e8a7a6d5ee790411f9791e44486  crates/mesh-specialize/src/kernels/cuda/native_mtp_q8_fc_operator/compare.rs
+5d893340a90ba99659b23acf289e6cdfcdb60e0cf4afffea3c7a36eac11003f1  crates/mesh-specialize/src/kernels/cuda/native_mtp_q8_fc_operator/fixture.rs
+c4334b5909835e2dc88ed4e7a21e7188099001fe6d1862475e916b0ed441091f  crates/mesh-specialize/src/kernels/cuda/native_mtp_q8_fc_operator/launch.rs
+b5352184ae98bdec80d5bc46ea45629dbe635df0e86f4cffb044803e3154dc55  crates/mesh-specialize/src/kernels/cuda/native_mtp_q8_fc_operator/resident.rs
+99ae2309fc03b2b541e273af0eae7b3c387f72f1c0bcfaf7ee10996acdad56f4  crates/mesh-specialize/src/kernels/cuda/native_mtp_q8_fc_operator/tests.rs
+8fb1b2c97a65e0aead1981883b44845eb78cb8534e91a91b9bae23f9aa9e1bc3  crates/mesh-specialize/src/kernels/cuda/native_mtp_q8_fc_operator/resident/dense_fixture.rs
+aa11258d36ae64c99159e0f7684c1d67272c867a73ad701a33384315a79f245a  crates/mesh-specialize/src/kernels/cuda/native_mtp_q8_fc_operator/resident/dense_fixture/tests.rs
+7471a082cfa15fc83acec72d7f29a6791b388033bbab95d496256a3cb9279dee  crates/mesh-specialize/reference/native_mtp_q8_sliced_k_fc.rs
+8643b9ae08892be98249bb787daa425127ab05a8095e77e86561e252d8c532c3  crates/mesh-specialize/kernels/nvptx/native_mtp_q8_sliced_k_fc.rs
+e233e6f9861dae21bf0c81272e4dee74fc729097552d9a0a25ab041e6adbb3b6  crates/mesh-specialize/kernels/nvptx/native_mtp_q8_sliced_k_fc/instructions.rs
+c4c863c674687928f798d7ddea5a051198ef9a577f69bc97367cd0ddead890b4  crates/mesh-specialize/kernels/nvptx/native_mtp_q8_sliced_k_fc/staging.rs
+2d78910f43f9e366ea902c25d53ea69f694704e7d764b99f3cdf62f505f4796f  tools/xtask/src/specialize/native_mtp_fc_resident.rs
+850a8b0e8e93957631938b065d201122d85db6489737dc7b5a3f977f8391af88  fc-q8.ptx
+292eecd128954eb2277fbcd7b2a3bec1072b7a3ee44f34fffb220acba470f186  target/release/xtask

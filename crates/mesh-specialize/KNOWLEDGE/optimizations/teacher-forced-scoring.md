@@ -64,6 +64,20 @@ candidate with full-logit hashing enabled. A different schedule can change
 shape-specific arithmetic, so cross-schedule results are not an internal quality
 gate. No existing failure or threshold is changed by this option.
 
+`MESH_SPECIALIZE_SCORE_MODE` selects scoring execution: unset or `prefill`
+retains the preexisting chunked prefill route. Explicit `decode` prefills through
+the first scored hidden row in each window, then sends subsequent scored input
+tokens one at a time through `forward_hidden_decode` with that window's same
+session. The first scored row has `past=0` for the first window, or belongs to
+the context prefill for later windows; subsequent scored rows dispatch at
+`rows=1, past>0`, which exercises the A16 SwiGLU candidate. Every window still
+starts with fresh state. A16 scoring is admitted only with `score_mode=decode`
+and only if the plan contains at least one scored decode row. Window reports
+include explicit prefill context/input rows and scored hidden row ranges. The
+comparator requires matching `score_mode` for control/candidate and repeat runs
+(old missing fields mean `prefill`); decode manifests also need at least one
+reported decoded scored row.
+
 ## Head and statistics
 
 `src/kernels/cuda/resident_score.rs` copies chunks of hidden rows and runs the
@@ -93,7 +107,8 @@ target outside the top 64. On the first window's first chunk the harness
 compares the first four device rows against it (ids exact, values within
 `1e-5 + 4e-7 |v|`) and compares chunked head logits with the one-row
 generation head (`Head::run`) on the chunk's first and last rows. The manifest
-`check` object records both; `all_passed` requires both.
+`check` object records both. The report's `all_passed` is explicitly scoped to
+these scorer checks only; it is not a model-quality verdict.
 
 ## Record format
 
@@ -111,8 +126,13 @@ position in stream order:
 `manifest.json` holds corpus id, context, stride, per-stream and per-window
 scored counts and total/mean NLL (Ninfer report field names), per-domain and
 overall aggregates, FP8/NVFP4/attention profile names, every
-`MESH_SPECIALIZE_*` variable, `forward_rows`, head chunk rows, the check object, device,
-timing, artifact identity, artifact file sha256 and PTX sha256.
+`MESH_SPECIALIZE_*` variable, `forward_rows`, `score_mode`, per-window row
+ranges, row index-space semantics, head chunk rows, the scorer check object,
+device, timing, artifact identity, artifact file sha256 and PTX sha256.
+`all_passed` reports only the scorer operator/record checks;
+`quality_gate_status` remains `NOT RUN` because
+operator checks do not establish the fixed control-versus-candidate model-quality
+gates.
 
 ## Comparator
 

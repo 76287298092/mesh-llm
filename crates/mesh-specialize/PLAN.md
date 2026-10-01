@@ -224,6 +224,15 @@ that control's rates directly to MTP4 as an isolated speedup across different in
 | Connected 64-layer decoder and final vocabulary head | One/two-token independent hidden/logit fixtures bit exact; whole/token state and all three sanitizers pass | `KNOWLEDGE/findings/resident-model.md`; broader numerical/text quality remains open |
 | Reference-free resident decoder connection | GDN layer zero and full-attention layer three qualified; full schedule pending | `KNOWLEDGE/findings/resident-decoder.md`; independent whole-block comparisons, exact whole/chunk/token state and all three sanitizers pass |
 | Resident final-eight-layer FP8 MLP | Branch execution qualified for layers 56/63, one/17 tokens | `KNOWLEDGE/findings/resident-fp8-mlp.md`; independent scalar comparisons and three sanitizers pass; full schedule pending |
+| Direct `.ninfer` source loading | Ordinary commands run the pinned file; legacy/stream equivalence measured | `KNOWLEDGE/findings/ninfer-import-contract.md`; 106-input 306.41/26.48, 512-input 327.62/18.16 tok/s prefill/decode |
+| StreamForward and graph replay | Stream opt-in exact; graph exact, memcheck pass, racecheck incomplete, <1% gain | `KNOWLEDGE/optimizations/stream-forward.md` |
+| Split decode attention | Executes; quality verdict FAIL; stays opt-in | `KNOWLEDGE/findings/split-decode-quality.md` |
+| Decode scorer | Scorer-only GPU smoke passes; full-corpus quality open | `KNOWLEDGE/findings/decode-scorer-qualification.md` |
+| Native MTP residency and Q4 head | Packed parents resident; real 131,072-row Q4 head passes bounded inputs and three sanitizers | `findings/native-mtp-residency.md`, `findings/native-q4-operator-qualification.md` |
+| Native MTP Q8 FC and projections | Resident FC and 16 projection cases pass normal and sanitizers on bounded inputs | `findings/native-mtp-q8-fc-resident.md`, `findings/native-mtp-q8-projections.md` |
+| Target batch verification | 20 N=1..5 normal/sanitizer cells pass; no throughput claim | `KNOWLEDGE/findings/target-batch-decode-qualification.md` |
+| FP8 quantize reuse, NVFP4 A16 SwiGLU | Implemented opt-in; GPU qualification not run | `findings/fp8-quantize-reuse.md`, `findings/nvfp4-a16-swiglu.md` |
+| Native MTP admission | Closed: whole native MTP forward, acceptance and quality not qualified | `findings/ninfer-source-faithful-port.md` |
 
 Validation belongs to the parent: serial focused Rust tests/check/Clippy, formatting,
 repository no-console and crate-coverage checks where affected, and explicit
@@ -263,8 +272,8 @@ numerical evidence covers one/two-token fixtures, and execution through 135
 positions does not prove usable long-context quality. Matching Ninfer needs a
 shared text corpus, tokenizer/chat support, verified weight identity, a matched
 non-speculative control and further optimization. ABI integration, graph replay,
-FP8 KV, prefix reuse and concurrent serving remain future work. MTP is now a
-bounded standalone prototype; see the continuation below.
+FP8 KV, prefix reuse and concurrent serving remain future work. MTP status is
+tracked in the current-state section at the end of this plan.
 
 Ninfer was restored after the final profile at 07:45:48 EDT, PID 3197048 and
 HTTP 200. ComfyUI PID 448118 remained unchanged. The original Carrack branch is
@@ -513,3 +522,55 @@ as uncommitted changes at /Users/ndizazzo/dev/worktrees/ninfer-direct-runtime,
 on the same codex/issue-1393-feasibility branch. The primary checkout was not
 modified. Carrack retained the tested commit and raw qualification evidence.
 Use this new local path; the managed ninfer-performance path is now stale.
+
+## Current state and next steps, October 1
+
+This section replaces the root `HANDOFF_NINFER_*.md` notes, which were removed.
+Local checkout: `/Users/ndizazzo/dev/worktrees/ninfer-direct-runtime`, branch
+`codex/issue-1393-feasibility`. Work is uncommitted until the parent commits it.
+
+Gap: the Rust direct-file eager stream measures 306.41/26.48 tokens/s
+prefill/decode at 106 inputs and 327.62/18.16 at 512. Ninfer MTP0 with BF16 KV
+measures 3,378/76.3 and 8,563/76.3; MTP4 with FP8 KV decodes at 141.2/213.5. The
+user's target is roughly 10x decode. Graph replay, GPU greedy selection and the
+MLP workspace each gave at most a few percent, so the next gains must come from
+native MTP and shape-specific decode kernels.
+
+Next, in order:
+
+1. Native MTP forward on real weights using the qualified Q8 FC/projection,
+   Q4 head and residency pieces, with target batch verification. Batched
+   verification arithmetic is row-dependent; qualify against ordinary decode.
+   Proposal vocabulary is 131,072 rows versus the 248,320-token target head.
+2. GPU-qualify FP8 quantize reuse and NVFP4 A16 SwiGLU, then measure paired decode.
+3. Full-corpus quality with the decode scorer against `findings/quality-gates.md`
+   (NLL ≤0.5%, domain ≤1%, top1 ≥98%, mean KL ≤0.02, p99.9 KL ≤1, determinism;
+   KL is a top-64 lower bound).
+4. Long context, concurrency and ABI/serving integration remain after that.
+
+Retained negative results: graph replay is not a material win; GPU event sums
+cannot be subtracted from wall time; native FP8 prefill and online attention fail
+top-1 (~94%); split decode fails quality. Paused: offline `ninfer_bundle`
+(preserved, not deployed) and `nvfp4_prefill_large.rs` (unqualified).
+
+Operations:
+
+- Carrack `carrack.patio51.com`, checkout `/home/ndizazzo/dev/mesh/mesh-llm`;
+  run as `ssh -tt carrack.patio51.com '/bin/zsh -ilc ...'`, build with
+  `just specialize-tools-build`. `/usr/bin/time` is absent there.
+- GPU0 RTX 5090 (SM120, driver 615.71.09,
+  `GPU-80ded6bd-1a89-2628-3d94-902187dbab1d`). GPU1 RTX 3080 is not ours.
+- The user authorized stopping user units `ninfer-qwen38.service` and
+  `battlecity-comfy.service` for exclusive trials. Restore the initial state
+  afterward and never start a unit that was initially inactive. Ninfer health:
+  `http://127.0.0.1:1235/health`.
+- Artifact `/data/ai/ninfer/models/qwen3_8_27b_nvfp4.ninfer`, 23,719,715,844
+  bytes, SHA-256 matches the published manifest (unsloth-derived, not from the
+  NVIDIA converter).
+- Local gates, serial, through Just only:
+  `MACOSX_DEPLOYMENT_TARGET=26.0 just with-lld cargo test -p mesh-specialize --all-features`,
+  `... cargo clippy -p mesh-specialize -p xtask --all-targets --all-features -- -D warnings`,
+  Linux-target Clippy for `mesh-specialize` only (`--target x86_64-unknown-linux-gnu`;
+  xtask fails there on aws-lc-sys), `just specialize-ptx`, and
+  `MACOSX_DEPLOYMENT_TARGET=26.0 just no-console-print`.
+- At most two active workers. The commit hook rejects agent attribution trailers.

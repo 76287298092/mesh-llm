@@ -10,16 +10,49 @@ mod model_bench;
 mod model_profile;
 mod model_score;
 mod mtp;
+mod native_mtp_activation;
+mod native_mtp_fc_resident;
+mod native_mtp_forward;
+mod native_mtp_q4_resident;
+mod native_mtp_q8_projection_resident;
+mod native_mtp_qualify;
+mod native_mtp_report;
+mod native_mtp_residency;
 mod ninfer_inspect;
 mod nvfp4_prmt;
 mod observations;
 mod probe;
 mod stream_check;
+mod target_batch_decode;
 
 use crate::command::DynResult;
 
 pub(crate) fn run(args: &[String]) -> DynResult<()> {
     match args {
+        [command, rest @ ..] if command == "native-mtp-forward-check" => {
+            native_mtp_forward::run(rest)
+        }
+        [command, rest @ ..] if command == "native-mtp-activation-check" => {
+            native_mtp_activation::run(rest)
+        }
+        [command, rest @ ..] if command == "target-batch-decode-check" => {
+            target_batch_decode::run(rest)
+        }
+        [command, rest @ ..] if command == "native-mtp-residency-check" => {
+            native_mtp_residency::run(rest)
+        }
+        [command, rest @ ..] if command == "native-mtp-q8-fc-resident-check" => {
+            native_mtp_fc_resident::run(rest)
+        }
+        [command, rest @ ..] if command == "native-mtp-q4-resident-check" => {
+            native_mtp_q4_resident::run(rest)
+        }
+        [command, rest @ ..] if command == "native-mtp-q8-projection-resident-check" => {
+            native_mtp_q8_projection_resident::run(rest)
+        }
+        [command, rest @ ..] if command == "native-mtp-qualify" => {
+            native_mtp_qualify::run(rest)
+        }
         [command, rest @ ..] if command == "ninfer-inspect" => ninfer_inspect::run(rest),
         [command, rest @ ..] if command == "qwen-chunked-bench" => chunked_bench::run(rest),
         [command, rest @ ..] if command == "qwen-model-profile" => model_profile::run(rest),
@@ -48,8 +81,20 @@ pub(crate) fn run(args: &[String]) -> DynResult<()> {
         [command, rest @ ..] if command == "nvfp4-probe" => probe::run(rest),
         [command, rest @ ..] if command == "nvfp4-prmt-check" => nvfp4_prmt::synthetic(rest),
         [command, rest @ ..] if command == "nvfp4-prmt-real-check" => nvfp4_prmt::real(rest),
+        [command, rest @ ..] if command == "nvfp4-a16-swiglu-check" => {
+            probe::nvfp4_a16_swiglu(rest)
+        }
         [command, rest @ ..] if command == "native-mtp-q8-gemv-check" => {
             probe::native_mtp_q8_gemv(rest)
+        }
+        [command, rest @ ..] if command == "native-mtp-q8-fc-check" => {
+            probe::native_mtp_q8_fc(rest)
+        }
+        [command, rest @ ..] if command == "native-mtp-q4-head-check" => {
+            probe::native_mtp_q4_head(rest)
+        }
+        [command, rest @ ..] if command == "nvfp4-a16-swiglu-real-check" => {
+            probe::nvfp4_a16_swiglu_real(rest)
         }
         [command, rest @ ..] if command == "attention-v2-check" => probe::attention_v2(rest),
         [command, rest @ ..] if command == "attention-warp-check" => probe::attention_warp(rest),
@@ -85,6 +130,6 @@ pub(crate) fn run(args: &[String]) -> DynResult<()> {
         [command, rest @ ..] if command == "instruction-probe" => probe::instructions(rest),
         [command, rest @ ..] if command == "workload-probe" => probe::workloads(rest),
         [command, rest @ ..] if command == "workload-check" => probe::workload_check(rest),
-        _ => Err("usage: xtask specialize baseline --plan PATH --output NEW_DIRECTORY".into()),
+        _ => Err("usage: xtask specialize fp8-quantize-check --ptx PATH --device ORDINAL --output NEW_FILE".into()),
     }
 }

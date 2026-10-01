@@ -7,8 +7,7 @@
 //! require the caller to retain every referenced module and allocation.
 
 use super::{
-    Context, CuResult, CurrentContextGuard, Function, check_cuda, load_symbol,
-    report_cleanup_error,
+    Context, CuResult, CurrentContextGuard, Function, check_cuda, load_symbol, report_cleanup_error,
 };
 use anyhow::{Result, anyhow, bail, ensure};
 use std::cell::{Cell, RefCell};

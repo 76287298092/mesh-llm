@@ -13,17 +13,21 @@ def record(first=0):
     return (first, math.log(0.01), 5.0, *range(first, first + 64), *([math.log(0.01)] * 64))
 
 
-def stream():
+def stream(mode='prefill'):
     return {
         "id": "s", "domain": "test", "input_tokens": 5, "scored_tokens": 4,
         "windows": [{"input_begin": 0, "input_end": 5, "target_begin": 1,
-                     "target_end": 5, "scored_tokens": 4}],
+                     "target_end": 5, "scored_tokens": 4,
+                     "prefill_context_rows": {"begin": 0, "end": 1 if mode == 'decode' else 5},
+                     "prefill_scored_input_rows": {"begin": 0, "end": 1 if mode == 'decode' else 4},
+                     "decode_scored_hidden_rows": {"begin": 1, "end": 4} if mode == 'decode' else {"begin": 0, "end": 0},
+                     "decode_input_rows": {"begin": 1, "end": 4} if mode == 'decode' else {"begin": 5, "end": 5}}],
     }
 
 
 def write_score_dir(path, extra=None):
     path.mkdir()
-    item = dict(stream(), records='s.scores.bin', input_tokens_sha256='input',
+    item = dict(stream((extra or {}).get('score_mode', 'prefill')), records='s.scores.bin', input_tokens_sha256='input',
                 full_logits_sha256='logits')
     manifest = {'all_passed': True, 'streams': [item],
                 'corpus_id': 'test', 'context_tokens': 5, 'stride_tokens': 2,
@@ -36,6 +40,82 @@ def write_score_dir(path, extra=None):
 
 
 class ScoreComparisonTests(unittest.TestCase):
+    def test_score_mode_defaults_to_prefill_and_rejects_invalid_modes(self):
+        self.assertEqual(scores.score_mode({}), 'prefill')
+        self.assertEqual(scores.score_mode({'score_mode': 'decode', 'streams': [
+            stream('decode'),
+        ]}), 'decode')
+        for value in (None, True, 'Decode', 'auto', 1):
+            with self.subTest(value=value), self.assertRaisesRegex(SystemExit, 'score_mode'):
+                scores.score_mode({'score_mode': value})
+
+    def test_decode_score_mode_requires_reported_decode_rows(self):
+        manifest = {'score_mode': 'decode', 'streams': [
+            stream('decode'),
+        ]}
+        self.assertEqual(scores.score_mode(manifest), 'decode')
+        with self.assertRaisesRegex(SystemExit, 'no decode-scored'):
+            scores.score_mode({'score_mode': 'decode', 'streams': []})
+
+    def test_execution_ranges_reject_malformed_bounds(self):
+        for mode in ('prefill', 'decode'):
+            for key in scores.EXECUTION_RANGES:
+                for bad in (None, [], {}, {'begin': -1, 'end': 1},
+                            {'begin': 2, 'end': 1}, {'begin': 0, 'end': 6},
+                            {'begin': False, 'end': 1}, {'begin': 0, 'end': 1.0},
+                            {'begin': '0', 'end': 1}):
+                    with self.subTest(mode=mode, key=key, bad=bad):
+                        item = stream(mode)
+                        item['windows'][0][key] = bad
+                        with self.assertRaisesRegex(SystemExit, key):
+                            scores.score_mode({'score_mode': mode, 'streams': [item]})
+
+    def test_execution_ranges_reject_bounded_but_incorrect_plan(self):
+        for mode in ('prefill', 'decode'):
+            for key in scores.EXECUTION_RANGES:
+                with self.subTest(mode=mode, key=key):
+                    item = stream(mode)
+                    item['windows'][0][key] = {'begin': 0, 'end': 1}
+                    if item['windows'][0][key] == stream(mode)['windows'][0][key]:
+                        item['windows'][0][key] = {'begin': 0, 'end': 0}
+                    with self.assertRaisesRegex(SystemExit, key):
+                        scores.score_mode({'score_mode': mode, 'streams': [item]})
+
+    def test_decode_ranges_accept_one_row_window_before_eligible_window(self):
+        item = stream('decode')
+        one_row = {'input_begin': 0, 'input_end': 2, 'target_begin': 1,
+                   'target_end': 2, 'scored_tokens': 1,
+                   'prefill_context_rows': {'begin': 0, 'end': 1},
+                   'prefill_scored_input_rows': {'begin': 0, 'end': 1},
+                   'decode_scored_hidden_rows': {'begin': 1, 'end': 1},
+                   'decode_input_rows': {'begin': 1, 'end': 1}}
+        item['windows'].insert(0, one_row)
+        self.assertEqual(scores.score_mode({'score_mode': 'decode', 'streams': [item]}), 'decode')
+
+    def test_internal_and_repeat_checks_reject_execution_range_mismatch(self):
+        for key in scores.EXECUTION_RANGES:
+            with self.subTest(key=key), tempfile.TemporaryDirectory() as tmp:
+                candidate_dir = write_score_dir(Path(tmp) / 'candidate', {'score_mode': 'decode'})
+                other_dir = write_score_dir(Path(tmp) / 'other', {'score_mode': 'decode'})
+                manifest, candidate = scores.load_dir(candidate_dir)
+                other = json.loads((other_dir / 'manifest.json').read_text())
+                other['streams'][0]['windows'][0][key]['end'] -= 1
+                (other_dir / 'manifest.json').write_text(json.dumps(other))
+                with self.assertRaisesRegex(SystemExit, key):
+                    scores.compare_internal(candidate_dir, other_dir)
+                with self.assertRaisesRegex(SystemExit, key):
+                    scores.determinism(candidate, other_dir, manifest)
+                with self.assertRaisesRegex(SystemExit, key):
+                    scores.full_logit_determinism(candidate_dir, other_dir)
+
+    def test_stream_protocol_requires_identical_reported_execution_ranges(self):
+        for key in scores.EXECUTION_RANGES:
+            with self.subTest(key=key):
+                other = stream('decode')
+                other['windows'][0][key]['end'] -= 1
+                with self.assertRaisesRegex(SystemExit, 'execution ranges differ'):
+                    scores.require_stream_protocol(stream('decode'), other)
+
     def test_forward_rows_defaults_to_legacy_schedule(self):
         self.assertEqual(scores.forward_rows({}), 512)
         scores.require_forward_schedule({}, {'forward_rows': 512})
@@ -66,6 +146,13 @@ class ScoreComparisonTests(unittest.TestCase):
                     with self.assertRaisesRegex(SystemExit, 'forward_rows'):
                         scores.compare_internal(a, b)
 
+    def test_internal_comparison_requires_same_score_mode(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prefill = write_score_dir(Path(tmp) / 'prefill')
+            decode = write_score_dir(Path(tmp) / 'decode', {'score_mode': 'decode'})
+            with self.assertRaisesRegex(SystemExit, 'score_mode'):
+                scores.compare_internal(prefill, decode)
+
     def test_repeat_checks_reject_mismatched_schedule_even_with_equal_bytes_and_hashes(self):
         with tempfile.TemporaryDirectory() as tmp:
             a = write_score_dir(Path(tmp) / 'a', {'forward_rows': 1})
@@ -75,6 +162,16 @@ class ScoreComparisonTests(unittest.TestCase):
                 scores.determinism(candidate, b, manifest)
             with self.assertRaisesRegex(SystemExit, 'forward_rows'):
                 scores.full_logit_determinism(a, b)
+
+    def test_repeat_checks_reject_mismatched_score_mode(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prefill = write_score_dir(Path(tmp) / 'prefill')
+            decode = write_score_dir(Path(tmp) / 'decode', {'score_mode': 'decode'})
+            manifest, candidate = scores.load_dir(decode)
+            with self.assertRaisesRegex(SystemExit, 'score_mode'):
+                scores.determinism(candidate, prefill, manifest)
+            with self.assertRaisesRegex(SystemExit, 'score_mode'):
+                scores.full_logit_determinism(decode, prefill)
 
     def test_repeat_accepts_old_missing_schedule_as_512(self):
         with tempfile.TemporaryDirectory() as tmp:

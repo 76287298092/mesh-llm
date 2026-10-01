@@ -47,6 +47,10 @@ THRESHOLDS = {
     "mean_kl": 0.02,
     "p999_kl": 1.0,
 }
+EXECUTION_RANGES = (
+    "prefill_context_rows", "prefill_scored_input_rows",
+    "decode_scored_hidden_rows", "decode_input_rows",
+)
 
 
 def load_dir(path):
@@ -54,6 +58,7 @@ def load_dir(path):
     manifest = json.loads((path / "manifest.json").read_text())
     if manifest.get("all_passed") is not True:
         sys.exit(f"{path}: manifest is not all_passed")
+    score_mode(manifest)
     streams = []
     for stream in manifest["streams"]:
         raw = (path / stream["records"]).read_bytes()
@@ -149,6 +154,52 @@ def forward_rows(manifest):
 def require_forward_schedule(control, candidate):
     if forward_rows(control) != forward_rows(candidate):
         sys.exit("forward_rows differs; internal comparisons require the same forward schedule")
+    if score_mode(control) != score_mode(candidate):
+        sys.exit("score_mode differs; internal comparisons require the same scoring mode")
+
+
+def score_mode(manifest):
+    mode = manifest.get("score_mode", "prefill")
+    if not isinstance(mode, str) or mode not in ("prefill", "decode"):
+        sys.exit("score_mode must be prefill or decode")
+    decode_rows = 0
+    for stream in manifest.get("streams", []):
+        for window in stream.get("windows", []):
+            bounds = [window.get(key) for key in (
+                "input_begin", "input_end", "target_begin", "target_end", "scored_tokens")]
+            if any(type(value) is not int for value in bounds):
+                sys.exit("window bounds and scored_tokens must be integers")
+            input_begin, input_end, target_begin, target_end, scored = bounds
+            if not (0 <= input_begin < target_begin < target_end <= input_end
+                    and scored == target_end - target_begin):
+                sys.exit("window bounds do not describe a scored target suffix")
+            input_rows = input_end - input_begin
+            first_row = target_begin - 1 - input_begin
+            decode = mode == "decode"
+            expected = {
+                "prefill_context_rows": (0, first_row + 1 if decode else input_rows),
+                "prefill_scored_input_rows": (first_row, first_row + (1 if decode else scored)),
+                "decode_scored_hidden_rows": (1, scored) if decode else (0, 0),
+                "decode_input_rows": (first_row + 1, first_row + scored) if decode else (input_rows, input_rows),
+            }
+            if not decode and not any(key in window for key in EXECUTION_RANGES):
+                continue
+            for key, (expected_begin, expected_end) in expected.items():
+                reported = window.get(key)
+                if not isinstance(reported, dict):
+                    sys.exit(f"{key}: missing or malformed execution range")
+                begin, end = reported.get("begin"), reported.get("end")
+                limit = scored if key == "decode_scored_hidden_rows" else input_rows
+                if (type(begin) is not int or type(end) is not int
+                        or not 0 <= begin <= end <= limit):
+                    sys.exit(f"{key}: execution range must be nonnegative and bounded")
+                if (begin, end) != (expected_begin, expected_end):
+                    sys.exit(f"{key}: execution range disagrees with window plan")
+            if decode:
+                decode_rows += scored - 1
+    if mode == "decode" and decode_rows == 0:
+        sys.exit("score_mode=decode manifest contains no decode-scored hidden rows")
+    return mode
 
 
 def compare_internal(control_dir, candidate_dir):
@@ -202,6 +253,8 @@ def require_stream_protocol(control, candidate):
     keys = ("input_begin", "input_end", "target_begin", "target_end", "scored_tokens")
     if any(a[k] != b[k] for a, b in zip(left, right) for k in keys):
         sys.exit(f"{control['id']}: window protocol differs")
+    if any(a.get(key) != b.get(key) for a, b in zip(left, right) for key in EXECUTION_RANGES):
+        sys.exit(f"{control['id']}: window execution ranges differ")
 
 
 def determinism(candidate, repeat_dir, candidate_manifest):
@@ -211,6 +264,8 @@ def determinism(candidate, repeat_dir, candidate_manifest):
     require_forward_schedule(candidate_manifest, repeat_manifest)
     if [s["id"] for s, _, _ in candidate] != [s["id"] for s, _, _ in repeat]:
         return False
+    for (stream, _, _), (other, _, _) in zip(candidate, repeat):
+        require_stream_protocol(stream, other)
     return all(a == b for (_, _, a), (_, _, b) in zip(candidate, repeat))
 
 
@@ -349,6 +404,7 @@ def main():
             "control_profiles": manifests["control"].get("profiles"),
             "candidate_profiles": manifests["candidate"].get("profiles"),
             "forward_rows": forward_rows(manifests["candidate"]),
+            "score_mode": score_mode(manifests["candidate"]),
             "overall": overall, "domains": domains, "gates": gates,
             "verdict": "FAIL" if "FAIL" in statuses else ("INCOMPLETE" if "NOT RUN" in statuses else "PASS"),
         })

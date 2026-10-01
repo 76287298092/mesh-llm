@@ -25,6 +25,11 @@ pub(in crate::kernels) fn run(
     cases: &[ResidentAttentionCase],
 ) -> Result<Value> {
     ensure!(
+        crate::kernels::nvfp4_mlp_schedule::current()?
+            == crate::kernels::nvfp4_mlp_schedule::Schedule::Baseline,
+        "attention layer control requires the baseline NVFP4 MLP schedule"
+    );
+    ensure!(
         ptx.contains(".target sm_120a"),
         "resident attention requires SM120a PTX"
     );
@@ -179,6 +184,7 @@ impl Trial<'_, '_, '_> {
                     rows,
                     past,
                     capacity: self.config.capacity,
+                    decode: false,
                 },
             )?;
             output.extend(words(&result)?);
@@ -214,7 +220,8 @@ impl Trial<'_, '_, '_> {
                     &Step {
                         rows: 1,
                         past: self.config.capacity,
-                        capacity: self.config.capacity
+                        capacity: self.config.capacity,
+                        decode: false,
                     }
                 )
                 .is_err(),

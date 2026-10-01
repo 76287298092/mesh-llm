@@ -33,6 +33,11 @@ pub(in crate::kernels) fn run(
         "MTP requires the baseline NVFP4 schedule until the tiled profile is qualified"
     );
     ensure!(
+        crate::kernels::nvfp4_mlp_schedule::current()?
+            == crate::kernels::nvfp4_mlp_schedule::Schedule::Baseline,
+        "MTP requires the baseline NVFP4 MLP schedule until A16 SwiGLU recovery is qualified"
+    );
+    ensure!(
         !super::nvfp4_projection_audit::enabled()?,
         "NVFP4 audit is diagnostic; use qwen-model-profile"
     );

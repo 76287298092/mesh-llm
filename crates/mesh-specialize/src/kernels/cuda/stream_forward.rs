@@ -450,6 +450,11 @@ fn ensure_supported_profiles() -> Result<attention_profile::Profile> {
         "stream execution requires MESH_SPECIALIZE_NVFP4_PROFILE=baseline (found {})",
         nvfp4.name()
     );
+    ensure!(
+        crate::kernels::nvfp4_mlp_schedule::current()?
+            == crate::kernels::nvfp4_mlp_schedule::Schedule::Baseline,
+        "stream execution does not support MESH_SPECIALIZE_NVFP4_MLP_SCHEDULE=a16-swiglu"
+    );
     let attention = attention_profile::current()?;
     ensure!(
         attention.supports_stream(),

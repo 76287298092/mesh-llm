@@ -1,0 +1,149 @@
+{
+  "all_passed": true,
+  "artifact_path": "/data/ai/ninfer/models/qwen3_8_27b_nvfp4.ninfer",
+  "cases": [
+    {
+      "all_passed": true,
+      "case": "alternating-plus-minus-one",
+      "failures_first_16": [],
+      "fp64_scaled_error_limit": 0.0002,
+      "fp64_scaled_error_passed": true,
+      "max_absolute_fp64_error": 0.0,
+      "max_scaled_fp64_error": 0.0,
+      "nonfinite_outputs": 0,
+      "outputs": 131072,
+      "repeat_bf16_bit_mismatches": 0,
+      "repeat_raw_bit_mismatches": 0,
+      "repeats": 2,
+      "schedule_bf16_bit_mismatches": 0,
+      "schedule_raw_f32_bit_mismatches": 0,
+      "selection": {
+        "expected_schedule_proposal_row": 62132,
+        "expected_target_token": 838,
+        "first_proposal_row": 62132,
+        "first_target_token": 838,
+        "schedule_row_matches": true,
+        "second_proposal_row": 62132,
+        "second_target_token": 838,
+        "signed_map_remap_matches": true
+      },
+      "serial_fp32_bf16_diagnostic_mismatches": 0,
+      "serial_fp32_bf16_is_schedule_gate": false
+    },
+    {
+      "all_passed": true,
+      "case": "dense-signed-dyadic",
+      "failures_first_16": [],
+      "fp64_scaled_error_limit": 0.0002,
+      "fp64_scaled_error_passed": true,
+      "max_absolute_fp64_error": 0.0,
+      "max_scaled_fp64_error": 0.0,
+      "nonfinite_outputs": 0,
+      "outputs": 131072,
+      "repeat_bf16_bit_mismatches": 0,
+      "repeat_raw_bit_mismatches": 0,
+      "repeats": 2,
+      "schedule_bf16_bit_mismatches": 0,
+      "schedule_raw_f32_bit_mismatches": 0,
+      "selection": {
+        "expected_schedule_proposal_row": 22992,
+        "expected_target_token": 96795,
+        "first_proposal_row": 22992,
+        "first_target_token": 96795,
+        "schedule_row_matches": true,
+        "second_proposal_row": 22992,
+        "second_target_token": 96795,
+        "signed_map_remap_matches": true
+      },
+      "serial_fp32_bf16_diagnostic_mismatches": 0,
+      "serial_fp32_bf16_is_schedule_gate": false
+    }
+  ],
+  "device": {
+    "driver_version": 13040,
+    "major": 12,
+    "minor": 0,
+    "name": "NVIDIA GeForce RTX 5090",
+    "ordinal": 0,
+    "total_bytes": 33731248128,
+    "uuid": "GPU-80ded6bd-1a89-2628-3d94-902187dbab1d"
+  },
+  "device_ordinal": 0,
+  "elapsed_seconds": 61.899893235,
+  "fp64_max_scaled_error_limit": 0.0002,
+  "jit_log": "",
+  "kernel_resources": {
+    "local_bytes": 40,
+    "max_threads_per_block": 1024,
+    "registers": 48,
+    "static_shared_bytes": 2176
+  },
+  "kind": "native-mtp-q4-resident-qualification-v1",
+  "model_executable": false,
+  "native_mtp_admitted": false,
+  "proposal_head": {
+    "codes": {
+      "bytes": 335544320,
+      "offset": 0
+    },
+    "dense_dequantization": false,
+    "expected_parent_sha256": "388c9862e28fbba581e7ba2ea43cd9d62b6c0ad5d13966192c66a2f2cd17cbe8",
+    "format": "Q4_g64_FP16",
+    "group_size": 64,
+    "layout": "row_split_k128_v1",
+    "parent_bytes": 356515840,
+    "physical_object_id": "weight/001070",
+    "resident_parent_hash_matches": true,
+    "resident_readback_sha256": "388c9862e28fbba581e7ba2ea43cd9d62b6c0ad5d13966192c66a2f2cd17cbe8",
+    "scales": {
+      "bytes": 20971520,
+      "offset": 335544320
+    },
+    "shape": [
+      131072,
+      5120
+    ],
+    "source_parent_hash_matches": true,
+    "source_parent_sha256": "388c9862e28fbba581e7ba2ea43cd9d62b6c0ad5d13966192c66a2f2cd17cbe8"
+  },
+  "proposal_map": {
+    "expected_signed_map_byte_sha256": "c348bf8d2e70d502718ebb8eeefdc794936dc8462ae357b802ba0a987fad756c",
+    "format": "signed-int32-le",
+    "maximum_target_id": 248076,
+    "minimum_target_id": 0,
+    "physical_object_id": "weight/001071",
+    "proposal_rows": 131072,
+    "resident_bytes_match_parsed_map": true,
+    "resident_hash_matches": true,
+    "resident_signed_map_byte_sha256": "c348bf8d2e70d502718ebb8eeefdc794936dc8462ae357b802ba0a987fad756c",
+    "signed_map_byte_range": {
+      "bytes": 524288,
+      "offset": 0
+    },
+    "source_hash_matches": true,
+    "source_parent_sha256": "c348bf8d2e70d502718ebb8eeefdc794936dc8462ae357b802ba0a987fad756c",
+    "target_vocabulary": 248320
+  },
+  "proposal_rows": 131072,
+  "ptx_path": "/home/ndizazzo/dev/mesh/issue1393-q4-snapshot-20260930/probes.ptx",
+  "ptx_sha256": "3727e477d0691a3359e87de0ecdffc3248883890432958cb247c2db33c32f997",
+  "schema_version": 1,
+  "source_verification": {
+    "canonical_tensor_bytes": 20375588160,
+    "canonical_tensors": 1589,
+    "container": "ninfer-single-file-v3",
+    "full_ninfer_arithmetic_parity": false,
+    "source_artifact_id": "19c9ec11085642f1bbe340cd7cf6c207",
+    "source_bytes": 23719715844,
+    "source_dirty": false,
+    "source_sha256": "74d2c57145e6ff11d1d2faa79594477f9bc903a611af1fb20218189fbbb77d82",
+    "startup_verification_seconds": 32.114977412,
+    "stream_buffer_bytes": 65536,
+    "transform_allocation_limit_bytes": 134217728,
+    "transform_total_buffer_limit_bytes": 268435456,
+    "virtual_offsets": true,
+    "whole_file_hash_passes": 2
+  },
+  "target_vocabulary": 248320,
+  "timing_claim": false
+}

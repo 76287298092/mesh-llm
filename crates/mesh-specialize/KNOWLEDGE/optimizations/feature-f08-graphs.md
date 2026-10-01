@@ -1,7 +1,9 @@
 # F08 CUDA stream and graph primitives
 
-Status: bounded driver primitives implemented; parent registration, host-only
-compilation, GPU replay qualification, and performance measurement remain pending.
+Status: superseded by the whole-model graph path in
+[stream-forward.md](stream-forward.md), which registered these primitives and
+measured replay (equivalence and memcheck pass, racecheck incomplete, <1% gain).
+The original primitive scope is retained below.
 This entry does not establish model execution, decode improvement, or performance
 parity.
 

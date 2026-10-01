@@ -1,22 +1,35 @@
 //! Resident encoded embedding lookup with the existing BF16 normalization boundary.
 
+mod binding;
+#[cfg(test)]
+mod tests;
+
+use self::binding::validate_shape;
 use super::{
     driver::{Buffer, Context, Module},
-    resident_norm::Normalized,
+    resident_native_mtp::ResidentNativeMtp,
+    resident_norm::{Norm, Normalized},
     resident_weights::ResidentWeights,
 };
-use crate::artifact::schema::DType;
 use anyhow::{Context as _, Result, ensure};
 use std::ffi::c_void;
+
+pub(super) use binding::bind_table;
 
 pub(super) struct Embedding<'w, 'ctx> {
     owner: &'w ResidentWeights<'ctx>,
     table: u64,
     scale: Option<u64>,
-    norm: u64,
+    norm: Norm<'w, 'ctx>,
     vocabulary: usize,
     width: usize,
     epsilon: f32,
+}
+
+pub(super) struct NativeMtpEmbeddingConfig<'view> {
+    pub(super) table_name: &'view str,
+    pub(super) shape: [usize; 2],
+    pub(super) epsilon: f32,
 }
 
 impl<'w, 'ctx> Embedding<'w, 'ctx> {
@@ -28,10 +41,9 @@ impl<'w, 'ctx> Embedding<'w, 'ctx> {
         epsilon: f32,
     ) -> Result<Self> {
         let [vocabulary, width] = shape;
-        let (_, norm_bytes) = validate_shape(vocabulary, width, epsilon)?;
-        let width_u64 = u64::try_from(width).context("embedding width does not fit u64")?;
+        validate_shape(vocabulary, width, epsilon)?;
         let (table, scale) = bind_table(owner, table_name, vocabulary, width)?;
-        let norm = owner.tensor(norm_name, DType::Bf16, &[width_u64], norm_bytes)?;
+        let norm = Norm::new(owner, norm_name, width, epsilon)?;
         Ok(Self {
             owner,
             table,
@@ -43,6 +55,33 @@ impl<'w, 'ctx> Embedding<'w, 'ctx> {
         })
     }
 
+    /// Use the canonical target table and saved native-MTP embedding gamma.
+    /// Both owners must outlive this embedding; FP8 rows are gathered to BF16 first.
+    pub(super) fn from_native_mtp(
+        owner: &'w ResidentWeights<'ctx>,
+        native_mtp: &'w ResidentNativeMtp<'ctx>,
+        config: NativeMtpEmbeddingConfig<'_>,
+    ) -> Result<Self> {
+        let binding = native_mtp.embedding_norm()?;
+        let [vocabulary, width] = config.shape;
+        validate_shape(vocabulary, width, config.epsilon)?;
+        ensure!(
+            owner.belongs_to(native_mtp.context()),
+            "canonical embedding and native MTP norms belong to different contexts"
+        );
+        let (table, scale) = bind_table(owner, config.table_name, vocabulary, width)?;
+        let norm = Norm::from_native_mtp(binding, width, config.epsilon)?;
+        Ok(Self {
+            owner,
+            table,
+            scale,
+            norm,
+            vocabulary,
+            width,
+            epsilon: config.epsilon,
+        })
+    }
+
     /// Lookup token rows and run the resident fused BF16 embedding/norm kernel.
     pub(super) fn run<'a>(
         &self,
@@ -51,7 +90,7 @@ impl<'w, 'ctx> Embedding<'w, 'ctx> {
         tokens: &[u32],
     ) -> Result<Normalized<'a>> {
         ensure!(
-            self.owner.belongs_to(context),
+            self.owner.belongs_to(context) && self.norm.belongs_to(context),
             "resident embedding belongs to another context"
         );
         ensure!(
@@ -76,7 +115,7 @@ impl<'w, 'ctx> Embedding<'w, 'ctx> {
         let mut pointers = [
             table,
             row_ids,
-            self.norm,
+            self.norm.weight_pointer(),
             residual.pointer(),
             normalized.pointer(),
             unrounded.pointer(),
@@ -107,6 +146,10 @@ impl<'w, 'ctx> Embedding<'w, 'ctx> {
             residual,
             normalized,
         })
+    }
+
+    pub(super) fn belongs_to(&self, context: &Context) -> bool {
+        self.owner.belongs_to(context) && self.norm.belongs_to(context)
     }
 
     /// Dequantize only requested rows, retaining temporaries through the norm launch.
@@ -145,79 +188,6 @@ impl<'w, 'ctx> Embedding<'w, 'ctx> {
         context.synchronize()?;
         Ok(Some((output, ids)))
     }
-}
-
-/// Bind normalized logical views, independently of their source container.
-/// Both execution paths use this exact dtype/layout/shape/extent validation.
-pub(super) fn bind_table(
-    owner: &ResidentWeights<'_>,
-    name: &str,
-    vocabulary: usize,
-    width: usize,
-) -> Result<(u64, Option<u64>)> {
-    let (bf16_bytes, _) = validate_shape(vocabulary, width, 1e-6)?;
-    let dtype = &owner.object(name)?.dtype;
-    let encoded = encoded_table(dtype, vocabulary, width)?;
-    let shape = [u64::try_from(vocabulary)?, u64::try_from(width)?];
-    let table = owner.tensor(
-        name,
-        dtype.clone(),
-        &shape,
-        if encoded { bf16_bytes / 2 } else { bf16_bytes },
-    )?;
-    let scale = if encoded {
-        let prefix = name
-            .strip_suffix(".weight")
-            .context("embedding name must end in .weight")?;
-        Some(owner.tensor(
-            &format!("{prefix}.weight_scale"),
-            DType::Bf16,
-            &[shape[0], 1],
-            shape[0] * 2,
-        )?)
-    } else {
-        None
-    };
-    Ok((table, scale))
-}
-
-fn encoded_table(dtype: &DType, vocabulary: usize, width: usize) -> Result<bool> {
-    match dtype {
-        DType::Bf16 => Ok(false),
-        DType::Fp8E4m3 => {
-            ensure!(
-                [vocabulary, width] == [248_320, 5120],
-                "encoded embedding requires exact [248320, 5120] shape"
-            );
-            Ok(true)
-        }
-        _ => anyhow::bail!("unsupported embedding dtype: {}", dtype.as_str()),
-    }
-}
-
-fn validate_shape(vocabulary: usize, width: usize, epsilon: f32) -> Result<(u64, u64)> {
-    ensure!(
-        (1..=1_048_576).contains(&vocabulary),
-        "embedding vocabulary is out of range"
-    );
-    ensure!(
-        (1..=32768).contains(&width),
-        "embedding width is out of range"
-    );
-    ensure!(
-        epsilon.is_finite() && epsilon > 0.0,
-        "embedding epsilon must be positive and finite"
-    );
-    let vocabulary = u64::try_from(vocabulary).context("embedding vocabulary does not fit u64")?;
-    let width = u64::try_from(width).context("embedding width does not fit u64")?;
-    let table_bytes = vocabulary
-        .checked_mul(width)
-        .and_then(|elements| elements.checked_mul(2))
-        .context("embedding table byte extent overflows u64")?;
-    let norm_bytes = width
-        .checked_mul(2)
-        .context("embedding norm byte extent overflows u64")?;
-    Ok((table_bytes, norm_bytes))
 }
 
 fn validate_tokens(vocabulary: usize, tokens: &[u32]) -> Result<()> {
@@ -267,58 +237,4 @@ fn token_bytes(tokens: &[u32], expected_bytes: usize) -> Result<Vec<u8>> {
         "embedding token byte extent mismatch"
     );
     Ok(bytes)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{output_extents, token_bytes, validate_shape, validate_tokens};
-
-    #[test]
-    fn representation_dispatch_is_explicit_and_bounded() {
-        use crate::artifact::schema::DType;
-        assert!(!super::encoded_table(&DType::Bf16, 3, 2).unwrap());
-        assert!(super::encoded_table(&DType::Fp8E4m3, 248_320, 5120).unwrap());
-        assert!(super::encoded_table(&DType::Fp8E4m3, 248_320, 5119).is_err());
-        assert!(super::encoded_table(&DType::Fp8E4m3, 248_319, 5120).is_err());
-        assert!(super::encoded_table(&DType::F32, 248_320, 5120).is_err());
-    }
-
-    #[test]
-    fn validates_minimum_and_maximum_embedding_shapes() {
-        assert_eq!(validate_shape(1, 1, 1e-6).unwrap(), (2, 2));
-        assert_eq!(
-            validate_shape(1_048_576, 32768, 1e-6).unwrap(),
-            (68_719_476_736, 65_536)
-        );
-        assert_eq!(output_extents(1, 1).unwrap(), (1, 2, 4, 4));
-        assert_eq!(
-            output_extents(2048, 32768).unwrap(),
-            (67_108_864, 134_217_728, 268_435_456, 8192)
-        );
-    }
-
-    #[test]
-    fn rejects_invalid_embedding_dimensions_and_epsilon() {
-        for (vocabulary, width) in [(0, 1), (1_048_577, 1), (1, 0), (1, 32769)] {
-            assert!(validate_shape(vocabulary, width, 1e-6).is_err());
-        }
-        for epsilon in [0.0, f32::INFINITY, f32::NAN] {
-            assert!(validate_shape(3, 2, epsilon).is_err());
-        }
-        assert!(output_extents(0, 2).is_err());
-    }
-
-    #[test]
-    fn validates_first_and_last_tokens_and_rejects_out_of_range_ids() {
-        assert!(validate_tokens(3, &[0, 2]).is_ok());
-        assert!(validate_tokens(3, &[3]).is_err());
-        assert!(validate_tokens(3, &[]).is_err());
-        assert!(validate_tokens(3, &vec![0; 2049]).is_err());
-    }
-
-    #[test]
-    fn serializes_token_ids_in_little_endian_order() {
-        assert_eq!(token_bytes(&[0x0102_0304], 4).unwrap(), [4, 3, 2, 1]);
-        assert!(token_bytes(&[1], 8).is_err());
-    }
 }

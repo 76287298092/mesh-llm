@@ -1,7 +1,7 @@
 //! Per-kernel CUDA-event profile for one resident decode after a short prefix.
 
 use super::{
-    driver::{Buffer, Context, Module},
+    driver::{Buffer, Context, DeviceInfo, Module},
     resident_model::{Model, Output, Session},
     resident_weights::ResidentWeights,
 };
@@ -160,6 +160,9 @@ pub(in crate::kernels) fn run(
         && control_output.token == profiled_output.token
         && control_output.past == profiled_output.past
         && control_state_sha256 == profiled_state_sha256;
+    let exact_profile_expected = crate::kernels::nvfp4_mlp_schedule::current()?
+        == crate::kernels::nvfp4_mlp_schedule::Schedule::Baseline;
+    let same_profile_replay = prefill_exact && exact_output_and_state;
     let resulting_past = profiled_output.past;
     let decode_input_token = teacher_token.unwrap_or(profiled_prefill_token);
     drop(control_prefill_logits);
@@ -171,10 +174,6 @@ pub(in crate::kernels) fn run(
     context.synchronize()?;
     let memory_after_free = context.memory()?;
     let memory_released = memory_after_free.0 >= memory_before.0;
-    let persistent_bytes = layout
-        .bytes
-        .checked_add(config.state_layout.bytes)
-        .context("profile persistent allocation size overflows u64")?;
     let past_exact = resulting_past == tokens.len() + 1
         && control_cursor_past == resulting_past
         && profiled_cursor_past == resulting_past;
@@ -189,7 +188,7 @@ pub(in crate::kernels) fn run(
                 && v["token_integer_outputs_equal"] == true
         });
     let all_passed = prefill_exact
-        && exact_output_and_state
+        && same_profile_replay
         && past_exact
         && memory_released
         && partition_exact
@@ -197,51 +196,113 @@ pub(in crate::kernels) fn run(
         && nvfp4_audit_passed;
 
     let mut report = json!({
-        "attention_profile":crate::kernels::attention_profile::current()?.name(),
-        "nvfp4_profile":crate::kernels::nvfp4_profile::current()?.name(),
-        "nvfp4_decode_schedule":crate::kernels::nvfp4_decode_schedule::current()?.name(),
-        "nvfp4_decode_kernel":crate::kernels::nvfp4_decode_schedule::current()?.kernel(),
         "attention_audit":attention_audit,
         "nvfp4_projection_audit":nvfp4_audit,
         "gpu_selection_check": gpu_selection_check,
         "projection_audit": super::fp8_projection_audit::take_reports(),
-        "schema_version": 1,
-        "kind": "resident-model-single-decode-kernel-profile",
-        "completed": true,
         "all_passed": all_passed,
-        "device": info,
-        "arithmetic_profile": crate::kernels::fp8_profile::current()?.name(),
-        "mlp_workspace":super::model_workspace::enabled()?, "fp8_split_k":super::resident_fp8_splitk::configured_splits()?,
-        "prefix_token_ids": tokens,
-        "decode_input_token": decode_input_token,
-        "teacher_forced_token": teacher_token,
-        "resulting_past": resulting_past,
-        "logit_dump":logit_dump,
-        "exact_prefill_logits": prefill_exact,
-        "partition_stage_audit":stage_audit,
-        "partition_row_audit":row_audit,
-        "whole_vs_token_partition": partition,
-        "whole_vs_token_partition_exact": partition_exact,
-        "exact_output_and_state": exact_output_and_state,
-        "control_state_sha256": control_state_sha256,
-        "profiled_state_sha256": profiled_state_sha256,
-        "control_cursor_past": control_cursor_past,
-        "profiled_cursor_past": profiled_cursor_past,
-        "unprofiled_decode_wall_seconds": unprofiled_seconds,
-        "profiled_decode_wall_seconds": profiled_seconds,
-        "kernel_profile": kernel_profile,
-        "prefill_kernel_profile": prefill_kernel_profile,
-        "warmup": warmup,
-        "allocation_bytes": {
-            "weight_arena": layout.bytes,
-            "state_arena": config.state_layout.bytes,
-            "persistent_total": persistent_bytes,
-        },
-        "memory_before": {"free_bytes": memory_before.0, "total_bytes": memory_before.1},
-        "memory_after_free": {"free_bytes": memory_after_free.0, "total_bytes": memory_after_free.1},
-        "memory_released": memory_released,
-        "scope": "Profiled full-prefix execution and one full-decoder token; event instrumentation is not model throughput or an independent quality check.",
+        "exact_profile_expected": exact_profile_expected,
+        "same_profile_replay": same_profile_replay,
     });
+    add_profile_report_metadata(
+        &mut report,
+        ProfileReportMetadata {
+            info: &info,
+            tokens,
+            config,
+            layout: &layout,
+            memory_before,
+            memory_after_free,
+            memory_released,
+        },
+    )?;
+    report["decode_input_token"] = json!(decode_input_token);
+    report["teacher_forced_token"] = json!(teacher_token);
+    report["resulting_past"] = json!(resulting_past);
+    report["logit_dump"] = json!(logit_dump);
+    report["exact_prefill_logits"] = json!(prefill_exact);
+    report["partition_stage_audit"] = json!(stage_audit);
+    report["partition_row_audit"] = json!(row_audit);
+    report["whole_vs_token_partition"] = json!(partition);
+    report["whole_vs_token_partition_exact"] = json!(partition_exact);
+    report["exact_output_and_state"] = json!(if exact_profile_expected {
+        Some(exact_output_and_state)
+    } else {
+        None
+    });
+    report["same_profile_decode_replay"] = json!(exact_output_and_state);
+    report["cross_profile_quality_checked"] = json!(false);
+    report["control_state_sha256"] = json!(control_state_sha256);
+    report["profiled_state_sha256"] = json!(profiled_state_sha256);
+    report["control_cursor_past"] = json!(control_cursor_past);
+    report["profiled_cursor_past"] = json!(profiled_cursor_past);
+    report["unprofiled_decode_wall_seconds"] = json!(unprofiled_seconds);
+    report["profiled_decode_wall_seconds"] = json!(profiled_seconds);
+    report["kernel_profile"] = json!(kernel_profile);
+    report["prefill_kernel_profile"] = json!(prefill_kernel_profile);
+    report["warmup"] = json!(warmup);
+    Ok(report)
+}
+
+struct ProfileReportMetadata<'a> {
+    info: &'a DeviceInfo,
+    tokens: &'a [u32],
+    config: &'a DecoderConfig,
+    layout: &'a Layout,
+    memory_before: (usize, usize),
+    memory_after_free: (usize, usize),
+    memory_released: bool,
+}
+
+fn add_profile_report_metadata(
+    report: &mut Value,
+    metadata: ProfileReportMetadata<'_>,
+) -> Result<()> {
+    let ProfileReportMetadata {
+        info,
+        tokens,
+        config,
+        layout,
+        memory_before,
+        memory_after_free,
+        memory_released,
+    } = metadata;
+    let persistent_bytes = layout
+        .bytes
+        .checked_add(config.state_layout.bytes)
+        .context("profile persistent allocation size overflows u64")?;
+    report["schema_version"] = json!(1);
+    report["kind"] = json!("resident-model-single-decode-kernel-profile");
+    report["completed"] = json!(true);
+    report["attention_profile"] = json!(crate::kernels::attention_profile::current()?.name());
+    report["nvfp4_profile"] = json!(crate::kernels::nvfp4_profile::current()?.name());
+    report["nvfp4_decode_schedule"] =
+        json!(crate::kernels::nvfp4_decode_schedule::current()?.name());
+    report["nvfp4_decode_kernel"] =
+        json!(crate::kernels::nvfp4_decode_schedule::current()?.kernel());
+    report["device"] = json!(info);
+    report["arithmetic_profile"] = json!(crate::kernels::fp8_profile::current()?.name());
+    report["nvfp4_mlp_profile"] = json!(crate::kernels::nvfp4_mlp_schedule::current()?.name());
+    report["mlp_workspace"] = json!(super::model_workspace::enabled()?);
+    report["fp8_split_k"] = json!(super::resident_fp8_splitk::configured_splits()?);
+    report["prefix_token_ids"] = json!(tokens);
+    report["allocation_bytes"] = json!({
+        "weight_arena": layout.bytes,
+        "state_arena": config.state_layout.bytes,
+        "persistent_total": persistent_bytes,
+    });
+    report["memory_before"] = json!({
+        "free_bytes": memory_before.0,
+        "total_bytes": memory_before.1,
+    });
+    report["memory_after_free"] = json!({
+        "free_bytes": memory_after_free.0,
+        "total_bytes": memory_after_free.1,
+    });
+    report["memory_released"] = json!(memory_released);
+    report["scope"] = json!(
+        "Profiled full-prefix execution and one full-decoder token; replay is same-profile, not cross-profile quality or model throughput."
+    );
     let ab = crate::kernels::ab_schedule::current()?;
     report["ab_schedule"] = json!(ab.name());
     report["ab_prefix_shape"] = ab.report(
@@ -250,7 +311,7 @@ pub(in crate::kernels) fn run(
         config.gdn_shape.hidden,
     );
     report["ab_decode_shape"] = ab.report(1, config.gdn_shape.value_heads, config.gdn_shape.hidden);
-    Ok(report)
+    Ok(())
 }
 
 fn prepare_profile(
@@ -368,6 +429,13 @@ fn validate_kernels(module: &Module<'_>) -> Result<()> {
             .function(name)
             .with_context(|| format!("load profile kernel {name}"))?;
     }
+    if crate::kernels::nvfp4_mlp_schedule::current()?
+        == crate::kernels::nvfp4_mlp_schedule::Schedule::A16SwiGlu
+    {
+        module
+            .function("nvfp4_swiglu_a16")
+            .context("load A16 SwiGLU profile kernel")?;
+    }
     Ok(())
 }
 
@@ -426,7 +494,7 @@ fn check_gpu_selection(
         prefill.token == control.prefill_token && prefill.past == control.prefill_past,
         "GPU prefill selection differs from full-logit control"
     );
-    let decode = model.forward_selected(
+    let decode = model.forward_selected_decode(
         context,
         module,
         &[teacher.unwrap_or(prefill.token)],
@@ -616,7 +684,7 @@ fn timed_forward(
 ) -> Result<(Output, f64)> {
     context.synchronize()?;
     let start = Instant::now();
-    let forward = model.forward(context, module, &[token], session, None);
+    let forward = model.forward_decode(context, module, &[token], session);
     let synchronization = context.synchronize();
     let seconds = start.elapsed().as_secs_f64();
     let output = combine_forward_and_sync(forward, synchronization)?;
@@ -637,7 +705,7 @@ fn profiled_forward(
     context.synchronize()?;
     let start = Instant::now();
     let capture = super::launch_profile::capture(context, || {
-        model.forward(context, module, &[token], session, None)
+        model.forward_decode(context, module, &[token], session)
     });
     let synchronization = context.synchronize();
     let seconds = start.elapsed().as_secs_f64();

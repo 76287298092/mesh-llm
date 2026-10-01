@@ -1,0 +1,21 @@
+Note: mold is unavailable or failed the active target/toolchain link probe.
+Falling back to lld or the platform linker for this build.
+
+
+   Compiling mesh-specialize v0.76.1 (/home/ndizazzo/dev/mesh/issue1393-q4-snapshot-20260930/crates/mesh-specialize)
+warning: linker stderr: Note: mold is unavailable or failed the active target/toolchain link probe.
+         Falling back to lld or the platform linker for this build.
+  |
+  = note: `#[warn(linker_messages)]` on by default
+
+warning: `mesh-specialize` (lib test) generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 6.68s
+     Running unittests src/lib.rs (target/debug/deps/mesh_specialize-5fc4832d896fb214)
+
+running 3 tests
+test kernels::native_mtp_q8_projection_cases::tests::range_accepts_only_nonempty_indices_within_the_matrix ... ok
+test kernels::native_mtp_q8_projection_cases::tests::default_range_preserves_all_cartesian_indices_in_order ... ok
+test kernels::native_mtp_q8_projection_cases::tests::bounded_range_keeps_exact_original_case_indices_and_coordinates ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 634 filtered out; finished in 0.00s
+

@@ -1,9 +1,11 @@
 # Native MTP packed views
 
 Status: host metadata views and proposal token-ID validation implemented. CPU
-Q8/Q4 numeric row decode and the indexed Q4 proposal-head step are now executable.
-Native NInfer model admission remains unchanged; there is still no complete native
-MTP block, artifact-weight loader, or GPU packed consumer in mesh-specialize.
+Q8/Q4 numeric row decode, indexed Q4 proposal-head step, and a bounded synthetic
+Q4 GPU operator candidate are present. Host-only physical-parent loading and
+hash qualification now pass on the pinned artifact. Native NInfer model admission
+remains unchanged; there is still no complete native MTP block or GPU/model
+qualification for the Q4 operator candidate.
 
 ## Verified layout facts
 
@@ -55,6 +57,72 @@ read-only reference tree `/var/folders/5q/y9dmlwq11tqd74j_17t5p5ym0000gn/T/openc
   not a full quantization codec definition.
 
 ## Numeric reference
+
+### Token-map streaming append fix
+
+The parent reported `native proposal token map byte length mismatch` during the
+real pinned parent check. The complete failed report is preserved at
+[`failed-a.json`](../evidence/native-mtp-parents-20260930/failed-a.json), copied
+from the supplied local report without rerunning qualification. It records
+`all_passed: false` and 44.69598951 elapsed seconds. Source inspection confirmed that
+`NinferArtifact::read_object_range` streams through `Write::write_all`, so a
+`Vec<u8>` destination appends rather than overwriting existing elements.
+`NativeMtpViews::resolve` reserved 524288 bytes, then incorrectly resized the
+vector to that length before reading another 524288 bytes. The resulting
+1048576-byte map failed the unchanged strict parser length check.
+
+The fix retains the fallible reservation but leaves the vector empty for the
+read. The regression
+`resolve_reads_exact_token_map_when_artifact_has_complete_native_mtp_metadata`
+uses the existing complete synthetic MTP directory in a temporary sparse v3
+artifact, with compact aligned object offsets and a real 524288-byte map payload.
+It calls the real reader through `resolve` and checks all 131072 distinct,
+nonzero little-endian token IDs and the out-of-bounds lookup. Restoring the
+resize makes resolution fail the parser's byte-length check before assertions.
+Metadata, range, signed-ID checks, thresholds and admission are unchanged.
+
+### Parent-run host-only qualification, 2026-09-30
+
+The complete successful parent report is preserved at
+[`passed-b.json`](../evidence/native-mtp-parents-20260930/passed-b.json). Both
+reports were read in full from the supplied `native-mtp-parents-20260930-a.json`
+and `native-mtp-parents-20260930-b.json` files in the local temporary directory.
+The qualification used baseline `b188c2925` plus an uncommitted scoped snapshot.
+That baseline is not a commit identity for the tested changes; neither JSON
+report records a source-code revision.
+
+The successful report records `all_passed: true`, 14 physical parents and
+808307712 physical-parent bytes. Every parent's `copied_bytes` equals its
+`expected_bytes`; per-parent SHA-256 values are retained verbatim in the report.
+Summing those recorded fields gives 451267584 bytes for the 12 MTP parents and
+357040128 bytes for the two proposal parents. There are eight logical Q8 views,
+seven logical norm views, and 131072 proposal rows. The Q4 head is 356515840
+bytes; the INT32 map is exactly 524288 bytes after the append fix.
+
+The source artifact is `/data/ai/ninfer/models/qwen3_8_27b_nvfp4.ninfer`,
+23719715844 bytes, with artifact ID `19c9ec11085642f1bbe340cd7cf6c207` and
+SHA-256 `74d2c57145e6ff11d1d2faa79594477f9bc903a611af1fb20218189fbbb77d82`.
+Source verification records `source_dirty: false`, two whole-file hash passes,
+1589 canonical tensors and 20375588160 canonical tensor bytes. Total elapsed
+time is 54.179 seconds, with the exact recorded value 54.179423618 seconds;
+startup verification accounts for 32.123175529 seconds. This is host qualification
+wall time, not GPU operator timing or model prefill/decode performance.
+
+The parent reports that native Linux validation passed 575 unit tests and 26
+integration tests, and original-worktree validation passed 432 host tests and
+26 Python tests. These are parent-run results supplied with this handoff, not
+worker-run tests or fields in the qualification JSON. No test transcripts were
+supplied or fabricated. This worker only read evidence and source and preserved
+the reports; it ran no Cargo, Git, SSH or GPU operations. Parent owns integration.
+
+The passing result is explicitly host-only: `host_only: true`,
+`gpu_execution: false`, `dense_dequantization: false`, and
+`text_tensors_loaded: false`. `native_mtp_admitted`, `model_executable`, and
+`full_ninfer_arithmetic_parity` remain false. Physical-parent copying and hashes
+do not prove resident GPU execution, a complete MTP block, model correctness,
+or completed MTP integration. Metadata checks, strict parser thresholds, and
+admission remain unchanged. The synthetic Q4 candidate findings below are
+preserved and gain no GPU/model qualification from this host-only result.
 
 The test-only reference at `reference/native_mtp_quantized.rs` decodes Q8/Q4
 rows from their original code/scale planes and selected-parent row maps. It
@@ -119,14 +187,73 @@ then re-aligns and drafts the next round (`src/models/qwen3_5/program/speculativ
 `src/ops/kernel/speculative_round.cuh:216-255`). Target verification selects and
 stores the continuation hidden state (`src/models/qwen3_5/program/speculative/target_verification.cpp:8-45`).
 
-Remaining mesh-specialize work: load MTP's 12 packed matrices, BF16 norms, shortlist
-head, and token map from Ninfer object ranges; compose the complete target-conditioned
-MTP block with real weights and alignments; compare against Ninfer fixtures; then
-add a GPU implementation consuming the original packed planes. Only after those
-steps should model-source MTP admission change. Next GPU step is a row-split-aware
-Q8 GEMV/linear consumer and Q4 shortlist-head top-k kernel preserving 256-byte
-plane alignment, parent row maps, FP16 scale handling and FP32 accumulation; never
-materialize a dense proposal vocabulary matrix.
+### Source-faithful Q4 indexed-head port map, audit only
+
+Pinned source is Ninfer `e31bc99b` at the reference tree named in this entry's
+layout citations. The production Q4 GEMV implementation is
+`src/ops/linear/q4/q4_a16_gemv.cuh::q4_a16_gemv_kernel`, selected through
+`src/ops/linear/q4/q4_dispatch.cpp::q4_dispatch/select_q4_a16_launch`, shape
+table `shapes/n131072_k5120.cu::select_q4_n131072_k5120`, then wrapped by
+`q4_a16_gemv.cu::launch_q4_a16_gemv_r4_w1_direct` and
+`q4_instance_launch.cuh::launch_q4_a16_gemv_instance`. `text.cpp::project`
+calls `ops::linear`; `TextContext::proposal_argmax` allocates BF16
+`[proposal_head_n_, T]`, projects, invokes `ops::argmax`, and, when indexed,
+calls `ops::proposal_remap_token_ids` (`text.cpp:564-583`). `load/text.cpp`
+binds the indexed `[rows, hidden]` proposal head and I32 token map and checks
+the map is unique and in the public domain (`load/text.cpp:119-141`).
+
+For this head, the production shape is `[131072,5120]`. At `T=1`, shape
+dispatch chooses `GemvR4W1` (`q4_instances.cuh:5-8`): four output rows per
+CTA, one warp per row, 128 threads/CTA, direct BF16 activation reads, 16
+Q4 groups per warp tile, one stage, async 16-byte vector code copies, paired
+32-bit scale copies, and `PackedWord8`/`Fp16Mantissa` decoding. The kernel
+assigns CTA warp `threadIdx.x >> 5` to one of four rows and lane to eight
+codes per packed word (`q4_a16_gemv.cuh:314-318,320-337`). Each lane loads
+one 32-bit word containing eight nibbles for one 64-value group, decodes
+through `Q4SimtDecodeAtom::decode_eight`, reads eight BF16 activations as
+four `uint4` values, and performs eight ordered `fmaf`s
+(`q4_a16_gemv.cuh:67-99`). The XOR/magic FP16-mantissa decode is in
+`q4_rowsplit_storage.cuh::Q4SimtDecodeAtom::decode_eight:18-32`. It computes
+the same signed values as `(n ^ 8) - 8`; the Rust candidate uses an independent
+FP16-mantissa PTX decode. Warp sums use `warp_reduce_sum`,
+which adds in shuffle-down offsets 16,8,4,2,1 (`ops/common/warp.cuh:20-28`).
+With one warp per row there is no inter-warp row reduction. Output uses
+`linear_finish_row` then `__float2bfloat16_rn` (`linear/common/output.cuh:20-22`).
+
+The indexed row map and final token remap are not fused into Q4 GEMV or an
+indexed-specialized kernel. GEMV outputs one BF16 logit per local head row;
+generic `ops::argmax` uses 512 threads for one-column direct reduction and
+chooses the lower row ID for equal values (`ops/kernel/argmax.cuh:22-24,57-93`,
+`ops/launcher/argmax.cu:40-58`). `proposal_remap_token_ids` applies the I32
+local-row-to-public-ID map (`text.cpp:581-583`, `speculative_round.cuh:702-708`).
+`linear_topk.h` also exposes a separate Q4 indexed Top-16 API, but MTP's
+`proposal_argmax` path uses BF16 projection, argmax, then remap, not that API.
+
+License provenance available in this reference tree is limited: the tree has
+`tools/chat_templates/LICENSE`, but the inspected Q4/model/operator files did
+not show a file-specific SPDX/license header. Do not copy this implementation
+verbatim or assume a license for these sources; port the described schedule
+independently and have the parent resolve provenance before any direct code reuse.
+
+The current `kernels/nvptx/native_mtp_q4_head_gemv` candidate now follows the
+selected `GemvR4W1` schedule: four rows per 128-thread CTA, one warp per row,
+eight codes per packed-word lane, 16-group tiles, 16-byte code and 4-byte scale
+`cp.async.ca` copies, FP16-mantissa decode, ordered FP32 FMA, five-step warp
+reduction, and BF16 RNE output. Its scalar BF16 activation fallback and zero
+physical Q4 padding preserve bounded logical-K tails. The separate FP64
+projection oracle remains independent; `native_mtp_q4_operator/schedule_reference.rs`
+also models the exact FP32 lane and reduction order. Host fixtures include row,
+group, and K tails, but the CUDA schedule tests have not run and no GPU/JIT or
+sanitizer qualification is established. This is a source-faithful schedule
+candidate, not performance or model-parity evidence; parent GPU qualification
+remains required before promotion.
+
+Remaining mesh-specialize work: qualify the device PTX, execute the
+synthetic operator check and GPU sanitizers, connect the host-qualified 12 MTP
+physical parents, shortlist head, and token map to resident GPU execution, then compare a
+complete target-conditioned MTP block against Ninfer fixtures. Only after those
+steps should model-source MTP admission change. Never materialize a dense proposal
+vocabulary matrix.
 
 - Token-map values are checked for target-vocabulary bounds, but uniqueness,
   shortlist ordering, and whether duplicate target IDs are legal are not

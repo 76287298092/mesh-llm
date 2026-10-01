@@ -1,0 +1,54 @@
+Note: mold is unavailable or failed the active target/toolchain link probe.
+Falling back to lld or the platform linker for this build.
+
+
+   Compiling mesh-specialize v0.76.1 (/home/ndizazzo/dev/mesh/issue1393-q4-snapshot-20260930/crates/mesh-specialize)
+warning: unused import: `NativeMtpParentBinding`
+ --> crates/mesh-specialize/src/kernels/cuda/native_mtp_q4_operator/resident.rs:3:27
+  |
+3 |     resident_native_mtp::{NativeMtpParentBinding, ResidentNativeMtp},
+  |                           ^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `native_mtp_views::NativeMtpViews`
+ --> crates/mesh-specialize/src/kernels/cuda/native_mtp_q4_operator/resident.rs:7:29
+  |
+7 |     packages::qwen3_8_27b::{native_mtp_views::NativeMtpViews, native_source::NativeModelSource},
+  |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: linker stderr: Note: mold is unavailable or failed the active target/toolchain link probe.
+         Falling back to lld or the platform linker for this build.
+  |
+  = note: `#[warn(linker_messages)]` on by default
+
+warning: `mesh-specialize` (lib test) generated 3 warnings (run `cargo fix --lib -p mesh-specialize --tests` to apply 2 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 6.14s
+     Running unittests src/lib.rs (target/debug/deps/mesh_specialize-5fc4832d896fb214)
+
+running 22 tests
+test kernels::cuda::native_mtp_q4_operator::resident::comparison::tests::rejects_output_extent_mismatch ... ok
+test kernels::cuda::native_mtp_q4_operator::resident::comparison::tests::first_tie_winner_remaps_to_target_vocab_outside_shortlist ... ok
+test kernels::cuda::native_mtp_q4_operator::resident::comparison::tests::detects_interior_corruption_even_when_the_winner_is_unchanged ... ok
+test kernels::cuda::native_mtp_q4_operator::resident::comparison::tests::rejects_nonfinite_raw_output ... ok
+test kernels::cuda::native_mtp_q4_operator::resident::comparison::tests::rejects_nonfinite_bf16_output ... ok
+test kernels::cuda::native_mtp_q4_operator::resident::comparison::tests::rejects_repeat_mismatch_against_the_schedule ... ok
+test kernels::cuda::native_mtp_q4_operator::resident::comparison::tests::rejects_repeats_that_are_identically_wrong ... ok
+test kernels::cuda::native_mtp_q4_operator::resident::input::tests::activation_cases_are_dense_and_cover_distinct_signed_values ... ok
+test kernels::cuda::native_mtp_q4_operator::resident::mapping::tests::signed_map_rejects_ids_outside_target_vocabulary ... ok
+test kernels::cuda::native_mtp_q4_operator::tests::argmax_keeps_the_first_bf16_tie_and_remaps_that_proposal_row ... ok
+test kernels::cuda::native_mtp_q4_operator::tests::host_boundary_rejects_invalid_scale_and_nonzero_padded_nibble ... ok
+test kernels::cuda::native_mtp_q4_operator::tests::independent_oracle_returns_fp64_dot_and_rne_bf16_logit ... ok
+test kernels::cuda::native_mtp_q4_operator::tests::independent_oracle_covers_k160_group_and_tail_addresses ... ok
+test kernels::cuda::native_mtp_q4_operator::tests::r4w1_schedule_reference_handles_partial_k_group_and_vector_tail ... ok
+test kernels::cuda::native_mtp_q4_operator::tests::r4w1_schedule_reference_reads_logical_k_remainder_after_last_full_vector ... ok
+test kernels::cuda::native_mtp_q4_operator::tests::r4w1_schedule_reference_covers_partial_row_group_and_reordered_parent_rows ... ok
+test native_mtp_q4_gemv_reference::tests::q4_oracle_decodes_signed_nibbles_group_scales_and_reordered_parent_rows ... ok
+test kernels::cuda::native_mtp_q4_operator::tests::host_boundary_accepts_q4_layout_boundaries_and_k5120 ... ok
+test kernels::cuda::native_mtp_q4_operator::resident::tests::proposal_parent_rejects_nonidentity_row_order ... ok
+test kernels::cuda::native_mtp_q4_operator::resident::tests::full_proposal_parent_extent_matches_packed_planes ... ok
+test kernels::cuda::native_mtp_q4_operator::resident::tests::proposal_parent_rejects_wrong_physical_extent ... ok
+test kernels::cuda::native_mtp_q4_operator::resident::mapping::tests::signed_map_keeps_target_ids_outside_the_shortlist_domain ... ok
+
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 599 filtered out; finished in 0.01s
+

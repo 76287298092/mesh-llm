@@ -1,9 +1,10 @@
 # StreamForward: whole-model single-stream execution
 
 Status: limited model-equivalence and timing evidence for an opt-in (2026-09-28, issue 1393), source
-`ab33f730e`, PTX SHA256 `04f03b9b…`. Default remains `legacy`. Bounded sanitizer checks now pass with the scope below; graph capture
-qualification is still pending. Full-row exact graph capture/replay is now implemented
-in the unvalidated working tree; the measurements below are eager-stream evidence only.
+`ab33f730e`, PTX SHA256 `04f03b9b…`. Default remains `legacy`. Bounded sanitizer checks now pass with the scope below. Full-row exact graph
+capture/replay is implemented and measured at `4e75df069` (see the September 28
+follow-up at the end): equivalence and memcheck pass, racecheck is incomplete,
+and the gain is under 1%.
 
 ## Qualification, 2026-09-28
 
@@ -284,4 +285,8 @@ matched timings, and allocation/resource-release evidence. No speedup is claimed
 
 ## September 28 measured follow-up
 
-Graph result at4e75df069: wholemodelcapture/replay matches eagerstream logits/state; setup-inclusive rates26.478→26.635 and18.165→18.213tok/s (106/512inputs), onlyabout0.6%/0.3%. Not a majorremainingbottleneck. Memcheck passes; graphracecheck reaches16GiB cgroupOOM, retained as incomplete. No graphdefaultpromotion.
+Graph result at 4e75df069: whole-model capture/replay matches eager-stream logits
+and state. Setup-inclusive rates move 26.478→26.635 and 18.165→18.213 tokens/s
+(106/512 inputs), only about 0.6%/0.3%. Graphs are not a major remaining
+bottleneck. Memcheck passes; graph racecheck reaches the 16 GiB cgroup OOM and is
+retained as incomplete. Graph execution is not promoted to default.

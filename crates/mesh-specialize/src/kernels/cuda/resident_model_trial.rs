@@ -23,6 +23,11 @@ pub(in crate::kernels) fn run(
     config: &DecoderConfig,
     reference: &ModelReference,
 ) -> Result<Value> {
+    ensure!(
+        crate::kernels::nvfp4_mlp_schedule::current()?
+            == crate::kernels::nvfp4_mlp_schedule::Schedule::Baseline,
+        "exact whole-model comparison requires the baseline NVFP4 MLP schedule"
+    );
     validate_reference(artifact, config, reference)?;
     ensure!(
         ptx.contains(".target sm_120a"),

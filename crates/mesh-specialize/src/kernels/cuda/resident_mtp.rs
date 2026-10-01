@@ -164,6 +164,7 @@ impl<'w, 'ctx> Model<'w, 'ctx> {
                 rows,
                 past: transaction.past(),
                 capacity: transaction.capacity(),
+                decode: false,
             },
         )?;
         let hidden = self.output_norm.run(ctx, module, &attention_hidden, rows)?;
@@ -202,7 +203,7 @@ fn validate_model_config(config: &DecoderConfig) -> Result<()> {
     Ok(())
 }
 
-fn mtp_state_layout(config: &DecoderConfig) -> Result<Layout> {
+pub(super) fn mtp_state_layout(config: &DecoderConfig) -> Result<Layout> {
     let shape = &config.attention_shape;
     let elements = config
         .capacity

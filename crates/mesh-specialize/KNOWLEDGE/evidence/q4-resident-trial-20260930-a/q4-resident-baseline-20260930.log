@@ -1,0 +1,26 @@
+Note: mold is unavailable or failed the active target/toolchain link probe.
+Falling back to lld or the platform linker for this build.
+
+
+warning: linker stderr: Note: mold is unavailable or failed the active target/toolchain link probe.
+         Falling back to lld or the platform linker for this build.
+  |
+  = note: `#[warn(linker_messages)]` on by default
+
+warning: `mesh-specialize` (lib test) generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.16s
+     Running unittests src/lib.rs (target/debug/deps/mesh_specialize-5fc4832d896fb214)
+
+running 9 tests
+test kernels::cuda::native_mtp_q4_operator::tests::argmax_keeps_the_first_bf16_tie_and_remaps_that_proposal_row ... ok
+test kernels::cuda::native_mtp_q4_operator::tests::host_boundary_rejects_invalid_scale_and_nonzero_padded_nibble ... ok
+test kernels::cuda::native_mtp_q4_operator::tests::r4w1_schedule_reference_handles_partial_k_group_and_vector_tail ... ok
+test native_mtp_q4_gemv_reference::tests::q4_oracle_decodes_signed_nibbles_group_scales_and_reordered_parent_rows ... ok
+test kernels::cuda::native_mtp_q4_operator::tests::independent_oracle_returns_fp64_dot_and_rne_bf16_logit ... ok
+test kernels::cuda::native_mtp_q4_operator::tests::r4w1_schedule_reference_covers_partial_row_group_and_reordered_parent_rows ... ok
+test kernels::cuda::native_mtp_q4_operator::tests::r4w1_schedule_reference_reads_logical_k_remainder_after_last_full_vector ... ok
+test kernels::cuda::native_mtp_q4_operator::tests::independent_oracle_covers_k160_group_and_tail_addresses ... ok
+test kernels::cuda::native_mtp_q4_operator::tests::host_boundary_accepts_q4_layout_boundaries_and_k5120 ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 599 filtered out; finished in 0.00s
+

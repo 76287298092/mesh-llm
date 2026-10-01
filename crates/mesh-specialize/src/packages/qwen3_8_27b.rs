@@ -11,10 +11,12 @@ pub mod model_profile;
 pub mod model_reference;
 pub mod model_score;
 mod model_weights;
+pub mod native_mtp_forward_trial;
 pub mod residency;
 pub mod resident_attention;
 pub mod resident_gdn;
 pub mod schedule;
+pub mod target_batch_trial;
 
 pub mod mtp;
 

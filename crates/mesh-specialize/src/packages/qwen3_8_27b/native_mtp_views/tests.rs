@@ -1,8 +1,63 @@
 use super::{
-    BytePlane, Q8MatrixView,
+    BytePlane, NativeMtpViews, Q8MatrixView,
     selection::{parse_token_map, plan},
     test_fixtures::{exact_map, observed_directory, synthetic_directory},
 };
+use crate::artifact::ninfer::NinferArtifact;
+use serde_json::json;
+use std::io::{Seek, SeekFrom, Write};
+use tempfile::NamedTempFile;
+
+#[test]
+fn resolve_reads_exact_token_map_when_artifact_has_complete_native_mtp_metadata() {
+    let mut directory = synthetic_directory();
+    let mut payload_bytes = 0_u64;
+    for object in &mut directory.objects {
+        object.offset = payload_bytes.div_ceil(256) * 256;
+        payload_bytes = object.offset + object.bytes;
+    }
+    let map_offset = directory
+        .objects
+        .iter()
+        .find(|object| object.id == "token-map")
+        .expect("fixture token map exists")
+        .offset;
+    let map_bytes: Vec<u8> = (70_000_i32..201_072).flat_map(i32::to_le_bytes).collect();
+    let mut document = serde_json::to_value(directory).expect("serialize complete MTP fixture");
+    document["files"] = json!([{"path":null,"payload_bytes":payload_bytes}]);
+    let directory_bytes = serde_json::to_vec(&document).expect("serialize fixture directory");
+    let directory_len = u64::try_from(directory_bytes.len()).expect("fixture directory length");
+    let payload_offset = (32 + directory_len).div_ceil(4096) * 4096;
+    let mut file = NamedTempFile::new().expect("create sparse MTP fixture");
+    file.write_all(b"NINFER\0\x03").expect("write v3 magic");
+    file.write_all(&directory_len.to_le_bytes())
+        .expect("write directory length");
+    file.write_all(&[0x19; 16]).expect("write artifact ID");
+    file.write_all(&directory_bytes)
+        .expect("write complete MTP directory");
+    file.as_file()
+        .set_len(payload_offset + payload_bytes)
+        .expect("size sparse payload");
+    file.seek(SeekFrom::Start(payload_offset + map_offset))
+        .expect("seek to token map");
+    file.write_all(&map_bytes).expect("write token-map payload");
+    file.flush().expect("flush fixture");
+    let mut artifact = NinferArtifact::open(file.path()).expect("open complete native MTP fixture");
+
+    let views = NativeMtpViews::resolve(&mut artifact).expect("resolve streamed token map");
+
+    assert_eq!(views.proposal_tokens.len(), 131_072);
+    for (row, expected_id) in (70_000_u32..201_072).enumerate() {
+        assert_eq!(
+            views
+                .proposal_tokens
+                .target_id(row)
+                .map(|token| token.value()),
+            Some(expected_id)
+        );
+    }
+    assert_eq!(views.proposal_tokens.target_id(131_072), None);
+}
 
 #[test]
 fn selected_q8_view_has_expected_parent_planes() {

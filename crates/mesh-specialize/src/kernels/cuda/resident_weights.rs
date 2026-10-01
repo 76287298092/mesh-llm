@@ -224,7 +224,7 @@ fn verify_object(arena: &Buffer<'_>, layout: &Layout, object: &Object) -> Result
     }))
 }
 
-struct BufferRegionSink<'buffer, 'ctx> {
+pub(super) struct BufferRegionSink<'buffer, 'ctx> {
     arena: &'buffer Buffer<'ctx>,
     region_offset: usize,
     region_length: usize,
@@ -232,7 +232,11 @@ struct BufferRegionSink<'buffer, 'ctx> {
 }
 
 impl<'buffer, 'ctx> BufferRegionSink<'buffer, 'ctx> {
-    fn new(arena: &'buffer Buffer<'ctx>, region_offset: usize, region_length: usize) -> Self {
+    pub(super) fn new(
+        arena: &'buffer Buffer<'ctx>,
+        region_offset: usize,
+        region_length: usize,
+    ) -> Self {
         Self {
             arena,
             region_offset,
@@ -241,7 +245,7 @@ impl<'buffer, 'ctx> BufferRegionSink<'buffer, 'ctx> {
         }
     }
 
-    fn finish(self, name: &str) -> Result<()> {
+    pub(super) fn finish(self, name: &str) -> Result<()> {
         ensure!(
             self.written == self.region_length,
             "artifact tensor {name} copied {} bytes, expected {}",

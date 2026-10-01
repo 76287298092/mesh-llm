@@ -66,12 +66,8 @@ pub(super) fn run(args: &[String]) -> DynResult<()> {
     let device = device.parse()?;
     let ptx = fs::read_to_string(ptx_path)?;
     let output = PathBuf::from(output);
-    fs::create_dir(&output).map_err(|error| {
-        format!(
-            "refusing to reuse {}: {error}",
-            output.display()
-        )
-    })?;
+    fs::create_dir(&output)
+        .map_err(|error| format!("refusing to reuse {}: {error}", output.display()))?;
     let mut files = streams
         .iter()
         .map(|stream| {
@@ -96,7 +92,10 @@ pub(super) fn run(args: &[String]) -> DynResult<()> {
     }
     annotate(&mut report, &streams, artifact, &ptx, start)?;
     let manifest = output.join("manifest.json");
-    let mut file = OpenOptions::new().write(true).create_new(true).open(&manifest)?;
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&manifest)?;
     serde_json::to_writer_pretty(&mut file, &report)?;
     file.write_all(b"\n")?;
     file.sync_all()?;
@@ -129,9 +128,13 @@ fn read_streams(path: &Path) -> DynResult<(String, Vec<ScoreStream>)> {
                 .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.'))
             || id.starts_with('.')
         {
-            return Err(format!("stream id {id:?} must be [A-Za-z0-9._-] and not start with '.'").into());
+            return Err(
+                format!("stream id {id:?} must be [A-Za-z0-9._-] and not start with '.'").into(),
+            );
         }
-        let domain = entry["domain"].as_str().ok_or("stream needs a string domain")?;
+        let domain = entry["domain"]
+            .as_str()
+            .ok_or("stream needs a string domain")?;
         let tokens = entry["tokens"]
             .as_array()
             .ok_or("stream needs a tokens array")?

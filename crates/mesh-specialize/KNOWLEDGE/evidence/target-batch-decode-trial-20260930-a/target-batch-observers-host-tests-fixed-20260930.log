@@ -1,0 +1,54 @@
+Note: mold is unavailable or failed the active target/toolchain link probe.
+Falling back to lld or the platform linker for this build.
+
+
+   Compiling mesh-specialize v0.76.1 (/home/ndizazzo/dev/mesh/issue1393-q4-snapshot-20260930/crates/mesh-specialize)
+warning: method `belongs_to` is never used
+  --> crates/mesh-specialize/src/kernels/cuda/resident_embedding.rs:46:19
+   |
+22 | impl<'w, 'ctx> Embedding<'w, 'ctx> {
+   | ---------------------------------- method in this implementation
+...
+46 |     pub(super) fn belongs_to(&self, context: &Context) -> bool {
+   |                   ^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: methods `belongs_to`, `validates_session`, and `forward_detailed_decode` are never used
+   --> crates/mesh-specialize/src/kernels/cuda/resident_model.rs:149:19
+    |
+ 77 | impl<'w, 'ctx> Model<'w, 'ctx> {
+    | ------------------------------ methods in this implementation
+...
+149 |     pub(super) fn belongs_to(&self, context: &Context) -> bool {
+    |                   ^^^^^^^^^^
+...
+153 |     pub(super) fn validates_session(&self, session: &Session<'_>, config: &DecoderConfig) -> bool {
+    |                   ^^^^^^^^^^^^^^^^^
+...
+251 |     pub(super) fn forward_detailed_decode<'a>(
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: method `read_region_at` is never used
+   --> crates/mesh-specialize/src/kernels/cuda/resident_state.rs:118:19
+    |
+ 15 | impl<'ctx> ResidentState<'ctx> {
+    | ------------------------------ method in this implementation
+...
+118 |     pub(super) fn read_region_at(
+    |                   ^^^^^^^^^^^^^^
+
+warning: linker stderr: Note: mold is unavailable or failed the active target/toolchain link probe.
+         Falling back to lld or the platform linker for this build.
+  |
+  = note: `#[warn(linker_messages)]` on by default
+
+warning: `mesh-specialize` (lib test) generated 4 warnings
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.74s
+     Running unittests src/lib.rs (target/debug/deps/mesh_specialize-5fc4832d896fb214)
+
+running 1 test
+test kernels::cuda::resident_state::tests::canonical_layout_recomputation_rejects_forged_offsets_and_sizes ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 636 filtered out; finished in 0.00s
+

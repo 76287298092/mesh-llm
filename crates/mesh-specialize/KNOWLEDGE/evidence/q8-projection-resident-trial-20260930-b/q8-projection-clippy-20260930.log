@@ -1,0 +1,164 @@
+Note: mold is unavailable or failed the active target/toolchain link probe.
+Falling back to lld or the platform linker for this build.
+
+
+    Checking mesh-specialize v0.76.1 (/home/ndizazzo/dev/mesh/issue1393-q4-snapshot-20260930/crates/mesh-specialize)
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> crates/mesh-specialize/src/kernels/cuda/native_mtp_q8_projection/qualification.rs:53:42
+   |
+53 |     let resident_carrier = resident_view(&resident.views(), request.kind)?;
+   |                                          ^^^^^^^^^^^^^^^^^ help: change this to: `resident.views()`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#needless_borrow
+   = note: `-D clippy::needless-borrow` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_borrow)]`
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> crates/mesh-specialize/src/kernels/cuda/native_mtp_q8_projection/qualification.rs:87:17
+   |
+87 |         parent: &executor.object,
+   |                 ^^^^^^^^^^^^^^^^ help: change this to: `executor.object`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#needless_borrow
+
+error: using `chunks_exact` with a constant chunk size
+   --> crates/mesh-specialize/src/kernels/cuda/native_mtp_q8_projection/qualification.rs:112:29
+    |
+112 |         output.extend(bytes.chunks_exact(2).map(|word| u16::from_le_bytes([word[0], word[1]])));
+    |                             ^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks::<2>().0.iter()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#chunks_exact_to_as_chunks
+    = note: `-D clippy::chunks-exact-to-as-chunks` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::chunks_exact_to_as_chunks)]`
+
+error: the loop variable `split` is used to index `partials`
+   --> crates/mesh-specialize/src/kernels/cuda/../../../reference/native_mtp_q8_projection.rs:128:30
+    |
+128 |                 for split in 0..split_warps {
+    |                              ^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#needless_range_loop
+    = note: `-D clippy::needless-range-loop` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::needless_range_loop)]`
+help: consider using an iterator and enumerate()
+    |
+128 -                 for split in 0..split_warps {
+128 +                 for (split, <item>) in partials.iter_mut().enumerate().take(split_warps) {
+    |
+
+error: unneeded `return` statement
+   --> crates/mesh-specialize/src/kernels.rs:851:9
+    |
+851 | /         return Ok(serde_json::json!({
+852 | |             "schema_version": 1,
+853 | |             "kind": "native-mtp-q8-resident-projection-matrix-qualification-v1",
+854 | |             "case_count": cases.len(),
+...   |
+863 | |             "model_decode_tokens_per_second": null,
+864 | |         }));
+    | |___________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#needless_return
+    = note: `-D clippy::needless-return` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::needless_return)]`
+help: remove `return`
+    |
+851 ~         Ok(serde_json::json!({
+852 +             "schema_version": 1,
+853 +             "kind": "native-mtp-q8-resident-projection-matrix-qualification-v1",
+854 +             "case_count": cases.len(),
+855 +             "cases": cases,
+856 +             "all_passed": all_passed,
+857 +             "native_mtp_admitted": false,
+858 +             "model_executable": false,
+859 +             "full_model_executed": false,
+860 +             "timing_claim": false,
+861 +             "timing_collected": false,
+862 +             "model_prefill_tokens_per_second": null,
+863 +             "model_decode_tokens_per_second": null,
+864 ~         }))
+    |
+
+error: could not compile `mesh-specialize` (lib) due to 5 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: items after a test module
+   --> crates/mesh-specialize/src/kernels/cuda/native_mtp_q8_projection/qualification.rs:240:1
+    |
+240 | mod tests {
+    | ^^^^^^^^^
+...
+254 | fn max_f64_delta(reference: &reference::ProjectionReference) -> f64 {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+260 | fn max_bound(reference: &reference::ProjectionReference) -> f64 {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+264 | fn hash_resident_parent(parent: &super::super::resident_native_mtp::NativeMtpParentBinding<'_, '_>) -> Result<String> {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#items_after_test_module
+    = note: `-D clippy::items-after-test-module` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::items_after_test_module)]`
+    = help: move the items to before the test module was defined
+
+error: using `chunks_exact_mut` with a constant chunk size
+   --> crates/mesh-specialize/src/kernels/cuda/native_mtp_q8_projection/tests.rs:146:41
+    |
+146 |     for scale in object[scale_offset..].chunks_exact_mut(2) {
+    |                                         ^^^^^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks_mut::<2>().0`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#chunks_exact_to_as_chunks
+
+error: items after a test module
+   --> crates/mesh-specialize/src/kernels/cuda/../../../reference/native_mtp_q8_projection.rs:14:1
+    |
+ 14 |   mod tests {
+    |   ^^^^^^^^^
+...
+ 86 |   const GROUP: usize = 32;
+    |   ^^^^^^^^^^^^^^^^^^
+ 87 |   const WARP_K: usize = 64;
+    |   ^^^^^^^^^^^^^^^^^^^
+ 88 |
+ 89 |   pub struct ProjectionReference {
+    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 96 |   pub struct ProjectionReferenceRequest<'a> {
+    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+113 |   pub fn run(request: ProjectionReferenceRequest<'_>) -> anyhow::Result<ProjectionReference> {
+    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+173 | / fn validate(
+174 | |     parent: &[u8],
+175 | |     view: &Q8MatrixView,
+176 | |     input: &[u16],
+177 | |     split_warps: usize,
+178 | | ) -> anyhow::Result<(usize, usize, usize, usize)> {
+    | |_________________________________________________^
+...
+219 |   fn half(parent: &[u8], offset: usize) -> anyhow::Result<f32> {
+    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+232 |   fn bf16(bits: u16) -> f32 {
+    |   ^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+236 |   fn round_bf16(value: f32) -> u16 {
+    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+242 |   fn error_bound(operations: f64, absolute_sum: f64) -> f64 {
+    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#items_after_test_module
+    = help: move the items to before the test module was defined
+
+error: using `chunks_exact_mut` with a constant chunk size
+  --> crates/mesh-specialize/src/kernels/cuda/../../../reference/native_mtp_q8_projection.rs:63:45
+   |
+63 |         for scale in parent[scale_offset..].chunks_exact_mut(2) {
+   |                                             ^^^^^^^^^^^^^^^^^^^ help: consider using `as_chunks` instead: `as_chunks_mut::<2>().0`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#chunks_exact_to_as_chunks
+
+error: could not compile `mesh-specialize` (lib test) due to 9 previous errors
+error: recipe `with-lld` failed with exit code 101

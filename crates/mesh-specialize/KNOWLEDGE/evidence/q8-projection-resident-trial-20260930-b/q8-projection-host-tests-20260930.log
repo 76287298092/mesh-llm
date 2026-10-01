@@ -1,0 +1,29 @@
+Note: mold is unavailable or failed the active target/toolchain link probe.
+Falling back to lld or the platform linker for this build.
+
+
+   Compiling mesh-specialize v0.76.1 (/home/ndizazzo/dev/mesh/issue1393-q4-snapshot-20260930/crates/mesh-specialize)
+warning: unused import: `BytePlane`
+ --> crates/mesh-specialize/src/kernels/cuda/native_mtp_q8_projection/fixture.rs:3:54
+  |
+3 | use crate::packages::qwen3_8_27b::native_mtp_views::{BytePlane, Q8MatrixView};
+  |                                                      ^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+error[E0277]: can't compare `&native_mtp_views::Q8MatrixView` with `native_mtp_views::Q8MatrixView`
+  --> crates/mesh-specialize/src/kernels/cuda/native_mtp_q8_projection/qualification.rs:54:30
+   |
+54 |     ensure!(resident_carrier == carrier, "resident saved view differs from source view");
+   |                              ^^ no implementation for `&native_mtp_views::Q8MatrixView == native_mtp_views::Q8MatrixView`
+   |
+   = help: the trait `PartialEq<native_mtp_views::Q8MatrixView>` is not implemented for `&native_mtp_views::Q8MatrixView`
+help: consider dereferencing here
+   |
+54 |     ensure!(*resident_carrier == carrier, "resident saved view differs from source view");
+   |             +
+
+For more information about this error, try `rustc --explain E0277`.
+warning: `mesh-specialize` (lib test) generated 1 warning
+error: could not compile `mesh-specialize` (lib test) due to 1 previous error; 1 warning emitted
+error: recipe `with-lld` failed with exit code 101

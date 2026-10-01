@@ -48,6 +48,11 @@ fn check(
     case: &MlpWorkspaceCase,
     rows: usize,
 ) -> Result<Value> {
+    ensure!(
+        crate::kernels::nvfp4_mlp_schedule::current()?
+            == crate::kernels::nvfp4_mlp_schedule::Schedule::Baseline,
+        "MLP workspace checks require the baseline NVFP4 MLP schedule"
+    );
     let kind = if case.fp8 {
         Quantization::Fp8
     } else {

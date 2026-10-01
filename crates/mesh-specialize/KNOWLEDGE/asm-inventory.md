@@ -11,6 +11,9 @@
 | `kernels/nvptx/register_budget.rs` | `setmaxnreg` dec24/inc64, barriers, thread read | SM120a | 128 exact XOR outputs; launch requires reported allocation >=64 registers | 128 outputs pass; 64 registers reported; sanitizers clean |
 | `kernels/nvptx/rms_norm.rs` | Shared reduction, barriers, explicit rounded FP32 arithmetic, thread/block coordinates | SM120a | Independent f64 RMSNorm | Qualified; see [representative kernels](findings/representative-kernels.md) and Qwen entry regression |
 | `kernels/nvptx/nvfp4_gemm.rs` | Repeated NVFP4 MMA, lane/block coordinates | SM120a | Independent logical GEMM and separate cuBLAS reference | Qualified; see [representative kernels](findings/representative-kernels.md) and Qwen entry regression |
+| `kernels/nvptx/native_mtp_q8.rs::native_mtp_q8_gemv` | Parent-row-mapped signed Q8 GEMV with FP16 group-32 scales and BF16 input | SM120a | Independent FP64 scalar oracle in `reference/native_mtp_q8_gemv.rs` | Synthetic operator test wired; parent build and GPU qualification pending |
+| `kernels/nvptx/native_mtp_q8_sliced_k_fc.rs` and private instruction/staging modules | FC C4/C8 signed-code conversion, shared allocation, global address conversion, cp.async ca/cg16, commit/wait, CTA barriers, shared scalar/vector loads/stores, global.nc scale loads, indexed shuffle, ldmatrix.x2, BF16 m16n8k16 MMA, FP16 conversion, FP32 FMA/add and BF16 RNE | SM80+ | Pinned Ninfer e31bc99b sliced-K schedule and independent scalar FP32/FP64 reference in `reference/native_mtp_q8_sliced_k_fc.rs`; scalar summation does not certify internal MMA order | Synthetic-only Trial B PTX `850a8b0e8e939576...` passes six C4/T1 and C8/T5 cases with two repeats each in normal execution, memcheck, racecheck and synccheck; zero sanitizer errors/hazards. Trial A's 5,504 synccheck errors were fixed by a uniformly predicated store with an unconditional barrier. No real-weight, model, MTP runtime admission, or throughput claim; see [Q8 FC qualification](findings/native-mtp-q8-fc-qualification.md) |
+| `kernels/nvptx/native_mtp_q4.rs::native_mtp_q4_head_gemv` | Experimental four-row/CTA, one-warp/row Q4 GEMV with 8-code packed-word lanes, FP16-mantissa decode, `cp.async.ca` vector16 code and pair32 scale staging, ordered FP32 FMA, five-step warp reduction, and BF16 logits | SM120a | Independent FP64 scalar projection plus separate exact FP32 lane/reduction schedule oracle in `reference/native_mtp_q4_gemv.rs` and `native_mtp_q4_operator/schedule_reference.rs` | Uncommitted Q4-only snapshot: seven synthetic cases pass normal execution and memcheck/racecheck/synccheck with zero issues; exact FP32/BF16 schedule, repeats and mapping pass; unchanged FP64 bound 2e-4; real-weight and complete native MTP qualification remain open; see [Q4 qualification](findings/native-q4-operator-qualification.md) |
 
 Compiler emission alone is not qualification. Keep execution evidence and any
 failed attempts in a findings/dead-ends entry before promoting these rows.
@@ -80,6 +83,9 @@ results are recorded in the decode projection optimization entry.
 | `attention_staged_scores_fp64` | Reuses warp local-tree and paired-word DOWN/IDX FP64 shuffles; rounded multiply and exact BF16 decode; no CTA barrier | Original attention raw FP32/BF16 bits, existing independent FP64 oracle, wide-exponent fixture | Unqualified; one score per head/key, no split/reassociated dot |
 | `attention_staged_coefficients_fp64` | Lane-zero-only ascending scan, existing explicit rounded FP64 arithmetic and unrolled exponential; f64 global stores to disjoint alpha/beta/norm regions | Strict original-control output bits; initialized-prefix/suffix and long/short/poison reuse checks | Unqualified; normalizer never parallel-associated |
 | `attention_staged_values_fp64` | Ascending-key FP64 accumulator, separate rounded mul/add/div and original output conversions; f64 coefficient loads | Same strict control/oracle gates; three stages on one stream, guards/repeats/readback | Unqualified; no per-key CTA barrier or duplicated exponentials |
+| `attention_staged_max_prefix_fp64` | Per-head ascending FP64 maximum prefix using the serial comparison order; writes only the initialized capacity-strided prefix | Host serial/prefix bit recurrence plus independent FP64 attention oracle and strict GPU control when run | Prefix-parallel candidate unqualified; same-stream predecessor scores |
+| `attention_staged_coefficients_parallel_fp64` | Per-key FP64 exponentials from adjacent running maxima; one thread owns each key's alpha/beta | Host serial/prefix bit recurrence plus independent FP64 attention oracle and strict GPU control when run | Prefix-parallel candidate unqualified; one writer per coefficient pair |
+| `attention_staged_normalizer_fp64` | Ascending FP64 normalizer recurrence with explicit rounded multiply/add and serial-compatible alpha zero correction | Host serial/prefix bit recurrence plus independent FP64 attention oracle and strict GPU control when run | Prefix-parallel candidate unqualified; normalizer is not parallel-reduced |
 
 ## Isolated unrolled exponential
 
@@ -360,3 +366,89 @@ Independent reference/proof: `reference/nvfp4_decode_prmt.rs`; 65,536 controls,
 Exact ABI, bounds and proof hashes are in evidence/nvfp4-prmt-host-proof-20260928.json.
 Host tests, Linux-target Clippy and Just PTX compilation pass; GPU/resource/model
 qualification is pending. Default remains baseline.
+
+## NVFP4 A16 fused SwiGLU candidate
+
+`kernels/nvptx/nvfp4_swiglu_a16.rs::nvfp4_swiglu_a16` reads lane/thread/CTA
+coordinates, performs FP32 `fma.rn`, `mul.rn`, and `add.rn`, reduces each warp
+with full-mask `shfl.sync.down.b32`, calls the shared Rust SiLU arithmetic, and
+writes separate gate/up BF16 and raw FP32 values plus the FP32 SwiGLU product
+and BF16 activation. It directly reads BF16 activations, E2M1 packed weights,
+and E4M3 K16 scales. The independent logical FP64 dot/SwiGLU oracle is
+`reference/nvfp4_swiglu_a16.rs`; the real/synthetic harness is
+`src/kernels/cuda/nvfp4_swiglu_a16_operator/`. The explicit
+`MESH_SPECIALIZE_NVFP4_MLP_SCHEDULE=a16-swiglu` dispatch is legacy-only, one
+row, and `past > 0`. Source/PTX inventory is not compilation or GPU
+qualification. Host build, PTX, real/synthetic GPU cases, three sanitizers,
+whole-model quality, and timings are pending; baseline remains the default.
+See [NVFP4 A16 SwiGLU](findings/nvfp4-a16-swiglu.md).
+
+## Native packed MTP continuation
+
+The earlier synthetic-only FC and Q4 entries are historical. Real packed FC
+now passes sparse and bounded dense, all-row BF16 comparisons with two poison
+repeats under normal execution and all three sanitizers. See
+[resident FC evidence](findings/native-mtp-q8-fc-resident.md). Real Q4 now passes
+all 131072 proposal rows against independent scheduled FP32/BF16 and FP64
+references, with two poisons and all three sanitizers. Its signed map remains
+separate from the 248320-token target vocabulary. See
+[resident Q4 evidence](findings/native-q4-operator-qualification.md).
+Neither result qualifies arbitrary activations, complete native MTP or model
+throughput.
+
+| Source symbol | Instructions / reused sites | Reference | Status |
+| --- | --- | --- | --- |
+| `native_mtp_q8_projection/instructions.rs` | CTA/thread coordinates; CTA barrier; async commit/wait; shared halfword, word and vector FP32 loads/stores; global noncoherent scale load/address conversion; full-mask indexed shuffle; signed-code/BF16 and FP16 conversions; ldmatrix.x2; BF16 m16n8k16 MMA; FP32 FMA/add; uniformly predicated odd-warp store/barrier; BF16 RNE | Independent `reference/native_mtp_q8_projection.rs`, bounded half-unit G32 dot proof, scale-FMA and ordered four/eight-split reduction; mutation tests in the host projection module | Source reviewed; host build, Rust PTX, all-row real-parent execution and sanitizers pending |
+| `native_mtp_q8_projection/staging.rs` | Four/eight-split shared allocation/address conversion; aligned vector16 cp.async.cg code copies, cp.async.ca activation/scale copies and zero-fill | Same independent projection reference, complete parent planes, five distinct columns and exact all-row two-poison gates | Unqualified; physical QKV/gate-up/output/down parents, not substitute logical-row geometry |
+
+The bounded reference proves exact representability of each unscaled G32 dot
+for these fixtures. It does not certify internal MMA summation for arbitrary
+BF16 activations. Scale-FMA order and split reduction remain part of the gate.
+
+Q8 execution update: Rust PTX and host builds pass. All 16 real physical-parent
+cases pass exact all-row two-poison BF16 checks under normal execution,
+memcheck and synccheck. Racecheck hit the 1200-second bound without a completed
+report and is not qualified. The table's original pending status is historical;
+see [Q8 projection evidence](findings/native-mtp-q8-projections.md) for hashes,
+retained failures and the remaining partitioned racecheck gate. No arbitrary
+activation, complete native MTP or model-throughput claim follows.
+
+Partitioned Q8 racecheck recovery now passes all original indices 0 through 15
+exactly once in eight bounded processes. Every process exits 0 with zero hazards,
+errors or warnings and the unchanged all-row two-poison BF16/hash gates pass.
+PTX is unchanged; the case-selection executable and source are separately pinned
+in trial C. The full-matrix timeout and interrupted trial remain preserved.
+This closes bounded operator sanitizer coverage, not arbitrary-activation,
+complete native MTP or whole-model performance qualification.
+
+## Native MTP activation kernels (unqualified)
+
+| Source symbol | Instructions / reused sites | Reference | Status |
+| --- | --- | --- | --- |
+| `kernels/nvptx/mtp_source_ops.rs::native_mtp_attention_gate` | `block_and_thread` reads `%ctaid.x` and `%tid.x`; exact BF16-to-FP32 bit decode; `source_exp` uses `ex2.approx.ftz.f32` on `value * LOG2_E`; `source_sigmoid` uses `div.rn.f32`; `multiply_rn` uses `mul.rn.f32`; `encode_bf16` uses `cvt.rn.bf16.f32`; count-guarded BF16 write | Independent mathematical FP64 sigmoid/product and direct BF16 RNE in `reference/native_mtp_activation.rs`; trial in `src/kernels/cuda/native_mtp_activation_trial.rs` | Inventory only; host build/tests, device PTX/JIT, GPU execution/resources/sanitizers, pinned-source arithmetic and full-model qualification pending |
+| `kernels/nvptx/mtp_source_ops.rs::native_mtp_silu_mul` | Reuses the same coordinate, BF16 decode, exponential, multiply and BF16 RNE sites; `source_silu` uses its own `div.rn.f32` site; count-guarded BF16 write | Independent mathematical FP64 SiLU/product and direct BF16 RNE in `reference/native_mtp_activation.rs`; same activation trial | Inventory only; host build/tests, device PTX/JIT, GPU execution/resources/sanitizers, pinned-source arithmetic and full-model qualification pending |
+
+Both entries require NVPTX with BF16 RNE conversion support and a 256-thread
+CTA. Each lane uses `block * 256 + thread`, returns before input reads or output
+writes when `index >= count`, and otherwise owns one output element. Equal-sized
+BF16 input/output arrays must cover `count`. There are no shared-memory,
+barrier, shuffle, tensor-core or async-copy sites in this source.
+
+The device computes sigmoid or SiLU in FP32, multiplies the activation by the
+decoded BF16 factor with `mul.rn.f32`, then rounds that single product to BF16.
+It does not round the activation separately to BF16. The exponential scaling
+multiply and denominator addition are Rust FP32 expressions, not additional
+explicit rounded inline-PTX sites. `source_exp` is approximate and FTZ; its name
+does not establish identity with pinned Ninfer `expf` or binary equivalence.
+
+The independent reference instead uses stable FP64 sigmoid/SiLU, an FP64 product,
+and direct FP64-to-BF16 RNE without an intermediate FP32 rounding boundary.
+Its signed-zero, midpoint-sensitive and bounded finite-BF16 fixtures test the
+mathematical single-product rounding contract, not the device exponential's
+instruction schedule or pinned Ninfer arithmetic. The present trial requests
+exact BF16 comparison with zero tolerance and two distinct output-poison repeats
+for both entries. These are trial requirements, not observed results. No build,
+host test, emitted PTX, GPU or sanitizer evidence was collected for these kernels
+in this inventory update. Complete native MTP, full-model quality/performance,
+source equivalence and runtime admission remain unqualified; prior packed
+FC/Q4/Q8 operator results do not qualify these activations.

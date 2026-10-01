@@ -39,6 +39,11 @@ impl Cursor {
         self.poisoned
     }
 
+    #[cfg(target_os = "linux")]
+    pub(crate) fn mark_poisoned(&mut self) {
+        self.poisoned = true;
+    }
+
     /// Copy the committed cursor position into an independent, usable cursor.
     pub fn fork(&self) -> Result<Self> {
         ensure!(!self.poisoned, "session cursor is poisoned");

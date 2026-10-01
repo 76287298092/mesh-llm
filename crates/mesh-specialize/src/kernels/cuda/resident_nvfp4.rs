@@ -15,13 +15,14 @@ const MAX_ROWS: usize = 2_048;
 
 /// A reference-free NVFP4 projection over verified, device-resident weights.
 pub(super) struct Projection<'w, 'ctx> {
-    owner: &'w ResidentWeights<'ctx>,
+    pub(super) owner: &'w ResidentWeights<'ctx>,
     prefix: String,
-    weight_pointer: u64,
-    scale_pointer: u64,
-    width: usize,
-    channels: usize,
+    pub(super) weight_pointer: u64,
+    pub(super) scale_pointer: u64,
+    pub(super) width: usize,
+    pub(super) channels: usize,
     input_global_scale: f32,
+    pub(super) inverse_weight_divisor: f32,
     global_factor: f32,
 }
 
@@ -54,6 +55,11 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
         let weight_global_scale =
             owner.positive_scalar(&format!("{prefix}.weight_global_scale"))?;
         let global_factor = global_factor(input_global_scale, weight_global_scale)?;
+        let inverse_weight_divisor = 1.0 / weight_global_scale;
+        ensure!(
+            inverse_weight_divisor.is_finite() && inverse_weight_divisor > 0.0,
+            "NVFP4 inverse weight divisor must be positive and finite"
+        );
         Ok(Self {
             prefix: prefix.to_owned(),
             owner,
@@ -62,6 +68,7 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
             width,
             channels,
             input_global_scale,
+            inverse_weight_divisor,
             global_factor,
         })
     }

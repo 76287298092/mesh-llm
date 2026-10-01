@@ -306,11 +306,7 @@ mod tests {
 
     #[test]
     fn offsets_are_aligned_and_validation_rejects_overlap() {
-        let specs = [
-            spec("x", 1, 1, 5),
-            spec("y", 257, 2, 3),
-            spec("z", 3, 3, 4),
-        ];
+        let specs = [spec("x", 1, 1, 5), spec("y", 257, 2, 3), spec("z", 3, 3, 4)];
         let plan = ArenaPlan::place(&specs).unwrap();
         for name in ["x", "y", "z"] {
             assert!(plan.get(name).unwrap().offset.is_multiple_of(ALIGNMENT));

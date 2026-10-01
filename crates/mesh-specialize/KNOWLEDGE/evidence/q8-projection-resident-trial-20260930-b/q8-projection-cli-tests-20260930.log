@@ -1,0 +1,37 @@
+Note: mold is unavailable or failed the active target/toolchain link probe.
+Falling back to lld or the platform linker for this build.
+
+
+   Compiling mesh-specialize v0.76.1 (/home/ndizazzo/dev/mesh/issue1393-q4-snapshot-20260930/crates/mesh-specialize)
+   Compiling xtask v0.76.1 (/home/ndizazzo/dev/mesh/issue1393-q4-snapshot-20260930/tools/xtask)
+warning: linker stderr: Note: mold is unavailable or failed the active target/toolchain link probe.
+         Falling back to lld or the platform linker for this build.
+  |
+  = note: `#[warn(linker_messages)]` on by default
+
+warning: `xtask` (bin "xtask" test) generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 7.77s
+     Running unittests src/main.rs (target/debug/deps/xtask-13f333cdf0beb46e)
+
+running 6 tests
+test specialize::native_mtp_q8_projection_resident::tests::parser_rejects_missing_extra_reordered_and_invalid_device_arguments ... ok
+test specialize::native_mtp_q8_projection_resident::tests::malformed_arguments_do_not_create_a_report ... ok
+test specialize::native_mtp_q8_projection_resident::tests::existing_report_path_is_preserved_before_trial_starts ... ok
+{
+  "all_passed": false,
+  "output": "/tmp/.tmp-native-mtp-q8-projection-error-1519388-4-1790792588384298674/report.json"
+}
+{
+  "all_passed": true,
+  "output": "/tmp/.tmp-native-mtp-q8-projection-passed-1519388-3-1790792588384287301/report.json"
+}
+test specialize::native_mtp_q8_projection_resident::tests::trial_errors_are_saved_before_the_command_returns_failure ... ok
+test specialize::native_mtp_q8_projection_resident::tests::explicit_true_all_passed_report_succeeds ... ok
+{
+  "all_passed": false,
+  "output": "/tmp/.tmp-native-mtp-q8-projection-failed-1519388-1-1790792588384281112/report.json"
+}
+test specialize::native_mtp_q8_projection_resident::tests::failed_cases_are_all_saved_and_return_failure ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 84 filtered out; finished in 0.00s
+

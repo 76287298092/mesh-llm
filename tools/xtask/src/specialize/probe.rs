@@ -28,7 +28,7 @@ pub(super) fn run_probe<E: std::fmt::Display>(
 ) -> DynResult<()> {
     let [ptx_flag, ptx_path, device_flag, device, output_flag, output] = args else {
         return Err(
-            "usage: xtask specialize <nvfp4-probe|instruction-probe|workload-probe|workload-check|native-parameter-check|attention-warp-check|attention-staged-check|nvfp4-prmt-check> --ptx PATH --device ORDINAL --output NEW_FILE"
+            "usage: xtask specialize <nvfp4-probe|instruction-probe|workload-probe|workload-check|native-parameter-check|attention-warp-check|attention-staged-check|fp8-quantize-check|nvfp4-prmt-check|nvfp4-a16-swiglu-check|nvfp4-a16-swiglu-real-check> --ptx PATH --device ORDINAL --output NEW_FILE"
                 .into(),
         );
     };
@@ -102,8 +102,20 @@ pub(super) fn nvfp4_pipeline(args: &[String]) -> DynResult<()> {
     run_probe(args, mesh_specialize::kernels::nvfp4_pipeline_trial)
 }
 
+pub(super) fn nvfp4_a16_swiglu(args: &[String]) -> DynResult<()> {
+    run_probe(args, mesh_specialize::kernels::nvfp4_swiglu_a16_trial)
+}
+
 pub(super) fn native_mtp_q8_gemv(args: &[String]) -> DynResult<()> {
     run_probe(args, mesh_specialize::kernels::native_mtp_q8_gemv_trial)
+}
+
+pub(super) fn native_mtp_q8_fc(args: &[String]) -> DynResult<()> {
+    run_probe(args, mesh_specialize::kernels::native_mtp_q8_fc_trial)
+}
+
+pub(super) fn native_mtp_q4_head(args: &[String]) -> DynResult<()> {
+    run_probe(args, mesh_specialize::kernels::native_mtp_q4_head_trial)
 }
 
 pub(super) fn bf16_ab_decode(args: &[String]) -> DynResult<()> {
@@ -124,6 +136,25 @@ pub(super) fn exponential_unrolled(args: &[String]) -> DynResult<()> {
 
 pub(super) fn attention_warp(args: &[String]) -> DynResult<()> {
     run_probe(args, mesh_specialize::kernels::attention_warp_trial)
+}
+
+pub(super) fn nvfp4_a16_swiglu_real(args: &[String]) -> DynResult<()> {
+    let [artifact_flag, artifact, rest @ ..] = args else {
+        return Err("usage: xtask specialize nvfp4-a16-swiglu-real-check --artifact PATH --ptx PATH --device ORDINAL --output NEW_FILE".into());
+    };
+    if artifact_flag != "--artifact" {
+        return Err(
+            "nvfp4-a16-swiglu-real-check requires --artifact first, then --ptx, --device, --output"
+                .into(),
+        );
+    }
+    run_probe(rest, |ptx, device| {
+        mesh_specialize::kernels::nvfp4_swiglu_a16_real_trial(
+            std::path::Path::new(artifact),
+            ptx,
+            device,
+        )
+    })
 }
 
 pub(super) fn attention_v2(args: &[String]) -> DynResult<()> {

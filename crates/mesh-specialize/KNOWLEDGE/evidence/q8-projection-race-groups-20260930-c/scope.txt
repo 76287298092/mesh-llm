@@ -1,0 +1,13 @@
+snapshot=/home/ndizazzo/dev/mesh/issue1393-q4-snapshot-20260930
+artifact=/data/ai/ninfer/models/qwen3_8_27b_nvfp4.ninfer
+source-state=uncommitted exported snapshot, not a clean commit
+scope=partitioned Q8 racecheck, complete unchanged 16-case matrix
+case-groups=[0,2),[2,4),[4,6),[6,8),[8,10),[10,12),[12,14),[14,16)
+gate=exact all-row BF16, two poisons, same independent reference and device code
+device=0
+timeout-seconds-per-group=1200
+MemoryMax=32G
+MemorySwapMax=0
+native-mtp-admitted=false
+model-executable=false
+timing-claim=false

@@ -41,6 +41,7 @@ impl<'w, 'ctx> Layer<'w, 'ctx> {
     pub(super) fn attach_workspace(&mut self, workspace: super::model_workspace::Shared<'ctx>) {
         self.mlp.attach_workspace(workspace);
     }
+
     pub(super) fn new(
         weights: &'w ResidentWeights<'ctx>,
         prefix: &str,
@@ -131,7 +132,28 @@ impl<'w, 'ctx> Layer<'w, 'ctx> {
         state: &mut ResidentState<'_>,
         rows: usize,
     ) -> Result<Buffer<'a>> {
-        self.forward_observed(ctx, module, hidden, state, rows, None)
+        self.forward_with_past(ctx, module, hidden, state, (rows, 0, false))
+    }
+
+    pub(super) fn forward_with_past<'a>(
+        &self,
+        ctx: &'a Context,
+        module: &Module<'_>,
+        hidden: &Buffer<'_>,
+        state: &mut ResidentState<'_>,
+        step: (usize, usize, bool),
+    ) -> Result<Buffer<'a>> {
+        let (rows, past, decode) = step;
+        Ok(self
+            .execute(
+                ctx,
+                module,
+                hidden,
+                state,
+                (rows, past, false, decode),
+                None,
+            )?
+            .0)
     }
 
     pub(super) fn forward_observed<'a>(
@@ -143,8 +165,28 @@ impl<'w, 'ctx> Layer<'w, 'ctx> {
         rows: usize,
         observer: Option<&mut StageObserver<'_>>,
     ) -> Result<Buffer<'a>> {
+        self.forward_observed_with_past(ctx, module, hidden, state, (rows, 0, false), observer)
+    }
+
+    pub(super) fn forward_observed_with_past<'a>(
+        &self,
+        ctx: &'a Context,
+        module: &Module<'_>,
+        hidden: &Buffer<'_>,
+        state: &mut ResidentState<'_>,
+        step: (usize, usize, bool),
+        observer: Option<&mut StageObserver<'_>>,
+    ) -> Result<Buffer<'a>> {
+        let (rows, past, decode) = step;
         Ok(self
-            .execute(ctx, module, hidden, state, (rows, false), observer)?
+            .execute(
+                ctx,
+                module,
+                hidden,
+                state,
+                (rows, past, false, decode),
+                observer,
+            )?
             .0)
     }
 
@@ -156,7 +198,8 @@ impl<'w, 'ctx> Layer<'w, 'ctx> {
         state: &mut ResidentState<'_>,
         rows: usize,
     ) -> Result<(Buffer<'a>, super::resident_recovery::LayerRecord<'a>)> {
-        let (hidden, record) = self.execute(ctx, module, hidden, state, (rows, true), None)?;
+        let (hidden, record) =
+            self.execute(ctx, module, hidden, state, (rows, 0, true, false), None)?;
         Ok((
             hidden,
             record.ok_or_else(|| anyhow::anyhow!("missing GDN record"))?,
@@ -169,13 +212,13 @@ impl<'w, 'ctx> Layer<'w, 'ctx> {
         module: &Module<'_>,
         hidden: &Buffer<'_>,
         state: &mut ResidentState<'_>,
-        step: (usize, bool),
+        step: (usize, usize, bool, bool),
         mut observer: Option<&mut StageObserver<'_>>,
     ) -> Result<(
         Buffer<'a>,
         Option<super::resident_recovery::LayerRecord<'a>>,
     )> {
-        let (rows, record) = step;
+        let (rows, past, record, decode) = step;
         let normalized = self.norm.run(ctx, module, hidden, rows)?;
         observe(&mut observer, "normalized", &normalized)?;
         let shared_input = self.qkv.shared_input(ctx, module, &normalized, rows)?;
@@ -235,7 +278,9 @@ impl<'w, 'ctx> Layer<'w, 'ctx> {
                 .workspace_output(ctx, module, &post.normalized, rows)?;
             residual_add(ctx, module, &post.residual, &down)?
         } else {
-            let mlp = self.mlp.run(ctx, module, &post.normalized, rows)?;
+            let mlp = self
+                .mlp
+                .run_with_past(ctx, module, &post.normalized, rows, past, decode)?;
             observe(&mut observer, "mlp_gate", &mlp.gate.values)?;
             observe(&mut observer, "mlp_up", &mlp.up.values)?;
             observe(&mut observer, "mlp_activation", &mlp.activation)?;

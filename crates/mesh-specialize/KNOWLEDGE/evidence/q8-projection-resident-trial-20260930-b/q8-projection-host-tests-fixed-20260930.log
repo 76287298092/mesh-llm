@@ -1,0 +1,31 @@
+Note: mold is unavailable or failed the active target/toolchain link probe.
+Falling back to lld or the platform linker for this build.
+
+
+   Compiling mesh-specialize v0.76.1 (/home/ndizazzo/dev/mesh/issue1393-q4-snapshot-20260930/crates/mesh-specialize)
+warning: linker stderr: Note: mold is unavailable or failed the active target/toolchain link probe.
+         Falling back to lld or the platform linker for this build.
+  |
+  = note: `#[warn(linker_messages)]` on by default
+
+warning: `mesh-specialize` (lib test) generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.39s
+     Running unittests src/lib.rs (target/debug/deps/mesh_specialize-5fc4832d896fb214)
+
+running 13 tests
+test kernels::cuda::native_mtp_q8_projection::qualification::tests::all_five_columns_when_identical_values_are_repeated_returns_false ... ok
+test kernels::cuda::native_mtp_q8_projection::qualification::tests::all_five_columns_when_values_differ_returns_true ... ok
+test kernels::cuda::native_mtp_q8_projection::compare::tests::all_row_gate_when_both_repeats_share_wrong_last_word_rejects_it ... ok
+test kernels::cuda::native_mtp_q8_projection::compare::tests::all_row_gate_when_last_output_is_poisoned_rejects_it ... ok
+test kernels::cuda::native_mtp_q8_projection::compare::tests::mismatch_report_when_many_rows_fail_caps_the_report_at_sixteen ... ok
+test kernels::cuda::native_mtp_q8_projection::reference::tests::four_split_schedule_when_signed_contributions_cover_each_pair_matches_hand_sum ... ok
+test kernels::cuda::native_mtp_q8_projection::tests::exact_comparator_when_both_repeats_share_wrong_result_fails_independently ... ok
+test kernels::cuda::native_mtp_q8_projection::reference::tests::token_four_last_row_when_only_final_k_is_live_matches_bf16_factor ... ok
+test kernels::cuda::native_mtp_q8_projection::tests::identity_view_when_full_parent_shape_is_reused_preserves_saved_packed_planes ... ok
+test kernels::cuda::native_mtp_q8_projection::tests::mlp_identity_view_when_saved_gate_is_a_parent_half_preserves_complete_planes ... ok
+test kernels::cuda::native_mtp_q8_projection::tests::dense_reference_when_every_row_is_identical_code_reports_five_pairwise_columns ... ok
+test kernels::cuda::native_mtp_q8_projection::tests::dense_fixtures_when_t1_and_t5_are_generated_cover_each_full_k_row ... ok
+test kernels::cuda::native_mtp_q8_projection::tests::reference_when_t1_and_t5_schedule_different_split_counts_matches_hand_dots ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 621 filtered out; finished in 0.00s
+

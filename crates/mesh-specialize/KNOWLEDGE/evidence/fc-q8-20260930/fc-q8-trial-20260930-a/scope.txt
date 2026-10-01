@@ -1,0 +1,15 @@
+snapshot=/home/ndizazzo/dev/mesh/issue1393-q4-snapshot-20260930
+ptx=/home/ndizazzo/dev/mesh/issue1393-q4-snapshot-20260930/fc-q8.ptx
+source-state=uncommitted snapshot, not a clean commit
+source-manifest-provenance=owned separately by parent
+scope=synthetic Q8 FC candidates, C4 T1 and C8 T5, three fixtures each
+passes=normal,memcheck,racecheck,synccheck
+gate=exact BF16 selected oracles, exact repeats, finite outputs; no GPU tolerance
+source-faithfulness=inactive columns remain unstaged; sanitizer failure is retained
+native-mtp-admitted=false
+model-throughput-claim=none
+default-promotion=none
+device=0
+timeout-seconds=1200
+MemoryMax=8G
+MemorySwapMax=0

@@ -1,0 +1,347 @@
+{
+  "all_passed": true,
+  "all_passed_scope": "scorer_checks_only",
+  "artifact_path": "/data/ai/ninfer/models/qwen3_8_27b_nvfp4.ninfer",
+  "artifact_sha256": "74d2c57145e6ff11d1d2faa79594477f9bc903a611af1fb20218189fbbb77d82",
+  "check": {
+    "chunk_rows": 128,
+    "head_bit_exact": true,
+    "head_rows_vs_one_row_head": [
+      {
+        "bf16_differences": 0,
+        "row": 0
+      },
+      {
+        "bf16_differences": 0,
+        "row": 127
+      }
+    ],
+    "passed": true,
+    "reference": "reference/row_logprob_topk.rs FP64 host exp/ln, exact top-64 ids",
+    "reference_error": null,
+    "reference_max_abs_error": 4.4674682619927353e-7,
+    "reference_rows": 4
+  },
+  "context_tokens": 512,
+  "corpus_id": "score-default-regression-512",
+  "decode_check": null,
+  "device": {
+    "driver_version": 13040,
+    "major": 12,
+    "minor": 0,
+    "name": "NVIDIA GeForce RTX 5090",
+    "ordinal": 0,
+    "total_bytes": 33731248128,
+    "uuid": "GPU-80ded6bd-1a89-2628-3d94-902187dbab1d"
+  },
+  "domains": [
+    {
+      "domain": "chinese_reference",
+      "mean_nll": 3.2199325940037333,
+      "scored_tokens": 511,
+      "total_nll": 1645.3855555359078
+    },
+    {
+      "domain": "english_long_form",
+      "mean_nll": 1.7184734291735502,
+      "scored_tokens": 511,
+      "total_nll": 878.1399223076842
+    },
+    {
+      "domain": "english_reference",
+      "mean_nll": 1.7758543131599103,
+      "scored_tokens": 511,
+      "total_nll": 907.4615540247141
+    },
+    {
+      "domain": "ninfer_code",
+      "mean_nll": 0.8206122605991392,
+      "scored_tokens": 511,
+      "total_nll": 419.3328651661601
+    }
+  ],
+  "environment": {
+    "MESH_SPECIALIZE_SCORE_FORWARD_ROWS": "512",
+    "MESH_SPECIALIZE_SCORE_LOGITS_HASH": "on",
+    "MESH_SPECIALIZE_SCORE_MODE": "prefill"
+  },
+  "execution": "legacy",
+  "forward_rows": 512,
+  "full_logit_hash": {
+    "enabled": true,
+    "scope": "SHA-256 of every little-endian BF16 vocabulary value at scored positions, in window order"
+  },
+  "head_chunk_rows": 128,
+  "identity": {
+    "model_id": "qwen3.8-27b:text:ninfer-v3-control-v1",
+    "weights_id": "sha256:74d2c57145e6ff11d1d2faa79594477f9bc903a611af1fb20218189fbbb77d82"
+  },
+  "kind": "resident-teacher-forced-scores",
+  "metric": {
+    "log_base": "natural",
+    "name": "fixed-window truncated-context causal perplexity"
+  },
+  "model_quality_passed": null,
+  "model_source": {
+    "canonical_tensor_bytes": 20375588160,
+    "canonical_tensors": 1589,
+    "container": "ninfer-single-file-v3",
+    "full_ninfer_arithmetic_parity": false,
+    "source_artifact_id": "19c9ec11085642f1bbe340cd7cf6c207",
+    "source_bytes": 23719715844,
+    "source_dirty": false,
+    "source_sha256": "74d2c57145e6ff11d1d2faa79594477f9bc903a611af1fb20218189fbbb77d82",
+    "startup_verification_seconds": 32.800135096,
+    "stream_buffer_bytes": 65536,
+    "transform_allocation_limit_bytes": 134217728,
+    "transform_total_buffer_limit_bytes": 268435456,
+    "virtual_offsets": true,
+    "whole_file_hash_passes": 2
+  },
+  "overall": {
+    "mean_nll": 1.883718149234083,
+    "scored_tokens": 2044,
+    "total_nll": 3850.319897034466
+  },
+  "profiles": {
+    "attention": "bf16-fp64-v1",
+    "fp8": "exact-a8-v1",
+    "fp8_split_k": null,
+    "mlp_workspace": false,
+    "nvfp4": "nvfp4-native-prefill-integer-decode-v1"
+  },
+  "ptx_sha256": "3727e477d0691a3359e87de0ecdffc3248883890432958cb247c2db33c32f997",
+  "quality_gate_note": "Fixed model-quality gates require comparison of control and candidate score records",
+  "quality_gate_status": "NOT RUN",
+  "record_format": {
+    "arithmetic": "BF16 head logits; FP32 exp of (x - max), FP64 accumulation and log, FP32 outputs",
+    "byte_order": "little-endian",
+    "fields": [
+      {
+        "count": 1,
+        "name": "target_id",
+        "type": "u32"
+      },
+      {
+        "count": 1,
+        "name": "target_logprob",
+        "type": "f32"
+      },
+      {
+        "count": 1,
+        "name": "logsumexp",
+        "type": "f32"
+      },
+      {
+        "count": 64,
+        "name": "top_ids",
+        "type": "u32"
+      },
+      {
+        "count": 64,
+        "name": "top_logprobs",
+        "type": "f32"
+      }
+    ],
+    "order": "scored positions in stream order; top-k by logit descending, lower id first on ties",
+    "record_bytes": 524
+  },
+  "schema_version": 1,
+  "scope": "Teacher-forced scoring of fixed token streams; score timing includes the forward, head, statistics and host transfers and is not a prefill benchmark.",
+  "score_mode": "prefill",
+  "scorer_checks_passed": true,
+  "state_policy": "fresh zeroed ResidentState and cursor per window; no carry-over between windows or streams",
+  "streams": [
+    {
+      "domain": "english_reference",
+      "full_logits_sha256": "5e50e2b9bee6a60f457d9794597a3446f981bc84edfe392362e606cb374590a2",
+      "id": "wikitext-00",
+      "input_tokens": 512,
+      "input_tokens_sha256": "82b7eb36de1a1abfb415972f86c9b7b3e31cc9f176c38a2d13ae2a4711665f6c",
+      "mean_nll": 1.7758543131599103,
+      "record_count": 511,
+      "records": "wikitext-00.scores.bin",
+      "score_mode": "prefill",
+      "scored_tokens": 511,
+      "seconds": 2.114451208,
+      "total_nll": 907.4615540247141,
+      "unscored_tokens": 1,
+      "windows": [
+        {
+          "decode_input_rows": {
+            "begin": 512,
+            "end": 512
+          },
+          "decode_scored_hidden_rows": {
+            "begin": 0,
+            "end": 0
+          },
+          "first_target": 1,
+          "index": 0,
+          "input_begin": 0,
+          "input_end": 512,
+          "mean_nll": 1.7758543131599103,
+          "prefill_context_rows": {
+            "begin": 0,
+            "end": 512
+          },
+          "prefill_scored_input_rows": {
+            "begin": 0,
+            "end": 511
+          },
+          "row_index_space": "input ranges are window-local; hidden rows are compact scored-buffer rows",
+          "scored_tokens": 511,
+          "seconds": 2.114447415,
+          "target_begin": 1,
+          "target_end": 512,
+          "total_nll": 907.4615540247141
+        }
+      ]
+    },
+    {
+      "domain": "english_long_form",
+      "full_logits_sha256": "b4c9b9c16c842985311eb071437781e6c8f008fb928a7ddce9b4f7fe57dbbd80",
+      "id": "pg19-00",
+      "input_tokens": 512,
+      "input_tokens_sha256": "fd4116047c81500da4f93e038e4376155b2bca65bae8e27fc2b124ec12cdcc1a",
+      "mean_nll": 1.7184734291735502,
+      "record_count": 511,
+      "records": "pg19-00.scores.bin",
+      "score_mode": "prefill",
+      "scored_tokens": 511,
+      "seconds": 1.985539552,
+      "total_nll": 878.1399223076842,
+      "unscored_tokens": 1,
+      "windows": [
+        {
+          "decode_input_rows": {
+            "begin": 512,
+            "end": 512
+          },
+          "decode_scored_hidden_rows": {
+            "begin": 0,
+            "end": 0
+          },
+          "first_target": 1,
+          "index": 0,
+          "input_begin": 0,
+          "input_end": 512,
+          "mean_nll": 1.7184734291735502,
+          "prefill_context_rows": {
+            "begin": 0,
+            "end": 512
+          },
+          "prefill_scored_input_rows": {
+            "begin": 0,
+            "end": 511
+          },
+          "row_index_space": "input ranges are window-local; hidden rows are compact scored-buffer rows",
+          "scored_tokens": 511,
+          "seconds": 1.985535603,
+          "target_begin": 1,
+          "target_end": 512,
+          "total_nll": 878.1399223076842
+        }
+      ]
+    },
+    {
+      "domain": "ninfer_code",
+      "full_logits_sha256": "dcb01f8e8d28da2c3ce7b906ea2d3de058d67c0a1100f8be92890c5f4f2fdda8",
+      "id": "ninfer-00",
+      "input_tokens": 512,
+      "input_tokens_sha256": "0338394056713f7d71e45bb1f44da40708ce4fb956f2e13dd5e72bde49c47aa7",
+      "mean_nll": 0.8206122605991392,
+      "record_count": 511,
+      "records": "ninfer-00.scores.bin",
+      "score_mode": "prefill",
+      "scored_tokens": 511,
+      "seconds": 1.995659466,
+      "total_nll": 419.3328651661601,
+      "unscored_tokens": 1,
+      "windows": [
+        {
+          "decode_input_rows": {
+            "begin": 512,
+            "end": 512
+          },
+          "decode_scored_hidden_rows": {
+            "begin": 0,
+            "end": 0
+          },
+          "first_target": 1,
+          "index": 0,
+          "input_begin": 0,
+          "input_end": 512,
+          "mean_nll": 0.8206122605991392,
+          "prefill_context_rows": {
+            "begin": 0,
+            "end": 512
+          },
+          "prefill_scored_input_rows": {
+            "begin": 0,
+            "end": 511
+          },
+          "row_index_space": "input ranges are window-local; hidden rows are compact scored-buffer rows",
+          "scored_tokens": 511,
+          "seconds": 1.995655671,
+          "target_begin": 1,
+          "target_end": 512,
+          "total_nll": 419.3328651661601
+        }
+      ]
+    },
+    {
+      "domain": "chinese_reference",
+      "full_logits_sha256": "1a63531c6e4ca1a9ce9853e2cb687ad9246d6c11937f6689e30a785f3c5e6c27",
+      "id": "zhwiki-00",
+      "input_tokens": 512,
+      "input_tokens_sha256": "e2294fb4338e00c28dd239be37ec30a923fe0a20ff91401c6637bc5224e265b3",
+      "mean_nll": 3.2199325940037333,
+      "record_count": 511,
+      "records": "zhwiki-00.scores.bin",
+      "score_mode": "prefill",
+      "scored_tokens": 511,
+      "seconds": 2.048909666,
+      "total_nll": 1645.3855555359078,
+      "unscored_tokens": 1,
+      "windows": [
+        {
+          "decode_input_rows": {
+            "begin": 512,
+            "end": 512
+          },
+          "decode_scored_hidden_rows": {
+            "begin": 0,
+            "end": 0
+          },
+          "first_target": 1,
+          "index": 0,
+          "input_begin": 0,
+          "input_end": 512,
+          "mean_nll": 3.2199325940037333,
+          "prefill_context_rows": {
+            "begin": 0,
+            "end": 512
+          },
+          "prefill_scored_input_rows": {
+            "begin": 0,
+            "end": 511
+          },
+          "row_index_space": "input ranges are window-local; hidden rows are compact scored-buffer rows",
+          "scored_tokens": 511,
+          "seconds": 2.04890568,
+          "target_begin": 1,
+          "target_end": 512,
+          "total_nll": 1645.3855555359078
+        }
+      ]
+    }
+  ],
+  "stride_tokens": 256,
+  "timing": {
+    "load_seconds": 12.17561689,
+    "score_seconds": 8.144576456,
+    "scored_tokens_per_second": 250.9645542702485
+  },
+  "wall_seconds": 53.579268263
+}

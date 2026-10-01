@@ -1,6 +1,9 @@
-use super::{compare, launch, validate};
-use crate::{native_mtp_q8_gemv_reference, packages::qwen3_8_27b::native_mtp_views::{BytePlane, Q8MatrixView}};
 use super::super::driver::{Context, Module};
+use super::{compare, launch, validate};
+use crate::{
+    native_mtp_q8_gemv_reference,
+    packages::qwen3_8_27b::native_mtp_views::{BytePlane, Q8MatrixView},
+};
 use anyhow::{Context as _, Result, ensure};
 use serde_json::{Value, json};
 
@@ -15,7 +18,8 @@ pub(super) fn run_synthetic(context: &Context, module: &Module<'_>) -> Result<Va
     let mut cases = Vec::new();
     for width in [128, 160, 256, 5120, 10240, 17408] {
         let fixture = fixture(width)?;
-        let validated = validate::validate(&fixture.object_bytes, &fixture.view, &fixture.input_bf16)?;
+        let validated =
+            validate::validate(&fixture.object_bytes, &fixture.view, &fixture.input_bf16)?;
         let expected = native_mtp_q8_gemv_reference::run(
             &fixture.object_bytes,
             &fixture.view,
@@ -59,16 +63,24 @@ pub(super) fn fixture_for_test(width: usize) -> Result<(Vec<u8>, Q8MatrixView, V
 }
 
 fn fixture(width: usize) -> Result<Fixture> {
-    let padded_k = width.checked_add(127).context("fixture padded K overflows")? / 128 * 128;
+    let padded_k = width
+        .checked_add(127)
+        .context("fixture padded K overflows")?
+        / 128
+        * 128;
     let parent_rows = 3_usize;
-    let code_bytes = parent_rows.checked_mul(padded_k).context("fixture code extent overflows")?;
+    let code_bytes = parent_rows
+        .checked_mul(padded_k)
+        .context("fixture code extent overflows")?;
     let scale_offset = code_bytes
         .checked_add((256 - code_bytes % 256) % 256)
         .context("fixture scale offset overflows")?;
     let scale_count = parent_rows
         .checked_mul(padded_k / 32)
         .context("fixture scale count overflows")?;
-    let scale_bytes = scale_count.checked_mul(2).context("fixture scale extent overflows")?;
+    let scale_bytes = scale_count
+        .checked_mul(2)
+        .context("fixture scale extent overflows")?;
     let mut object_bytes = vec![0; scale_offset + scale_bytes];
     let scale_words = [0x3800_u16, 0x3c00, 0x4000, 0x3400];
     for parent_row in 0..parent_rows {
@@ -101,7 +113,10 @@ fn fixture(width: usize) -> Result<Fixture> {
         shape: [2, width],
         padded_k,
         group_size: 32,
-        codes: BytePlane { offset: 0, bytes: u64::try_from(code_bytes)? },
+        codes: BytePlane {
+            offset: 0,
+            bytes: u64::try_from(code_bytes)?,
+        },
         scale_bits: BytePlane {
             offset: u64::try_from(scale_offset)?,
             bytes: u64::try_from(scale_bytes)?,
@@ -118,6 +133,14 @@ fn fixture(width: usize) -> Result<Fixture> {
         17408 => "k17408",
         _ => anyhow::bail!("unsupported synthetic fixture width"),
     };
-    ensure!(view.shape[1] == input_bf16.len(), "fixture activation width mismatch");
-    Ok(Fixture { name, view, object_bytes, input_bf16 })
+    ensure!(
+        view.shape[1] == input_bf16.len(),
+        "fixture activation width mismatch"
+    );
+    Ok(Fixture {
+        name,
+        view,
+        object_bytes,
+        input_bf16,
+    })
 }

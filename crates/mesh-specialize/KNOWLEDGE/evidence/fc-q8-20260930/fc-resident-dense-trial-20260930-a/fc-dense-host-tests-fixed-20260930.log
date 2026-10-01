@@ -1,0 +1,31 @@
+Note: mold is unavailable or failed the active target/toolchain link probe.
+Falling back to lld or the platform linker for this build.
+
+
+   Compiling mesh-specialize v0.76.1 (/home/ndizazzo/dev/mesh/issue1393-q4-snapshot-20260930/crates/mesh-specialize)
+warning: linker stderr: Note: mold is unavailable or failed the active target/toolchain link probe.
+         Falling back to lld or the platform linker for this build.
+  |
+  = note: `#[warn(linker_messages)]` on by default
+
+warning: `mesh-specialize` (lib test) generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.48s
+     Running unittests src/lib.rs (target/debug/deps/mesh_specialize-5fc4832d896fb214)
+
+running 13 tests
+test kernels::cuda::native_mtp_q8_fc_operator::resident::dense_fixture::tests::exact_gate_when_repeat_or_reference_word_differs ... ok
+test kernels::cuda::native_mtp_q8_fc_operator::resident::dense_fixture::tests::group_sweep_when_t5_covers_every_group_and_factor ... ok
+test kernels::cuda::native_mtp_q8_fc_operator::resident::dense_fixture::tests::last_k_when_t1_and_t5_target_group_319_second_lane_31 ... ok
+test kernels::cuda::native_mtp_q8_fc_operator::resident::dense_fixture::tests::exact_comparator_when_both_repeats_share_wrong_last_word_still_fails ... ok
+test kernels::cuda::native_mtp_q8_fc_operator::resident::dense_fixture::tests::exact_comparator_when_token_four_repeat_two_last_row_is_poisoned_fails ... ok
+test kernels::cuda::native_mtp_q8_fc_operator::resident::dense_fixture::tests::alternating_when_groups_and_lanes_change_match_exact_sign_bits ... ok
+test kernels::cuda::native_mtp_q8_fc_operator::resident::dense_fixture::tests::dense_inputs_when_five_tokens_cover_all_k_have_distinct_full_columns ... ok
+test kernels::cuda::native_mtp_q8_fc_operator::resident::dense_fixture::tests::signed_dyadic_when_tokens_and_group_edges_change_follow_rotated_factors ... ok
+test kernels::cuda::native_mtp_q8_fc_operator::resident::dense_fixture::tests::dense_patterns_when_packed_unit_scale_reference_runs_match_independent_dots ... ok
+test kernels::cuda::native_mtp_q8_fc_operator::tests::comparison_fails_when_last_row_is_poisoned_or_repeat_changes ... ok
+test kernels::cuda::native_mtp_q8_fc_operator::resident::dense_fixture::tests::comparison_fails_when_last_row_is_poisoned_or_repeat_changes ... ok
+test kernels::cuda::native_mtp_q8_fc_operator::tests::cancellation_matches_simple_oracle_when_five_columns_are_distinct ... ok
+test kernels::cuda::native_mtp_q8_fc_operator::resident::dense_fixture::tests::cancellation_when_five_columns_are_distinct_matches_simple_oracle ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 595 filtered out; finished in 0.77s
+

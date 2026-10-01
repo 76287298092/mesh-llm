@@ -1,5 +1,5 @@
-use super::validate::ValidatedView;
 use super::super::driver::{Buffer, Context, Module};
+use super::validate::ValidatedView;
 use anyhow::{Context as _, Result, ensure};
 use std::ffi::c_void;
 
@@ -10,9 +10,15 @@ pub(super) fn run(
     input_bf16: &[u16],
     validated: &ValidatedView,
 ) -> Result<Vec<u8>> {
-    ensure!(module.belongs_to(context), "native Q8 PTX module context mismatch");
+    ensure!(
+        module.belongs_to(context),
+        "native Q8 PTX module context mismatch"
+    );
     let packed = upload(context, object_bytes)?;
-    let input_bytes = input_bf16.iter().flat_map(|word| word.to_le_bytes()).collect::<Vec<_>>();
+    let input_bytes = input_bf16
+        .iter()
+        .flat_map(|word| word.to_le_bytes())
+        .collect::<Vec<_>>();
     let input = upload(context, &input_bytes)?;
     let row_bytes = validated
         .source_rows
@@ -26,7 +32,12 @@ pub(super) fn run(
     let output = Buffer::new(context, output_bytes)?;
     let output_poison = 0x7fc1_2345_u32.to_le_bytes().repeat(output_bytes / 4);
     output.upload(&output_poison)?;
-    let mut pointers = [input.pointer(), packed.pointer(), rows.pointer(), output.pointer()];
+    let mut pointers = [
+        input.pointer(),
+        packed.pointer(),
+        rows.pointer(),
+        output.pointer(),
+    ];
     let mut dimensions = [
         validated.selected_rows,
         validated.logical_k,

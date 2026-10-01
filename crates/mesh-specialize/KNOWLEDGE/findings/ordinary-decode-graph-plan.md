@@ -1,8 +1,10 @@
 # Ordinary one-row decode preparation and graph replay
 
-Status: source-backed implementation proposal, 2026-09-27. Parent approval and
-implementation are pending. No build, GPU execution, tracing, sanitizer run, SSH,
-service change, or performance measurement was performed for this document.
+Status: superseded. This 2026-09-27 proposal was implemented as StreamForward
+and whole-model graph replay; see
+[stream-forward.md](../optimizations/stream-forward.md). Measured graph replay
+gained only 0.6%/0.3% decode at 106/512 inputs and is not the default. The
+proposal text below is retained unchanged as design history.
 
 The first implementation should be a prepared one-row projection API with checked
 borrowed device views and a single explicit stream lease. Exercise it on the

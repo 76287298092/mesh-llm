@@ -19,6 +19,9 @@ pub(crate) const SOURCE_REPOSITORY: &str = "Neroued/ninfer:artifact";
 const RECIPE_NAME: &str = "native-view-recipe.json";
 const MAX_TRANSFORM_BYTES: u64 = 128 * 1024 * 1024;
 
+mod mtp;
+pub mod mtp_qualification;
+
 /// Pinned model bytes and a virtual logical inventory. Opening streams two full
 /// file hashes plus all canonical view bytes; it does not allocate a full model.
 pub struct NativeModelSource {
@@ -26,6 +29,7 @@ pub struct NativeModelSource {
     directory: Directory,
     views: Vec<View>,
     recipe: Vec<u8>,
+    mtp: Option<mtp::VerifiedMtp>,
     dirty: bool,
     verification_seconds: f64,
 }
@@ -51,6 +55,7 @@ impl NativeModelSource {
             directory,
             views,
             recipe,
+            mtp: None,
             dirty: false,
             verification_seconds: started.elapsed().as_secs_f64(),
         })
@@ -418,6 +423,7 @@ mod tests {
                 directory,
                 views,
                 recipe,
+                mtp: None,
                 dirty: false,
                 verification_seconds: 0.0,
             },
@@ -474,6 +480,26 @@ mod tests {
         let (_file, mut source) = tiny_source();
         assert!(source.copy_object("tensors/a", &mut FailedWriter).is_err());
         assert!(source.dirty);
+    }
+
+    #[test]
+    fn native_mtp_parent_copy_before_resolution_dirties_source() {
+        let (_file, mut source) = tiny_source();
+        assert!(
+            source
+                .copy_native_mtp_parent("physical-parent", &mut Vec::new())
+                .is_err()
+        );
+        assert!(source.dirty);
+        assert!(source.copy_object(RECIPE_NAME, &mut Vec::new()).is_err());
+    }
+
+    #[test]
+    fn failed_native_mtp_resolution_latches_source_dirty() {
+        let (_file, mut source) = tiny_source();
+        assert!(source.native_mtp_views().is_err());
+        assert!(source.dirty);
+        assert!(source.copy_object(RECIPE_NAME, &mut Vec::new()).is_err());
     }
 
     #[cfg(unix)]

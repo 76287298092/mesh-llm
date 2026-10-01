@@ -35,11 +35,13 @@ pub(super) struct Step {
     pub rows: usize,
     pub past: usize,
     pub capacity: usize,
+    pub decode: bool,
 }
 impl<'w, 'ctx> Layer<'w, 'ctx> {
     pub(super) fn attach_workspace(&mut self, workspace: super::model_workspace::Shared<'ctx>) {
         self.mlp.attach_workspace(workspace);
     }
+
     pub(super) fn new(
         owner: &'w ResidentWeights<'ctx>,
         prefix: &str,
@@ -240,7 +242,14 @@ impl<'w, 'ctx> Layer<'w, 'ctx> {
                 .workspace_output(ctx, module, &post.normalized, step.rows)?;
             residual_add(ctx, module, &post.residual, &down)?
         } else {
-            let mlp = self.mlp.run(ctx, module, &post.normalized, step.rows)?;
+            let mlp = self.mlp.run_with_past(
+                ctx,
+                module,
+                &post.normalized,
+                step.rows,
+                step.past,
+                step.decode,
+            )?;
             observe(&mut observer, "mlp_gate", &mlp.gate.values)?;
             observe(&mut observer, "mlp_up", &mlp.up.values)?;
             observe(&mut observer, "mlp_activation", &mlp.activation)?;

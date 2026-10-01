@@ -201,7 +201,10 @@ mod tests {
         assert_eq!(&bytes[..4], &[7, 0, 0, 0]);
         assert_eq!(&bytes[4..8], &(-1.5_f32).to_le_bytes());
         assert_eq!(&bytes[12..16], &0_u32.to_le_bytes());
-        assert_eq!(&bytes[12 + 4 * TOP_K..16 + 4 * TOP_K], &(-0.0_f32).to_le_bytes());
+        assert_eq!(
+            &bytes[12 + 4 * TOP_K..16 + 4 * TOP_K],
+            &(-0.0_f32).to_le_bytes()
+        );
         assert_eq!(Record::decode(&bytes).unwrap(), record);
         assert!(Record::decode(&bytes[1..]).is_err());
     }

@@ -31,6 +31,7 @@ pub(super) struct Session<'ctx> {
     pub state: ResidentState<'ctx>,
     pub cursor: Cursor,
 }
+impl Session<'_> {}
 pub(super) struct SelectedOutput {
     pub token: u32,
     pub past: usize,
@@ -49,6 +50,7 @@ struct ExecutionOptions {
     selection: LogitsSelection,
     record: bool,
     device_selection: bool,
+    decode: bool,
 }
 pub(super) struct DetailedOutput<'ctx> {
     pub recovery: Vec<super::resident_recovery::LayerRecord<'ctx>>,
@@ -72,6 +74,10 @@ impl<'ctx> Session<'ctx> {
         let state = self.state.fork(ctx)?;
         Ok(Session { state, cursor })
     }
+
+    pub(super) fn mark_poisoned(&mut self) {
+        self.cursor.mark_poisoned();
+    }
 }
 impl<'w, 'ctx> Model<'w, 'ctx> {
     pub(super) fn new(weights: &'w ResidentWeights<'ctx>, config: &DecoderConfig) -> Result<Self> {
@@ -84,7 +90,26 @@ impl<'w, 'ctx> Model<'w, 'ctx> {
                 && config.attention_shape.hidden == config.hidden,
             "decoder hidden widths disagree"
         );
+        let nvfp4_mlp_schedule = crate::kernels::nvfp4_mlp_schedule::current()?;
+        ensure!(
+            nvfp4_mlp_schedule == crate::kernels::nvfp4_mlp_schedule::Schedule::Baseline
+                || config
+                    .layers
+                    .iter()
+                    .any(|layer| matches!(layer.mlp, DecoderMlpKind::Nvfp4)),
+            "A16 SwiGLU profile requires at least one NVFP4 MLP"
+        );
         let workspace = super::model_workspace::shared(weights.context())?;
+        ensure!(
+            nvfp4_mlp_schedule == crate::kernels::nvfp4_mlp_schedule::Schedule::Baseline
+                || workspace.is_none(),
+            "A16 SwiGLU profile is incompatible with the model MLP workspace"
+        );
+        ensure!(
+            nvfp4_mlp_schedule == crate::kernels::nvfp4_mlp_schedule::Schedule::Baseline
+                || !super::nvfp4_projection_audit::enabled()?,
+            "A16 SwiGLU profile is incompatible with the NVFP4 projection audit"
+        );
         let mut blocks = Vec::new();
         for layer in &config.layers {
             let quantization = match layer.mlp {
@@ -145,6 +170,16 @@ impl<'w, 'ctx> Model<'w, 'ctx> {
         })
     }
 
+    pub(super) fn belongs_to(&self, context: &Context) -> bool {
+        self.embedding.belongs_to(context)
+    }
+
+    pub(super) fn validates_session(&self, session: &Session<'_>, config: &DecoderConfig) -> bool {
+        session.state.layout() == &config.state_layout
+            && session.cursor.capacity() == config.capacity
+            && !session.cursor.is_poisoned()
+    }
+
     /// Optional observers only inspect completed hidden rows; they never supply inputs.
     /// Final logits are downloaded for greedy selection before committing the cursor.
     pub(super) fn forward(
@@ -155,12 +190,39 @@ impl<'w, 'ctx> Model<'w, 'ctx> {
         session: &mut Session<'_>,
         observer: Option<&mut Observer<'_>>,
     ) -> Result<Output> {
-        let detailed = self.forward_detailed(
+        self.forward_with_decode(ctx, module, tokens, session, observer, false)
+    }
+
+    pub(super) fn forward_decode(
+        &self,
+        ctx: &Context,
+        module: &Module<'_>,
+        tokens: &[u32],
+        session: &mut Session<'_>,
+    ) -> Result<Output> {
+        self.forward_with_decode(ctx, module, tokens, session, None, true)
+    }
+
+    fn forward_with_decode(
+        &self,
+        ctx: &Context,
+        module: &Module<'_>,
+        tokens: &[u32],
+        session: &mut Session<'_>,
+        observer: Option<&mut Observer<'_>>,
+        decode: bool,
+    ) -> Result<Output> {
+        let detailed = self.execute(
             ctx,
             module,
             tokens,
             session,
-            LogitsSelection::Last,
+            ExecutionOptions {
+                selection: LogitsSelection::Last,
+                record: false,
+                device_selection: false,
+                decode,
+            },
             observer,
         )?;
         ensure!(
@@ -183,8 +245,29 @@ impl<'w, 'ctx> Model<'w, 'ctx> {
         tokens: &[u32],
         session: &mut Session<'_>,
     ) -> Result<SelectedOutput> {
+        self.forward_selected_with_decode(ctx, module, tokens, session, false)
+    }
+
+    pub(super) fn forward_selected_decode(
+        &self,
+        ctx: &Context,
+        module: &Module<'_>,
+        tokens: &[u32],
+        session: &mut Session<'_>,
+    ) -> Result<SelectedOutput> {
+        self.forward_selected_with_decode(ctx, module, tokens, session, true)
+    }
+
+    fn forward_selected_with_decode(
+        &self,
+        ctx: &Context,
+        module: &Module<'_>,
+        tokens: &[u32],
+        session: &mut Session<'_>,
+        decode: bool,
+    ) -> Result<SelectedOutput> {
         if self.greedy.is_none() {
-            let output = self.forward(ctx, module, tokens, session, None)?;
+            let output = self.forward_with_decode(ctx, module, tokens, session, None, decode)?;
             return Ok(SelectedOutput {
                 token: output.token,
                 past: output.past,
@@ -199,6 +282,7 @@ impl<'w, 'ctx> Model<'w, 'ctx> {
                 selection: LogitsSelection::Last,
                 record: false,
                 device_selection: true,
+                decode,
             },
             None,
         )?;
@@ -230,6 +314,30 @@ impl<'w, 'ctx> Model<'w, 'ctx> {
                 selection,
                 record: false,
                 device_selection: false,
+                decode: false,
+            },
+            observer,
+        )
+    }
+
+    pub(super) fn forward_detailed_decode<'a>(
+        &self,
+        ctx: &'a Context,
+        module: &Module<'_>,
+        token: u32,
+        session: &mut Session<'_>,
+        observer: Option<&mut Observer<'_>>,
+    ) -> Result<DetailedOutput<'a>> {
+        self.execute(
+            ctx,
+            module,
+            &[token],
+            session,
+            ExecutionOptions {
+                selection: LogitsSelection::Last,
+                record: false,
+                device_selection: false,
+                decode: true,
             },
             observer,
         )
@@ -241,6 +349,17 @@ impl<'w, 'ctx> Model<'w, 'ctx> {
         module: &Module<'_>,
         tokens: &[u32],
         session: &mut Session<'_>,
+    ) -> Result<DetailedOutput<'a>> {
+        self.forward_recorded_observed(ctx, module, tokens, session, None)
+    }
+
+    pub(super) fn forward_recorded_observed<'a>(
+        &self,
+        ctx: &'a Context,
+        module: &Module<'_>,
+        tokens: &[u32],
+        session: &mut Session<'_>,
+        observer: Option<&mut Observer<'_>>,
     ) -> Result<DetailedOutput<'a>> {
         ensure!(
             (1..=5).contains(&tokens.len()),
@@ -255,15 +374,12 @@ impl<'w, 'ctx> Model<'w, 'ctx> {
                 selection: LogitsSelection::All,
                 record: true,
                 device_selection: false,
+                decode: false,
             },
-            None,
+            observer,
         )
     }
 
-    /// Teacher-forced scoring: an ordinary last-row diagnostic forward whose
-    /// final hidden rows (`rows x hidden` BF16, before the final norm) are
-    /// returned for every position. Arithmetic and selection are unchanged; the
-    /// last-row logits are computed and discarded.
     pub(super) fn forward_hidden<'a>(
         &self,
         ctx: &'a Context,
@@ -271,12 +387,40 @@ impl<'w, 'ctx> Model<'w, 'ctx> {
         tokens: &[u32],
         session: &mut Session<'_>,
     ) -> Result<Buffer<'a>> {
-        let output = self.forward_detailed(
+        let output = self.execute(
             ctx,
             module,
             tokens,
             session,
-            LogitsSelection::Last,
+            ExecutionOptions {
+                selection: LogitsSelection::Last,
+                record: false,
+                device_selection: false,
+                decode: false,
+            },
+            None,
+        )?;
+        Ok(output.hidden)
+    }
+
+    pub(super) fn forward_hidden_decode<'a>(
+        &self,
+        ctx: &'a Context,
+        module: &Module<'_>,
+        token: u32,
+        session: &mut Session<'_>,
+    ) -> Result<Buffer<'a>> {
+        let output = self.execute(
+            ctx,
+            module,
+            &[token],
+            session,
+            ExecutionOptions {
+                selection: LogitsSelection::Last,
+                record: false,
+                device_selection: false,
+                decode: true,
+            },
             None,
         )?;
         Ok(output.hidden)
@@ -300,6 +444,7 @@ impl<'w, 'ctx> Model<'w, 'ctx> {
             selection,
             record,
             device_selection,
+            decode,
         } = options;
         let mut recovery = Vec::new();
         ensure!(
@@ -307,9 +452,22 @@ impl<'w, 'ctx> Model<'w, 'ctx> {
             "decoder token is outside vocabulary"
         );
         ensure!(
-            session.state.belongs_to(ctx) && module.belongs_to(ctx),
+            session.state.belongs_to(ctx) && module.belongs_to(ctx) && self.belongs_to(ctx),
             "decoder context mismatch"
         );
+        if crate::kernels::nvfp4_mlp_schedule::current()?
+            == crate::kernels::nvfp4_mlp_schedule::Schedule::A16SwiGlu
+        {
+            ensure!(
+                (ctx.info().major, ctx.info().minor) == (12, 0),
+                "A16 SwiGLU profile requires an SM120 device"
+            );
+            ensure!(
+                !record,
+                "A16 SwiGLU profile does not support speculative recovery recording"
+            );
+            module.function("nvfp4_swiglu_a16")?;
+        }
         validate_selection_rows(selection, tokens.len())?;
         let transaction = session.cursor.begin(tokens.len())?;
         let entry = self.embedding.run(ctx, module, tokens)?;
@@ -322,12 +480,12 @@ impl<'w, 'ctx> Model<'w, 'ctx> {
                     super::partition_stage_audit::record(name, transaction.rows(), buffer)
                 };
                 match block {
-                    Block::Gdn(layer) => layer.forward_observed(
+                    Block::Gdn(layer) => layer.forward_observed_with_past(
                         ctx,
                         module,
                         &hidden,
                         &mut session.state,
-                        transaction.rows(),
+                        (transaction.rows(), transaction.past(), decode),
                         Some(&mut inspect),
                     )?,
                     Block::Attention(layer) => layer.forward_observed(
@@ -339,6 +497,7 @@ impl<'w, 'ctx> Model<'w, 'ctx> {
                             rows: transaction.rows(),
                             past: transaction.past(),
                             capacity: transaction.capacity(),
+                            decode,
                         },
                         Some(&mut inspect),
                     )?,
@@ -357,12 +516,12 @@ impl<'w, 'ctx> Model<'w, 'ctx> {
                             recovery.push(layer_record);
                             next
                         } else {
-                            layer.forward(
+                            layer.forward_with_past(
                                 ctx,
                                 module,
                                 &hidden,
                                 &mut session.state,
-                                transaction.rows(),
+                                (transaction.rows(), transaction.past(), decode),
                             )?
                         }
                     }
@@ -375,6 +534,7 @@ impl<'w, 'ctx> Model<'w, 'ctx> {
                             rows: transaction.rows(),
                             past: transaction.past(),
                             capacity: transaction.capacity(),
+                            decode,
                         },
                     )?,
                 }

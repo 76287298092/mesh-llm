@@ -1,0 +1,26 @@
+Note: mold is unavailable or failed the active target/toolchain link probe.
+Falling back to lld or the platform linker for this build.
+
+
+   Compiling mesh-specialize v0.76.1 (/home/ndizazzo/dev/mesh/issue1393-q4-snapshot-20260930/crates/mesh-specialize)
+   Compiling xtask v0.76.1 (/home/ndizazzo/dev/mesh/issue1393-q4-snapshot-20260930/tools/xtask)
+warning: linker stderr: Note: mold is unavailable or failed the active target/toolchain link probe.
+         Falling back to lld or the platform linker for this build.
+  |
+  = note: `#[warn(linker_messages)]` on by default
+
+warning: `xtask` (bin "xtask" test) generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 6.31s
+     Running unittests src/main.rs (target/debug/deps/xtask-13f333cdf0beb46e)
+
+running 7 tests
+test specialize::target_batch_decode::tests::request_rejects_bad_flags_device_and_shape ... ok
+test specialize::target_batch_decode::tests::existing_output_prevents_trial_and_preserves_bytes ... ok
+test specialize::target_batch_decode::tests::malformed_fixture_does_not_create_output ... ok
+test specialize::target_batch_decode::tests::trial_error_is_retained_as_failure ... ok
+test specialize::target_batch_decode::tests::explicit_true_succeeds_after_report_is_saved ... ok
+test specialize::target_batch_decode::tests::missing_status_or_nonobject_report_fails_closed ... ok
+test specialize::target_batch_decode::tests::failures_remain_saved_when_trial_fails_or_returns_nonboolean ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 92 filtered out; finished in 0.00s
+

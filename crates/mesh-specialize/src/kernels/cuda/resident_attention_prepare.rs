@@ -2,17 +2,17 @@
 
 use super::{
     driver::{Buffer, Context, Module},
+    resident_native_mtp::NativeMtpNormBinding,
+    resident_norm::Norm,
     resident_weights::ResidentWeights,
 };
-use crate::artifact::schema::DType;
 use anyhow::{Context as _, Result, anyhow, ensure};
 use std::ffi::c_void;
 
 const EPSILON: f32 = 1e-6;
 
 pub(super) struct Preparation<'w, 'ctx> {
-    owner: &'w ResidentWeights<'ctx>,
-    weight: u64,
+    norm: Norm<'w, 'ctx>,
     heads: usize,
     width: usize,
     rotary_dim: usize,
@@ -48,14 +48,25 @@ impl<'w, 'ctx> Preparation<'w, 'ctx> {
         with_gate: bool,
     ) -> Result<Self> {
         validate_shape(1, heads, width, rotary_dim)?;
-        let width_u64 = u64::try_from(width).context("attention width does not fit u64")?;
-        let weight_bytes = width_u64
-            .checked_mul(2)
-            .context("attention norm weight extent overflows u64")?;
-        let weight = owner.tensor(name, DType::Bf16, &[width_u64], weight_bytes)?;
         Ok(Self {
-            owner,
-            weight,
+            norm: Norm::new(owner, name, width, EPSILON)?,
+            heads,
+            width,
+            rotary_dim,
+            with_gate,
+        })
+    }
+
+    pub(super) fn from_native_mtp(
+        binding: NativeMtpNormBinding<'w, 'ctx>,
+        heads: usize,
+        width: usize,
+        rotary_dim: usize,
+        with_gate: bool,
+    ) -> Result<Self> {
+        validate_shape(1, heads, width, rotary_dim)?;
+        Ok(Self {
+            norm: Norm::from_native_mtp(binding, width, EPSILON)?,
             heads,
             width,
             rotary_dim,
@@ -73,7 +84,7 @@ impl<'w, 'ctx> Preparation<'w, 'ctx> {
         rows: usize,
     ) -> Result<Output<'a>> {
         ensure!(
-            self.owner.belongs_to(context),
+            self.norm.belongs_to(context),
             "attention weight belongs to another context"
         );
         ensure!(
@@ -104,7 +115,7 @@ impl<'w, 'ctx> Preparation<'w, 'ctx> {
         let gate = Buffer::new(context, extents.output_bytes)?;
         let mut pointers = [
             input.pointer(),
-            self.weight,
+            self.norm.weight_pointer(),
             tables.cos.pointer(),
             tables.sin.pointer(),
             values.pointer(),

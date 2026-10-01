@@ -1,0 +1,176 @@
+{
+  "all_passed": true,
+  "artifact_path": "/data/ai/ninfer/models/qwen3_8_27b_nvfp4.ninfer",
+  "case_count": 2,
+  "cases": [
+    {
+      "all_passed": true,
+      "case_index": 0,
+      "dense_pattern": "AlternatingUnit",
+      "error": null,
+      "projection": "QueryKeyValue",
+      "result": {
+        "all_passed": true,
+        "device": {
+          "driver_version": 13040,
+          "major": 12,
+          "minor": 0,
+          "name": "NVIDIA GeForce RTX 5090",
+          "ordinal": 0,
+          "total_bytes": 33731248128,
+          "uuid": "GPU-80ded6bd-1a89-2628-3d94-902187dbab1d"
+        },
+        "five_distinct_columns": null,
+        "five_distinct_input_columns": null,
+        "input_columns_pairwise_distinct": true,
+        "input_pattern": "dense-alternating-unit",
+        "jit_log": "",
+        "kernel_resources": {
+          "local_bytes": 0,
+          "max_threads_per_block": 1024,
+          "registers": 47,
+          "static_shared_bytes": 16400
+        },
+        "kind": "native-mtp-q8-resident-projection-qualification-v1",
+        "model_executable": false,
+        "native_mtp_admitted": false,
+        "output_columns_pairwise_distinct": true,
+        "physical_parent": {
+          "bytes": 77987840,
+          "dequantization": false,
+          "expected_sha256": "4e0ce18b9abf4e421a07b48c323ddb4c355360212010c51772f2274e69ed08fd",
+          "object_id": "weight/000176",
+          "query_gate_logical_rows_used": false,
+          "resident_device_identity": true,
+          "resident_hash_matches": true,
+          "resident_readback_sha256": "4e0ce18b9abf4e421a07b48c323ddb4c355360212010c51772f2274e69ed08fd",
+          "saved_binding_identity": true,
+          "source_copy_sha256": "4e0ce18b9abf4e421a07b48c323ddb4c355360212010c51772f2274e69ed08fd",
+          "source_hash_matches": true,
+          "weight_reupload": false
+        },
+        "projection": "QueryKeyValue",
+        "reference": {
+          "f64_diagnostic_only": true,
+          "max_mathematical_error_bound": 3.7838927249801e-10,
+          "max_scheduled_f32_f64_delta": 4.76837158203125e-7
+        },
+        "result": {
+          "all_passed": true,
+          "exact_bf16_mismatches": 0,
+          "failures_first_16": [],
+          "mathematical_error_bound_is_gpu_tolerance": false,
+          "mathematical_f64_diagnostic_only": true,
+          "nonfinite_outputs": 0,
+          "outputs_per_repeat": 14336,
+          "repeat_mismatches": 0,
+          "repeats": 2
+        },
+        "schema_version": 1,
+        "shape": [
+          14336,
+          5120
+        ],
+        "split_warps": 8,
+        "timing_claim": false,
+        "tokens": 1
+      },
+      "tokens": 1
+    },
+    {
+      "all_passed": true,
+      "case_index": 1,
+      "dense_pattern": "SignedMix",
+      "error": null,
+      "projection": "QueryKeyValue",
+      "result": {
+        "all_passed": true,
+        "device": {
+          "driver_version": 13040,
+          "major": 12,
+          "minor": 0,
+          "name": "NVIDIA GeForce RTX 5090",
+          "ordinal": 0,
+          "total_bytes": 33731248128,
+          "uuid": "GPU-80ded6bd-1a89-2628-3d94-902187dbab1d"
+        },
+        "five_distinct_columns": null,
+        "five_distinct_input_columns": null,
+        "input_columns_pairwise_distinct": true,
+        "input_pattern": "dense-signed-mix",
+        "jit_log": "",
+        "kernel_resources": {
+          "local_bytes": 0,
+          "max_threads_per_block": 1024,
+          "registers": 47,
+          "static_shared_bytes": 16400
+        },
+        "kind": "native-mtp-q8-resident-projection-qualification-v1",
+        "model_executable": false,
+        "native_mtp_admitted": false,
+        "output_columns_pairwise_distinct": true,
+        "physical_parent": {
+          "bytes": 77987840,
+          "dequantization": false,
+          "expected_sha256": "4e0ce18b9abf4e421a07b48c323ddb4c355360212010c51772f2274e69ed08fd",
+          "object_id": "weight/000176",
+          "query_gate_logical_rows_used": false,
+          "resident_device_identity": true,
+          "resident_hash_matches": true,
+          "resident_readback_sha256": "4e0ce18b9abf4e421a07b48c323ddb4c355360212010c51772f2274e69ed08fd",
+          "saved_binding_identity": true,
+          "source_copy_sha256": "4e0ce18b9abf4e421a07b48c323ddb4c355360212010c51772f2274e69ed08fd",
+          "source_hash_matches": true,
+          "weight_reupload": false
+        },
+        "projection": "QueryKeyValue",
+        "reference": {
+          "f64_diagnostic_only": true,
+          "max_mathematical_error_bound": 3.795586344143369e-10,
+          "max_scheduled_f32_f64_delta": 8.344650268554688e-7
+        },
+        "result": {
+          "all_passed": true,
+          "exact_bf16_mismatches": 0,
+          "failures_first_16": [],
+          "mathematical_error_bound_is_gpu_tolerance": false,
+          "mathematical_f64_diagnostic_only": true,
+          "nonfinite_outputs": 0,
+          "outputs_per_repeat": 14336,
+          "repeat_mismatches": 0,
+          "repeats": 2
+        },
+        "schema_version": 1,
+        "shape": [
+          14336,
+          5120
+        ],
+        "split_warps": 8,
+        "timing_claim": false,
+        "tokens": 1
+      },
+      "tokens": 1
+    }
+  ],
+  "device_ordinal": 0,
+  "elapsed_seconds": 159.534054775,
+  "full_model_executed": false,
+  "kind": "native-mtp-q8-resident-projection-matrix-qualification-v1",
+  "model_decode_tokens_per_second": null,
+  "model_executable": false,
+  "model_prefill_tokens_per_second": null,
+  "native_mtp_admitted": false,
+  "ptx_path": "/home/ndizazzo/dev/mesh/issue1393-q4-snapshot-20260930/q8-projection.ptx",
+  "ptx_sha256": "c2640bef7583ee620044304f5c24595d79308cf19c576e53ba18b8dc60cd1839",
+  "schema_version": 1,
+  "selected_case_indices": [
+    0,
+    1
+  ],
+  "selected_case_range": {
+    "end": 2,
+    "start": 0
+  },
+  "timing_claim": false,
+  "timing_collected": false
+}

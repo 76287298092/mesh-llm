@@ -1,0 +1,56 @@
+Note: mold is unavailable or failed the active target/toolchain link probe.
+Falling back to lld or the platform linker for this build.
+
+
+   Compiling mesh-specialize v0.76.1 (/home/ndizazzo/dev/mesh/issue1393-q4-snapshot-20260930/crates/mesh-specialize)
+warning: unused import: `NativeMtpParentBinding`
+ --> crates/mesh-specialize/src/kernels/cuda/native_mtp_q4_operator/resident.rs:3:27
+  |
+3 |     resident_native_mtp::{NativeMtpParentBinding, ResidentNativeMtp},
+  |                           ^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `native_mtp_views::NativeMtpViews`
+ --> crates/mesh-specialize/src/kernels/cuda/native_mtp_q4_operator/resident.rs:7:29
+  |
+7 |     packages::qwen3_8_27b::{native_mtp_views::NativeMtpViews, native_source::NativeModelSource},
+  |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `mesh-specialize` (lib) generated 2 warnings (run `cargo fix --lib -p mesh-specialize` to apply 2 suggestions)
+   Compiling xtask v0.76.1 (/home/ndizazzo/dev/mesh/issue1393-q4-snapshot-20260930/tools/xtask)
+warning: linker stderr: Note: mold is unavailable or failed the active target/toolchain link probe.
+         Falling back to lld or the platform linker for this build.
+  |
+  = note: `#[warn(linker_messages)]` on by default
+
+warning: `xtask` (bin "xtask" test) generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 6.77s
+     Running unittests src/main.rs (target/debug/deps/xtask-13f333cdf0beb46e)
+
+running 6 tests
+test specialize::native_mtp_q4_resident::tests::missing_arguments_do_not_create_report_file ... ok
+test specialize::native_mtp_q4_resident::tests::parser_rejects_missing_extra_reordered_and_invalid_device_arguments ... ok
+{
+  "all_passed": true,
+  "output": "/tmp/.tmp-native-mtp-q4-resident-passed-1473342-1-1790786192057477760/report.json"
+}
+{
+  "all_passed": false,
+  "output": "/tmp/.tmp-native-mtp-q4-resident-status-1473342-0-1790786192057472399/report.json"
+}
+{
+  "all_passed": false,
+  "output": "/tmp/.tmp-native-mtp-q4-resident-failed-1473342-2-1790786192057479829/report.json"
+}
+{
+  "all_passed": false,
+  "output": "/tmp/.tmp-native-mtp-q4-resident-error-1473342-4-1790786192057583827/report.json"
+}
+test specialize::native_mtp_q4_resident::tests::absent_or_nonboolean_all_passed_is_failure ... ok
+test specialize::native_mtp_q4_resident::tests::explicit_true_all_passed_report_succeeds ... ok
+test specialize::native_mtp_q4_resident::tests::trial_error_report_is_retained_and_returns_failure ... ok
+test specialize::native_mtp_q4_resident::tests::failed_trial_report_is_retained ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 78 filtered out; finished in 0.00s
+

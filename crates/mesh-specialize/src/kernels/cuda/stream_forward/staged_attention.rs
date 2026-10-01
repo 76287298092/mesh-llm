@@ -5,8 +5,8 @@ use crate::kernels::{
         BLOCKS, CoefficientSchedule, KERNELS, PREFIX_BLOCKS, PREFIX_SCHEDULE_KERNELS, Plan, SCALE,
         validate_addresses,
     },
-    cuda::driver::{Buffer, Context, Module},
     cuda::attention_staged_launch::ScheduleKernels,
+    cuda::driver::{Buffer, Context, Module},
 };
 use anyhow::{Result, ensure};
 use serde_json::{Value, json};

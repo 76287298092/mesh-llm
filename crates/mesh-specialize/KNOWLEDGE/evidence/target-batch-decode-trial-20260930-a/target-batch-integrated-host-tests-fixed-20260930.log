@@ -1,0 +1,25 @@
+Note: mold is unavailable or failed the active target/toolchain link probe.
+Falling back to lld or the platform linker for this build.
+
+
+   Compiling mesh-specialize v0.76.1 (/home/ndizazzo/dev/mesh/issue1393-q4-snapshot-20260930/crates/mesh-specialize)
+error[E0599]: no method named `mark_poisoned` found for struct `session::Cursor` in the current scope
+  --> crates/mesh-specialize/src/kernels/cuda/resident_model.rs:78:21
+   |
+78 |         self.cursor.mark_poisoned();
+   |                     ^^^^^^^^^^^^^
+   |
+  ::: crates/mesh-specialize/src/engine/session.rs:10:1
+   |
+10 | pub struct Cursor {
+   | ----------------- method `mark_poisoned` not found for this struct
+   |
+help: there is a method `is_poisoned` with a similar name
+   |
+78 -         self.cursor.mark_poisoned();
+78 +         self.cursor.is_poisoned();
+   |
+
+For more information about this error, try `rustc --explain E0599`.
+error: could not compile `mesh-specialize` (lib test) due to 1 previous error
+error: recipe `with-lld` failed with exit code 101

@@ -63,6 +63,7 @@ impl<'module, 'w, 'ctx> Prepared<'module, 'w, 'ctx> {
             Arithmetic::Nvfp4 {
                 input_scale,
                 factor,
+                ..
             } => Quantization::Nvfp4 {
                 input_scale,
                 factor,

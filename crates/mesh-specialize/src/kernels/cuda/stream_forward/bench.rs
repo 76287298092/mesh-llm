@@ -110,6 +110,27 @@ impl<'a, 'm, 'w, 'ctx> Runner<'a, 'm, 'w, 'ctx> {
         }
     }
 
+    pub(in crate::kernels::cuda) fn forward_selected_decode(
+        &self,
+        ctx: &Context,
+        module: &Module<'_>,
+        tokens: &[u32],
+        session: &mut Session<'_>,
+    ) -> Result<SelectedOutput> {
+        match &self.stream {
+            None => self
+                .model
+                .forward_selected_decode(ctx, module, tokens, session),
+            Some(stream) => {
+                let output = stream.forward(tokens, session, false)?;
+                Ok(SelectedOutput {
+                    token: output.token,
+                    past: output.past,
+                })
+            }
+        }
+    }
+
     /// Bind once, after prefill and outside every decode timing interval.
     pub(in crate::kernels::cuda) fn prepare_decode<'s>(
         &'s mut self,
@@ -164,7 +185,7 @@ impl DecodeRunner<'_, '_, '_, '_, '_> {
     ) -> Result<SelectedOutput> {
         match self {
             Self::Eager { runner, session } => {
-                runner.forward_selected(context, module, &[token], session)
+                runner.forward_selected_decode(context, module, &[token], session)
             }
             Self::Graph(graph) => {
                 let output = graph.replay(token, false)?;

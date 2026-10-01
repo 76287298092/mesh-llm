@@ -47,6 +47,8 @@ pub mod nvfp4_quantize_reference;
 pub mod nvfp4_decode_prmt_reference;
 #[path = "../reference/nvfp4_linear.rs"]
 pub mod nvfp4_linear_reference;
+#[path = "../reference/nvfp4_swiglu_a16.rs"]
+pub mod nvfp4_swiglu_a16_reference;
 
 #[path = "../reference/mlp_activation.rs"]
 pub mod mlp_activation_reference;
@@ -126,3 +128,9 @@ pub mod gdn_gates_f32_params_reference;
 
 #[path = "../reference/native_mtp_q8_gemv.rs"]
 pub mod native_mtp_q8_gemv_reference;
+
+#[path = "../reference/native_mtp_q8_sliced_k_fc.rs"]
+pub mod native_mtp_q8_sliced_k_fc_reference;
+
+#[path = "../reference/native_mtp_q4_gemv.rs"]
+pub mod native_mtp_q4_gemv_reference;

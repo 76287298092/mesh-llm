@@ -23,6 +23,11 @@ pub(super) fn run(
     diagnostic: &LayerDiagnostic,
 ) -> Result<Value> {
     ensure!(
+        crate::kernels::nvfp4_mlp_schedule::current()?
+            == crate::kernels::nvfp4_mlp_schedule::Schedule::Baseline,
+        "isolated control diagnostic requires the baseline NVFP4 MLP schedule"
+    );
+    ensure!(
         diagnostic.layer < config.layers.len(),
         "invalid diagnostic layer"
     );
@@ -93,6 +98,7 @@ pub(super) fn run(
                 rows,
                 past: 0,
                 capacity: config.capacity,
+                decode: false,
             },
             Some(&mut observer),
         )?,

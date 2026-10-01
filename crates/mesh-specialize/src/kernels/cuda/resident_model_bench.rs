@@ -147,6 +147,7 @@ pub(in crate::kernels) fn run(
         "completed": true,
         "device": info,
         "arithmetic_profile": crate::kernels::fp8_profile::current()?.name(),
+        "nvfp4_mlp_profile": crate::kernels::nvfp4_mlp_schedule::current()?.name(),
         "attention_profile":crate::kernels::attention_profile::current()?.name(),
         "nvfp4_profile":crate::kernels::nvfp4_profile::current()?.name(),
         "nvfp4_decode_schedule":crate::kernels::nvfp4_decode_schedule::current()?.name(),
@@ -251,6 +252,13 @@ fn validate_kernels(module: &Module<'_>) -> Result<()> {
         module
             .function(name)
             .with_context(|| format!("load model bench kernel {name}"))?;
+    }
+    if crate::kernels::nvfp4_mlp_schedule::current()?
+        == crate::kernels::nvfp4_mlp_schedule::Schedule::A16SwiGlu
+    {
+        module
+            .function("nvfp4_swiglu_a16")
+            .context("load A16 SwiGLU profile kernel")?;
     }
     Ok(())
 }

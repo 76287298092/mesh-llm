@@ -1,0 +1,33 @@
+Note: mold is unavailable or failed the active target/toolchain link probe.
+Falling back to lld or the platform linker for this build.
+
+
+   Compiling mesh-specialize v0.76.1 (/home/ndizazzo/dev/mesh/issue1393-q4-snapshot-20260930/crates/mesh-specialize)
+warning: linker stderr: Note: mold is unavailable or failed the active target/toolchain link probe.
+         Falling back to lld or the platform linker for this build.
+  |
+  = note: `#[warn(linker_messages)]` on by default
+
+warning: `mesh-specialize` (lib test) generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 4.65s
+     Running unittests src/lib.rs (target/debug/deps/mesh_specialize-5fc4832d896fb214)
+
+running 15 tests
+test kernels::cuda::resident_target_batch_trial::compare::tests::all_five_rows_are_required_for_a_complete_report ... ok
+test kernels::cuda::resident_target_batch_trial::compare::tests::cursor_comparison_rejects_cursor_only_differences ... ok
+test kernels::cuda::resident_target_batch_trial::compare::tests::continuation_comparison_rejects_hidden_only_differences ... ok
+test kernels::cuda::resident_target_batch_trial::compare::tests::differing_region_bytes_fail_even_when_aggregate_hashes_match ... ok
+test kernels::cuda::resident_target_batch_trial::compare::tests::full_word_comparison_rejects_an_interior_nonwinner_difference ... ok
+test kernels::cuda::resident_target_batch_trial::compare::tests::equal_region_bytes_pass_the_aggregate_phase_gate ... ok
+test kernels::cuda::resident_target_batch_trial::compare::tests::identical_bytes_with_different_layouts_fail_state_aggregation ... ok
+test kernels::cuda::resident_target_batch_trial::compare::tests::nonwinning_logits_difference_fails_output_gate ... ok
+test kernels::cuda::resident_target_batch_trial::compare::tests::identical_wrong_or_poisoned_cursors_fail_the_phase_gate ... ok
+test kernels::cuda::resident_target_batch_trial::compare::tests::reports_the_first_layer_with_a_word_difference ... ok
+test kernels::cuda::resident_target_batch_trial::compare::tests::region_only_difference_fails_the_aggregate_phase_gate ... ok
+test kernels::cuda::resident_target_batch_trial::compare::tests::state_comparison_rejects_a_region_only_difference ... ok
+test kernels::cuda::resident_target_batch_trial::compare::tests::single_token_expected_output_rejects_extra_words ... ok
+test packages::qwen3_8_27b::target_batch_trial::tests::fixture_accepts_metadata_when_extent_fits ... ok
+test packages::qwen3_8_27b::target_batch_trial::tests::fixture_rejects_malformed_or_unbounded_requests ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 637 filtered out; finished in 0.00s
+

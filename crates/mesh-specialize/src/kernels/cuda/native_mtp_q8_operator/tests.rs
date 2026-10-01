@@ -15,7 +15,10 @@ fn host_boundary_accepts_all_synthetic_widths_with_parent_mapping() {
         let (object, view, input) = fixture::fixture_for_test(width).expect("fixture construction");
         let validated = validate::validate(&object, &view, &input).expect("valid mapped view");
 
-        assert_eq!(validated.logical_k, u32::try_from(width).expect("fixture width fits u32"));
+        assert_eq!(
+            validated.logical_k,
+            u32::try_from(width).expect("fixture width fits u32")
+        );
         assert_eq!(validated.source_rows, [2, 0]);
     }
 }

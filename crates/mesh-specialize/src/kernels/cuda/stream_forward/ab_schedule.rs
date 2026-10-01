@@ -241,7 +241,7 @@ mod tests {
     #[test]
     fn rejects_short_output_slot_even_with_nonoverlapping_placement() {
         let shapes = qwen();
-            let mut specs = forward_program(&shapes, 16, false).unwrap();
+        let mut specs = forward_program(&shapes, 16, false).unwrap();
         prepare_lifetimes(Schedule::PairedFp64, &shapes, &mut specs).unwrap();
         specs
             .iter_mut()
@@ -255,7 +255,7 @@ mod tests {
     #[test]
     fn malformed_template_rejected_before_mutation() {
         let shapes = qwen();
-            let mut specs = forward_program(&shapes, 1, false).unwrap();
+        let mut specs = forward_program(&shapes, 1, false).unwrap();
         specs.iter_mut().find(|s| s.name == INPUT).unwrap().last = 0;
         let before = specs.clone();
         assert!(prepare_lifetimes(Schedule::PairedFp64, &shapes, &mut specs).is_err());

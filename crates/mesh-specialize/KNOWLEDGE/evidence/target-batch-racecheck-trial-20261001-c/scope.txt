@@ -1,0 +1,16 @@
+snapshot=/home/ndizazzo/dev/mesh/issue1393-q4-snapshot-20260930
+ptx=/home/ndizazzo/dev/mesh/issue1393-q4-snapshot-20260930/q8-projection.ptx
+fixture=/home/ndizazzo/dev/mesh/issue1393-q4-snapshot-20260930/target-batch-fixture-20260930.json
+artifact=/data/ai/ninfer/models/qwen3_8_27b_nvfp4.ninfer
+scope=target-batch-decode-correctness-only
+source-provenance=parent-owned pending snapshot
+native-mtp-admitted=false
+model-executable=false
+timing-claim=false
+device=0
+prefix=32 verification=2..5 continuation=3 capacity=40
+passes=racecheck
+MemoryMax=32G MemorySwapMax=0 timeout=2400 kill-after=30
+original-trialB-timeout=1200s preserved; retry uses a distinct new trial
+gate=full exact words, all 64 layers, all 128 state regions, expected cursors; selected tokens insufficient
+schema-assumption=20260930 PhaseReport/WordComparison/StateComparison; fail closed on changes

@@ -15,6 +15,7 @@ pub(super) struct Mlp<'w, 'ctx> {
     down: Projection<'w, 'ctx>,
     channels: usize,
     width: usize,
+    nvfp4_schedule: crate::kernels::nvfp4_mlp_schedule::Schedule,
     workspace: Option<super::model_workspace::Shared<'ctx>>,
 }
 
@@ -50,6 +51,7 @@ impl<'w, 'ctx> Mlp<'w, 'ctx> {
             )?,
             channels,
             width,
+            nvfp4_schedule: crate::kernels::nvfp4_mlp_schedule::current()?,
             workspace: None,
         })
     }
@@ -105,16 +107,42 @@ impl<'w, 'ctx> Mlp<'w, 'ctx> {
         input: &Buffer<'_>,
         rows: usize,
     ) -> Result<ResultBuffers<'a>> {
-        let shared_input = self.gate.shared_input(ctx, module, input, rows)?;
-        let shared_input_ref = shared_input.as_ref();
-        let gate = self
-            .gate
-            .run_with_input(ctx, module, input, rows, shared_input_ref)?;
-        let up = self
-            .up
-            .run_with_input(ctx, module, input, rows, shared_input_ref)?;
-        let activation =
-            resident_activation::run(ctx, module, &gate.values, &up.values, rows * self.channels)?;
+        self.run_with_past(ctx, module, input, rows, 0, false)
+    }
+
+    pub(super) fn run_with_past<'a>(
+        &self,
+        ctx: &'a Context,
+        module: &Module<'_>,
+        input: &Buffer<'_>,
+        rows: usize,
+        past: usize,
+        decode: bool,
+    ) -> Result<ResultBuffers<'a>> {
+        let (gate, up, activation) = match (self.gate.nvfp4(), self.up.nvfp4()) {
+            (Some(gate), Some(up)) if self.nvfp4_schedule.fuses_decode_row(decode, rows, past) => {
+                let fused = super::resident_nvfp4_swiglu_a16::run(ctx, module, input, gate, up)?;
+                (fused.gate, fused.up, fused.activation)
+            }
+            _ => {
+                let shared_input = self.gate.shared_input(ctx, module, input, rows)?;
+                let shared_input_ref = shared_input.as_ref();
+                let gate = self
+                    .gate
+                    .run_with_input(ctx, module, input, rows, shared_input_ref)?;
+                let up = self
+                    .up
+                    .run_with_input(ctx, module, input, rows, shared_input_ref)?;
+                let activation = resident_activation::run(
+                    ctx,
+                    module,
+                    &gate.values,
+                    &up.values,
+                    rows * self.channels,
+                )?;
+                (gate, up, activation)
+            }
+        };
         let down = self.down.run(ctx, module, &activation, rows)?;
         Ok(ResultBuffers {
             gate,

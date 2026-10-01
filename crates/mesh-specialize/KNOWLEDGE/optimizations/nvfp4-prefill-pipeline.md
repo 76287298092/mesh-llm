@@ -321,3 +321,70 @@ spends substantial time in exact FP8, attention and GDN. Decode scheduling was
 unchanged and no decode gain is claimed. Default remains baseline; wider context,
 broader quality, whole-model sanitizer coverage of this profile and matched
 Ninfer serving qualification remain open. No final performance parity claim.
+
+## Separate 128x128 register-reuse candidate
+
+Added `kernels/nvptx/nvfp4_prefill_large.rs` with separate symbol
+`nvfp4_prefill_large`. Parent reports the prior wide32x128 candidate qualified
+and gained about 6% whole-model prefill throughput, with its 512-input NVFP4
+event sum falling from 195.8 to 101.4 ms. Those observations do not qualify or
+predict this larger schedule. Existing kernels remain unchanged.
+
+The large candidate has the same six-pointer/MNK/factor ABI, logical packed
+representation and admission bounds. Launch is `[ceil(N/128),ceil(M/128),1]`
+with `[256,1,1]` threads. Warp w retains base row `16*(w/4)` and column
+`32*(w%4)`. Its four row offsets 0,32,64,96 and four column offsets 0,8,16,24
+produce sixteen named four-FP32 accumulators. Each K64 iteration loads four
+named A fragments and four named B fragments, then invokes the existing MMA
+helper for all sixteen fixed pairs. Every individual output keeps ascending
+K64 accumulation order. A compile-time store macro expands to fixed calls;
+there is no dynamically indexed accumulator or epilogue array. Each store uses
+the existing global-factor RN/BF16 RNE helper.
+
+Each 9,216-byte stage has A codes 0..4096, W codes 4096..8192, A scales
+8192..8704 and W scales 8704..9216. Both stages total 18,432 shared bytes.
+Thread t writes code words t,t+256,t+512,t+768 of each matrix. First128 threads
+write scale word t of each matrix. Thus all 2,304 words have one producer and
+all source/destination words are aligned. Sources use K/2 and K/16 row strides
+and tile offsets 32*t and 4*t respectively. K is divisible by64, so full words
+remain in range through the final tile. Invalid M/N rows use the live allocation
+base and a zero source size, without forming an out-of-bounds pointer.
+
+For the highest row fragment, A row base is at most119; its second row is127.
+The highest A code read ends at4095 and its highest scale read at8703. B column
+is at most127, its code read ends at8191 and scale read at9215. Eight warps and
+sixteen fragments partition the 128x128 outputs into128 distinct 16x8 tiles.
+Within each tile, the original lane ownership and four guarded stores apply.
+At M129/N136 the second CTA dimension has only one/eight valid rows respectively;
+all padded threads still execute every MMA and CTA barrier.
+
+Each producer commits one group of eight or ten copies. The unchanged wait0
+plus CTA barrier publishes the current slot. The next slot is issued before
+current MMA work. The terminal CTA barrier retires current readers before
+that slot is reused. K64/K128 exercise fill/drain, K192 first reuse, and longer
+K repeated reuse. No new synchronization instruction or early return is added.
+
+PTX inventory for parent integration aliases the instruction guarantees in the
+initial inventory: `coordinates` owns the unique aligned static symbol
+`nvfp4_prefill_large_stages[18432]` and thread/CTA register reads; `copy_word`
+owns global address conversion and async four-byte/zero-fill copies;
+`issue_stage` owns commit; `await_stage` owns wait0; `barrier` owns `bar.sync 0`;
+`shared_word` owns aligned shared loads. Their memory clobbers remain intact.
+MMA and output instruction sites are still owned by `nvfp4_linear`. The
+allocation extent, producer sets and fragment bounds are those above.
+
+Technique provenance remains independent Rust work using the pinned Ninfer
+`e31bc99b13f517c8aae70b997b7c4a49b4dcdc5d` source as a scheduling reference.
+`src/ops/linear/nvfp4/shapes/n5120_k17408.cu:22-23` names128x128 schedules;
+`nvfp4_a4_mma.cuh:191-275` demonstrates reuse across fragment pairs. No imported
+Ninfer implementation, scale permutation, swizzle, TMA or fusion is included.
+
+Only source review and rustfmt/check were performed. Qualification must include
+M127/128/129 with N120/128/136, asymmetric one-hot/dyadic and general signed
+scale fixtures, and K64/128/192, under the existing bounded CPU budget. Retain
+small-M and M512 cases plus bounded K5120/17408 tests. Require independent
+oracle gates, native raw/BF16 bit equality and all three sanitizers before
+model timing. Sixty-four live accumulator registers plus four A and four B
+fragments increase register pressure. JIT register/local-byte counts, occupancy,
+spills and performance are unverified; shared reuse may lose to those costs.
+No gain is presumed.

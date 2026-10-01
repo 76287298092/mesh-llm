@@ -1,0 +1,43 @@
+Note: mold is unavailable or failed the active target/toolchain link probe.
+Falling back to lld or the platform linker for this build.
+
+
+   Compiling mesh-specialize v0.76.1 (/home/ndizazzo/dev/mesh/issue1393-q4-snapshot-20260930/crates/mesh-specialize)
+   Compiling xtask v0.76.1 (/home/ndizazzo/dev/mesh/issue1393-q4-snapshot-20260930/tools/xtask)
+warning: linker stderr: Note: mold is unavailable or failed the active target/toolchain link probe.
+         Falling back to lld or the platform linker for this build.
+  |
+  = note: `#[warn(linker_messages)]` on by default
+
+warning: `xtask` (bin "xtask" test) generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 7.42s
+     Running unittests src/main.rs (target/debug/deps/xtask-13f333cdf0beb46e)
+
+running 8 tests
+test specialize::native_mtp_q8_projection_resident::tests::malformed_arguments_do_not_create_a_report ... ok
+test specialize::native_mtp_q8_projection_resident::tests::parser_rejects_missing_extra_reordered_and_invalid_device_arguments ... ok
+test specialize::native_mtp_q8_projection_resident::tests::existing_report_path_is_preserved_before_trial_starts ... ok
+test specialize::native_mtp_q8_projection_resident::tests::invalid_case_range_does_not_create_a_report_or_start_trial ... ok
+{
+  "all_passed": false,
+  "output": "/tmp/.tmp-native-mtp-q8-projection-error-1591721-6-1790800486242369873/report.json"
+}
+{
+  "all_passed": true,
+  "output": "/tmp/.tmp-native-mtp-q8-projection-passed-1591721-0-1790800486242267798/report.json"
+}
+test specialize::native_mtp_q8_projection_resident::tests::trial_errors_are_saved_before_the_command_returns_failure ... ok
+{
+  "all_passed": false,
+  "output": "/tmp/.tmp-native-mtp-q8-projection-range-1591721-5-1790800486242357411/report.json"
+}
+test specialize::native_mtp_q8_projection_resident::tests::explicit_true_all_passed_report_succeeds ... ok
+test specialize::native_mtp_q8_projection_resident::tests::selected_case_range_is_recorded_with_original_indices_and_failure ... ok
+{
+  "all_passed": false,
+  "output": "/tmp/.tmp-native-mtp-q8-projection-failed-1591721-2-1790800486242286458/report.json"
+}
+test specialize::native_mtp_q8_projection_resident::tests::failed_cases_are_all_saved_and_return_failure ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 84 filtered out; finished in 0.00s
+

@@ -1,0 +1,718 @@
+{
+  "all_passed": true,
+  "all_passed_scope": "scorer_checks_only",
+  "artifact_path": "/data/ai/ninfer/models/qwen3_8_27b_nvfp4.ninfer",
+  "artifact_sha256": "74d2c57145e6ff11d1d2faa79594477f9bc903a611af1fb20218189fbbb77d82",
+  "check": {
+    "chunk_rows": 127,
+    "head_bit_exact": true,
+    "head_rows_vs_one_row_head": [
+      {
+        "bf16_differences": 0,
+        "row": 0
+      },
+      {
+        "bf16_differences": 0,
+        "row": 126
+      }
+    ],
+    "passed": true,
+    "reference": "reference/row_logprob_topk.rs FP64 host exp/ln, exact top-64 ids",
+    "reference_error": null,
+    "reference_max_abs_error": 4.4674682619927353e-7,
+    "reference_rows": 4
+  },
+  "context_tokens": 128,
+  "corpus_id": "decode-quality-smoke-257",
+  "decode_check": {
+    "chunk_rows": 126,
+    "first_hidden_row": 1,
+    "head_bit_exact": true,
+    "head_rows_vs_one_row_head": [
+      {
+        "bf16_differences": 0,
+        "row": 0
+      },
+      {
+        "bf16_differences": 0,
+        "row": 125
+      }
+    ],
+    "input_begin": 0,
+    "input_end": 128,
+    "passed": true,
+    "reference": "reference/row_logprob_topk.rs FP64 host exp/ln, exact top-64 ids",
+    "reference_error": null,
+    "reference_max_abs_error": 3.5650037588652594e-7,
+    "reference_rows": 4,
+    "target_begin": 2
+  },
+  "device": {
+    "driver_version": 13040,
+    "major": 12,
+    "minor": 0,
+    "name": "NVIDIA GeForce RTX 5090",
+    "ordinal": 0,
+    "total_bytes": 33731248128,
+    "uuid": "GPU-80ded6bd-1a89-2628-3d94-902187dbab1d"
+  },
+  "domains": [
+    {
+      "domain": "chinese_reference",
+      "mean_nll": 3.232785139793833,
+      "scored_tokens": 256,
+      "total_nll": 827.5929957872213
+    },
+    {
+      "domain": "english_long_form",
+      "mean_nll": 1.5412621914289275,
+      "scored_tokens": 256,
+      "total_nll": 394.56312100580544
+    },
+    {
+      "domain": "english_reference",
+      "mean_nll": 2.184626748844952,
+      "scored_tokens": 256,
+      "total_nll": 559.2644477043077
+    },
+    {
+      "domain": "ninfer_code",
+      "mean_nll": 1.4497913085327534,
+      "scored_tokens": 256,
+      "total_nll": 371.14657498438487
+    }
+  ],
+  "environment": {
+    "MESH_SPECIALIZE_ATTENTION_PROFILE": "split-decode",
+    "MESH_SPECIALIZE_SCORE_FORWARD_ROWS": "1",
+    "MESH_SPECIALIZE_SCORE_LOGITS_HASH": "on",
+    "MESH_SPECIALIZE_SCORE_MODE": "decode"
+  },
+  "execution": "legacy",
+  "forward_rows": 1,
+  "full_logit_hash": {
+    "enabled": true,
+    "scope": "SHA-256 of every little-endian BF16 vocabulary value at scored positions, in window order"
+  },
+  "head_chunk_rows": 128,
+  "identity": {
+    "model_id": "qwen3.8-27b:text:ninfer-v3-control-v1",
+    "weights_id": "sha256:74d2c57145e6ff11d1d2faa79594477f9bc903a611af1fb20218189fbbb77d82"
+  },
+  "kind": "resident-teacher-forced-scores",
+  "metric": {
+    "log_base": "natural",
+    "name": "fixed-window truncated-context causal perplexity"
+  },
+  "model_quality_passed": null,
+  "model_source": {
+    "canonical_tensor_bytes": 20375588160,
+    "canonical_tensors": 1589,
+    "container": "ninfer-single-file-v3",
+    "full_ninfer_arithmetic_parity": false,
+    "source_artifact_id": "19c9ec11085642f1bbe340cd7cf6c207",
+    "source_bytes": 23719715844,
+    "source_dirty": false,
+    "source_sha256": "74d2c57145e6ff11d1d2faa79594477f9bc903a611af1fb20218189fbbb77d82",
+    "startup_verification_seconds": 32.294527972,
+    "stream_buffer_bytes": 65536,
+    "transform_allocation_limit_bytes": 134217728,
+    "transform_total_buffer_limit_bytes": 268435456,
+    "virtual_offsets": true,
+    "whole_file_hash_passes": 2
+  },
+  "overall": {
+    "mean_nll": 2.1021163471501163,
+    "scored_tokens": 1024,
+    "total_nll": 2152.567139481719
+  },
+  "profiles": {
+    "attention": "bf16-split-decode-fp32-exact-prefill-v1",
+    "fp8": "exact-a8-v1",
+    "fp8_split_k": null,
+    "mlp_workspace": false,
+    "nvfp4": "nvfp4-native-prefill-integer-decode-v1"
+  },
+  "ptx_sha256": "3727e477d0691a3359e87de0ecdffc3248883890432958cb247c2db33c32f997",
+  "quality_gate_note": "Fixed model-quality gates require comparison of control and candidate score records",
+  "quality_gate_status": "NOT RUN",
+  "record_format": {
+    "arithmetic": "BF16 head logits; FP32 exp of (x - max), FP64 accumulation and log, FP32 outputs",
+    "byte_order": "little-endian",
+    "fields": [
+      {
+        "count": 1,
+        "name": "target_id",
+        "type": "u32"
+      },
+      {
+        "count": 1,
+        "name": "target_logprob",
+        "type": "f32"
+      },
+      {
+        "count": 1,
+        "name": "logsumexp",
+        "type": "f32"
+      },
+      {
+        "count": 64,
+        "name": "top_ids",
+        "type": "u32"
+      },
+      {
+        "count": 64,
+        "name": "top_logprobs",
+        "type": "f32"
+      }
+    ],
+    "order": "scored positions in stream order; top-k by logit descending, lower id first on ties",
+    "record_bytes": 524
+  },
+  "schema_version": 1,
+  "scope": "Teacher-forced scoring of fixed token streams; score timing includes the forward, head, statistics and host transfers and is not a prefill benchmark.",
+  "score_mode": "decode",
+  "scorer_checks_passed": true,
+  "state_policy": "fresh zeroed ResidentState and cursor per window; no carry-over between windows or streams",
+  "streams": [
+    {
+      "domain": "english_reference",
+      "full_logits_sha256": "92f8f04bcc5cdafe3a762539270fb5c581f7400cea3de3e2449631d2b038afa0",
+      "id": "wikitext-00",
+      "input_tokens": 257,
+      "input_tokens_sha256": "b46daaa05f155468d49624ad0bf73f359c25ec68f131266c8b868d4dcb2e0959",
+      "mean_nll": 2.184626748844952,
+      "record_count": 256,
+      "records": "wikitext-00.scores.bin",
+      "score_mode": "decode",
+      "scored_tokens": 256,
+      "seconds": 20.503293055,
+      "total_nll": 559.2644477043077,
+      "unscored_tokens": 1,
+      "windows": [
+        {
+          "decode_input_rows": {
+            "begin": 1,
+            "end": 127
+          },
+          "decode_scored_hidden_rows": {
+            "begin": 1,
+            "end": 127
+          },
+          "first_target": 1,
+          "index": 0,
+          "input_begin": 0,
+          "input_end": 128,
+          "mean_nll": 2.001888916405532,
+          "prefill_context_rows": {
+            "begin": 0,
+            "end": 1
+          },
+          "prefill_scored_input_rows": {
+            "begin": 0,
+            "end": 1
+          },
+          "row_index_space": "input ranges are window-local; hidden rows are compact scored-buffer rows",
+          "scored_tokens": 127,
+          "seconds": 5.320708264,
+          "target_begin": 1,
+          "target_end": 128,
+          "total_nll": 254.2398923835026
+        },
+        {
+          "decode_input_rows": {
+            "begin": 64,
+            "end": 127
+          },
+          "decode_scored_hidden_rows": {
+            "begin": 1,
+            "end": 64
+          },
+          "first_target": 64,
+          "index": 1,
+          "input_begin": 64,
+          "input_end": 192,
+          "mean_nll": 2.273218193595042,
+          "prefill_context_rows": {
+            "begin": 0,
+            "end": 64
+          },
+          "prefill_scored_input_rows": {
+            "begin": 63,
+            "end": 64
+          },
+          "row_index_space": "input ranges are window-local; hidden rows are compact scored-buffer rows",
+          "scored_tokens": 64,
+          "seconds": 5.062755935,
+          "target_begin": 128,
+          "target_end": 192,
+          "total_nll": 145.4859643900827
+        },
+        {
+          "decode_input_rows": {
+            "begin": 64,
+            "end": 127
+          },
+          "decode_scored_hidden_rows": {
+            "begin": 1,
+            "end": 64
+          },
+          "first_target": 64,
+          "index": 2,
+          "input_begin": 128,
+          "input_end": 256,
+          "mean_nll": 2.492760607020955,
+          "prefill_context_rows": {
+            "begin": 0,
+            "end": 64
+          },
+          "prefill_scored_input_rows": {
+            "begin": 63,
+            "end": 64
+          },
+          "row_index_space": "input ranges are window-local; hidden rows are compact scored-buffer rows",
+          "scored_tokens": 64,
+          "seconds": 5.060939571,
+          "target_begin": 192,
+          "target_end": 256,
+          "total_nll": 159.53667884934111
+        },
+        {
+          "decode_input_rows": {
+            "begin": 127,
+            "end": 127
+          },
+          "decode_scored_hidden_rows": {
+            "begin": 1,
+            "end": 1
+          },
+          "first_target": 127,
+          "index": 3,
+          "input_begin": 129,
+          "input_end": 257,
+          "mean_nll": 0.0019120813813060522,
+          "prefill_context_rows": {
+            "begin": 0,
+            "end": 127
+          },
+          "prefill_scored_input_rows": {
+            "begin": 126,
+            "end": 127
+          },
+          "row_index_space": "input ranges are window-local; hidden rows are compact scored-buffer rows",
+          "scored_tokens": 1,
+          "seconds": 5.058885253,
+          "target_begin": 256,
+          "target_end": 257,
+          "total_nll": 0.0019120813813060522
+        }
+      ]
+    },
+    {
+      "domain": "english_long_form",
+      "full_logits_sha256": "66a79ac285a3908b18d45c19c3b64ab0caeadb073e89808fbd097dec17f54215",
+      "id": "pg19-00",
+      "input_tokens": 257,
+      "input_tokens_sha256": "f9c2fccc4329312c930357dbcb163a81e49c5b5cfe5c4feac60dad10f82d559e",
+      "mean_nll": 1.5412621914289275,
+      "record_count": 256,
+      "records": "pg19-00.scores.bin",
+      "score_mode": "decode",
+      "scored_tokens": 256,
+      "seconds": 20.329692955,
+      "total_nll": 394.56312100580544,
+      "unscored_tokens": 1,
+      "windows": [
+        {
+          "decode_input_rows": {
+            "begin": 1,
+            "end": 127
+          },
+          "decode_scored_hidden_rows": {
+            "begin": 1,
+            "end": 127
+          },
+          "first_target": 1,
+          "index": 0,
+          "input_begin": 0,
+          "input_end": 128,
+          "mean_nll": 1.2204428453375775,
+          "prefill_context_rows": {
+            "begin": 0,
+            "end": 1
+          },
+          "prefill_scored_input_rows": {
+            "begin": 0,
+            "end": 1
+          },
+          "row_index_space": "input ranges are window-local; hidden rows are compact scored-buffer rows",
+          "scored_tokens": 127,
+          "seconds": 5.154128633,
+          "target_begin": 1,
+          "target_end": 128,
+          "total_nll": 154.99624135787235
+        },
+        {
+          "decode_input_rows": {
+            "begin": 64,
+            "end": 127
+          },
+          "decode_scored_hidden_rows": {
+            "begin": 1,
+            "end": 64
+          },
+          "first_target": 64,
+          "index": 1,
+          "input_begin": 64,
+          "input_end": 192,
+          "mean_nll": 1.763722358590769,
+          "prefill_context_rows": {
+            "begin": 0,
+            "end": 64
+          },
+          "prefill_scored_input_rows": {
+            "begin": 63,
+            "end": 64
+          },
+          "row_index_space": "input ranges are window-local; hidden rows are compact scored-buffer rows",
+          "scored_tokens": 64,
+          "seconds": 5.056603699,
+          "target_begin": 128,
+          "target_end": 192,
+          "total_nll": 112.87823094980922
+        },
+        {
+          "decode_input_rows": {
+            "begin": 64,
+            "end": 127
+          },
+          "decode_scored_hidden_rows": {
+            "begin": 1,
+            "end": 64
+          },
+          "first_target": 64,
+          "index": 2,
+          "input_begin": 128,
+          "input_end": 256,
+          "mean_nll": 1.9573010187191358,
+          "prefill_context_rows": {
+            "begin": 0,
+            "end": 64
+          },
+          "prefill_scored_input_rows": {
+            "begin": 63,
+            "end": 64
+          },
+          "row_index_space": "input ranges are window-local; hidden rows are compact scored-buffer rows",
+          "scored_tokens": 64,
+          "seconds": 5.055516936,
+          "target_begin": 192,
+          "target_end": 256,
+          "total_nll": 125.26726519802469
+        },
+        {
+          "decode_input_rows": {
+            "begin": 127,
+            "end": 127
+          },
+          "decode_scored_hidden_rows": {
+            "begin": 1,
+            "end": 1
+          },
+          "first_target": 127,
+          "index": 3,
+          "input_begin": 129,
+          "input_end": 257,
+          "mean_nll": 1.4213835000991821,
+          "prefill_context_rows": {
+            "begin": 0,
+            "end": 127
+          },
+          "prefill_scored_input_rows": {
+            "begin": 126,
+            "end": 127
+          },
+          "row_index_space": "input ranges are window-local; hidden rows are compact scored-buffer rows",
+          "scored_tokens": 1,
+          "seconds": 5.063439799,
+          "target_begin": 256,
+          "target_end": 257,
+          "total_nll": 1.4213835000991821
+        }
+      ]
+    },
+    {
+      "domain": "ninfer_code",
+      "full_logits_sha256": "e90681f09a7f394e5dad005388cd73d5b0a34e6d478d55961283bbc987d76a4f",
+      "id": "ninfer-00",
+      "input_tokens": 257,
+      "input_tokens_sha256": "3bbae54e2af41ace46264a39f9911859de81e6dc6895999d1f8aa5b75254524e",
+      "mean_nll": 1.4497913085327534,
+      "record_count": 256,
+      "records": "ninfer-00.scores.bin",
+      "score_mode": "decode",
+      "scored_tokens": 256,
+      "seconds": 20.307536058,
+      "total_nll": 371.14657498438487,
+      "unscored_tokens": 1,
+      "windows": [
+        {
+          "decode_input_rows": {
+            "begin": 1,
+            "end": 127
+          },
+          "decode_scored_hidden_rows": {
+            "begin": 1,
+            "end": 127
+          },
+          "first_target": 1,
+          "index": 0,
+          "input_begin": 0,
+          "input_end": 128,
+          "mean_nll": 2.3673438199723593,
+          "prefill_context_rows": {
+            "begin": 0,
+            "end": 1
+          },
+          "prefill_scored_input_rows": {
+            "begin": 0,
+            "end": 1
+          },
+          "row_index_space": "input ranges are window-local; hidden rows are compact scored-buffer rows",
+          "scored_tokens": 127,
+          "seconds": 5.148821148,
+          "target_begin": 1,
+          "target_end": 128,
+          "total_nll": 300.65266513648965
+        },
+        {
+          "decode_input_rows": {
+            "begin": 64,
+            "end": 127
+          },
+          "decode_scored_hidden_rows": {
+            "begin": 1,
+            "end": 64
+          },
+          "first_target": 64,
+          "index": 1,
+          "input_begin": 64,
+          "input_end": 192,
+          "mean_nll": 0.5743071195243337,
+          "prefill_context_rows": {
+            "begin": 0,
+            "end": 64
+          },
+          "prefill_scored_input_rows": {
+            "begin": 63,
+            "end": 64
+          },
+          "row_index_space": "input ranges are window-local; hidden rows are compact scored-buffer rows",
+          "scored_tokens": 64,
+          "seconds": 5.052378176,
+          "target_begin": 128,
+          "target_end": 192,
+          "total_nll": 36.755655649557355
+        },
+        {
+          "decode_input_rows": {
+            "begin": 64,
+            "end": 127
+          },
+          "decode_scored_hidden_rows": {
+            "begin": 1,
+            "end": 64
+          },
+          "first_target": 64,
+          "index": 2,
+          "input_begin": 128,
+          "input_end": 256,
+          "mean_nll": 0.5136952336397222,
+          "prefill_context_rows": {
+            "begin": 0,
+            "end": 64
+          },
+          "prefill_scored_input_rows": {
+            "begin": 63,
+            "end": 64
+          },
+          "row_index_space": "input ranges are window-local; hidden rows are compact scored-buffer rows",
+          "scored_tokens": 64,
+          "seconds": 5.052587495,
+          "target_begin": 192,
+          "target_end": 256,
+          "total_nll": 32.876494952942224
+        },
+        {
+          "decode_input_rows": {
+            "begin": 127,
+            "end": 127
+          },
+          "decode_scored_hidden_rows": {
+            "begin": 1,
+            "end": 1
+          },
+          "first_target": 127,
+          "index": 3,
+          "input_begin": 129,
+          "input_end": 257,
+          "mean_nll": 0.8617592453956604,
+          "prefill_context_rows": {
+            "begin": 0,
+            "end": 127
+          },
+          "prefill_scored_input_rows": {
+            "begin": 126,
+            "end": 127
+          },
+          "row_index_space": "input ranges are window-local; hidden rows are compact scored-buffer rows",
+          "scored_tokens": 1,
+          "seconds": 5.05374505,
+          "target_begin": 256,
+          "target_end": 257,
+          "total_nll": 0.8617592453956604
+        }
+      ]
+    },
+    {
+      "domain": "chinese_reference",
+      "full_logits_sha256": "6f34adbb9cbd708dc894bae07e3aa5c85f61149bb4fd98e38a1a88e6c6823a24",
+      "id": "zhwiki-00",
+      "input_tokens": 257,
+      "input_tokens_sha256": "675a696b5472f5102c59b298e180abd41e114233458ce78fa55f305db4281611",
+      "mean_nll": 3.232785139793833,
+      "record_count": 256,
+      "records": "zhwiki-00.scores.bin",
+      "score_mode": "decode",
+      "scored_tokens": 256,
+      "seconds": 20.27556736,
+      "total_nll": 827.5929957872213,
+      "unscored_tokens": 1,
+      "windows": [
+        {
+          "decode_input_rows": {
+            "begin": 1,
+            "end": 127
+          },
+          "decode_scored_hidden_rows": {
+            "begin": 1,
+            "end": 127
+          },
+          "first_target": 1,
+          "index": 0,
+          "input_begin": 0,
+          "input_end": 128,
+          "mean_nll": 2.890286327107623,
+          "prefill_context_rows": {
+            "begin": 0,
+            "end": 1
+          },
+          "prefill_scored_input_rows": {
+            "begin": 0,
+            "end": 1
+          },
+          "row_index_space": "input ranges are window-local; hidden rows are compact scored-buffer rows",
+          "scored_tokens": 127,
+          "seconds": 5.154008668,
+          "target_begin": 1,
+          "target_end": 128,
+          "total_nll": 367.0663635426681
+        },
+        {
+          "decode_input_rows": {
+            "begin": 64,
+            "end": 127
+          },
+          "decode_scored_hidden_rows": {
+            "begin": 1,
+            "end": 64
+          },
+          "first_target": 64,
+          "index": 1,
+          "input_begin": 64,
+          "input_end": 192,
+          "mean_nll": 3.3795599872537423,
+          "prefill_context_rows": {
+            "begin": 0,
+            "end": 64
+          },
+          "prefill_scored_input_rows": {
+            "begin": 63,
+            "end": 64
+          },
+          "row_index_space": "input ranges are window-local; hidden rows are compact scored-buffer rows",
+          "scored_tokens": 64,
+          "seconds": 5.056830061,
+          "target_begin": 128,
+          "target_end": 192,
+          "total_nll": 216.2918391842395
+        },
+        {
+          "decode_input_rows": {
+            "begin": 64,
+            "end": 127
+          },
+          "decode_scored_hidden_rows": {
+            "begin": 1,
+            "end": 64
+          },
+          "first_target": 64,
+          "index": 2,
+          "input_begin": 128,
+          "input_end": 256,
+          "mean_nll": 3.7592707331182282,
+          "prefill_context_rows": {
+            "begin": 0,
+            "end": 64
+          },
+          "prefill_scored_input_rows": {
+            "begin": 63,
+            "end": 64
+          },
+          "row_index_space": "input ranges are window-local; hidden rows are compact scored-buffer rows",
+          "scored_tokens": 64,
+          "seconds": 5.031997692,
+          "target_begin": 192,
+          "target_end": 256,
+          "total_nll": 240.5933269195666
+        },
+        {
+          "decode_input_rows": {
+            "begin": 127,
+            "end": 127
+          },
+          "decode_scored_hidden_rows": {
+            "begin": 1,
+            "end": 1
+          },
+          "first_target": 127,
+          "index": 3,
+          "input_begin": 129,
+          "input_end": 257,
+          "mean_nll": 3.6414661407470703,
+          "prefill_context_rows": {
+            "begin": 0,
+            "end": 127
+          },
+          "prefill_scored_input_rows": {
+            "begin": 126,
+            "end": 127
+          },
+          "row_index_space": "input ranges are window-local; hidden rows are compact scored-buffer rows",
+          "scored_tokens": 1,
+          "seconds": 5.03272638,
+          "target_begin": 256,
+          "target_end": 257,
+          "total_nll": 3.6414661407470703
+        }
+      ]
+    }
+  ],
+  "stride_tokens": 64,
+  "timing": {
+    "load_seconds": 11.954063788,
+    "score_seconds": 81.416124509,
+    "scored_tokens_per_second": 12.577361133012463
+  },
+  "wall_seconds": 126.128532436
+}

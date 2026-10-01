@@ -64,6 +64,13 @@ impl<'w, 'ctx> Projection<'w, 'ctx> {
         }
     }
 
+    pub(super) fn nvfp4(&self) -> Option<&resident_nvfp4::Projection<'w, 'ctx>> {
+        match self {
+            Self::Nvfp4(projection) => Some(projection),
+            Self::Fp8(_) | Self::Bf16(_) => None,
+        }
+    }
+
     pub(super) fn shared_input<'a>(
         &self,
         ctx: &'a Context,

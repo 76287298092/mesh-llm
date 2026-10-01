@@ -1,0 +1,16 @@
+snapshot=/home/ndizazzo/dev/mesh/issue1393-q4-snapshot-20260930
+ptx=/home/ndizazzo/dev/mesh/issue1393-q4-snapshot-20260930/fc-q8.ptx
+artifact=/data/ai/ninfer/models/qwen3_8_27b_nvfp4.ninfer
+source-state=uncommitted snapshot, not a clean commit
+source-manifest-provenance=owned separately by parent
+scope=resident native Q8 FC sparse-input qualification only
+cases=C4 T1 and C8 T5, one-nonzero-lane-per-group and last-k-only
+passes=normal,memcheck,racecheck,synccheck
+gate=all rows exact BF16, two repeats, no nonfinite outputs or repeat mismatches
+native-mtp-admitted=false
+model-executable=false
+timing-claim=false
+device=0
+timeout-seconds=1200
+MemoryMax=32G
+MemorySwapMax=0

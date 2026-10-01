@@ -1,0 +1,99 @@
+Note: mold is unavailable or failed the active target/toolchain link probe.
+Falling back to lld or the platform linker for this build.
+
+
+   Compiling mesh-specialize v0.76.1 (/home/ndizazzo/dev/mesh/issue1393-q4-snapshot-20260930/crates/mesh-specialize)
+error[E0599]: no method named `mark_poisoned` found for mutable reference `&mut resident_model::Session<'_>` in the current scope
+  --> crates/mesh-specialize/src/kernels/cuda/resident_target_batch_trial/execute.rs:49:23
+   |
+49 |         batch_session.mark_poisoned();
+   |                       ^^^^^^^^^^^^^ method not found in `&mut resident_model::Session<'_>`
+
+error[E0599]: no method named `mark_poisoned` found for mutable reference `&mut resident_model::Session<'_>` in the current scope
+  --> crates/mesh-specialize/src/kernels/cuda/resident_target_batch_trial/execute.rs:52:24
+   |
+52 |         decode_session.mark_poisoned();
+   |                        ^^^^^^^^^^^^^ method not found in `&mut resident_model::Session<'_>`
+
+error[E0599]: no method named `mark_poisoned` found for mutable reference `&mut resident_model::Session<'_>` in the current scope
+  --> crates/mesh-specialize/src/kernels/cuda/resident_target_batch_trial/execute.rs:72:23
+   |
+72 |         batch_session.mark_poisoned();
+   |                       ^^^^^^^^^^^^^ method not found in `&mut resident_model::Session<'_>`
+
+error[E0599]: no method named `mark_poisoned` found for mutable reference `&mut resident_model::Session<'_>` in the current scope
+  --> crates/mesh-specialize/src/kernels/cuda/resident_target_batch_trial/execute.rs:73:24
+   |
+73 |         decode_session.mark_poisoned();
+   |                        ^^^^^^^^^^^^^ method not found in `&mut resident_model::Session<'_>`
+
+error[E0599]: no method named `mark_poisoned` found for mutable reference `&mut resident_model::Session<'_>` in the current scope
+  --> crates/mesh-specialize/src/kernels/cuda/resident_target_batch_trial/execute.rs:81:23
+   |
+81 |         batch_session.mark_poisoned();
+   |                       ^^^^^^^^^^^^^ method not found in `&mut resident_model::Session<'_>`
+
+error[E0599]: no method named `mark_poisoned` found for mutable reference `&mut resident_model::Session<'_>` in the current scope
+  --> crates/mesh-specialize/src/kernels/cuda/resident_target_batch_trial/execute.rs:82:24
+   |
+82 |         decode_session.mark_poisoned();
+   |                        ^^^^^^^^^^^^^ method not found in `&mut resident_model::Session<'_>`
+
+error[E0599]: no method named `mark_poisoned` found for mutable reference `&mut resident_model::Session<'_>` in the current scope
+  --> crates/mesh-specialize/src/kernels/cuda/resident_target_batch_trial/execute.rs:90:31
+   |
+90 |                 batch_session.mark_poisoned();
+   |                               ^^^^^^^^^^^^^ method not found in `&mut resident_model::Session<'_>`
+
+error[E0599]: no method named `mark_poisoned` found for mutable reference `&mut resident_model::Session<'_>` in the current scope
+  --> crates/mesh-specialize/src/kernels/cuda/resident_target_batch_trial/execute.rs:91:32
+   |
+91 |                 decode_session.mark_poisoned();
+   |                                ^^^^^^^^^^^^^ method not found in `&mut resident_model::Session<'_>`
+
+error[E0599]: no method named `forward_decode` found for reference `&resident_model::Model<'_, 'ctx>` in the current scope
+   --> crates/mesh-specialize/src/kernels/cuda/resident_target_batch_trial/execute.rs:169:14
+    |
+167 |           if let Err(error) = request
+    |  _____________________________-
+168 | |             .model
+169 | |             .forward_decode(request.context, request.module, &[token], &mut session)
+    | |_____________-^^^^^^^^^^^^^^
+    |
+help: there is a method `forward` with a similar name, but with different arguments
+   --> crates/mesh-specialize/src/kernels/cuda/resident_model.rs:161:5
+    |
+161 | /     pub(super) fn forward(
+162 | |         &self,
+163 | |         ctx: &Context,
+164 | |         module: &Module<'_>,
+...   |
+167 | |         observer: Option<&mut Observer<'_>>,
+168 | |     ) -> Result<Output> {
+    | |_______________________^
+
+error[E0599]: no method named `mark_poisoned` found for struct `resident_model::Session<'ctx>` in the current scope
+   --> crates/mesh-specialize/src/kernels/cuda/resident_target_batch_trial/execute.rs:171:21
+    |
+171 |             session.mark_poisoned();
+    |                     ^^^^^^^^^^^^^ method not found in `resident_model::Session<'_>`
+    |
+   ::: crates/mesh-specialize/src/kernels/cuda/resident_model.rs:30:1
+    |
+ 30 | pub(super) struct Session<'ctx> {
+    | ------------------------------- method `mark_poisoned` not found for this struct
+
+warning: variable does not need to be mutable
+   --> crates/mesh-specialize/src/kernels/cuda/resident_target_batch_trial.rs:129:9
+    |
+129 |     let mut base = match (prepared, error) {
+    |         ----^^^^
+    |         |
+    |         help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+For more information about this error, try `rustc --explain E0599`.
+warning: `mesh-specialize` (lib test) generated 1 warning
+error: could not compile `mesh-specialize` (lib test) due to 10 previous errors; 1 warning emitted
+error: recipe `with-lld` failed with exit code 101

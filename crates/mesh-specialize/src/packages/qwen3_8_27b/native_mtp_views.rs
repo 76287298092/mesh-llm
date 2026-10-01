@@ -182,7 +182,6 @@ impl NativeMtpViews {
         raw_map
             .try_reserve_exact(map_bytes)
             .context("cannot reserve native proposal token map")?;
-        raw_map.resize(map_bytes, 0);
         let copied = artifact.read_object_range(
             &selected.token_map_object,
             0,
@@ -190,7 +189,7 @@ impl NativeMtpViews {
             &mut raw_map,
         )?;
         anyhow::ensure!(copied == map_byte_count, "short native token-map read");
-        let proposal_tokens = selection::parse_token_map(&raw_map)?;
+        let proposal_tokens = parse_proposal_token_map(&raw_map)?;
         Ok(Self {
             fc: selected.fc,
             query_gate: selected.query_gate,
@@ -205,4 +204,8 @@ impl NativeMtpViews {
             proposal_tokens,
         })
     }
+}
+
+pub(crate) fn parse_proposal_token_map(bytes: &[u8]) -> anyhow::Result<ProposalTokenMap> {
+    selection::parse_token_map(bytes)
 }

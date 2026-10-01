@@ -5,10 +5,19 @@ pub mod attention_profile;
 pub mod fp8_decode_schedule;
 pub mod fp8_profile;
 pub mod fp8_quantize_schedule;
+mod native_mtp_checks;
+mod native_mtp_q8_projection_cases;
 pub mod nvfp4_decode_schedule;
+pub mod nvfp4_mlp_schedule;
 pub mod nvfp4_profile;
 #[cfg(any(test, target_os = "linux"))]
 mod partition_audit;
+
+pub use native_mtp_checks::{
+    NativeMtpForwardLoadRequest, native_mtp_activation_check, native_mtp_forward_check,
+};
+
+pub use native_mtp_q8_projection_cases::Q8ProjectionCaseRange;
 
 pub enum DecoderBlockKind {
     Gdn,
@@ -37,6 +46,28 @@ pub struct DecoderConfig {
     pub capacity: usize,
     pub state_layout: crate::engine::layout::Layout,
 }
+pub struct TargetBatchLoadRequest<'a> {
+    pub ptx: &'a str,
+    pub device: i32,
+    pub artifact: &'a mut crate::artifact::model_source::ModelArtifact,
+    pub objects: &'a [crate::artifact::schema::Object],
+    pub config: &'a DecoderConfig,
+    pub fixture: &'a crate::packages::qwen3_8_27b::target_batch_trial::Fixture,
+    pub selected_rows: Option<crate::packages::qwen3_8_27b::target_batch_trial::SelectedRows>,
+}
+
+pub fn target_batch_decode_check(
+    request: TargetBatchLoadRequest<'_>,
+) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::resident_target_batch_entry::run(request);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = request;
+        anyhow::bail!("Target batch trial requires Linux")
+    }
+}
+
 pub fn model_check(
     ptx: &str,
     device: i32,
@@ -732,6 +763,45 @@ pub fn nvfp4_prmt_real_trial(
     }
 }
 
+pub fn nvfp4_swiglu_a16_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::nvfp4_swiglu_a16_operator::driver_entry::synthetic(ptx, device);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device);
+        anyhow::bail!("NVFP4 A16 SwiGLU qualification requires Linux")
+    }
+}
+
+pub fn nvfp4_swiglu_a16_real_trial(
+    artifact: &std::path::Path,
+    ptx: &str,
+    device: i32,
+) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::nvfp4_swiglu_a16_operator::driver_entry::real_from_artifact(
+        artifact, ptx, device,
+    );
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (artifact, ptx, device);
+        anyhow::bail!("NVFP4 A16 SwiGLU real-weight qualification requires Linux")
+    }
+}
+
+pub fn native_mtp_residency_trial(
+    artifact: &std::path::Path,
+    device: i32,
+) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::resident_native_mtp_trial::run(artifact, device);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (artifact, device);
+        anyhow::bail!("Native MTP residency qualification requires Linux")
+    }
+}
+
 pub fn native_mtp_q8_gemv_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json::Value> {
     #[cfg(target_os = "linux")]
     return cuda::native_mtp_q8_operator::driver_entry::synthetic(ptx, device);
@@ -739,6 +809,97 @@ pub fn native_mtp_q8_gemv_trial(ptx: &str, device: i32) -> anyhow::Result<serde_
     {
         let _ = (ptx, device);
         anyhow::bail!("Native MTP Q8 GEMV qualification requires Linux")
+    }
+}
+
+pub fn native_mtp_q8_fc_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::native_mtp_q8_fc_operator::run(ptx, device);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device);
+        anyhow::bail!("Native MTP Q8 FC qualification requires Linux")
+    }
+}
+
+/// Run native Q8 FC qualification with the artifact-resident operator.
+///
+/// # Errors
+///
+/// Returns an error when the platform is unsupported or the operator trial fails.
+pub fn native_mtp_q8_fc_resident_trial(
+    artifact: &std::path::Path,
+    ptx: &str,
+    device: i32,
+) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::native_mtp_q8_fc_operator::run_resident(artifact, ptx, device);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (artifact, ptx, device);
+        anyhow::bail!("Native MTP Q8 FC resident qualification requires Linux")
+    }
+}
+
+/// Qualify native Q8 projections on each complete physical MTP parent.
+///
+/// # Errors
+///
+/// Returns an error when the qualification cannot run on the current platform.
+/// Per-case failures are recorded in the returned report.
+pub fn native_mtp_q8_projection_resident_trial(
+    artifact: &std::path::Path,
+    ptx: &str,
+    device: i32,
+) -> anyhow::Result<serde_json::Value> {
+    native_mtp_q8_projection_resident_trial_range(NativeMtpQ8ProjectionResidentRequest {
+        artifact,
+        ptx,
+        device,
+        case_range: Q8ProjectionCaseRange::all(),
+    })
+}
+
+pub struct NativeMtpQ8ProjectionResidentRequest<'a> {
+    pub artifact: &'a std::path::Path,
+    pub ptx: &'a str,
+    pub device: i32,
+    pub case_range: Q8ProjectionCaseRange,
+}
+
+pub fn native_mtp_q8_projection_resident_trial_range(
+    request: NativeMtpQ8ProjectionResidentRequest<'_>,
+) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return native_mtp_q8_projection_cases::run(request);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = request;
+        anyhow::bail!("Native MTP Q8 resident projection qualification requires Linux")
+    }
+}
+
+pub fn native_mtp_q4_head_trial(ptx: &str, device: i32) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::native_mtp_q4_operator::driver_entry::synthetic(ptx, device);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (ptx, device);
+        anyhow::bail!("Native MTP Q4 head qualification requires Linux")
+    }
+}
+
+pub fn native_mtp_q4_resident_trial(
+    artifact: &std::path::Path,
+    ptx: &str,
+    device: i32,
+) -> anyhow::Result<serde_json::Value> {
+    #[cfg(target_os = "linux")]
+    return cuda::native_mtp_q4_operator::run_resident(artifact, ptx, device);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (artifact, ptx, device);
+        anyhow::bail!("Native MTP Q4 resident qualification requires Linux")
     }
 }
 

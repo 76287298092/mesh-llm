@@ -2,8 +2,11 @@
 
 pub(super) mod a16_head_trial;
 pub(super) mod bf16_ab_decode_trial;
-pub(super) mod native_parameter_trial;
+pub(super) mod native_mtp_q4_operator;
+pub(super) mod native_mtp_q8_fc_operator;
 pub(super) mod native_mtp_q8_operator;
+pub(super) mod native_mtp_q8_projection;
+pub(super) mod native_parameter_trial;
 pub(super) mod nvfp4_pipeline_trial;
 
 pub(super) mod attention;
@@ -33,6 +36,7 @@ mod mlp_workspace_views;
 pub(super) mod nvfp4_decode_prmt_entry;
 mod nvfp4_decode_prmt_trial;
 mod nvfp4_exact_trial;
+pub(super) mod nvfp4_swiglu_a16_operator;
 pub(super) mod projections;
 pub(super) mod residency;
 mod residency_entry;
@@ -59,8 +63,11 @@ pub(super) mod resident_model_profile;
 pub(super) mod resident_model_trial;
 mod resident_norm;
 mod resident_nvfp4;
+mod resident_nvfp4_swiglu_a16;
 mod resident_projection;
 mod resident_state;
+pub(super) mod resident_target_batch_entry;
+mod resident_target_batch_trial;
 mod resident_weights;
 #[allow(
     dead_code,
@@ -253,8 +260,15 @@ mod mlp;
 mod mlp_activation;
 mod residual_add;
 
+pub(super) mod native_mtp_activation_entry;
+mod native_mtp_activation_trial;
 mod resident_mtp;
 pub(super) mod resident_mtp_trial;
+mod resident_native_mtp;
+mod resident_native_mtp_forward;
+pub(super) mod resident_native_mtp_forward_entry;
+mod resident_native_mtp_forward_trial;
+pub(super) mod resident_native_mtp_trial;
 mod resident_speculation;
 
 pub(super) mod feature_projection_trial;
@@ -305,8 +319,8 @@ pub(super) mod attention_warp_trial;
 pub(super) mod exponential_trial;
 
 mod attention_staged_launch;
+pub(super) mod attention_staged_trial;
 mod attention_staged_trial_execution;
 mod attention_staged_trial_support;
-pub(super) mod attention_staged_trial;
 mod resident_attention_split;
 mod resident_attention_staged;

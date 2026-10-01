@@ -1,0 +1,109 @@
+Note: mold is unavailable or failed the active target/toolchain link probe.
+Falling back to lld or the platform linker for this build.
+
+
+warning: linker stderr: Note: mold is unavailable or failed the active target/toolchain link probe.
+         Falling back to lld or the platform linker for this build.
+  |
+  = note: `#[warn(linker_messages)]` on by default
+
+warning: `xtask` (bin "xtask" test) generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.15s
+     Running unittests src/main.rs (target/debug/deps/xtask-13f333cdf0beb46e)
+
+running 92 tests
+test attestation::tests::uppercase_object_names_are_rejected_so_the_field_has_one_spelling ... ok
+test attestation::tests::explicit_commit_wins_over_everything_else ... ok
+test attestation::tests::release_stamps_accept_a_full_lowercase_object_name ... ok
+test no_console_print::scope::tests::malformed_sources_fail_closed ... ok
+test no_console_print::tests::counts_string_literal_mentions_to_keep_baseline_stable ... ok
+test attestation::tests::release_stamps_reject_the_local_development_placeholder ... ok
+test attestation::tests::release_stamps_reject_abbreviated_and_empty_commits ... ok
+test no_console_print::tests::finds_each_macro_with_line_numbers_and_sorts_hits ... ok
+test no_console_print::tests::finds_macros_when_trivia_separates_name_from_bang ... ok
+test no_console_print::tests::gate_fails_when_the_retired_allowlist_reappears ... ok
+test attestation::tests::stamp_args_parse_the_release_flag_alongside_valued_flags ... ok
+test no_console_print::scope::tests::same_line_product_code_survives_and_string_attributes_are_not_rules ... ok
+test no_console_print::tests::ignores_comment_lines_and_prefixed_identifiers ... ok
+test no_console_print::tests::ignores_non_invocation_spellings_of_forbidden_names ... ok
+test repo_consistency::tests::struct_field_names_errors_on_missing_declaration ... ok
+test repo_consistency::tests::struct_field_names_extracts_pub_fields_in_order ... ok
+test no_console_print::tests::no_console_print_command_rejects_trailing_arguments ... ok
+test repo_consistency::tests::struct_field_names_extracts_private_fields_in_order ... ok
+test specialize::admission::tests::parser_rejects_unknown_expectation_and_negative_device ... ok
+test specialize::admission::tests::parser_requires_the_declared_argument_order ... ok
+test no_console_print::scope::tests::masks_test_modules_without_moving_product_hits ... ok
+test specialize::baseline::tests::does_not_dispatch_unterminated_sse_events ... ok
+test specialize::baseline::tests::frames_sse_data_and_stops_at_done ... ok
+test specialize::baseline::tests::parses_only_the_two_required_arguments ... ok
+test specialize::chunked_bench::tests::only_accepts_exact_ordered_flags ... ok
+test specialize::chunked_bench::tests::token_digest_has_defined_encoding_and_order ... ok
+test specialize::native_mtp_fc_resident::tests::parser_rejects_missing_extra_reordered_and_invalid_device_arguments ... ok
+test specialize::native_mtp_fc_resident::tests::malformed_arguments_do_not_create_the_report_path ... ok
+test no_console_print::scope::tests::exempts_only_named_source_categories ... ok
+test specialize::native_mtp_q4_resident::tests::missing_arguments_do_not_create_report_file ... ok
+test no_console_print::tests::console_output_owners_may_hold_terminal_handles ... ok
+test no_console_print::tests::gate_passes_for_product_code_with_no_console_output ... ok
+test no_console_print::tests::finds_direct_terminal_handles_and_skips_capability_probes ... ok
+test no_console_print::tests::finds_imported_aliased_and_multiline_terminal_handles ... ok
+test no_console_print::tests::gate_fails_for_direct_terminal_handles_outside_the_output_facility ... ok
+test repo_consistency::tests::test_all_targets_accepts_isolated_static_tests ... ok
+test repo_consistency::tests::test_all_targets_are_parsed_from_commands ... ok
+test no_console_print::tests::gate_fails_for_every_console_print_with_no_way_to_approve_one ... ok
+test repo_consistency::tests::test_all_targets_accept_equals_form_flags ... ok
+test specialize::baseline::tests::feeds_framed_events_into_stream_observations ... ok
+test specialize::baseline::tests::validates_and_normalizes_bounded_request_plans ... ok
+test specialize::native_mtp_fc_resident::tests::report_with_true_all_passed_succeeds ... ok
+test specialize::native_mtp_q4_resident::tests::parser_rejects_missing_extra_reordered_and_invalid_device_arguments ... ok
+test specialize::native_mtp_fc_resident::tests::report_without_true_all_passed_is_not_success ... ok
+test no_console_print::tests::gate_respects_product_scope ... ok
+test specialize::native_mtp_q4_resident::tests::explicit_true_all_passed_report_succeeds ... ok
+test specialize::native_mtp_q4_resident::tests::absent_or_nonboolean_all_passed_is_failure ... ok
+test specialize::native_mtp_fc_resident::tests::returned_failed_report_is_saved_and_returns_error ... ok
+test specialize::native_mtp_q4_resident::tests::failed_trial_report_is_retained ... ok
+test attestation::tests::blank_explicit_commit_falls_through_rather_than_stamping_an_empty_field ... ok
+test specialize::native_mtp_fc_resident::tests::trial_error_is_saved_and_returns_error ... ok
+test specialize::native_mtp_q4_resident::tests::trial_error_report_is_retained_and_returns_failure ... ok
+test specialize::native_mtp_q8_projection_resident::tests::malformed_arguments_do_not_create_a_report ... ok
+test specialize::native_mtp_q8_projection_resident::tests::existing_report_path_is_preserved_before_trial_starts ... ok
+test specialize::native_mtp_q8_projection_resident::tests::invalid_case_range_does_not_create_a_report_or_start_trial ... ok
+test no_console_print::scope::tests::dependency_guard_catches_transitive_optional_platform_and_renamed_dependencies ... ok
+test specialize::native_mtp_q8_projection_resident::tests::parser_rejects_missing_extra_reordered_and_invalid_device_arguments ... ok
+test specialize::native_mtp_qualify::tests::qualification_rejects_missing_arguments ... ok
+test specialize::native_mtp_qualify::tests::qualification_rejects_unknown_flags_before_opening_files ... ok
+test specialize::native_mtp_residency::tests::rejects_missing_arguments ... ok
+test specialize::native_mtp_residency::tests::rejects_unknown_flags_before_creating_output ... ok
+test specialize::nvfp4_prmt::tests::invalid_arguments_are_rejected_before_file_or_gpu_access ... ok
+test specialize::observations::tests::elapsed_times_must_be_finite_monotonic_and_within_total ... ok
+test specialize::native_mtp_q8_projection_resident::tests::explicit_true_all_passed_report_succeeds ... ok
+test specialize::observations::tests::malformed_and_error_events_are_rejected ... ok
+test specialize::observations::tests::buffered_completion_can_have_no_visible_chunk ... ok
+test specialize::native_mtp_q8_projection_resident::tests::trial_errors_are_saved_before_the_command_returns_failure ... ok
+test specialize::observations::tests::cached_input_tokens_are_included_in_prompt_total ... ok
+test specialize::observations::tests::records_after_done_are_rejected ... ok
+test specialize::observations::tests::truncated_stream_and_missing_terminal_fields_are_rejected ... ok
+test specialize::observations::tests::one_completion_token_can_have_visible_content ... ok
+test specialize::native_mtp_q8_projection_resident::tests::selected_case_range_is_recorded_with_original_indices_and_failure ... ok
+test specialize::observations::tests::timing_fields_must_be_finite_and_nonnegative ... ok
+test specialize::observations::tests::zero_token_completion_allows_no_visible_chunk ... ok
+test tests::release_attestation_inspect_reports_missing_without_public_key ... ok
+test specialize::observations::tests::role_only_does_not_count_but_reasoning_does ... ok
+test specialize::observations::tests::tool_name_and_argument_pieces_count_as_visible ... ok
+test workflow_checks::tests::release_container_contract_accepts_cache_free_product_composition ... ok
+test workflow_checks::tests::release_container_contract_requires_disk_first_sccache_chain ... ok
+test specialize::observations::tests::usage_and_timing_count_disagreement_is_rejected ... ok
+test workflow_checks::tests::release_container_contract_accepts_remote_sccache_with_local_fallback ... ok
+test workflow_checks::tests::release_container_contract_requires_fail_open_sccache_writes ... ok
+test specialize::native_mtp_q8_projection_resident::tests::failed_cases_are_all_saved_and_return_failure ... ok
+test workflow_checks::tests::release_container_contract_requires_safe_checkout ... ok
+test workflow_checks::tests::release_container_contract_requires_job_local_sccache ... ok
+test workflow_checks::tests::release_container_contract_requires_sccache_job_local_fallback ... ok
+test workflow_checks::tests::release_container_contract_requires_sccache_gha_configuration ... ok
+test tests::release_signing_key_files_round_trip ... ok
+test tests::release_attestation_stamp_and_inspect_round_trip ... ok
+test tests::release_attestation_inspect_reports_invalid_after_tamper ... ok
+test no_console_print::scope::tests::exempt_crates_are_not_in_shipping_dependency_graph ... ok
+test specialize::baseline::tests::enforces_sse_response_and_event_bounds ... ok
+
+test result: ok. 92 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+

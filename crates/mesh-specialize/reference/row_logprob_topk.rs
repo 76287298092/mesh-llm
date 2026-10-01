@@ -31,9 +31,15 @@ pub fn score_row(logits: &[u16], target: u32) -> Result<RowScore, String> {
     }
     let target_index = target as usize;
     if target_index >= logits.len() {
-        return Err(format!("target {target} outside vocabulary {}", logits.len()));
+        return Err(format!(
+            "target {target} outside vocabulary {}",
+            logits.len()
+        ));
     }
-    let values = logits.iter().map(|&bits| bf16_to_f64(bits)).collect::<Vec<_>>();
+    let values = logits
+        .iter()
+        .map(|&bits| bf16_to_f64(bits))
+        .collect::<Vec<_>>();
     if let Some(position) = values.iter().position(|value| !value.is_finite()) {
         return Err(format!("nonfinite logit at {position}"));
     }
@@ -170,8 +176,8 @@ mod tests {
         assert!(!score.top_ids.contains(&0));
         assert_eq!(score.top_ids[0], 99);
         assert_eq!(score.top_ids[TOP_K - 1], 36);
-        let sum: f64 = (1..100).map(|i| (f64::from(i) / 8.0).exp()).sum::<f64>()
-            + (-100.0_f64).exp();
+        let sum: f64 =
+            (1..100).map(|i| (f64::from(i) / 8.0).exp()).sum::<f64>() + (-100.0_f64).exp();
         close(score.logsumexp, sum.ln());
         close(score.target_logprob, -100.0 - sum.ln());
     }
@@ -187,7 +193,11 @@ mod tests {
     #[test]
     fn device_comparison_requires_exact_ids_and_bounded_values() {
         let score = score_row(&[ONE, THREE, TWO], 2).unwrap();
-        let lps = score.top_logprobs.iter().map(|&v| v as f32).collect::<Vec<_>>();
+        let lps = score
+            .top_logprobs
+            .iter()
+            .map(|&v| v as f32)
+            .collect::<Vec<_>>();
         let target = score.target_logprob as f32;
         let lse = score.logsumexp as f32;
         assert!(matches_device(&score, target, lse, &[1, 2, 0], &lps).is_ok());

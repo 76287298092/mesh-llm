@@ -5,20 +5,32 @@ Start with [the implementation plan](../PLAN.md) and the
 
 | Entry | Status |
 | --- | --- |
-| [Native MTP packed views](findings/native-mtp-views.md) | Checked parent-plane selection, test-only Q8/Q4 numeric decode and CPU indexed Q4 head step; full native MTP and GPU packed consumers remain open |
+| [Target batch versus ordinary decode](findings/target-batch-decode-qualification.md) | All 20 bounded N1..5 normal/memcheck/racecheck/synccheck cells pass exact all-layer/full-logit/state/cursor/continuation checks, combining 16 B passes and four C retries; prior timeouts retained; native draft arbitrary activations, real native MTP depths1/4, full-state rejection/EOS, quality, and matched timings remain open; no native MTP or throughput admission |
+| [Native MTP Q8 FC resident qualification](findings/native-mtp-q8-fc-resident.md) | Real packed FC passes eight sparse/bounded dense C4/T1 and C8/T5 cases, exact all-row BF16 with two poisons, normal and all three sanitizers; arbitrary activations, complete native MTP and whole-model parity remain open |
+| [Native MTP Q8 attention/MLP projections](findings/native-mtp-q8-projections.md) | All 16 bounded real-parent cases pass exact two-poison BF16 checks under normal, memcheck, synccheck and partitioned racecheck; original timeout retained; no native MTP or throughput admission |
+| [Native MTP packed views](findings/native-mtp-views.md) | Checked parent-plane selection and CPU indexed head step; separate real Q4 qualification now passes bounded full-shortlist GPU checks; full native MTP remains open |
+| [Native Q4 operator qualification](findings/native-q4-operator-qualification.md) | Synthetic cases and real 131,072-row packed head pass normal and all three sanitizers; exact FP32/BF16, two poisons and signed target remap pass with unchanged FP64 bound; arbitrary activations and complete native MTP remain open |
 | [Three-stage FP64 attention](findings/attention-staged-fp64.md) | Implemented, unqualified: exact-order M1 score/serial-scan/value stages, persistent linear workspace, sanitizer-safe trial scope; default unchanged |
 | [Isolated unrolled FP64 exponential](findings/attention-unrolled-fp64.md) | Implemented, unqualified: original attention schedule, explicit scalar coefficients, raw-bit helper/control/oracle trials; default unchanged |
 | [Exact-order FP64 warp attention](findings/attention-warp-fp64.md) | Implemented, unqualified: M=1 four-shard warp schedule, strict control bits plus independent oracle; graph rejected, default unchanged |
 | [Exact FP8 vector16 decode](findings/fp8-exact-vector16.md) | Implemented, unqualified: explicit exact M=1 vector-load schedule, independent oracle/control trial; default unchanged |
+| [FP8 activation quantization reuse](findings/fp8-quantize-reuse.md) | Implemented, unqualified: opt-in deduplication across exact shared-input projection groups; default unchanged |
 | [Direct Ninfer source](optimizations/direct-ninfer-source.md) | Original .ninfer file executes target-only; all1589 canonical/GPU hashes match; bounded model checks/sanitizers and49K-position scoring pass; no throughput parity |
 | [Native representation contract](findings/ninfer-import-contract.md) | Exact source layouts, FP8 embedding/F32 GDN compatibility, reversible transforms and remaining arithmetic differences |
 | [BF16 split attention v2](optimizations/attention-v2.md) | Implemented, unqualified: split-decode opt-in wired to legacy/stream, exact larger prefill, independent FP64 trial; no default change |
+| [Split-decode quality failure](findings/split-decode-quality.md) | Real-decode four-stream smoke: 1,024 targets; Top-1 0.921875 < 0.98 and Chinese/English-long mean-KL gates fail despite improved NLL; deterministic candidate repeat, remains opt-in; not whole-12K quality, generation NOT RUN, no MTP claim |
 | [A16 head schedule](optimizations/a16-head-schedule.md) | 37 GPU cases and sanitizers pass; head-only model checks pass, no ordinary-decode speedup, quality still open |
 | [NVFP4 prefill pipeline](optimizations/nvfp4-prefill-pipeline.md) | Wide32x128 passes operator sanitizers and tested exact model comparisons; shared-GPU prefill medians improve about6%, remains opt-in |
-| [Ordinary decode graph plan](findings/ordinary-decode-graph-plan.md) | Prepared MLP stream trial passes exact real-weight reuse/abort and three sanitizers; ordinary-model integration and capture pending |
-| [StreamForward single-stream execution](optimizations/stream-forward.md) | Bit identical to legacy on two prompts; decode 20.35→26.48 (106 inputs) and 15.07→18.17 (512); opt-in, sanitizers and graphs pending |
+| [Ordinary decode graph plan](findings/ordinary-decode-graph-plan.md) | Superseded design; implemented as StreamForward and whole-model graph replay |
+| [StreamForward single-stream execution](optimizations/stream-forward.md) | Bit identical to legacy on two prompts; decode 20.35→26.48 (106 inputs) and 15.07→18.17 (512); bounded sanitizers pass; graph replay exact but <1% faster, racecheck incomplete; opt-in |
+| [Source-faithful decode port plan](findings/ninfer-source-faithful-port.md) | Active plan for porting pinned Ninfer decode/MTP schedules with attribution; native MTP admission open |
+| [Native MTP packed-parent residency](findings/native-mtp-residency.md) | Packed parents resident and read back exactly under normal and memcheck; operators and admission separate |
+| [Native MTP Q8 FC port](findings/native-mtp-q8-fc-port.md) | Sliced-K source port record; qualification lives in the synthetic and resident FC entries |
+| [Native MTP Q8 FC synthetic qualification](findings/native-mtp-q8-fc-qualification.md) | Six synthetic cases pass GPU qualification; real weights covered by resident FC entry |
+| [Offline Ninfer artifact preservation](optimizations/ninfer-artifact-import.md) | Paused byte-preserving bundle assembler; not executable and not deployed |
 | [Matched Ninfer reference](findings/ninfer-matched-20260928.md) | MTP0 BF16 KV: 76.3 decode tok/s at short prompts; fixture IDs match extracted assets; slice PPL 5.057 |
 | [Teacher-forced scoring](optimizations/teacher-forced-scoring.md) | 49,148 targets scored; exact control close to Ninfer NLL; native FP8 and online attention fail fixed agreement gates, remain experimental |
+| [Decode scorer qualification](findings/decode-scorer-qualification.md) | Scorer-only GPU smoke passes eight steps with exact default/explicit prefill and same-profile decode repeatability; [successful B evidence](evidence/decode-scorer-20260930/decode-scorer-trial-20260930-b/runs.log) and [failed A CLI evidence](evidence/decode-scorer-20260930/decode-scorer-trial-20260930-a/score-default.log) retained; historical full-logit comparison NOT RUN, no arithmetic candidate, full-corpus quality completion, promotion, or MTP execution |
 | [Exact GPU greedy selection](optimizations/gpu-greedy.md) | Device and resident checks plus three sanitizers pass; short timing change below1%, no stable speedup established |
 | [Tiled online attention](optimizations/feature-f05-attention.md) | Opt-in; short checks pass, strict128-row partition fails at NVFP4 rounding boundary; two longer answer checks are limited smoke evidence |
 | [Ninfer runtime deep dive](findings/ninfer-runtime-deep-dive.md) | Complete-source execution comparison; workspace/stream ordering first, then GPU selection/graphs, shape-specific kernels, and long-context algorithms |
@@ -55,6 +67,7 @@ Start with [the implementation plan](../PLAN.md) and the
 | [GDN output](findings/gdn-output.md) | 110,592 gated-norm and 92,160 output-projection values pass component bounds; sanitizers clean |
 | [Post-attention operations](findings/post-attention.md) | 92,160 residual/norm values and both MLP input quantizations pass; sanitizers clean |
 | [Layer-zero MLP](findings/qwen-mlp.md) | 718,848 matrix outputs, SiLU product and final residual pass component checks; sanitizers clean |
+| [NVFP4 A16 SwiGLU](findings/nvfp4-a16-swiglu.md) | Opt-in legacy one-row decode candidate and independent operator checker; build, GPU, quality, sanitizer, and timing qualification pending |
 | [Full attention layer](findings/full-attention-layer.md) | One/17-token complete block and independent layer/state comparisons pass fixed budgets; sanitizers clean; full model pending |
 | [Causal attention and KV](findings/causal-attention.md) | 110,592 real outputs pass; whole/chunk/token outputs and KV bits agree; sanitizers clean |
 | [Full-attention preparation](findings/attention-preparation.md) | 258,048 layer-3 projection and 129,024 prepared Q/K values pass; all sanitizers clean |

@@ -1,0 +1,178 @@
+{
+  "all_passed": true,
+  "artifact_path": "/data/ai/ninfer/models/qwen3_8_27b_nvfp4.ninfer",
+  "block": [
+    256,
+    1,
+    1
+  ],
+  "cases": [
+    {
+      "entry": "native_mtp_q8_sliced_k_fc_c4",
+      "fixture": "one-nonzero-lane-per-group",
+      "result": {
+        "all_passed": true,
+        "exact_bf16_mismatches": 0,
+        "failures_first_16": [],
+        "gate": "all 5120 rows exactly match independent scheduled-FP32 BF16 reference; no tolerance",
+        "kernel_resources": {
+          "local_bytes": 0,
+          "max_threads_per_block": 1024,
+          "registers": 48,
+          "static_shared_bytes": 16400
+        },
+        "nonfinite_outputs": 0,
+        "output_count_per_repeat": 5120,
+        "reference": {
+          "bound_is_gpu_tolerance": false,
+          "mathematical_error_bound_max_abs": 6.917705991387377e-11,
+          "scheduled_f32_vs_mathematical_f64_max_abs_delta": 1.7881393432617188e-7
+        },
+        "repeat_mismatches": 0,
+        "repeats": 2
+      },
+      "tokens": 1
+    },
+    {
+      "entry": "native_mtp_q8_sliced_k_fc_c4",
+      "fixture": "last-k-only",
+      "result": {
+        "all_passed": true,
+        "exact_bf16_mismatches": 0,
+        "failures_first_16": [],
+        "gate": "all 5120 rows exactly match independent scheduled-FP32 BF16 reference; no tolerance",
+        "kernel_resources": {
+          "local_bytes": 0,
+          "max_threads_per_block": 1024,
+          "registers": 48,
+          "static_shared_bytes": 16400
+        },
+        "nonfinite_outputs": 0,
+        "output_count_per_repeat": 5120,
+        "reference": {
+          "bound_is_gpu_tolerance": false,
+          "mathematical_error_bound_max_abs": 1.6787612966456125e-12,
+          "scheduled_f32_vs_mathematical_f64_max_abs_delta": 0.0
+        },
+        "repeat_mismatches": 0,
+        "repeats": 2
+      },
+      "tokens": 1
+    },
+    {
+      "entry": "native_mtp_q8_sliced_k_fc_c8",
+      "fixture": "one-nonzero-lane-per-group",
+      "result": {
+        "all_passed": true,
+        "exact_bf16_mismatches": 0,
+        "failures_first_16": [],
+        "gate": "all 5120 rows exactly match independent scheduled-FP32 BF16 reference; no tolerance",
+        "kernel_resources": {
+          "local_bytes": 0,
+          "max_threads_per_block": 1024,
+          "registers": 48,
+          "static_shared_bytes": 16896
+        },
+        "nonfinite_outputs": 0,
+        "output_count_per_repeat": 25600,
+        "reference": {
+          "bound_is_gpu_tolerance": false,
+          "mathematical_error_bound_max_abs": 6.917705991387377e-11,
+          "scheduled_f32_vs_mathematical_f64_max_abs_delta": 3.5762786865234375e-7
+        },
+        "repeat_mismatches": 0,
+        "repeats": 2
+      },
+      "tokens": 5
+    },
+    {
+      "entry": "native_mtp_q8_sliced_k_fc_c8",
+      "fixture": "last-k-only",
+      "result": {
+        "all_passed": true,
+        "exact_bf16_mismatches": 0,
+        "failures_first_16": [],
+        "gate": "all 5120 rows exactly match independent scheduled-FP32 BF16 reference; no tolerance",
+        "kernel_resources": {
+          "local_bytes": 0,
+          "max_threads_per_block": 1024,
+          "registers": 48,
+          "static_shared_bytes": 16896
+        },
+        "nonfinite_outputs": 0,
+        "output_count_per_repeat": 25600,
+        "reference": {
+          "bound_is_gpu_tolerance": false,
+          "mathematical_error_bound_max_abs": 3.357522593291225e-12,
+          "scheduled_f32_vs_mathematical_f64_max_abs_delta": 0.0
+        },
+        "repeat_mismatches": 0,
+        "repeats": 2
+      },
+      "tokens": 5
+    }
+  ],
+  "device": {
+    "driver_version": 13040,
+    "major": 12,
+    "minor": 0,
+    "name": "NVIDIA GeForce RTX 5090",
+    "ordinal": 0,
+    "total_bytes": 33731248128,
+    "uuid": "GPU-80ded6bd-1a89-2628-3d94-902187dbab1d"
+  },
+  "device_ordinal": 0,
+  "elapsed_seconds": 109.4255815,
+  "grid": [
+    320,
+    1,
+    1
+  ],
+  "jit_log": "",
+  "kind": "native-mtp-q8-fc-resident-sparse-qualification-v1",
+  "model_executable": false,
+  "native_mtp_admitted": false,
+  "physical_parent": {
+    "bytes": 55705600,
+    "codes": {
+      "bytes": 52428800,
+      "offset": 0
+    },
+    "expected_sha256": "7b3005eafd7bd7025cc8e7e145ed390f9879828073b166269ec2472f23072c69",
+    "identity_row_map": true,
+    "object_id": "weight/000725",
+    "resident_hash_matches": true,
+    "resident_readback_sha256": "7b3005eafd7bd7025cc8e7e145ed390f9879828073b166269ec2472f23072c69",
+    "saved_view_matches": true,
+    "scales": {
+      "bytes": 3276800,
+      "offset": 52428800
+    },
+    "source_copy_sha256": "7b3005eafd7bd7025cc8e7e145ed390f9879828073b166269ec2472f23072c69",
+    "source_hash_matches": true
+  },
+  "ptx_path": "/home/ndizazzo/dev/mesh/issue1393-q4-snapshot-20260930/fc-q8.ptx",
+  "ptx_sha256": "850a8b0e8e93957631938b065d201122d85db6489737dc7b5a3f977f8391af88",
+  "schema_version": 1,
+  "shape": [
+    5120,
+    10240
+  ],
+  "source_verification": {
+    "canonical_tensor_bytes": 20375588160,
+    "canonical_tensors": 1589,
+    "container": "ninfer-single-file-v3",
+    "full_ninfer_arithmetic_parity": false,
+    "source_artifact_id": "19c9ec11085642f1bbe340cd7cf6c207",
+    "source_bytes": 23719715844,
+    "source_dirty": false,
+    "source_sha256": "74d2c57145e6ff11d1d2faa79594477f9bc903a611af1fb20218189fbbb77d82",
+    "startup_verification_seconds": 32.05141738,
+    "stream_buffer_bytes": 65536,
+    "transform_allocation_limit_bytes": 134217728,
+    "transform_total_buffer_limit_bytes": 268435456,
+    "virtual_offsets": true,
+    "whole_file_hash_passes": 2
+  },
+  "timing_claim": false
+}

@@ -1,12 +1,16 @@
 //! Greedy speculative decoding with isolated target verification and rollback.
 
+mod draft_adapter;
+
 use super::{
     driver::{Buffer, Context, Module},
     resident_model::{LogitsSelection, Model as TargetModel, Session},
     resident_mtp::{self, Model as DraftModel},
+    resident_native_mtp_forward::Model as NativeDraftModel,
 };
 use crate::kernels::DecoderConfig;
 use anyhow::{Context as _, Result, ensure};
+use draft_adapter::Draft;
 use serde::Serialize;
 use std::time::Instant;
 
@@ -29,6 +33,11 @@ pub(super) struct Run<'ctx> {
     pub(super) first_round_accepted: Option<usize>,
     pub(super) tokens: Vec<u32>,
     pub(super) target_session: Session<'ctx>,
+    #[expect(
+        dead_code,
+        reason = "native MTP speculation driver is not wired until native forward admission"
+    )]
+    pub(super) draft_session: resident_mtp::Session<'ctx>,
     pub(super) rounds: usize,
     pub(super) all_accepted_rounds: usize,
     pub(super) drafted: usize,
@@ -46,13 +55,14 @@ pub(super) struct PhaseSeconds {
     pub(super) verification: f64,
     pub(super) replay: f64,
     pub(super) teacher: f64,
+    pub(super) fork_copy: f64,
 }
 
 struct Engines<'m, 'ctx, 'tw, 'dw> {
     context: &'ctx Context,
     module: &'m Module<'ctx>,
     target: &'m TargetModel<'tw, 'ctx>,
-    draft: &'m DraftModel<'dw, 'ctx>,
+    draft: Draft<'m, 'dw, 'ctx>,
     config: &'m DecoderConfig,
     compact_recovery: bool,
 }
@@ -87,6 +97,51 @@ pub(super) fn run<'ctx>(
     config: &DecoderConfig,
     request: &Request<'_>,
 ) -> Result<Run<'ctx>> {
+    run_draft(
+        context,
+        module,
+        target,
+        Draft::Legacy(draft),
+        config,
+        request,
+    )
+}
+
+#[expect(
+    dead_code,
+    reason = "native MTP speculation driver is not wired until native forward admission"
+)]
+pub(super) fn run_native<'ctx>(
+    context: &'ctx Context,
+    module: &Module<'ctx>,
+    target: &TargetModel<'_, 'ctx>,
+    draft: &NativeDraftModel<'_, 'ctx>,
+    config: &DecoderConfig,
+    request: &Request<'_>,
+) -> Result<Run<'ctx>> {
+    run_draft(
+        context,
+        module,
+        target,
+        Draft::Native(draft),
+        config,
+        request,
+    )
+}
+
+fn run_draft<'ctx>(
+    context: &'ctx Context,
+    module: &Module<'ctx>,
+    target: &TargetModel<'_, 'ctx>,
+    draft: Draft<'_, '_, 'ctx>,
+    config: &DecoderConfig,
+    request: &Request<'_>,
+) -> Result<Run<'ctx>> {
+    ensure!(
+        crate::kernels::nvfp4_mlp_schedule::current()?
+            == crate::kernels::nvfp4_mlp_schedule::Schedule::Baseline,
+        "speculative decoding requires the baseline NVFP4 MLP schedule until A16 SwiGLU recovery is qualified"
+    );
     let compact_recovery = compact_recovery_enabled()?;
     let expected_final_past = validate_request(config, request)?;
     let vocab = u32::try_from(config.vocabulary).context("decoder vocabulary does not fit u32")?;
@@ -154,6 +209,7 @@ pub(super) fn run<'ctx>(
         phase_seconds.verification += round.phase_seconds.verification;
         phase_seconds.replay += round.phase_seconds.replay;
         phase_seconds.teacher += round.phase_seconds.teacher;
+        phase_seconds.fork_copy += round.phase_seconds.fork_copy;
         let expected_past = request
             .tokens
             .len()
@@ -180,6 +236,7 @@ pub(super) fn run<'ctx>(
         first_round_accepted,
         tokens: output_tokens,
         target_session: state.target,
+        draft_session: state.draft,
         rounds,
         all_accepted_rounds,
         drafted,
@@ -271,29 +328,31 @@ impl<'m, 'ctx, 'tw, 'dw> Engines<'m, 'ctx, 'tw, 'dw> {
         state: &BaseState<'ctx>,
         count: usize,
         forced_first: Option<&[u32]>,
-    ) -> Result<Vec<u32>> {
+    ) -> Result<(Vec<u32>, f64)> {
         ensure!(
             state.target.cursor.past() == state.cache.past
                 && state.draft.cursor.past() == state.cache.past,
             "target and draft cursors differ before drafting"
         );
         if count == 0 {
-            return Ok(Vec::new());
+            return Ok((Vec::new(), 0.0));
         }
         if let Some(tokens) = forced_first {
             ensure!(
                 tokens.len() == count,
                 "forced draft prefix length differs from first round"
             );
-            return Ok(tokens.to_vec());
+            return Ok((tokens.to_vec(), 0.0));
         }
         let mut proposals = Vec::with_capacity(count);
         proposals.push(state.cache.token);
         if count == 1 {
-            return Ok(proposals);
+            return Ok((proposals, 0.0));
         }
 
+        let fork_start = Instant::now();
         let mut draft_branch = state.draft.fork(self.context)?;
+        let fork_seconds = fork_start.elapsed().as_secs_f64();
         let mut previous_hidden = None;
         for index in 1..count {
             let hidden = previous_hidden.as_ref().unwrap_or(&state.cache.last_hidden);
@@ -318,7 +377,7 @@ impl<'m, 'ctx, 'tw, 'dw> Engines<'m, 'ctx, 'tw, 'dw> {
             proposals.push(output.token);
             previous_hidden = Some(output.hidden);
         }
-        Ok(proposals)
+        Ok((proposals, fork_seconds))
     }
 
     fn round(
@@ -333,14 +392,17 @@ impl<'m, 'ctx, 'tw, 'dw> Engines<'m, 'ctx, 'tw, 'dw> {
             "target and draft cursors differ before verification"
         );
         let draft_start = Instant::now();
-        let proposals = self.proposals(state, proposal_count, forced_first)?;
-        let draft_seconds = draft_start.elapsed().as_secs_f64();
+        let (proposals, draft_fork_seconds) =
+            self.proposals(state, proposal_count, forced_first)?;
+        let draft_seconds = draft_start.elapsed().as_secs_f64() - draft_fork_seconds;
         let mut verify_inputs = Vec::with_capacity(proposals.len() + 1);
         verify_inputs.push(state.pending);
         verify_inputs.extend_from_slice(&proposals);
 
-        let verification_start = Instant::now();
+        let fork_start = Instant::now();
         let mut verification_session = state.target.fork(self.context)?;
+        let target_fork_seconds = fork_start.elapsed().as_secs_f64();
+        let verification_start = Instant::now();
         let verified = if self.compact_recovery {
             self.target.forward_recorded(
                 self.context,
@@ -479,6 +541,7 @@ impl<'m, 'ctx, 'tw, 'dw> Engines<'m, 'ctx, 'tw, 'dw> {
                 verification: verification_seconds,
                 replay: replay_seconds,
                 teacher: teacher_seconds,
+                fork_copy: draft_fork_seconds + target_fork_seconds,
             },
         })
     }
@@ -611,8 +674,8 @@ fn checked_add_counter(counter: &mut usize, amount: usize, label: &str) -> Resul
 #[cfg(test)]
 mod tests {
     use super::{
-        MAX_DRAFT_DEPTH, MAX_OUTPUT_TOKENS, MAX_PROMPT_ROWS, longest_accepted_prefix,
-        shifted_prompt, teacher_tokens, validate_bounds,
+        MAX_DRAFT_DEPTH, MAX_OUTPUT_TOKENS, MAX_PROMPT_ROWS, hidden_bytes, longest_accepted_prefix,
+        shifted_prompt, teacher_tokens, validate_bounds, validate_hidden_extent,
     };
 
     #[test]
@@ -636,11 +699,36 @@ mod tests {
     #[test]
     fn speculation_bounds_include_the_unconsumed_final_output_token() {
         assert_eq!(validate_bounds(512, 128, 4, 639).unwrap(), 639);
+        assert_eq!(validate_bounds(512, 128, 1, 639).unwrap(), 639);
+        assert!(validate_bounds(1, 2, 0, 10).is_err());
         assert!(validate_bounds(0, 2, 1, 10).is_err());
         assert!(validate_bounds(1, 1, 1, 10).is_err());
         assert!(validate_bounds(MAX_PROMPT_ROWS + 1, 2, 1, 1000).is_err());
         assert!(validate_bounds(1, MAX_OUTPUT_TOKENS + 1, 1, 1000).is_err());
         assert!(validate_bounds(1, 2, MAX_DRAFT_DEPTH + 1, 1000).is_err());
         assert!(validate_bounds(512, 128, 4, 638).is_err());
+    }
+
+    #[test]
+    fn long_prefill_keeps_every_shifted_teacher_row_aligned() {
+        let prompt: Vec<u32> = (0..512).collect();
+
+        let shifted = shifted_prompt(&prompt, 900);
+
+        assert_eq!(shifted.len(), prompt.len());
+        assert_eq!(&shifted[..511], &prompt[1..]);
+        assert_eq!(shifted[511], 900);
+    }
+
+    #[test]
+    fn teacher_hidden_extent_requires_all_bf16_rows() {
+        let bytes = hidden_bytes(512, 5_120).unwrap();
+
+        let complete = validate_hidden_extent(bytes, 512, 5_120);
+        let last_row_only = validate_hidden_extent(10_240, 512, 5_120);
+
+        assert!(complete.is_ok());
+        assert!(last_row_only.is_err());
+        assert!(hidden_bytes(usize::MAX, 5_120).is_err());
     }
 }

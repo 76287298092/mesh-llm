@@ -115,6 +115,11 @@ impl<'ctx> ResidentState<'ctx> {
             .download_at(usize::try_from(self.layout.region(name)?.offset)?, bytes)
     }
 
+    pub(super) fn read_region_at(&self, name: &str, offset: usize, bytes: &mut [u8]) -> Result<()> {
+        self.arena
+            .download_at(self.region_range(name, offset, bytes.len())?, bytes)
+    }
+
     pub(super) fn verify_zero(&self) -> Result<Value> {
         let bytes_checked = usize::try_from(self.layout.bytes)
             .context("resident-state layout size does not fit usize")?;

@@ -23,7 +23,23 @@ use std::{collections::BTreeMap, env::VarError, ops::Range, time::Instant};
 /// Qualified scoring context ceiling, independent of the forward chunk size.
 pub(in crate::kernels) const MAX_CONTEXT: usize = 512;
 const FORWARD_ROWS_ENV: &str = "MESH_SPECIALIZE_SCORE_FORWARD_ROWS";
+const SCORE_MODE_ENV: &str = "MESH_SPECIALIZE_SCORE_MODE";
 const DEFAULT_FORWARD_ROWS: usize = 512;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ScoreMode {
+    Prefill,
+    Decode,
+}
+
+impl ScoreMode {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Prefill => "prefill",
+            Self::Decode => "decode",
+        }
+    }
+}
 
 struct ForwardChunk {
     inputs: Range<usize>,
@@ -120,8 +136,10 @@ struct Runner<'r, 'm, 'w, 'ctx> {
     scorer: Scorer<'m, 'w, 'ctx>,
     config: &'r DecoderConfig,
     check: Option<Value>,
+    decode_check: Option<Value>,
     hash_logits: bool,
     forward_rows: usize,
+    score_mode: ScoreMode,
 }
 
 pub(in crate::kernels) fn run(
@@ -137,6 +155,23 @@ pub(in crate::kernels) fn run(
     validate_score_execution(std::env::var("MESH_SPECIALIZE_EXECUTION"))?;
     let hash_logits = logit_hash_enabled()?;
     let forward_rows = parse_forward_rows(std::env::var(FORWARD_ROWS_ENV))?;
+    let score_mode = parse_score_mode(std::env::var(SCORE_MODE_ENV))?;
+    let mlp_schedule = crate::kernels::nvfp4_mlp_schedule::current()?;
+    ensure!(
+        mlp_schedule != crate::kernels::nvfp4_mlp_schedule::Schedule::A16SwiGlu
+            || score_mode == ScoreMode::Decode,
+        "A16 SwiGLU scoring requires {SCORE_MODE_ENV}=decode"
+    );
+    if mlp_schedule == crate::kernels::nvfp4_mlp_schedule::Schedule::A16SwiGlu {
+        ensure!(
+            plans.iter().flat_map(|plan| &plan.windows).any(|window| {
+                !window_execution_plan(window, score_mode)
+                    .decode_scored_hidden_rows
+                    .is_empty()
+            }),
+            "A16 SwiGLU scoring requires at least one scored decode row"
+        );
+    }
     ensure!(
         ptx.contains(".target sm_120a"),
         "scoring requires SM120a PTX"
@@ -152,6 +187,13 @@ pub(in crate::kernels) fn run(
     module
         .function(resident_score::KERNEL)
         .context("load row log-probability kernel")?;
+    if crate::kernels::nvfp4_mlp_schedule::current()?
+        == crate::kernels::nvfp4_mlp_schedule::Schedule::A16SwiGlu
+    {
+        module
+            .function("nvfp4_swiglu_a16")
+            .context("load A16 SwiGLU profile kernel")?;
+    }
     validate_admission(&layout, config, context.memory()?.0)?;
     let load_started = Instant::now();
     let weights = ResidentWeights::load(&context, artifact, objects)?;
@@ -164,8 +206,10 @@ pub(in crate::kernels) fn run(
         scorer: Scorer::new(model.head(), config.hidden, config.vocabulary)?,
         config,
         check: None,
+        decode_check: None,
         hash_logits,
         forward_rows,
+        score_mode,
     };
     let started = Instant::now();
     let mut streams = Vec::new();
@@ -182,6 +226,11 @@ pub(in crate::kernels) fn run(
     }
     let score_seconds = started.elapsed().as_secs_f64();
     let check = runner.check.take().unwrap_or(Value::Null);
+    let decode_check = runner.decode_check.take();
+    let checks_passed = check["passed"] == true
+        && decode_check
+            .as_ref()
+            .is_none_or(|check| check["passed"] == true);
     let chunk_rows = runner.scorer.chunk_rows();
     drop(runner);
     drop(model);
@@ -200,7 +249,12 @@ pub(in crate::kernels) fn run(
         "schema_version": 1,
         "kind": "resident-teacher-forced-scores",
         "execution": "legacy",
-        "all_passed": check["passed"] == true,
+        "all_passed": checks_passed,
+        "all_passed_scope": "scorer_checks_only",
+        "scorer_checks_passed": checks_passed,
+        "model_quality_passed": null,
+        "quality_gate_status": "NOT RUN",
+        "quality_gate_note": "Fixed model-quality gates require comparison of control and candidate score records",
         "corpus_id": request.corpus_id,
         "context_tokens": request.context,
         "stride_tokens": request.stride,
@@ -211,10 +265,12 @@ pub(in crate::kernels) fn run(
         "environment": environment(),
         "head_chunk_rows": chunk_rows,
         "forward_rows": forward_rows,
+        "score_mode": score_mode.name(),
         "full_logit_hash": {"enabled": hash_logits,
             "scope": "SHA-256 of every little-endian BF16 vocabulary value at scored positions, in window order"},
         "device": info,
         "check": check,
+        "decode_check": decode_check,
         "streams": streams,
         "domains": domain_reports,
         "overall": overall.json(),
@@ -309,6 +365,15 @@ impl<'ctx> Runner<'_, '_, '_, 'ctx> {
             report["target_begin"] = json!(window.target_begin);
             report["target_end"] = json!(window.target_end);
             report["first_target"] = json!(window.target_begin - window.input_begin);
+            report["row_index_space"] =
+                json!("input ranges are window-local; hidden rows are compact scored-buffer rows");
+            let execution = window_execution_plan(window, self.score_mode);
+            report["prefill_context_rows"] = json!(range_json(&execution.prefill_context_rows));
+            report["prefill_scored_input_rows"] =
+                json!(range_json(&execution.prefill_scored_input_rows));
+            report["decode_scored_hidden_rows"] =
+                json!(range_json(&execution.decode_scored_hidden_rows));
+            report["decode_input_rows"] = json!(range_json(&execution.decode_input_rows));
             report["seconds"] = json!(window_started.elapsed().as_secs_f64());
             windows.push(report);
         }
@@ -320,6 +385,7 @@ impl<'ctx> Runner<'_, '_, '_, 'ctx> {
         report["full_logits_sha256"] = json!(logit_hash.map(|h| hex::encode(h.finalize())));
         report["unscored_tokens"] = json!(1);
         report["record_count"] = json!(aggregate.scored);
+        report["score_mode"] = json!(self.score_mode.name());
         report["seconds"] = json!(started.elapsed().as_secs_f64());
         report["windows"] = json!(windows);
         Ok((report, aggregate))
@@ -334,23 +400,43 @@ impl<'ctx> Runner<'_, '_, '_, 'ctx> {
     ) -> Result<(usize, f64, Vec<u8>)> {
         let inputs = &tokens[window.input_begin..window.input_end];
         let targets = &tokens[window.target_begin..window.target_end];
-        let hidden = self.forward_window(inputs)?;
-        let rows = inputs.len();
+        let (hidden, first_row, rows) = match self.score_mode {
+            ScoreMode::Prefill => (
+                self.forward_window(inputs)?,
+                window.first_row(),
+                inputs.len(),
+            ),
+            ScoreMode::Decode => (
+                self.forward_decode_window(inputs, window)?,
+                0,
+                window.scored(),
+            ),
+        };
         if self.check.is_none() {
             self.check = Some(self.scorer.check(
                 self.context,
                 self.module,
                 &hidden,
                 rows,
-                window.first_row(),
+                first_row,
                 targets,
             )?);
+        }
+        if self.score_mode == ScoreMode::Decode && rows > 1 && self.decode_check.is_none() {
+            let mut check =
+                self.scorer
+                    .check(self.context, self.module, &hidden, rows, 1, &targets[1..])?;
+            check["first_hidden_row"] = json!(1);
+            check["target_begin"] = json!(window.target_begin + 1);
+            check["input_begin"] = json!(window.input_begin);
+            check["input_end"] = json!(window.input_end);
+            self.decode_check = Some(check);
         }
         let records = self.scorer.score(
             self.context,
             self.module,
             &hidden,
-            window.first_row(),
+            first_row,
             targets,
             logit_hash,
         )?;
@@ -370,6 +456,91 @@ impl<'ctx> Runner<'_, '_, '_, 'ctx> {
         }
         Ok((records.len(), total_nll, bytes))
     }
+
+    fn forward_decode_window(&self, inputs: &[u32], window: &Window) -> Result<Buffer<'ctx>> {
+        let plan = window_execution_plan(window, ScoreMode::Decode);
+        let mut session = Session::new(self.context, self.config)?;
+        let prefill = ForwardPlan::new(
+            plan.prefill_context_rows.len(),
+            self.config.hidden,
+            self.forward_rows,
+        )?;
+        let prefix = if prefill.chunks.len() == 1 {
+            self.model.forward_hidden(
+                self.context,
+                self.module,
+                &inputs[..plan.prefill_context_rows.end],
+                &mut session,
+            )?
+        } else {
+            let hidden = Buffer::new(self.context, prefill.bytes)?;
+            for chunk in prefill.chunks {
+                let output = self.model.forward_hidden(
+                    self.context,
+                    self.module,
+                    &inputs[chunk.inputs.clone()],
+                    &mut session,
+                )?;
+                ensure!(
+                    output.len() == chunk.bytes,
+                    "prefill hidden chunk extent mismatch"
+                );
+                hidden.copy_from_at(chunk.byte_offset, &output, 0, chunk.bytes)?;
+            }
+            hidden
+        };
+        let row_bytes = self.config.hidden * 2;
+        let hidden = Buffer::new(self.context, window.scored() * row_bytes)?;
+        ensure!(
+            prefix.len() >= (window.first_row() + 1) * row_bytes,
+            "prefill hidden extent does not include first scored row"
+        );
+        hidden.copy_from_at(0, &prefix, window.first_row() * row_bytes, row_bytes)?;
+        for (decode_index, input_index) in plan.decode_input_rows.clone().enumerate() {
+            let output = self.model.forward_hidden_decode(
+                self.context,
+                self.module,
+                inputs[input_index],
+                &mut session,
+            )?;
+            ensure!(
+                output.len() == row_bytes,
+                "decode hidden row extent mismatch"
+            );
+            hidden.copy_from_at((decode_index + 1) * row_bytes, &output, 0, row_bytes)?;
+        }
+        Ok(hidden)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct WindowExecutionPlan {
+    prefill_context_rows: Range<usize>,
+    prefill_scored_input_rows: Range<usize>,
+    decode_scored_hidden_rows: Range<usize>,
+    decode_input_rows: Range<usize>,
+}
+
+fn window_execution_plan(window: &Window, mode: ScoreMode) -> WindowExecutionPlan {
+    let input_rows = window.input_end - window.input_begin;
+    match mode {
+        ScoreMode::Prefill => WindowExecutionPlan {
+            prefill_context_rows: 0..input_rows,
+            prefill_scored_input_rows: window.first_row()..window.first_row() + window.scored(),
+            decode_scored_hidden_rows: 0..0,
+            decode_input_rows: input_rows..input_rows,
+        },
+        ScoreMode::Decode => WindowExecutionPlan {
+            prefill_context_rows: 0..window.first_row() + 1,
+            prefill_scored_input_rows: window.first_row()..window.first_row() + 1,
+            decode_scored_hidden_rows: 1..window.scored(),
+            decode_input_rows: window.first_row() + 1..window.first_row() + window.scored(),
+        },
+    }
+}
+
+fn range_json(range: &Range<usize>) -> Value {
+    json!({"begin": range.start, "end": range.end})
 }
 
 fn validate_admission(layout: &Layout, config: &DecoderConfig, free_bytes: usize) -> Result<()> {
@@ -405,6 +576,8 @@ fn profiles() -> Result<Value> {
     Ok(json!({
         "fp8": crate::kernels::fp8_profile::current()?.name(),
         "nvfp4": crate::kernels::nvfp4_profile::current()?.name(),
+        "nvfp4_decode_schedule": crate::kernels::nvfp4_decode_schedule::current()?.name(),
+        "nvfp4_mlp_profile": crate::kernels::nvfp4_mlp_schedule::current()?.name(),
         "attention": crate::kernels::attention_profile::current()?.name(),
         "mlp_workspace": super::model_workspace::enabled()?,
         "fp8_split_k": super::resident_fp8_splitk::configured_splits()?,
@@ -442,6 +615,15 @@ fn logit_hash_enabled() -> Result<bool> {
     }
 }
 
+fn parse_score_mode(value: Result<String, VarError>) -> Result<ScoreMode> {
+    match value {
+        Err(VarError::NotPresent) => Ok(ScoreMode::Prefill),
+        Ok(value) if value == "prefill" => Ok(ScoreMode::Prefill),
+        Ok(value) if value == "decode" => Ok(ScoreMode::Decode),
+        _ => anyhow::bail!("{SCORE_MODE_ENV} must be prefill or decode"),
+    }
+}
+
 fn token_digest(tokens: &[u32]) -> String {
     let mut hash = Sha256::new();
     for token in tokens {
@@ -453,10 +635,11 @@ fn token_digest(tokens: &[u32]) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        DEFAULT_FORWARD_ROWS, FORWARD_ROWS_ENV, ForwardPlan, VarError, parse_forward_rows,
-        token_digest, validate_score_execution,
+        DEFAULT_FORWARD_ROWS, FORWARD_ROWS_ENV, ForwardPlan, SCORE_MODE_ENV, ScoreMode, VarError,
+        WindowExecutionPlan, parse_forward_rows, parse_score_mode, token_digest,
+        validate_score_execution, window_execution_plan,
     };
-    use crate::engine::teacher_scoring::plan_windows;
+    use crate::engine::teacher_scoring::{Window, plan_windows};
 
     #[test]
     fn scoring_does_not_silently_claim_graph_or_stream_execution() {
@@ -464,6 +647,30 @@ mod tests {
         assert!(validate_score_execution(Ok("legacy".into())).is_ok());
         for value in ["stream", "graph", "unknown"] {
             assert!(validate_score_execution(Ok(value.into())).is_err());
+        }
+    }
+
+    #[test]
+    fn score_mode_defaults_to_prefill_and_requires_explicit_decode() {
+        assert_eq!(
+            parse_score_mode(Err(VarError::NotPresent)).unwrap(),
+            ScoreMode::Prefill
+        );
+        assert_eq!(
+            parse_score_mode(Ok("prefill".into())).unwrap(),
+            ScoreMode::Prefill
+        );
+        assert_eq!(
+            parse_score_mode(Ok("decode".into())).unwrap(),
+            ScoreMode::Decode
+        );
+        for value in ["", "auto", "Decode", "1"] {
+            assert!(
+                parse_score_mode(Ok(value.into()))
+                    .unwrap_err()
+                    .to_string()
+                    .contains(SCORE_MODE_ENV)
+            );
         }
     }
 
@@ -563,6 +770,94 @@ mod tests {
             }
             assert_eq!(predictions, tokens[..tokens.len() - 1]);
         }
+    }
+
+    #[test]
+    fn decode_plan_prefills_through_first_scored_row_and_decodes_the_rest() {
+        let windows = plan_windows(700, 512, 256).unwrap();
+        let first = window_execution_plan(&windows[0], ScoreMode::Decode);
+        assert!(first.prefill_context_rows.contains(&0));
+        assert!(first.prefill_scored_input_rows.contains(&0));
+        assert!(first.decode_scored_hidden_rows.contains(&1));
+        assert!(first.decode_input_rows.contains(&1));
+        assert_eq!(
+            first,
+            WindowExecutionPlan {
+                prefill_context_rows: 0..1,
+                prefill_scored_input_rows: 0..1,
+                decode_scored_hidden_rows: 1..511,
+                decode_input_rows: 1..511,
+            }
+        );
+        assert_eq!(
+            window_execution_plan(&windows[1], ScoreMode::Decode),
+            WindowExecutionPlan {
+                prefill_context_rows: 0..324,
+                prefill_scored_input_rows: 323..324,
+                decode_scored_hidden_rows: 1..188,
+                decode_input_rows: 324..511,
+            }
+        );
+        assert_eq!(
+            window_execution_plan(&windows[0], ScoreMode::Prefill),
+            WindowExecutionPlan {
+                prefill_context_rows: 0..512,
+                prefill_scored_input_rows: 0..511,
+                decode_scored_hidden_rows: 0..0,
+                decode_input_rows: 512..512,
+            }
+        );
+    }
+
+    #[test]
+    fn one_scored_row_window_uses_prefill_and_can_reset_before_next_window() {
+        let window = Window {
+            input_begin: 10,
+            input_end: 14,
+            target_begin: 13,
+            target_end: 14,
+        };
+        assert_eq!(
+            window_execution_plan(&window, ScoreMode::Decode),
+            WindowExecutionPlan {
+                prefill_context_rows: 0..3,
+                prefill_scored_input_rows: 2..3,
+                decode_scored_hidden_rows: 1..1,
+                decode_input_rows: 3..3,
+            }
+        );
+    }
+
+    #[test]
+    fn decode_plan_restarts_prefill_range_for_each_window() {
+        let windows = plan_windows(700, 512, 256).unwrap();
+        let plans = windows
+            .iter()
+            .map(|window| window_execution_plan(window, ScoreMode::Decode))
+            .collect::<Vec<_>>();
+        assert!(
+            plans
+                .iter()
+                .all(|plan| plan.prefill_context_rows.start == 0)
+        );
+        assert_eq!(plans[0].prefill_context_rows.end, 1);
+        assert_eq!(plans[1].prefill_context_rows.end, 324);
+    }
+
+    #[test]
+    fn decode_dispatch_input_rows_predict_exact_window_targets() {
+        let tokens: Vec<_> = (0..700).collect();
+        let mut predictions = Vec::new();
+        for window in plan_windows(tokens.len(), 512, 256).unwrap() {
+            let inputs = &tokens[window.input_begin..window.input_end];
+            let plan = window_execution_plan(&window, ScoreMode::Decode);
+            predictions.extend(
+                plan.prefill_scored_input_rows
+                    .chain(plan.decode_input_rows)
+                    .map(|input_index| inputs[input_index]),
+            );
+        }
+        assert_eq!(predictions, tokens[..tokens.len() - 1]);
     }
 
     #[test]

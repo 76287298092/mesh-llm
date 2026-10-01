@@ -1,13 +1,19 @@
-use super::fixture;
 use super::super::driver::{Context, Module};
+use super::fixture;
 use anyhow::{Result, ensure};
 use serde_json::Value;
 
 pub(in crate::kernels) fn synthetic(ptx: &str, device: i32) -> Result<Value> {
-    ensure!(ptx.contains(".target sm_120a"), "native MTP Q8 GEMV requires SM120a PTX");
+    ensure!(
+        ptx.contains(".target sm_120a"),
+        "native MTP Q8 GEMV requires SM120a PTX"
+    );
     let context = Context::new(device)?;
     let info = context.info();
-    ensure!((info.major, info.minor) == (12, 0), "native MTP Q8 GEMV requires SM120");
+    ensure!(
+        (info.major, info.minor) == (12, 0),
+        "native MTP Q8 GEMV requires SM120"
+    );
     let module = Module::load(&context, ptx)?;
     module.function("native_mtp_q8_gemv")?;
     let mut report = fixture::run_synthetic(&context, &module)?;
