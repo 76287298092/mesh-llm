@@ -23,8 +23,9 @@ not itself enable spending. SDK consumers (`mesh-llm-sdk` with `serving` or
 `serving,payments`) do not enable it unless they explicitly opt into the
 host-runtime wallet feature.
 
-Wallet state lives under `<config-dir>/payments/lexe/`, the same layout the
-in-process implementation used. A build without a wallet provider cannot use
-that wallet until a compatible provider is available. Host pins also bind the
-plugin name: switching to a differently named external plugin requires explicit
-identity-checked adoption, not deletion of the existing pin or wallet state.
+Wallet state lives under `<config-dir>/payments/wallets/wallet-lexe/`, like
+every wallet plugin's. A build without a wallet provider cannot use that wallet
+until a compatible provider is available. Host pins also bind the plugin name:
+switch to a differently named external plugin with `mesh-llm wallet unpin`,
+which refuses while anything outstanding depends on the pinned wallet, rather
+than by deleting the pin or wallet state.

@@ -95,12 +95,13 @@ files are not reset by changing build features; pending settlement still needs
 the original wallet to become available again.
 
 Concrete wallets are plugin processes that advertise `wallet.v1`
-(`mesh-llm-wallet::contract`). The host resolves the provider by capability,
-never by plugin name. An installed external wallet uses the ordinary plugin
-loader; no Lexe-specific client API is required. Enable only one wallet provider.
-Existing wallet pins bind both plugin name and wallet identity: replacing a
-provider with a differently named plugin is not an automatic migration, even
-when it uses the same seed. Do not delete the pin to bypass that check.
+(`mesh-llm-wallet::contract`). The host finds wallet plugins by that capability
+and chooses among them as described below. An installed external wallet uses
+the ordinary plugin loader; no Lexe-specific client API is required. Existing wallet pins bind both
+plugin name and wallet identity: replacing a provider with a differently named
+plugin is not an automatic migration, even when it uses the same seed. Switch
+providers with `mesh-llm wallet unpin` (below), which refuses while anything
+outstanding depends on the pinned wallet; do not delete the pin by hand.
 
 The retained `mesh-wallet-lexe` implementation uses Lexe 0.1.24 on mainnet.
 To compile it back into the host:
@@ -126,8 +127,36 @@ enabled = false
 
 Only `enabled` may be set on a built-in. A default build without `wallet-lexe`
 accepts this stanza but registers no built-in wallet. A runtime setting cannot
-restore code excluded at build time. NWC, BOLT12 and multi-provider selection
-are deferred.
+restore code excluded at build time. NWC and BOLT12 are deferred.
+
+When more than one `wallet.v1` plugin runs, the host picks one in this order:
+
+1. The plugin named in the ledger's pin (below). A pin is never silently
+   replaced; a pinned plugin that is not running is an error.
+2. `[payments] wallet = "<plugin>"` in `config.toml`. It must be running.
+3. The only running wallet plugin other than `wallet-lexe`, then `wallet-lexe`
+   itself. Two or more other wallet plugins need an explicit choice. This
+   automatic choice is refused while any enabled plugin that might be a wallet
+   is not running, because the choice is pinned: a plugin that crashed has lost
+   its capability list, and choosing among the running plugins would hand the
+   ledger to `wallet-lexe` for good. Start the plugin or set `[payments] wallet`.
+
+`wallet_open` also returns the wallet's `features`: whether it can create
+amount-less invoices. The host refuses amount-less `fund-wallet` invoices on a
+wallet that cannot make them. Plugins written before the field existed get the
+original contract's behavior: amount-less invoices.
+
+Every `wallet_pay` carries the fee headroom the host authorized
+(`max_total_msat`). A wallet that can bound routing fees must refuse a payment
+that would exceed it; one that cannot still pays. Either way the fee the wallet
+reports is recorded as spend. With a wallet that cannot bound fees, that fee can
+exceed the headroom, and the overrun is recorded after the fact, not prevented:
+
+- The day's spend can go past the daily budget. Later payments are refused
+  until the budget recovers.
+- The request's spend can go past its cap. If the input payment overran, the
+  output payment may no longer fit under the cap and is refused, so the seller
+  records the output invoice as unpaid debt.
 
 Feature layering: `payments` (host-runtime, `mesh-llm`,
 `mesh-llm-embedded-runtime`, `mesh-llm-sdk`) supplies the ledger, gates and
@@ -191,7 +220,20 @@ The host pins the wallet identity. After the first successful open it writes
 and refuses to open a plugin or wallet that does not match, because outstanding
 reservations and receivables are only meaningful against the wallet that created
 them. `has_persisted_wallet` reads this pin; it is side-effect-free and never
-starts the plugin. Embedders can still inject their own `WalletFactory` through
+starts the plugin. `mesh-llm wallet unpin` removes the pin so the next wallet
+operation opens and pins another wallet. It only runs while the node is stopped,
+because a running node may be opening its wallet against the pin; through the
+running node's API it is refused. It is also refused while any outgoing payment
+is prepared or pending, or while the ledger records any issued invoice as unpaid,
+expired or not: the old wallet may still settle those, or may already have
+received a payment the ledger has not recorded. Run the node on the old wallet
+to let recovery resolve them, or forgive a peer's unpaid invoices with
+`mesh-llm wallet unblock`. Unpin neither moves funds nor cancels invoices: the
+old wallet keeps its balance, and a forgiven invoice that has not expired can
+still be paid into it after the switch, where the ledger will not see it. The
+old wallet's data directory is left in place, so switching back re-adopts the
+same identity. Embedders can still inject their own
+`WalletFactory` through
 `PaymentService::with_factory`; without a plugin manager the service is
 ledger-only and every wallet operation fails with a clear error.
 
@@ -225,13 +267,14 @@ seeing a paid provider does not provision one. The directory contains:
   approvals, reservations, invoices, payment outcomes, receivables and output
   delivery counts. SQLite uses WAL and synchronous FULL.
 - `wallet-provider.json`: the host-owned wallet pin described above.
-- `lexe/`: handed to the wallet plugin as its data directory. For
-  `mesh-wallet-lexe` it holds `seedphrase.txt`, recovery material persisted
-  before wallet provisioning with the SDK's exclusive creation and private file
-  permissions; the plugin re-asserts mode 0600 on the seed at every open. Unix
-  payment and wallet directories are mode 0700. Protect and back up this
-  directory; no seed export UI or encrypted-at-rest application keystore is
-  added by this PoC.
+- `wallets/<plugin>/`: handed to each wallet plugin as its data directory, so
+  switching wallets never exposes one backend's credentials to another. For
+  `mesh-wallet-lexe` (`wallets/wallet-lexe/`) it holds `seedphrase.txt`,
+  recovery material persisted before wallet provisioning with the SDK's
+  exclusive creation and private file permissions; the plugin re-asserts mode
+  0600 on the seed at every open. Unix payment and wallet directories are mode
+  0700. Protect and back up this directory; no seed export UI or
+  encrypted-at-rest application keystore is added by this PoC.
 - Process locks: one service per directory in the host, one wallet writer per
   directory in the plugin. CLI commands use the running node's API. When the
   node is not running, ledger-only commands (policy, pricing, pending) fall back
@@ -331,9 +374,10 @@ The payer reserves a routing-fee allowance for each inference payment of
 `max(3000 msat, 1% of the amount)` (`pricing::fee_allowance_msat`), so a
 request's cap is both inference charges plus both allowances. Seller and payer
 compute the cap from the same function and the payer rejects terms that
-disagree. The wallet is told the resulting cap per payment and must not submit
-a payment whose amount plus fees exceeds it; Lexe preflights a route and
-submits that same route only when its total debit fits. Route minimums can
+disagree. The wallet is told the resulting cap per payment. A wallet that can
+bound fees must not submit a payment whose amount plus fees exceeds it; Lexe
+preflights a route and submits that same route only when its total debit fits.
+A wallet that cannot bound fees may exceed it (see the wallet contract above). Route minimums can
 increase the sent amount; that increase also counts against the cap. Actual
 outgoing amount and fees are recorded. Operators can choose a different cap for
 an explicit `wallet send`.
@@ -442,6 +486,7 @@ mesh-llm wallet send lnbc... --amount-msat 10000 --max-fee-msat 1000
 mesh-llm wallet pending
 mesh-llm wallet blocked
 mesh-llm wallet unblock PEER_ID
+mesh-llm wallet unpin
 mesh-llm wallet policy --mode automatic --daily-budget-sats 100
 mesh-llm wallet policy --mode free-only
 mesh-llm wallet pricing MODEL --input-msat-per-million 500 --output-msat-per-million 1500
@@ -461,7 +506,8 @@ Applications POST JSON to `/api/wallet` on the local management port:
 
 Commands are `balance`, `transactions` (`limit`), `fund`, `inspect_invoice`
 (`invoice`), `send` (`invoice`, optional `amount_msat`, `max_fee_msat`), `pending`,
-`policy` (optional `value`), `pricing`, and `set_pricing`
+`blocked`, `unblock` (`peer`), `unpin`, `policy` (optional `value`), `pricing`, and
+`set_pricing`
 (`model`, nullable `value`). `expected_pid` and `expected_directory` are optional
 local destination checks. The balance response exposes `spendable_msat` and
 `available_for_inference_msat` after policy and reservations. `pending` returns
