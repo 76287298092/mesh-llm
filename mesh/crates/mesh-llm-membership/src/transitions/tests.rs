@@ -53,6 +53,8 @@ pub(crate) fn test_announcement(ts: Option<u64>) -> PeerAnnouncement {
         stage_protocol_generation_supported: true,
         stage_status_list_supported: true,
         local_gguf_content_id_supported: true,
+        #[cfg(feature = "payments")]
+        lightning_offers: Default::default(),
         advertised_model_throughput: vec![],
         cache_affinity: None,
         latency_ms: None,
@@ -84,6 +86,7 @@ fn bridge_cannot_admit_peer_or_refresh_direct_liveness() {
     };
     assert!(!peer.is_admitted());
     assert!(!peer.local_gguf_content_id_supported);
+    assert!(!peer.stage_protocol_generation_supported);
     assert!(peer.last_seen.elapsed() >= Duration::from_secs(PEER_STALE_SECS * 2));
     let last_seen = peer.last_seen;
     let TransitivePeerUpdate::Updated {
@@ -97,6 +100,7 @@ fn bridge_cannot_admit_peer_or_refresh_direct_liveness() {
     assert_eq!(peer.last_seen, last_seen);
     assert!(!peer.is_admitted());
     assert!(!peer.local_gguf_content_id_supported);
+    assert!(!peer.stage_protocol_generation_supported);
     assert!(!changed);
     assert_eq!(admitted_count, None);
     assert_eq!(state.admitted_peer_count(), 0);

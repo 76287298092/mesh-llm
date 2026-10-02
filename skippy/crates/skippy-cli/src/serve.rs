@@ -12,7 +12,7 @@ use std::{
 use anyhow::{Context, Result, bail};
 use skippy_commands::console::{self, OutputMode};
 use skippy_runtime::{ModelOpenEventQueue, RuntimeEventKind, RuntimeEventProgressUnit};
-use tokio::{sync::oneshot, task::JoinHandle};
+use tokio::{process::Command, sync::oneshot, task::JoinHandle};
 
 use crate::{
     cli::{
@@ -355,25 +355,35 @@ async fn serve_with_readiness(
     if !prompt {
         return server.await.context("join serving task")?;
     }
-    let prompt_args = skippy_commands::prompt::PromptCommand {
-        endpoint: api_base,
-        model: Some(model_id),
-        max_new_tokens: 128,
-        raw: false,
-        no_think: false,
-        history_path: None,
-    };
-    let mut prompt_task =
-        tokio::task::spawn_blocking(move || skippy_commands::prompt::run(prompt_args));
+    // Readline cannot interrupt a blocked terminal read. Keep it in a child
+    // process so server shutdown can terminate and join the prompt reliably.
+    let mut prompt_process =
+        Command::new(std::env::current_exe().context("locate skippy executable")?)
+            .args([
+                "--output",
+                "human",
+                "prompt",
+                "--endpoint",
+                &api_base,
+                "--model",
+                &model_id,
+            ])
+            .kill_on_drop(true)
+            .spawn()
+            .context("start interactive prompt")?;
     tokio::select! {
-        result = &mut prompt_task => {
-            let result = result.context("join interactive prompt")?;
+        result = prompt_process.wait() => {
+            let status = result.context("join interactive prompt")?;
             let _ = stop.send(());
             server.await.context("join serving task")??;
-            result
+            if !status.success() {
+                bail!("interactive prompt exited with {status}");
+            }
+            Ok(())
         }
         result = &mut server => {
-            prompt_task.abort();
+            let _ = prompt_process.start_kill();
+            prompt_process.wait().await.context("join interactive prompt after server shutdown")?;
             result.context("join serving task")??;
             Ok(())
         }

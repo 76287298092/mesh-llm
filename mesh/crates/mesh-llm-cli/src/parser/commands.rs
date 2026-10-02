@@ -1077,7 +1077,11 @@ pub enum Command {
     /// Submits an HF Job that builds skippy-package-builder from source,
     /// splits the model, publishes the layer package, and updates the
     /// meshllm/catalog.
-    #[command(name = "model-prepare", hide = true, alias = "skippy-model-package")]
+    #[command(
+        name = "model-prepare",
+        hide = true,
+        aliases = ["model-package", "skippy-model-package"]
+    )]
     ModelPrepare {
         /// Source HuggingFace model ref (e.g. unsloth/Qwen3-235B-A22B-GGUF:UD-Q4_K_XL).
         source_repo: Option<String>,
@@ -1345,6 +1349,15 @@ mod tests {
     use crate::models::{ModelSearchSort, ModelsCommand};
     use clap::{CommandFactory, Parser, error::ErrorKind};
     use mesh_llm_events::LogFormat;
+
+    #[test]
+    fn model_package_spellings_remain_compatible() {
+        for spelling in ["model-prepare", "model-package", "skippy-model-package"] {
+            let cli = Cli::try_parse_from(["mesh-llm", spelling, "owner/model"])
+                .expect("model preparation spelling should parse");
+            assert!(matches!(cli.command, Some(Command::ModelPrepare { .. })));
+        }
+    }
 
     /// `--parallel` mirrors `--ctx-size`: a runtime-surface flag that must survive the
     /// serve normalisation and refuse a value the planner could not use.
