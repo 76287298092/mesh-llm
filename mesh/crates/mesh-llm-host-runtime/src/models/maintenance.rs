@@ -1,22 +1,13 @@
-use super::{build_hf_api, huggingface_hub_cache_dir, run_hf_sync, short_revision};
-use anyhow::{Context, Result};
-use hf_hub::{RepoTypeModel, repository::ModelInfo};
+//! Mesh presentation for the shared Hugging Face cache update workflow.
+
+use super::{huggingface_hub_cache_dir, run_hf_sync, short_revision};
+use anyhow::Result;
 use mesh_llm_events::terminal_progress::{DeterminateProgressLine, clear_stderr_line};
-use std::collections::BTreeSet;
-use std::io::Write;
-use std::path::{Path, PathBuf};
+use skippy_model_hf::store::updates::{self, UpdateEvent, UpdateReport};
+use std::{collections::BTreeSet, io::Write, path::PathBuf};
 
-struct CachedRepo {
-    repo_id: String,
-    ref_name: String,
-    local_revision: String,
-}
-
-#[derive(Default)]
-struct UpdateCounts {
-    refreshed: usize,
-    missing_meta: usize,
-}
+#[cfg(test)]
+pub(super) use updates::cache_repo_id_from_dir;
 
 pub fn run_update(repo: Option<&str>, all: bool, check: bool) -> Result<()> {
     let repo = repo.map(ToOwned::to_owned);
@@ -24,102 +15,109 @@ pub fn run_update(repo: Option<&str>, all: bool, check: bool) -> Result<()> {
 }
 
 fn run_update_sync(repo: Option<&str>, all: bool, check: bool) -> Result<()> {
-    let mut err = mesh_llm_events::console_err();
-    let api = build_hf_api(!check)?;
-    let repos = cached_repos()?;
-    if repos.is_empty() {
-        writeln!(err, "📦 No cached Hugging Face model repos found")?;
-        writeln!(err, "   {}", huggingface_hub_cache_dir().display())?;
+    let cache_root = huggingface_hub_cache_dir();
+    let mut announced = false;
+    let report = updates::run_update_in(&cache_root, repo, all, check, |event| {
+        if !check && !announced && matches!(event, UpdateEvent::Refreshing { .. }) {
+            let mut out = mesh_llm_events::console_err();
+            writeln!(out, "🔄 Updating cached Hugging Face repos")?;
+            writeln!(out, "📁 Cache: {}", cache_root.display())?;
+            if let UpdateEvent::Refreshing { total, .. } = &event {
+                writeln!(out, "📦 Selected: {total}")?;
+            }
+            writeln!(out)?;
+            announced = true;
+        }
+        render_update_event(event)
+    })?;
+    render_update_summary(check, &report)
+}
+
+fn render_update_event(event: UpdateEvent) -> Result<()> {
+    let mut out = mesh_llm_events::console_err();
+    match event {
+        UpdateEvent::Empty { cache_dir } => {
+            writeln!(out, "📦 No cached Hugging Face model repos found")?;
+            writeln!(out, "   {}", cache_dir.display())?;
+        }
+        UpdateEvent::Checking {
+            current,
+            total,
+            repo,
+        } => {
+            DeterminateProgressLine::new("🔄").draw_counts(
+                "Checking updates",
+                current,
+                total,
+                Some(&format!(" {}", repo.repo_id)),
+            )?;
+        }
+        UpdateEvent::Available {
+            current,
+            total,
+            repo,
+            remote_revision,
+        } => {
+            clear_stderr_line()?;
+            writeln!(out, "🆕 [{current}/{total}] {}", repo.repo_id)?;
+            writeln!(out, "   ref: {}", repo.ref_name)?;
+            writeln!(out, "   local: {}", short_revision(&repo.local_revision))?;
+            writeln!(out, "   latest: {}", short_revision(&remote_revision))?;
+            writeln!(out, "   update: mesh-llm models updates {}", repo.repo_id)?;
+            writeln!(out)?;
+        }
+        UpdateEvent::Refreshing {
+            current,
+            total,
+            repo,
+        } => {
+            writeln!(out, "🧭 [{current}/{total}] {}", repo.repo_id)?;
+            writeln!(out, "   ref: {}", repo.ref_name)?;
+            writeln!(out, "   current: {}", short_revision(&repo.local_revision))?;
+        }
+        UpdateEvent::NoCachedFiles { repo_id } => {
+            writeln!(out, "⚠️ {repo_id} has no cached files to refresh")?;
+        }
+        UpdateEvent::FileStarted {
+            current,
+            total,
+            file,
+        } => {
+            writeln!(out, "   ↻ [{current}/{total}] {file}")?;
+        }
+        UpdateEvent::FileRefreshed { path } => {
+            writeln!(out, "   ✅ {}", path.display())?;
+        }
+        UpdateEvent::ConfigMissing { repo_id, error } => {
+            if let Some(error) = error {
+                writeln!(out, "   ⚠️ config.json: {error}")?;
+            } else {
+                writeln!(out, "   ℹ️ no config.json published for {repo_id}")?;
+            }
+        }
+    }
+    Ok(())
+}
+
+fn render_update_summary(check: bool, report: &UpdateReport) -> Result<()> {
+    let mut out = mesh_llm_events::console_err();
+    if report.selected_repos == 0 {
         return Ok(());
     }
-
-    let selected: Vec<CachedRepo> = if check {
-        if all {
-            repos
-        } else if let Some(repo_id) = repo {
-            let repo_id = repo_id.trim();
-            let Some(found) = repos.into_iter().find(|entry| entry.repo_id == repo_id) else {
-                anyhow::bail!("Cached repo not found: {repo_id}");
-            };
-            vec![found]
-        } else {
-            repos
-        }
-    } else if all {
-        repos
-    } else {
-        let Some(repo_id) = repo else {
-            anyhow::bail!(
-                "Pass a repo id or --all. Use `mesh-llm models updates --check` to inspect updates without downloading."
-            );
-        };
-        let repo_id = repo_id.trim();
-        let Some(found) = repos.into_iter().find(|entry| entry.repo_id == repo_id) else {
-            anyhow::bail!("Cached repo not found: {repo_id}");
-        };
-        vec![found]
-    };
-
-    if !check {
-        writeln!(err, "🔄 Updating cached Hugging Face repos")?;
-        writeln!(err, "📁 Cache: {}", huggingface_hub_cache_dir().display())?;
-        writeln!(err, "📦 Selected: {}", selected.len())?;
-        writeln!(err)?;
-    }
-    let mut updates = 0usize;
-    let total_selected = selected.len();
-    let mut refresh_totals = UpdateCounts::default();
-    for (index, repo) in selected.into_iter().enumerate() {
-        if check {
-            print_update_check_progress(index + 1, total_selected, &repo.repo_id)?;
-            if let Some(remote_revision) = check_repo_update(&api, &repo)? {
-                updates += 1;
-                clear_progress_line()?;
-                writeln!(
-                    err,
-                    "🆕 [{}/{}] {}",
-                    index + 1,
-                    total_selected,
-                    repo.repo_id
-                )?;
-                writeln!(err, "   ref: {}", repo.ref_name)?;
-                writeln!(err, "   local: {}", short_revision(&repo.local_revision))?;
-                writeln!(err, "   latest: {}", short_revision(&remote_revision))?;
-                writeln!(err, "   update: mesh-llm models updates {}", repo.repo_id)?;
-                writeln!(err)?;
-            }
-        } else {
-            writeln!(
-                err,
-                "🧭 [{}/{}] {}",
-                index + 1,
-                total_selected,
-                repo.repo_id
-            )?;
-            let counts = update_cached_repo(&api, &repo)?;
-            refresh_totals.refreshed += counts.refreshed;
-            refresh_totals.missing_meta += counts.missing_meta;
-            writeln!(err)?;
-        }
-    }
     if check {
-        clear_progress_line()?;
-        if updates > 0 {
-            writeln!(err, "📬 Update summary")?;
-            writeln!(err, "   repos with updates: {updates}")?;
-            writeln!(err, "   update one: mesh-llm models updates <repo>")?;
-            writeln!(err, "   update all: mesh-llm models updates --all")?;
+        clear_stderr_line()?;
+        if report.updates_available > 0 {
+            writeln!(out, "📬 Update summary")?;
+            writeln!(out, "   repos with updates: {}", report.updates_available)?;
+            writeln!(out, "   update one: mesh-llm models updates <repo>")?;
+            writeln!(out, "   update all: mesh-llm models updates --all")?;
         }
     } else {
-        writeln!(err)?;
-        writeln!(err, "✅ Update complete")?;
-        writeln!(err, "   refreshed files: {}", refresh_totals.refreshed)?;
-        if refresh_totals.missing_meta > 0 {
-            writeln!(
-                err,
-                "   missing config.json: {}",
-                refresh_totals.missing_meta
-            )?;
+        writeln!(out)?;
+        writeln!(out, "✅ Update complete")?;
+        writeln!(out, "   refreshed files: {}", report.refreshed_files)?;
+        if report.missing_meta > 0 {
+            writeln!(out, "   missing config.json: {}", report.missing_meta)?;
         }
     }
     Ok(())
@@ -127,15 +125,16 @@ fn run_update_sync(repo: Option<&str>, all: bool, check: bool) -> Result<()> {
 
 pub fn warn_about_updates_for_paths(paths: &[PathBuf]) {
     let mut console = mesh_llm_events::console_err();
+    let cache_root = huggingface_hub_cache_dir();
     let mut cache_models = Vec::new();
     let mut seen = BTreeSet::new();
     for path in paths {
-        let Some(repo) = (match cached_repo_for_path(path) {
+        let Some(repo) = (match updates::cached_repo_for_path_in(path, &cache_root) {
             Ok(repo) => repo,
-            Err(err) => {
+            Err(error) => {
                 let _ = writeln!(
                     console,
-                    "Warning: could not inspect cached Hugging Face repo for {}: {err}",
+                    "Warning: could not inspect cached Hugging Face repo for {}: {error}",
                     path.display()
                 );
                 continue;
@@ -153,9 +152,9 @@ pub fn warn_about_updates_for_paths(paths: &[PathBuf]) {
 
     let result = run_hf_sync(move || {
         let mut console = mesh_llm_events::console_err();
-        let api = build_hf_api(false)?;
+        let api = skippy_model_hf::build_hf_sync_api()?;
         for repo in cache_models {
-            match check_repo_update(&api, &repo) {
+            match updates::check_repo_update(&api, &repo) {
                 Ok(Some(remote_revision)) => {
                     let _ = writeln!(console, "🆕 Update available for {}", repo.repo_id);
                     let _ = writeln!(
@@ -172,10 +171,10 @@ pub fn warn_about_updates_for_paths(paths: &[PathBuf]) {
                     );
                 }
                 Ok(None) => {}
-                Err(err) => {
+                Err(error) => {
                     let _ = writeln!(
                         console,
-                        "Warning: could not check for updates for {}: {err}",
+                        "Warning: could not check for updates for {}: {error}",
                         repo.repo_id
                     );
                 }
@@ -183,406 +182,10 @@ pub fn warn_about_updates_for_paths(paths: &[PathBuf]) {
         }
         Ok(())
     });
-    if let Err(err) = result {
+    if let Err(error) = result {
         let _ = writeln!(
             console,
-            "Warning: could not initialize Hugging Face update checks: {err}"
+            "Warning: could not initialize Hugging Face update checks: {error}"
         );
-    }
-}
-
-fn print_update_check_progress(current: usize, total: usize, repo_id: &str) -> Result<()> {
-    DeterminateProgressLine::new("🔄").draw_counts(
-        "Checking updates",
-        current,
-        total,
-        Some(&format!(" {repo_id}")),
-    )
-}
-
-fn clear_progress_line() -> Result<()> {
-    clear_stderr_line()
-}
-
-fn cached_repos() -> Result<Vec<CachedRepo>> {
-    let root = huggingface_hub_cache_dir();
-    let mut repos = Vec::new();
-    if !root.exists() {
-        return Ok(repos);
-    }
-
-    for entry in std::fs::read_dir(&root).with_context(|| format!("Read {}", root.display()))? {
-        let entry = entry?;
-        let path = entry.path();
-        let Some(name) = path.file_name().and_then(|value| value.to_str()) else {
-            continue;
-        };
-        if !name.starts_with("models--") {
-            continue;
-        }
-        let Some(repo_id) = cache_repo_id_from_dir(name) else {
-            continue;
-        };
-        let refs_dir = path.join("refs");
-        if !refs_dir.is_dir() {
-            continue;
-        }
-        if let Some((ref_name, local_revision)) = first_cache_ref(&refs_dir)? {
-            repos.push(CachedRepo {
-                repo_id,
-                ref_name,
-                local_revision,
-            });
-        }
-    }
-
-    repos.sort_by(|left, right| left.repo_id.cmp(&right.repo_id));
-    Ok(repos)
-}
-
-fn cached_repo_for_path(path: &Path) -> Result<Option<CachedRepo>> {
-    let root = huggingface_hub_cache_dir();
-    let rel = match path.strip_prefix(&root) {
-        Ok(rel) => rel,
-        Err(_) => return Ok(None),
-    };
-    let mut components = rel.components();
-    let Some(repo_component) = components.next() else {
-        return Ok(None);
-    };
-    let Some(repo_dir_name) = repo_component.as_os_str().to_str() else {
-        return Ok(None);
-    };
-    if !repo_dir_name.starts_with("models--") {
-        return Ok(None);
-    }
-    let Some(snapshot_component) = components.next() else {
-        return Ok(None);
-    };
-    if snapshot_component.as_os_str() != "snapshots" {
-        return Ok(None);
-    }
-    let Some(revision_component) = components.next() else {
-        return Ok(None);
-    };
-    let Some(local_revision) = revision_component.as_os_str().to_str() else {
-        return Ok(None);
-    };
-    let Some(repo_id) = cache_repo_id_from_dir(repo_dir_name) else {
-        return Ok(None);
-    };
-    let repo_dir = root.join(repo_dir_name);
-    let ref_name =
-        matching_ref_name(&repo_dir, local_revision)?.unwrap_or_else(|| "main".to_string());
-    Ok(Some(CachedRepo {
-        repo_id,
-        ref_name,
-        local_revision: local_revision.to_string(),
-    }))
-}
-
-pub(super) fn cache_repo_id_from_dir(name: &str) -> Option<String> {
-    Some(name.strip_prefix("models--")?.replace("--", "/"))
-}
-
-fn first_cache_ref(refs_dir: &Path) -> Result<Option<(String, String)>> {
-    let main = refs_dir.join("main");
-    if main.is_file() {
-        let value = std::fs::read_to_string(&main)
-            .with_context(|| format!("Read {}", main.display()))?
-            .trim()
-            .to_string();
-        if !value.is_empty() {
-            return Ok(Some(("main".to_string(), value)));
-        }
-    }
-
-    let mut refs = Vec::new();
-    collect_ref_files(refs_dir, refs_dir, &mut refs)?;
-    refs.sort_by(|left, right| left.0.cmp(&right.0));
-    Ok(refs.into_iter().next())
-}
-
-fn matching_ref_name(repo_dir: &Path, revision: &str) -> Result<Option<String>> {
-    let refs_dir = repo_dir.join("refs");
-    if !refs_dir.is_dir() {
-        return Ok(None);
-    }
-    let mut refs = Vec::new();
-    collect_ref_files(&refs_dir, &refs_dir, &mut refs)?;
-    refs.sort_by(|left, right| left.0.cmp(&right.0));
-    Ok(refs
-        .into_iter()
-        .find(|(_, value)| value == revision)
-        .map(|(name, _)| name))
-}
-
-fn collect_ref_files(root: &Path, dir: &Path, refs: &mut Vec<(String, String)>) -> Result<()> {
-    for entry in std::fs::read_dir(dir).with_context(|| format!("Read {}", dir.display()))? {
-        let entry = entry?;
-        let path = entry.path();
-        let file_type = entry.file_type()?;
-        if file_type.is_dir() {
-            collect_ref_files(root, &path, refs)?;
-            continue;
-        }
-        if !file_type.is_file() {
-            continue;
-        }
-        let ref_name = path
-            .strip_prefix(root)
-            .unwrap_or(&path)
-            .to_string_lossy()
-            .replace('\\', "/");
-        let revision = std::fs::read_to_string(&path)
-            .with_context(|| format!("Read {}", path.display()))?
-            .trim()
-            .to_string();
-        if !revision.is_empty() {
-            refs.push((ref_name, revision));
-        }
-    }
-    Ok(())
-}
-
-fn remote_repo_info(
-    api: &hf_hub::HFClientSync,
-    repo_id: &str,
-    ref_name: &str,
-) -> Result<ModelInfo> {
-    let (owner, name) = repo_id.split_once('/').unwrap_or(("", repo_id));
-    api.model(owner, name)
-        .info()
-        .revision(ref_name.to_string())
-        .send()
-        .with_context(|| format!("Fetch repo info for {repo_id}@{ref_name}"))
-}
-
-fn repo_info_sha(info: &ModelInfo) -> String {
-    info.sha.clone().unwrap_or_default()
-}
-
-fn check_repo_update(api: &hf_hub::HFClientSync, repo: &CachedRepo) -> Result<Option<String>> {
-    let remote = remote_repo_info(api, &repo.repo_id, &repo.ref_name)?;
-    let remote_revision = repo_info_sha(&remote);
-    if remote_revision == repo.local_revision {
-        Ok(None)
-    } else {
-        Ok(Some(remote_revision))
-    }
-}
-
-fn update_cached_repo(api: &hf_hub::HFClientSync, repo: &CachedRepo) -> Result<UpdateCounts> {
-    let mut console = mesh_llm_events::console_err();
-    let (owner, name) = repo
-        .repo_id
-        .split_once('/')
-        .unwrap_or(("", repo.repo_id.as_str()));
-    let api_repo = api.model(owner, name);
-    let files = cached_repo_files(repo)?;
-    if files.is_empty() {
-        writeln!(
-            console,
-            "⚠️ {} has no cached files to refresh",
-            repo.repo_id
-        )?;
-        return Ok(UpdateCounts::default());
-    }
-
-    writeln!(console, "   ref: {}", repo.ref_name)?;
-    writeln!(
-        console,
-        "   current: {}",
-        short_revision(&repo.local_revision)
-    )?;
-    let mut counts = UpdateCounts::default();
-    let mut downloaded = BTreeSet::new();
-    let total_files = files.len() + 1;
-    let mut position = 0usize;
-    for file in files
-        .into_iter()
-        .chain(std::iter::once("config.json".to_string()))
-    {
-        if !downloaded.insert(file.clone()) {
-            continue;
-        }
-        position += 1;
-        writeln!(console, "   ↻ [{}/{}] {}", position, total_files, file)?;
-        match api_repo
-            .download_file()
-            .filename(file.clone())
-            .revision(repo.ref_name.clone())
-            .send()
-        {
-            Ok(path) => {
-                writeln!(console, "   ✅ {}", path.display())?;
-                counts.refreshed += 1;
-            }
-            Err(err) if file == "config.json" => {
-                if is_not_found_error(&err.to_string()) {
-                    writeln!(
-                        console,
-                        "   ℹ️ no config.json published for {}",
-                        repo.repo_id
-                    )?;
-                } else {
-                    writeln!(console, "   ⚠️ config.json: {err}")?;
-                }
-                counts.missing_meta += 1;
-            }
-            Err(err) => {
-                return Err(err).with_context(|| format!("Download {}/{}", repo.repo_id, file));
-            }
-        }
-    }
-
-    Ok(counts)
-}
-
-fn is_not_found_error(message: &str) -> bool {
-    let message = message.to_ascii_lowercase();
-    message.contains("404") || message.contains("not found")
-}
-
-fn cached_repo_files(repo: &CachedRepo) -> Result<Vec<String>> {
-    let snapshots_dir = huggingface_hub_cache_dir()
-        .join(super::local::huggingface_repo_folder_name(
-            &repo.repo_id,
-            RepoTypeModel,
-        ))
-        .join("snapshots");
-    if !snapshots_dir.is_dir() {
-        return Ok(Vec::new());
-    }
-
-    let mut snapshot_entries = Vec::new();
-    for entry in std::fs::read_dir(&snapshots_dir)
-        .with_context(|| format!("Read {}", snapshots_dir.display()))?
-    {
-        let entry = entry?;
-        if !entry.file_type()?.is_dir() {
-            continue;
-        }
-        snapshot_entries.push((
-            entry.file_name().to_string_lossy().to_string(),
-            entry.path(),
-        ));
-    }
-
-    let mut snapshot_roots = Vec::new();
-    let exact = snapshots_dir.join(&repo.local_revision);
-    if exact.is_dir() {
-        snapshot_roots.push(exact);
-    } else {
-        let mut prefix_matches: Vec<PathBuf> = snapshot_entries
-            .iter()
-            .filter(|(name, _)| {
-                name.starts_with(&repo.local_revision) || repo.local_revision.starts_with(name)
-            })
-            .map(|(_, path)| path.clone())
-            .collect();
-        prefix_matches.sort();
-        snapshot_roots.extend(prefix_matches);
-    }
-
-    if snapshot_roots.is_empty() {
-        let mut all: Vec<PathBuf> = snapshot_entries.into_iter().map(|(_, path)| path).collect();
-        all.sort();
-        snapshot_roots = all;
-    }
-
-    let mut files = BTreeSet::new();
-    for root in snapshot_roots {
-        let mut collected = Vec::new();
-        collect_snapshot_files(&root, &root, &mut collected)?;
-        files.extend(collected);
-    }
-    Ok(files.into_iter().collect())
-}
-
-fn collect_snapshot_files(root: &Path, dir: &Path, files: &mut Vec<String>) -> Result<()> {
-    for entry in std::fs::read_dir(dir).with_context(|| format!("Read {}", dir.display()))? {
-        let entry = entry?;
-        let path = entry.path();
-        let file_type = entry.file_type()?;
-        if file_type.is_dir() {
-            collect_snapshot_files(root, &path, files)?;
-            continue;
-        }
-        if !file_type.is_file() && !file_type.is_symlink() {
-            continue;
-        }
-        let rel = path
-            .strip_prefix(root)
-            .unwrap_or(&path)
-            .to_string_lossy()
-            .replace('\\', "/");
-        files.push(rel);
-    }
-    Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use serial_test::serial;
-    use std::ffi::OsString;
-    use std::time::{SystemTime, UNIX_EPOCH};
-
-    fn restore_env(key: &str, value: Option<OsString>) {
-        if let Some(value) = value {
-            // SAFETY: the enclosing test contract is `#[serial]`, so this process
-            // environment mutation cannot race another test.
-            unsafe { std::env::set_var(key, value) };
-        } else {
-            // SAFETY: the enclosing test contract is `#[serial]`, so this process
-            // environment mutation cannot race another test.
-            unsafe { std::env::remove_var(key) };
-        }
-    }
-
-    #[test]
-    #[serial]
-    fn cached_repo_files_falls_back_to_matching_snapshot_prefix() {
-        let prev_hub_cache = std::env::var_os("HF_HUB_CACHE");
-        let prev_hf_home = std::env::var_os("HF_HOME");
-        let prev_xdg = std::env::var_os("XDG_CACHE_HOME");
-
-        let base = std::env::temp_dir().join(format!(
-            "mesh-llm-maintenance-{}",
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_nanos()
-        ));
-        let snapshot = base
-            .join("models--unsloth--Qwen3.6-35B-A3B-GGUF")
-            .join("snapshots")
-            .join("9280dd353ab5cafebabedeadbeef123456789abc");
-        std::fs::create_dir_all(snapshot.join("BF16")).unwrap();
-        std::fs::write(snapshot.join("BF16/model.gguf"), b"gguf").unwrap();
-
-        // SAFETY: the enclosing test contract is `#[serial]`, so this process
-        // environment mutation cannot race another test.
-        unsafe { std::env::set_var("HF_HUB_CACHE", &base) };
-        // SAFETY: the enclosing test contract is `#[serial]`, so this process
-        // environment mutation cannot race another test.
-        unsafe { std::env::remove_var("HF_HOME") };
-        // SAFETY: the enclosing test contract is `#[serial]`, so this process
-        // environment mutation cannot race another test.
-        unsafe { std::env::remove_var("XDG_CACHE_HOME") };
-
-        let repo = CachedRepo {
-            repo_id: "unsloth/Qwen3.6-35B-A3B-GGUF".to_string(),
-            ref_name: "main".to_string(),
-            local_revision: "9280dd353ab5".to_string(),
-        };
-        let files = cached_repo_files(&repo).expect("should collect snapshot files");
-        assert_eq!(files, vec!["BF16/model.gguf".to_string()]);
-
-        let _ = std::fs::remove_dir_all(&base);
-        restore_env("HF_HUB_CACHE", prev_hub_cache);
-        restore_env("HF_HOME", prev_hf_home);
-        restore_env("XDG_CACHE_HOME", prev_xdg);
     }
 }

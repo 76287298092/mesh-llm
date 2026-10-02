@@ -153,6 +153,10 @@ pub fn status(message: &str) -> io::Result<()> {
 }
 
 pub fn progress(label: &str, current: u64, total: u64) -> io::Result<()> {
+    progress_with_unit(label, current, total, "bytes")
+}
+
+pub fn progress_with_unit(label: &str, current: u64, total: u64, unit: &str) -> io::Result<()> {
     if total == 0 {
         return Ok(());
     }
@@ -160,7 +164,7 @@ pub fn progress(label: &str, current: u64, total: u64) -> io::Result<()> {
         return event(
             "progress",
             &serde_json::json!({
-                "phase": label, "current": current, "total": total, "unit": "bytes"
+                "phase": label, "current": current, "total": total, "unit": unit
             }),
         );
     }
@@ -171,21 +175,24 @@ pub fn progress(label: &str, current: u64, total: u64) -> io::Result<()> {
     let completed = ((current.min(total) as f64 / total as f64) * width as f64) as usize;
     let percent = current.min(total).saturating_mul(100) / total;
     let mut output = io::stderr().lock();
+    let amount = if unit == "bytes" {
+        format!("{:.1}/{:.1} MB", current as f64 / 1e6, total as f64 / 1e6)
+    } else {
+        format!("{current}/{total} {unit}")
+    };
     if io::stderr().is_terminal() {
         write!(
             output,
-            "\r📥 {label} [{}{}] {percent:>3}% ({:.1}/{:.1} MB)",
+            "\r📥 {label} [{}{}] {percent:>3}% ({amount})",
             "█".repeat(completed),
             "░".repeat(width - completed),
-            current as f64 / 1e6,
-            total as f64 / 1e6
         )?;
         if current >= total {
             writeln!(output)?;
         }
         output.flush()
     } else {
-        writeln!(output, "{label}: {percent}% ({current}/{total} bytes)")
+        writeln!(output, "{label}: {percent}% ({amount})")
     }
 }
 

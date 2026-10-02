@@ -8,21 +8,26 @@ use skippy_serving::SpeculativeDecodeConfig;
 
 use mesh_llm_config::{MeshConfig, ReasoningBudget, ReasoningEnabled, RequestDefaultsConfig};
 
-pub(super) const BUILTIN_CTX_SIZE: u32 = 4096;
-pub(super) const BUILTIN_BATCH: u32 = 512;
+pub(super) const BUILTIN_CTX_SIZE: u32 = skippy_config::local_serving::CTX_SIZE;
+pub(super) const BUILTIN_BATCH: u32 = skippy_config::local_serving::BATCH;
 /// Matches llama.cpp's own default (`LLAMA_SERVER_DEFAULT_N_UBATCH = 512`) and clears
 /// the CUDA SSM SSD kernel gate (`n_tok > SSM_SSD_MIN_TOKENS`, 128, strict), which the
 /// previous 128 default missed by exactly one token — forcing every recurrent (mamba)
 /// prefill onto the sequential scan fallback. Measured on granite-4.0-h-1b: TTFT p50
 /// 0.670 → 0.415 s (C1) and 6.38 → 3.97 s (C8); decode 22.2 → 39.4 tok/s at C8.
 /// See WHITE_UBATCH_512_FALSIFICATION_2026_09_08 in the 2026-09-08 competitive bench.
-pub(super) const BUILTIN_UBATCH: u32 = 512;
-pub(super) const BUILTIN_PARALLEL: usize = 32;
-pub(super) const BUILTIN_PREFILL_CHUNK_SIZE: usize = 64;
-pub(super) const BUILTIN_PREFILL_ADAPTIVE_START: usize = 64;
-pub(super) const BUILTIN_PREFILL_ADAPTIVE_STEP: usize = 64;
-pub(super) const BUILTIN_PREFILL_ADAPTIVE_MAX: usize = 512;
-pub(super) const BUILTIN_PREFILL_ADAPTIVE_TARGET_MS: f64 = 100.0;
+pub(super) const BUILTIN_UBATCH: u32 = skippy_config::local_serving::UBATCH;
+pub(super) const BUILTIN_PARALLEL: usize = skippy_config::local_serving::PARALLEL;
+pub(super) const BUILTIN_PREFILL_CHUNK_SIZE: usize =
+    skippy_config::local_serving::PREFILL_CHUNK_SIZE;
+pub(super) const BUILTIN_PREFILL_ADAPTIVE_START: usize =
+    skippy_config::local_serving::PREFILL_ADAPTIVE_START;
+pub(super) const BUILTIN_PREFILL_ADAPTIVE_STEP: usize =
+    skippy_config::local_serving::PREFILL_ADAPTIVE_STEP;
+pub(super) const BUILTIN_PREFILL_ADAPTIVE_MAX: usize =
+    skippy_config::local_serving::PREFILL_ADAPTIVE_MAX;
+pub(super) const BUILTIN_PREFILL_ADAPTIVE_TARGET_MS: f64 =
+    skippy_config::local_serving::PREFILL_ADAPTIVE_TARGET_MS;
 pub(super) const BUILTIN_SAFETY_MARGIN_GB: f64 = skippy_config::capacity::BUILTIN_SAFETY_MARGIN_GB;
 
 #[derive(Clone, Debug)]

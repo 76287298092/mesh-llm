@@ -377,6 +377,12 @@ pub fn find_huggingface_layer_package(model_query: &str) -> Option<String> {
     }
 }
 
+/// Resolve the catalog package preferred by `models download` in either CLI.
+pub fn resolve_layer_package_download(model_query: &str) -> Option<String> {
+    let _ = ensure_catalog();
+    find_layer_package(model_query).or_else(|| find_huggingface_layer_package(model_query))
+}
+
 fn parse_exact_huggingface_repo(input: &str) -> Option<(String, Option<String>)> {
     let (repo, revision, selector) = skippy_model_resolver::parse_huggingface_repo_ref(input)
         .or_else(|| skippy_model_resolver::parse_huggingface_repo_url(input))?;

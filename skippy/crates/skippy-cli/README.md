@@ -30,6 +30,21 @@ supported, so use a GGUF variant such as
 reuses installed exact refs from the shared Hugging Face cache and reports the
 model ID and API address after `GET /v1/models` succeeds.
 
+For a SafeTensors family supported by the native checkpoint loader, `--quant`
+uses Mesh's on-load quantization recipes (`preserve` is the default). Low-bit
+recipes that need an importance matrix also accept
+`--checkpoint-imatrix /path/to/model.imatrix`. Quantization does not add support
+for an otherwise unsupported checkpoint architecture; use a GGUF variant for
+Qwen3.5 today.
+
+```sh
+skippy serve --model /models/supported-checkpoint --quant Q4_K_M
+```
+
+For multimodal GGUFs, Skippy looks for a matching installed `mmproj` sidecar.
+Catalog downloads include the catalog's projector asset; select an explicit
+local projector with `--mmproj /path/to/mmproj.gguf`.
+
 To start the server and immediately chat with the model in the same terminal:
 
 ```sh
@@ -61,15 +76,23 @@ curl http://127.0.0.1:9337/v1/messages \
 ```sh
 skippy models recommended
 skippy models search qwen --limit 10
+skippy models search qwen --mlx --sort downloads
 skippy models show unsloth/Qwen3-8B-GGUF:Q4_K_M
 skippy models download unsloth/Qwen3-8B-GGUF:Q4_K_M
 skippy models installed
+skippy models updates --check
+skippy models updates unsloth/Qwen3-8B-GGUF
+skippy models cleanup --unused-since 30d
 ```
 
 `recommended` reads the same remote `meshllm/catalog` as Mesh. `search` queries Hugging
-Face for GGUF repositories. `show` resolves an exact artifact and displays its
-revision and file set. `download` verifies the selected files and prints the
-primary local path; serving the same reference reuses the cache. The reported
+Face for GGUF repositories by default; `--mlx` selects MLX repositories, and
+`--catalog` limits results to the curated catalog. `show` resolves an exact artifact and displays its
+revision and file set. `download` uses a catalog layer package when available;
+`--direct` downloads the exact Hub artifact instead, and `--draft` also fetches
+the recommended speculative draft. Direct downloads verify selected files and
+include a catalog projector when present. Serving the same reference reuses the
+Hub cache. The reported
 SHA-256 describes the bytes obtained but is not an external authenticity claim.
 
 Skippy and Mesh use the same Hugging Face Hub cache, honoring `HF_HUB_CACHE`,
@@ -77,6 +100,30 @@ Skippy and Mesh use the same Hugging Face Hub cache, honoring `HF_HUB_CACHE`,
 endpoint and token configuration follows Hugging Face settings. `skippy models
 delete org/repo:Q4_K_M` previews the selected installed GGUF files; add
 `--yes` to remove them. It never deletes a remote repository.
+
+`installed` includes both GGUF files and cached SafeTensors checkpoints.
+`cleanup` is a dry run by default and only targets managed model files recorded
+by the CLI; use `--yes` after reviewing its preview. `delete` also previews
+derived stage files associated with the selected model before removal.
+`updates --check` compares cached repository refs to upstream revisions without
+downloading; `updates <repo>` or `updates --all` refreshes cached files and
+`config.json` using the same policy as Mesh.
+
+Skippy owns the layer-package workflow used by both local and distributed
+serving. Package creation is a dry run unless `--confirm` is supplied:
+
+```sh
+skippy models package unsloth/Qwen3-8B-GGUF:Q4_K_M
+skippy models package unsloth/Qwen3-8B-GGUF:Q4_K_M --confirm --follow
+skippy models certify meshllm/Qwen3-8B-Q4_K_M-layers --package-only
+skippy models prune
+skippy models prune --yes
+```
+
+`models package` also accepts Mesh's job-management switches (`--status`,
+`--logs`, `--cancel`, `--list`, and `--update-script`). Certification can use
+`--api-base` for runtime smoke checks and `--report-out` for an auditable JSON
+report. Stage-cache pruning is dry-run by default and preserves pinned stages.
 
 ## Run a split on one machine
 
@@ -145,7 +192,7 @@ unless `--active-only` is passed.
 
 ## Output for terminals and automation
 
-Interactive terminals show concise status, download progress, and a ready
+Interactive terminals show concise status, download and native model-load progress, and a ready
 summary. Use `--output human` to request that presentation explicitly.
 Commands that return one result use JSON when stdout is redirected; use
 `--output json` to request it explicitly. A long-running `serve` command uses

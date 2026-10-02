@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 
+pub use skippy_model_hf::store::installed::{InstalledModelArtifact, scan_installed_artifacts_in};
 pub use skippy_model_hf::store::local::{
     HuggingFaceModelIdentity, direct_hf_cache_root_gguf_paths, find_model_path,
     huggingface_hub_cache, huggingface_hub_cache_dir, huggingface_identity_for_path,

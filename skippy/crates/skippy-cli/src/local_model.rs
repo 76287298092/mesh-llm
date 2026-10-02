@@ -27,9 +27,30 @@ pub(crate) fn prepare_openai_stage(args: &ServeOpenAiArgs) -> Result<StageConfig
                     .to_string()
             });
             let mut options = SingleStageOptions::new(&model_id, &path);
-            options.ctx_size = args.ctx_size.unwrap_or(4096);
+            options.ctx_size = args
+                .ctx_size
+                .unwrap_or(skippy_config::local_serving::CTX_SIZE);
             options.n_gpu_layers = args.n_gpu_layers.unwrap_or(-1);
-            options.generation_concurrency = args.generation_concurrency.unwrap_or(1);
+            options.generation_concurrency = args
+                .generation_concurrency
+                .unwrap_or(skippy_config::local_serving::PARALLEL);
+            options.checkpoint_quantization = args.checkpoint_quantization.clone();
+            options.native_mtp_enabled = skippy_model_artifact::gguf::supports_native_mtp(&path);
+            options.checkpoint_imatrix = args
+                .checkpoint_imatrix
+                .as_ref()
+                .map(|path| path.to_string_lossy().into_owned());
+            options.projector_path = args
+                .mmproj
+                .clone()
+                .or_else(|| skippy_model_hf::store::local::find_mmproj_path(&model_id, &path));
+            if let Some(projector) = options.projector_path.as_ref() {
+                anyhow::ensure!(
+                    projector.is_file(),
+                    "multimodal projector path is not a file: {}",
+                    projector.display()
+                );
+            }
             options.validate()?;
             let cache = args.hash_cache.clone().map(SidecarDigestCache::open_in);
             let identity = skippy_api::source::synthetic_direct_gguf_package(
@@ -167,5 +188,47 @@ mod tests {
         assert!(config.resident_tensor_names.is_empty());
         assert!(config.execution_contract.is_empty());
         assert!(config.run_id.starts_with("skippy-"));
+    }
+
+    #[test]
+    fn local_model_passes_checkpoint_quantization_and_projector_to_shared_stage() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("tiny.gguf");
+        let mut bytes = Vec::from(*b"GGUF");
+        bytes.extend_from_slice(&3u32.to_le_bytes());
+        bytes.extend_from_slice(&0u64.to_le_bytes());
+        bytes.extend_from_slice(&4u64.to_le_bytes());
+        let string = |bytes: &mut Vec<u8>, value: &str| {
+            bytes.extend_from_slice(&(value.len() as u64).to_le_bytes());
+            bytes.extend_from_slice(value.as_bytes());
+        };
+        string(&mut bytes, "general.architecture");
+        bytes.extend_from_slice(&8u32.to_le_bytes());
+        string(&mut bytes, "llama");
+        for (key, value) in [
+            ("llama.block_count", 2u32),
+            ("llama.embedding_length", 128),
+            ("llama.context_length", 4096),
+        ] {
+            string(&mut bytes, key);
+            bytes.extend_from_slice(&4u32.to_le_bytes());
+            bytes.extend_from_slice(&value.to_le_bytes());
+        }
+        std::fs::write(&path, bytes).unwrap();
+        let projector = dir.path().join("mmproj-tiny.gguf");
+        std::fs::write(&projector, b"projector").unwrap();
+        let args = args(&[
+            "skippy",
+            "serve",
+            "--model-path",
+            path.to_str().unwrap(),
+            "--quant",
+            "Q4_K",
+            "--mmproj",
+            projector.to_str().unwrap(),
+        ]);
+        let config = prepare_openai_stage(&args).unwrap();
+        assert_eq!(config.checkpoint_quantization.as_deref(), Some("Q4_K_M"));
+        assert_eq!(config.projector_path.as_deref(), projector.to_str());
     }
 }

@@ -1,10 +1,9 @@
 use anyhow::Result;
 use mesh_llm_host_runtime::command_support::models::{
-    find_model_path, find_remote_catalog_model_exact, huggingface_hub_cache_dir,
-    huggingface_identity_for_path, installed_model_capabilities, installed_model_display_name,
-    installed_model_huggingface_ref, layered_package_layer_count_for_path,
-    layered_package_total_bytes_for_path, load_model_usage_record_for_path,
-    remote_catalog_model_ref, scan_installed_models_in,
+    find_remote_catalog_model_exact, huggingface_hub_cache_dir, huggingface_identity_for_path,
+    installed_model_capabilities, installed_model_display_name, installed_model_huggingface_ref,
+    layered_package_layer_count_for_path, layered_package_total_bytes_for_path,
+    load_model_usage_record_for_path, remote_catalog_model_ref, scan_installed_artifacts_in,
 };
 use std::path::Path;
 
@@ -15,15 +14,18 @@ fn installed_layer_package_count(name: &str, detected_count: Option<usize>) -> O
 }
 
 fn build_installed_rows(cache_root: &Path) -> Vec<InstalledRow> {
-    scan_installed_models_in(cache_root)
+    scan_installed_artifacts_in(cache_root)
         .into_iter()
-        .map(|name| {
-            let path = find_model_path(&name);
+        .map(|artifact| {
+            let name = artifact.model_ref;
+            let path = artifact.path;
+            let is_safetensors = path.extension().and_then(|extension| extension.to_str())
+                == Some("safetensors");
             let display_name = installed_model_display_name(&name);
             let catalog_model = find_remote_catalog_model_exact(&name);
             let layer_count =
                 installed_layer_package_count(&name, layered_package_layer_count_for_path(&path));
-            let model_ref = if layer_count.is_some() {
+            let model_ref = if layer_count.is_some() || is_safetensors {
                 name.clone()
             } else if let Some(model) = catalog_model.as_ref() {
                 remote_catalog_model_ref(model)
@@ -54,7 +56,11 @@ fn build_installed_rows(cache_root: &Path) -> Vec<InstalledRow> {
             } else {
                 std::fs::metadata(&path).map(|meta| meta.len()).ok()
             };
-            let capabilities = installed_model_capabilities(&name);
+            let capabilities = if is_safetensors {
+                mesh_llm_host_runtime::command_support::models::capabilities::infer_local_model_capabilities(&name, &path)
+            } else {
+                installed_model_capabilities(&name)
+            };
             let usage = load_model_usage_record_for_path(&path);
             InstalledRow {
                 name: display_name,

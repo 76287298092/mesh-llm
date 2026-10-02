@@ -5,11 +5,13 @@ use std::{
     io::IsTerminal,
     net::SocketAddr,
     path::Path,
+    sync::Arc,
     time::{Duration, Instant},
 };
 
 use anyhow::{Context, Result, bail};
 use skippy_commands::console::{self, OutputMode};
+use skippy_runtime::{ModelOpenEventQueue, RuntimeEventKind, RuntimeEventProgressUnit};
 use tokio::{sync::oneshot, task::JoinHandle};
 
 use crate::{
@@ -23,16 +25,58 @@ use crate::{
 pub async fn run(mut args: ServeCommandArgs) -> Result<()> {
     validate(&args)?;
     if let Some(model) = args.model.take() {
+        console::status(&format!("🔎 Checking local model cache for {model}"))?;
         let existing = installed_model_path(&model);
-        let path = if let Some(local_path) = existing {
-            local_path
+        let catalog_model = (!Path::new(&model).exists())
+            .then(|| {
+                let exact = if existing.is_some() && model.contains('/') {
+                    skippy_model_hf::remote_catalog::find_loaded_model_exact(&model)
+                } else {
+                    skippy_model_hf::remote_catalog::find_model_exact(&model)
+                };
+                exact.or_else(|| {
+                    (!model.contains('/'))
+                        .then(|| skippy_model_hf::remote_catalog::resolve_model_download(&model))
+                        .flatten()
+                        .and_then(|resolved| {
+                            skippy_model_hf::remote_catalog::matching_model_for_huggingface(
+                                &resolved.repo,
+                                resolved.revision.as_deref(),
+                                &resolved.file,
+                            )
+                        })
+                })
+            })
+            .flatten();
+        let (path, downloaded_projector) = if let Some(local_path) = existing {
+            console::status("📂 Using cached model")?;
+            (local_path, None)
         } else {
             let cache = skippy_commands::models::model_cache_dir();
-            skippy_commands::models::download_model(&cache, &model, None, None)
-                .await?
-                .load_path
+            let downloaded =
+                skippy_commands::models::download_model(&cache, &model, None, None).await?;
+            (downloaded.load_path, downloaded.projector_path)
         };
         args.public.model_path = Some(path);
+        if args.public.mmproj.is_none() {
+            args.public.mmproj = downloaded_projector;
+        }
+        if args.public.mmproj.is_none()
+            && let Some(asset) = catalog_model.and_then(|entry| entry.mmproj)
+        {
+            let revision = asset
+                .revision
+                .as_deref()
+                .map(|revision| format!("@{revision}"))
+                .unwrap_or_default();
+            let projector_ref = format!("{}{}/{}", asset.repo, revision, asset.source_file);
+            let cache = skippy_commands::models::model_cache_dir();
+            args.public.mmproj = Some(
+                skippy_commands::models::download_model(&cache, &projector_ref, None, None)
+                    .await?
+                    .primary_path,
+            );
+        }
         if !Path::new(&model).exists() {
             args.public.model_id.get_or_insert(model);
         }
@@ -85,7 +129,10 @@ pub(crate) fn validate(args: &ServeCommandArgs) -> Result<()> {
 async fn serve_public(args: ServeCommandArgs) -> Result<()> {
     let bind_addr = args.public.bind_addr;
     let startup_timeout = Duration::from_secs(args.public.startup_timeout_secs.max(1));
-    let options = conversion::local_openai_options(args.public)?;
+    console::status("🧠 Preparing model")?;
+    let mut options = conversion::local_openai_options(args.public)?;
+    let model_open_events = ModelOpenEventQueue::new(skippy_runtime::next_operation_id());
+    options.model_open_events = Some(Arc::clone(&model_open_events));
     let model_id = options
         .model_id
         .clone()
@@ -102,6 +149,7 @@ async fn serve_public(args: ServeCommandArgs) -> Result<()> {
         args.prompt,
         stop,
         startup_timeout,
+        Some(model_open_events),
     )
     .await
 }
@@ -174,6 +222,7 @@ async fn serve_binary_stage(mut args: ServeCommandArgs) -> Result<()> {
         args.prompt,
         stop,
         startup_timeout,
+        None,
     )
     .await
 }
@@ -202,25 +251,26 @@ fn apply_public_frontend_tuning(public: &ServeOpenAiArgs, stage: &mut ServeBinar
     {
         stage.openai_generation_admission_timeout_secs = public.generation_admission_timeout_secs;
     }
-    if public.prefill_chunk_size != 256 {
+    if public.prefill_chunk_size != skippy_config::local_serving::PREFILL_CHUNK_SIZE {
         stage.openai_prefill_chunk_size = public.prefill_chunk_size;
     }
-    if public.prefill_chunk_policy != "adaptive-ramp" {
+    if public.prefill_chunk_policy != skippy_config::local_serving::PREFILL_CHUNK_POLICY {
         stage.openai_prefill_chunk_policy = public.prefill_chunk_policy.clone();
     }
     if let Some(value) = &public.prefill_chunk_schedule {
         stage.openai_prefill_chunk_schedule = Some(value.clone());
     }
-    if public.prefill_adaptive_start != 128 {
+    if public.prefill_adaptive_start != skippy_config::local_serving::PREFILL_ADAPTIVE_START {
         stage.openai_prefill_adaptive_start = public.prefill_adaptive_start;
     }
-    if public.prefill_adaptive_step != 128 {
+    if public.prefill_adaptive_step != skippy_config::local_serving::PREFILL_ADAPTIVE_STEP {
         stage.openai_prefill_adaptive_step = public.prefill_adaptive_step;
     }
-    if public.prefill_adaptive_max != 384 {
+    if public.prefill_adaptive_max != skippy_config::local_serving::PREFILL_ADAPTIVE_MAX {
         stage.openai_prefill_adaptive_max = public.prefill_adaptive_max;
     }
-    if public.prefill_adaptive_target_ms != 100.0 {
+    if public.prefill_adaptive_target_ms != skippy_config::local_serving::PREFILL_ADAPTIVE_TARGET_MS
+    {
         stage.openai_prefill_adaptive_target_ms = public.prefill_adaptive_target_ms;
     }
     if let Some(value) = &public.speculative_config {
@@ -279,6 +329,7 @@ async fn serve_with_readiness(
     prompt: bool,
     stop: oneshot::Sender<()>,
     startup_timeout: Duration,
+    model_open_events: Option<Arc<ModelOpenEventQueue>>,
 ) -> Result<()> {
     if bind_addr.port() == 0 {
         bail!("--bind-addr must use a fixed port so readiness can be reported");
@@ -286,7 +337,14 @@ async fn serve_with_readiness(
     let api_base = format!("http://{}/v1", readiness_addr(bind_addr));
     let mut server = tokio::spawn(server);
     console::status("🧠 Loading model and starting the API")?;
-    wait_for_ready(&api_base, &model_id, &mut server, startup_timeout).await?;
+    wait_for_ready(
+        &api_base,
+        &model_id,
+        &mut server,
+        startup_timeout,
+        model_open_events.as_deref(),
+    )
+    .await?;
     console::event(
         "ready",
         &serde_json::json!({"model_id":model_id,"api_base":api_base}),
@@ -343,12 +401,16 @@ async fn wait_for_ready(
     model_id: &str,
     server: &mut JoinHandle<Result<()>>,
     startup_timeout: Duration,
+    model_open_events: Option<&ModelOpenEventQueue>,
 ) -> Result<()> {
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(1))
         .build()?;
     let deadline = Instant::now() + startup_timeout;
     loop {
+        if let Some(queue) = model_open_events {
+            report_model_open_events(queue)?;
+        }
         tokio::select! {
             outcome = &mut *server => {
                 outcome.context("join serving task")??;
@@ -358,7 +420,12 @@ async fn wait_for_ready(
                 if let Ok(response) = response && response.status().is_success() {
                     let body: serde_json::Value = response.json().await.context("read ready model list")?;
                     let listed = body["data"].as_array().is_some_and(|items| items.iter().any(|item| item["id"] == model_id));
-                    if listed && !server.is_finished() { return Ok(()); }
+                    if listed && !server.is_finished() {
+                        if let Some(queue) = model_open_events {
+                            report_model_open_events(queue)?;
+                        }
+                        return Ok(());
+                    }
                 }
             }
         }
@@ -370,6 +437,47 @@ async fn wait_for_ready(
         }
         tokio::time::sleep(Duration::from_millis(250)).await;
     }
+}
+
+fn report_model_open_events(queue: &ModelOpenEventQueue) -> Result<()> {
+    let mut records = Vec::new();
+    queue.drain(&mut records, usize::MAX);
+    for record in records {
+        let event = record.to_event();
+        match event.kind {
+            RuntimeEventKind::ModelOpenProgress if event.progress_total > 0 => {
+                let unit = match event.progress_unit {
+                    RuntimeEventProgressUnit::Bytes => "bytes",
+                    RuntimeEventProgressUnit::Items => "items",
+                    RuntimeEventProgressUnit::Tensors => "tensors",
+                    RuntimeEventProgressUnit::Steps => "steps",
+                    RuntimeEventProgressUnit::None | RuntimeEventProgressUnit::Unknown(_) => {
+                        "units"
+                    }
+                };
+                console::progress_with_unit(
+                    "Model load",
+                    event.progress_current,
+                    event.progress_total,
+                    unit,
+                )?;
+            }
+            RuntimeEventKind::BackendDeviceSelected => {
+                console::event(
+                    "backend_device_selected",
+                    &serde_json::json!({"detail": String::from_utf8_lossy(&event.detail_bytes)}),
+                )?;
+            }
+            RuntimeEventKind::ModelOpenFailedHandled => {
+                console::event(
+                    "model_open_failed_handled",
+                    &serde_json::json!({"detail": String::from_utf8_lossy(&event.detail_bytes)}),
+                )?;
+            }
+            _ => {}
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]

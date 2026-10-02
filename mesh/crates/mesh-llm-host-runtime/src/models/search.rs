@@ -9,13 +9,11 @@ use super::{build_hf_tokio_api, capabilities, catalog, remote_catalog};
 use crate::system::hardware;
 use anyhow::{Context, Result};
 use hf_hub::repository::ModelInfo;
-use regex_lite::Regex;
 use serde_json::{Value, json};
+pub use skippy_model_hf::search::{ArtifactFilter as SearchArtifactFilter, Sort as SearchSort};
 use std::collections::HashSet;
 use std::io::Write;
-use std::sync::LazyLock;
 use tokio::task::JoinSet;
-use tokio_stream::StreamExt;
 
 #[derive(Clone, Debug)]
 pub struct SearchHit {
@@ -34,23 +32,6 @@ pub struct SearchHit {
 pub enum SearchProgress {
     SearchingHub,
     InspectingRepos { completed: usize, total: usize },
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum SearchArtifactFilter {
-    Gguf,
-    Mlx,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum SearchSort {
-    Trending,
-    Downloads,
-    Likes,
-    Created,
-    Updated,
-    ParametersDesc,
-    ParametersAsc,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -183,47 +164,9 @@ where
     let mut console = mesh_llm_events::console_err();
     const SEARCH_CONCURRENCY: usize = 10;
 
-    let repo_limit = match sort {
-        SearchSort::ParametersDesc | SearchSort::ParametersAsc => {
-            (limit.saturating_mul(5)).clamp(1, 100)
-        }
-        _ => limit.clamp(1, 100),
-    };
     progress(SearchProgress::SearchingHub);
     let api = build_hf_tokio_api(false)?;
-    let mut repos = Vec::new();
-    let artifact_filter = match filter {
-        SearchArtifactFilter::Gguf => "gguf",
-        SearchArtifactFilter::Mlx => "mlx",
-    };
-    if let Some(api_sort) = api_sort_key(sort) {
-        let stream = api
-            .list_models()
-            .search(query.to_string())
-            .filter(artifact_filter.to_string())
-            .sort(api_sort.to_string())
-            .full(true)
-            .limit(repo_limit)
-            .send()
-            .context("Search Hugging Face")?;
-        tokio::pin!(stream);
-        while let Some(repo) = stream.next().await {
-            repos.push(repo.context("Search Hugging Face repo summary")?);
-        }
-    } else {
-        let stream = api
-            .list_models()
-            .search(query.to_string())
-            .filter(artifact_filter.to_string())
-            .full(true)
-            .limit(repo_limit)
-            .send()
-            .context("Search Hugging Face")?;
-        tokio::pin!(stream);
-        while let Some(repo) = stream.next().await {
-            repos.push(repo.context("Search Hugging Face repo summary")?);
-        }
-    }
+    let repos = skippy_model_hf::search::search_repositories(query, limit, filter, sort).await?;
 
     let total = repos.len();
     progress(SearchProgress::InspectingRepos {
@@ -342,17 +285,6 @@ async fn build_search_hit(
     }))
 }
 
-fn api_sort_key(sort: SearchSort) -> Option<&'static str> {
-    match sort {
-        SearchSort::Trending => Some("trendingScore"),
-        SearchSort::Downloads => Some("downloads"),
-        SearchSort::Likes => Some("likes"),
-        SearchSort::Created => Some("createdAt"),
-        SearchSort::Updated => Some("lastModified"),
-        SearchSort::ParametersDesc | SearchSort::ParametersAsc => None,
-    }
-}
-
 fn search_filter_name(filter: SearchArtifactFilter) -> &'static str {
     match filter {
         SearchArtifactFilter::Gguf => "gguf",
@@ -459,49 +391,11 @@ fn apply_local_search_sort(hits: &mut [SearchHit], sort: SearchSort) {
 }
 
 fn approx_parameter_count_b(hit: &SearchHit) -> f64 {
-    approximate_parameter_count_b_from_text(&format!("{} {}", hit.repo_id, hit.exact_ref))
-        .unwrap_or(-1.0)
-}
-
-fn approximate_parameter_count_b_from_text(text: &str) -> Option<f64> {
-    static MULTIPLIED_RE: LazyLock<Regex> =
-        LazyLock::new(|| Regex::new(r"(?i)(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)([bm])").unwrap());
-    static SIMPLE_RE: LazyLock<Regex> =
-        LazyLock::new(|| Regex::new(r"(?i)(\d+(?:\.\d+)?)([bm])").unwrap());
-
-    let mut best: Option<f64> = None;
-    for captures in MULTIPLIED_RE.captures_iter(text) {
-        let Some(left) = captures.get(1).and_then(|m| m.as_str().parse::<f64>().ok()) else {
-            continue;
-        };
-        let Some(right) = captures.get(2).and_then(|m| m.as_str().parse::<f64>().ok()) else {
-            continue;
-        };
-        let Some(unit) = captures.get(3).map(|m| m.as_str().to_ascii_lowercase()) else {
-            continue;
-        };
-        let value = match unit.as_str() {
-            "b" => left * right,
-            "m" => (left * right) / 1000.0,
-            _ => continue,
-        };
-        best = Some(best.map_or(value, |current| current.max(value)));
-    }
-    for captures in SIMPLE_RE.captures_iter(text) {
-        let Some(number) = captures.get(1).and_then(|m| m.as_str().parse::<f64>().ok()) else {
-            continue;
-        };
-        let Some(unit) = captures.get(2).map(|m| m.as_str().to_ascii_lowercase()) else {
-            continue;
-        };
-        let value = match unit.as_str() {
-            "b" => number,
-            "m" => number / 1000.0,
-            _ => continue,
-        };
-        best = Some(best.map_or(value, |current| current.max(value)));
-    }
-    best
+    skippy_model_hf::search::approximate_parameter_count_b_from_text(&format!(
+        "{} {}",
+        hit.repo_id, hit.exact_ref
+    ))
+    .unwrap_or(-1.0)
 }
 
 fn repo_artifact_kind_label(kind: RepoArtifactKind) -> &'static str {

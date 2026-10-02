@@ -660,7 +660,7 @@ fn resolve_execution_config(context: &ResolverContext<'_>) -> ResolvedSkippyExec
     let prefill_chunking = pick_string_owned(
         model_skippy.and_then(|skippy| skippy.prefill_chunking.as_deref()),
         global_skippy.and_then(|skippy| skippy.prefill_chunking.as_deref()),
-        Some("fixed"),
+        Some(skippy_config::local_serving::PREFILL_CHUNK_POLICY),
     );
     let prefill_chunk_size = pick_owned(
         model_skippy.and_then(|skippy| skippy.prefill_chunk_size),

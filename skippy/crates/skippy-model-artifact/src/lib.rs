@@ -1,5 +1,6 @@
 pub mod checkpoint;
 pub mod gguf;
+pub mod selection;
 
 use std::path::Path;
 
@@ -108,9 +109,26 @@ pub async fn resolve_model_artifact_ref(
     resolve_model_artifact(&parsed, repository).await
 }
 
+pub async fn resolve_model_artifact_ref_with_budget(
+    model_ref: &str,
+    repository: &impl ModelRepository,
+    available_bytes: u64,
+) -> Result<ResolvedModelArtifact> {
+    let parsed = parse_model_ref(model_ref)?;
+    resolve_model_artifact_with_budget(&parsed, repository, available_bytes).await
+}
+
 pub async fn resolve_model_artifact(
     model_ref: &ModelRef,
     repository: &impl ModelRepository,
+) -> Result<ResolvedModelArtifact> {
+    resolve_model_artifact_with_budget(model_ref, repository, 0).await
+}
+
+pub async fn resolve_model_artifact_with_budget(
+    model_ref: &ModelRef,
+    repository: &impl ModelRepository,
+    available_bytes: u64,
 ) -> Result<ResolvedModelArtifact> {
     let source_revision = repository
         .resolve_revision(&model_ref.repo, model_ref.revision.as_deref())
@@ -120,7 +138,13 @@ pub async fn resolve_model_artifact(
         .await?;
     repo_files.sort_by(|left, right| left.path.cmp(&right.path));
 
-    let primary_file = select_primary_file(model_ref.selector.as_deref(), &repo_files)?;
+    let primary_file =
+        if model_ref.selector.is_none() && selection::repo_prefers_gguf_only(&model_ref.repo) {
+            selection::select_default_gguf_file(&repo_files, available_bytes)
+                .ok_or_else(|| anyhow::anyhow!("no GGUF model files found in repository"))?
+        } else {
+            select_primary_file(model_ref.selector.as_deref(), &repo_files)?
+        };
     let format = format_for_file(&primary_file.path)?;
     let files = artifact_file_set(&primary_file.path, &repo_files);
     let distribution_id = distribution_id_for_file(&primary_file.path)?;
@@ -386,6 +410,33 @@ mod tests {
         assert_eq!(resolved.canonical_ref, "org/repo@abc123/Model-Q4_K_M.gguf");
         assert_eq!(resolved.distribution_id, "Model-Q4_K_M");
         assert_eq!(resolved.files.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn gguf_repository_uses_shared_fit_selection_instead_of_safetensors() {
+        let repository = MemoryRepository {
+            revision: "abc123".into(),
+            files: HashMap::from([(
+                "org/repo-GGUF".into(),
+                vec![
+                    ModelArtifactFile::new("model.safetensors"),
+                    ModelArtifactFile {
+                        path: "model-Q4_K_M.gguf".into(),
+                        size_bytes: Some(4),
+                        sha256: None,
+                    },
+                    ModelArtifactFile {
+                        path: "model-Q8_0.gguf".into(),
+                        size_bytes: Some(8),
+                        sha256: None,
+                    },
+                ],
+            )]),
+        };
+        let selected = resolve_model_artifact_ref_with_budget("org/repo-GGUF", &repository, 10)
+            .await
+            .unwrap();
+        assert_eq!(selected.primary_file, "model-Q8_0.gguf");
     }
 
     #[tokio::test]

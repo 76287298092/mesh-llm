@@ -250,7 +250,7 @@ fn models_list_uses_hugging_face_cache_without_native_runtime_or_network() {
     );
     let value: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(value["cache_dir"], cache.to_string_lossy().as_ref());
-    assert_eq!(value["models"], serde_json::json!([]));
+    assert_eq!(value["results"], serde_json::json!([]));
     assert!(cache.is_dir());
 }
 

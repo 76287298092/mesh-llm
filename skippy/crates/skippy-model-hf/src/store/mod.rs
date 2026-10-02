@@ -1,5 +1,7 @@
 pub mod delete;
+pub mod installed;
 pub mod local;
+pub mod updates;
 pub mod usage;
 
 pub use delete::{

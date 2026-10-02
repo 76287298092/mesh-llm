@@ -10,3 +10,4 @@ pub use config::{example_config, load_json, validate_config};
 pub mod speculative;
 
 pub mod capacity;
+pub mod local_serving;

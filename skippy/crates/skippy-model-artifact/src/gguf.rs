@@ -7,6 +7,12 @@ mod split_bundle;
 pub use kv_cache::{GgufKvCacheQuant, GgufKvCacheType};
 pub use split_bundle::scan_gguf_bundle_total_parameters;
 
+/// Whether a direct GGUF advertises native multi-token prediction heads.
+pub fn supports_native_mtp(path: &Path) -> bool {
+    scan_gguf_compact_meta(path).is_some_and(|meta| meta.nextn_predict_layers > 0)
+        || scan_gguf_tensor_names_any(path, |name| name.contains(".nextn.")).unwrap_or(false)
+}
+
 const MAX_GGUF_STRING_BYTES: u64 = 1_000_000;
 const MAX_GGUF_ARRAY_ELEMENTS: u64 = 1_000_000;
 const MAX_GGUF_ARRAY_DEPTH: u32 = 64;

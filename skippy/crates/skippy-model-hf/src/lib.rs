@@ -3,6 +3,7 @@ mod cache_paths;
 mod checkpoint;
 pub mod local_cache;
 pub mod remote_catalog;
+pub mod search;
 pub mod store;
 mod tls;
 
@@ -24,7 +25,7 @@ use std::{
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use hf_hub::{
-    HFClient, HFClientBuilder, RepoType, RepoTypeModel,
+    HFClient, HFClientBuilder, HFClientSync, RepoType, RepoTypeModel,
     cache::{CachedRepoInfo, HFCacheInfo},
     repository::ModelInfo,
 };
@@ -135,6 +136,22 @@ impl HfModelRepository {
     pub fn identity_for_path(&self, path: &Path) -> Option<HfModelIdentity> {
         huggingface_identity_for_path_in_cache(path, &self.cache_dir)
     }
+}
+
+/// Build the same authenticated, cache-aware Hub client for blocking workflows.
+pub fn build_hf_sync_api() -> Result<HFClientSync> {
+    build_hf_sync_api_in(&huggingface_hub_cache_dir())
+}
+
+/// Build the blocking Hub client for an explicitly selected shared cache root.
+pub fn build_hf_sync_api_in(cache_root: &Path) -> Result<HFClientSync> {
+    HFClientSync::from_inner(
+        HfModelRepository::builder()
+            .cache_dir(cache_root)
+            .build()?
+            .api,
+    )
+    .context("build Hugging Face sync API client")
 }
 
 #[derive(Default)]

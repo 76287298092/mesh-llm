@@ -60,8 +60,8 @@ pub struct SingleStageOptions {
 impl SingleStageOptions {
     pub fn new(model_id: impl Into<String>, model_path: impl Into<PathBuf>) -> Self {
         Self {
-            ctx_size: 4096,
-            generation_concurrency: 1,
+            ctx_size: skippy_config::local_serving::CTX_SIZE,
+            generation_concurrency: skippy_config::local_serving::PARALLEL,
             selected_device: None,
             model_id: model_id.into(),
             model_path: model_path.into(),
@@ -75,8 +75,8 @@ impl SingleStageOptions {
             batch_max_tokens: None,
             glm_dsa_policy: skippy_protocol::GlmDsaPolicy::Auto,
             generation_signal_window: None,
-            n_batch: None,
-            n_ubatch: None,
+            n_batch: Some(skippy_config::local_serving::BATCH),
+            n_ubatch: Some(skippy_config::local_serving::UBATCH),
             n_gpu_layers: -1,
             mmap: None,
             mlock: false,

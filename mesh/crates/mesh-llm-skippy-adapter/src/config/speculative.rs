@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Result, bail};
 use skippy_config::speculative::validate_draft_min_max;
-use skippy_model_artifact::gguf::{scan_gguf_compact_meta, scan_gguf_tensor_names_any};
+use skippy_model_artifact::gguf::scan_gguf_compact_meta;
 use skippy_model_hf::store::local::find_model_path;
 use skippy_runtime::package::{
     PackageExtensionPolicyInfo, PackageGenerationInfo, PackageSpeculativeDecodingInfo,
@@ -875,8 +875,7 @@ fn speculative_supports_native_mtp(speculative: &PackageSpeculativeDecodingInfo)
 }
 
 fn direct_gguf_supports_native_mtp(model_path: &Path) -> bool {
-    scan_gguf_compact_meta(model_path).is_some_and(|meta| meta.nextn_predict_layers > 0)
-        || scan_gguf_tensor_names_any(model_path, |name| name.contains(".nextn.")).unwrap_or(false)
+    skippy_model_artifact::gguf::supports_native_mtp(model_path)
 }
 
 fn normalize_pairing_fault(value: &str) -> String {

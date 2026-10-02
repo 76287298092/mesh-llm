@@ -3,13 +3,13 @@ use super::{ModelLoadRequest, ModelOpenEvents, OpenAiOptions};
 use anyhow::{Result, bail};
 use skippy_protocol::{StageConfig, StageTopology};
 use skippy_serving::{EmbeddedRuntimeOptions, SpeculativeDecodeConfig};
-use std::{future::Future, net::SocketAddr};
+use std::{future::Future, net::SocketAddr, sync::Arc};
 
 /// Prepared local OpenAI serving options. Model acquisition and argument parsing belong to callers.
 pub struct LocalOpenAiOptions {
     pub config: StageConfig,
     pub topology: Option<StageTopology>,
-    pub speculative: SpeculativeDecodeConfig,
+    pub speculative: Option<SpeculativeDecodeConfig>,
     pub bind_addr: SocketAddr,
     pub model_id: Option<String>,
     pub default_max_tokens: u32,
@@ -29,6 +29,7 @@ pub struct LocalOpenAiOptions {
     pub telemetry_queue_capacity: usize,
     pub telemetry_level: skippy_serving::telemetry::TelemetryLevel,
     pub openai_guardrails: skippy_serving::frontend::OpenAiGuardrailsMode,
+    pub model_open_events: Option<Arc<skippy_runtime::ModelOpenEventQueue>>,
 }
 
 impl LocalOpenAiOptions {
@@ -55,7 +56,9 @@ impl LocalOpenAiOptions {
                 concurrency,
                 "--adaptive-generation-min-concurrency",
             )?;
-        self.speculative.validate()?;
+        if let Some(speculative) = self.speculative.as_ref() {
+            speculative.validate()?;
+        }
         let mut openai = OpenAiOptions::direct_single_stage_defaults(
             self.model_id
                 .unwrap_or_else(|| self.config.model_id.clone()),
@@ -75,7 +78,10 @@ impl LocalOpenAiOptions {
         openai.prefill_adaptive_step = self.prefill_adaptive_step;
         openai.prefill_adaptive_max = self.prefill_adaptive_max;
         openai.prefill_adaptive_target_ms = self.prefill_adaptive_target_ms;
-        openai.speculative = self.speculative;
+        if let Some(speculative) = self.speculative {
+            openai.speculative = speculative;
+        }
+        let native_mtp_enabled = self.config.native_mtp_enabled;
         Ok((
             self.bind_addr,
             ModelLoadRequest {
@@ -84,15 +90,22 @@ impl LocalOpenAiOptions {
                     topology: self.topology,
                     n_threads: None,
                     n_threads_batch: None,
-                    // Preserve the previous standalone loader's launch override.
-                    mtp_source: skippy_runtime::MtpSource::Disabled,
+                    mtp_source: if native_mtp_enabled {
+                        skippy_runtime::MtpSource::Integrated
+                    } else {
+                        skippy_runtime::MtpSource::Disabled
+                    },
                     metrics_otlp_grpc: self.metrics_otlp_grpc,
                     telemetry_queue_capacity: self.telemetry_queue_capacity,
                     telemetry_level: self.telemetry_level,
                     session_lifecycle_observer: None,
                 },
                 openai,
-                open_events: ModelOpenEvents::Disabled,
+                open_events: self
+                    .model_open_events
+                    .map_or(ModelOpenEvents::Disabled, |queue| {
+                        ModelOpenEvents::Enabled(Some(queue))
+                    }),
                 hooks_factory: None,
                 generation_observer: None,
                 kv_observer: None,
@@ -130,7 +143,7 @@ mod tests {
         LocalOpenAiOptions {
             config: serde_json::from_value(skippy_config::example_config()).unwrap(),
             topology: None,
-            speculative: SpeculativeDecodeConfig::default(),
+            speculative: None,
             bind_addr: "127.0.0.1:0".parse().unwrap(),
             model_id: Some("served-model".into()),
             default_max_tokens: 37,
@@ -150,6 +163,7 @@ mod tests {
             telemetry_queue_capacity: 0,
             telemetry_level: skippy_serving::telemetry::TelemetryLevel::Off,
             openai_guardrails: skippy_serving::frontend::OpenAiGuardrailsMode::Disabled,
+            model_open_events: None,
         }
     }
 
@@ -164,7 +178,7 @@ mod tests {
         assert_eq!(request.openai.default_max_tokens, 37);
         assert_eq!(
             request.runtime.mtp_source,
-            skippy_runtime::MtpSource::Disabled
+            skippy_runtime::MtpSource::Integrated
         );
     }
 
@@ -181,6 +195,18 @@ mod tests {
         assert_eq!(request.openai.adaptive_generation_min_concurrency, Some(2));
         assert_eq!(request.openai.generation_queue_capacity, 7);
         assert_eq!(request.openai.generation_admission_timeout_secs, 11);
+    }
+
+    #[test]
+    fn standalone_disables_native_mtp_when_stage_does_not_support_it() {
+        let mut options = options();
+        options.config.native_mtp_enabled = false;
+        let (_, request) = options.into_request().unwrap();
+        assert_eq!(
+            request.runtime.mtp_source,
+            skippy_runtime::MtpSource::Disabled
+        );
+        assert!(!request.openai.speculative.native_mtp.enabled);
     }
 
     #[test]

@@ -140,20 +140,22 @@ pub fn binary_stage_options(args: ServeBinaryArgs) -> Result<BinaryStageOptions>
 pub fn local_openai_options(
     args: crate::cli::ServeOpenAiArgs,
 ) -> Result<skippy_api::serving::LocalOpenAiOptions> {
-    let config = crate::local_model::prepare_openai_stage(&args)?;
+    let mut config = crate::local_model::prepare_openai_stage(&args)?;
     let topology = args
         .topology
         .as_ref()
         .map(load_json)
         .transpose()
         .context("load topology")?;
-    let speculative = args
+    let speculative: Option<SpeculativeDecodeConfig> = args
         .speculative_config
         .as_ref()
         .map(load_json)
         .transpose()
-        .context("load speculative config")?
-        .unwrap_or_default();
+        .context("load speculative config")?;
+    if let Some(plan) = speculative.as_ref() {
+        config.native_mtp_enabled = plan.native_mtp.enabled;
+    }
 
     Ok(skippy_api::serving::LocalOpenAiOptions {
         config,
@@ -178,6 +180,7 @@ pub fn local_openai_options(
         telemetry_queue_capacity: args.telemetry_queue_capacity,
         telemetry_level: args.telemetry_level.into(),
         openai_guardrails: args.openai_guardrails.into(),
+        model_open_events: None,
     })
 }
 

@@ -9,7 +9,6 @@ use anyhow::{Context, Result, bail};
 use mesh_llm_events::terminal_progress::start_spinner;
 use serde::Deserialize;
 use skippy_model_artifact::{ModelArtifactFile, select_primary_artifact_file};
-use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::io::Write;
 // std imports kept minimal; filesystem ops via std::fs::read_dir used in helper
@@ -703,34 +702,19 @@ fn is_split_gguf_first_shard(file: &str) -> bool {
         .unwrap_or(false)
 }
 
-fn split_gguf_variant_matches(file: &str, prefix: &str, total: &str) -> bool {
-    split_gguf_shard_info(file)
-        .map(|(candidate_prefix, _, candidate_total)| {
-            candidate_prefix == prefix && candidate_total == total
-        })
-        .unwrap_or(false)
-}
-
 pub(super) fn gguf_variant_size_bytes_from_siblings(
     file: &str,
     siblings: &[(String, Option<u64>)],
 ) -> Option<u64> {
-    if let Some((prefix, _, total)) = split_gguf_shard_info(file) {
-        let mut total_bytes = 0u64;
-        let mut matched_any = false;
-        for (candidate, size) in siblings {
-            if !split_gguf_variant_matches(candidate, prefix, total) {
-                continue;
-            }
-            matched_any = true;
-            total_bytes = total_bytes.checked_add(size.as_ref().copied()?)?;
-        }
-        return matched_any.then_some(total_bytes);
-    }
-
-    siblings
+    let files = siblings
         .iter()
-        .find_map(|(candidate, size)| (candidate == file).then_some(*size).flatten())
+        .map(|(path, size_bytes)| ModelArtifactFile {
+            path: path.clone(),
+            size_bytes: *size_bytes,
+            sha256: None,
+        })
+        .collect::<Vec<_>>();
+    skippy_model_artifact::selection::gguf_variant_size_bytes(file, &files)
 }
 
 fn collect_show_gguf_variants_from_siblings(
@@ -772,47 +756,20 @@ fn collect_show_gguf_variants_from_siblings(
     gguf_candidates
 }
 
-fn fit_bucket(size_bytes: u64, available_bytes: u64) -> u8 {
-    if size_bytes.saturating_mul(10) <= available_bytes.saturating_mul(9) {
-        0
-    } else if size_bytes.saturating_mul(10) <= available_bytes.saturating_mul(11) {
-        1
-    } else {
-        2
-    }
-}
-
 fn compare_gguf_candidates_by_fit(
     left_file: &str,
     left_size: Option<u64>,
     right_file: &str,
     right_size: Option<u64>,
     available_bytes: u64,
-) -> Ordering {
-    match (left_size, right_size) {
-        (Some(left), Some(right)) => {
-            let left_bucket = fit_bucket(left, available_bytes);
-            let right_bucket = fit_bucket(right, available_bytes);
-            if left_bucket != right_bucket {
-                return left_bucket.cmp(&right_bucket);
-            }
-            let size_order = if left_bucket <= 1 {
-                right.cmp(&left)
-            } else {
-                left.cmp(&right)
-            };
-            if size_order != Ordering::Equal {
-                return size_order;
-            }
-        }
-        (Some(_), None) => return Ordering::Less,
-        (None, Some(_)) => return Ordering::Greater,
-        (None, None) => {}
-    }
-
-    file_preference_score(left_file)
-        .cmp(&file_preference_score(right_file))
-        .then_with(|| left_file.cmp(right_file))
+) -> std::cmp::Ordering {
+    skippy_model_artifact::selection::compare_gguf_candidates_by_fit(
+        left_file,
+        left_size,
+        right_file,
+        right_size,
+        available_bytes,
+    )
 }
 
 async fn remote_size_bytes(url: &str) -> Option<u64> {
@@ -970,7 +927,7 @@ fn pick_gguf_for_budget(
 }
 
 fn repo_prefers_gguf_only(repo: &str) -> bool {
-    repo.to_ascii_lowercase().contains("gguf")
+    skippy_model_artifact::selection::repo_prefers_gguf_only(repo)
 }
 
 #[cfg(test)]
@@ -1112,17 +1069,7 @@ pub(super) fn huggingface_resolve_url(repo: &str, revision: Option<&str>, file: 
 }
 
 pub(super) fn file_preference_score(file: &str) -> usize {
-    if file.contains("-00001-of-") {
-        return 0;
-    }
-    const PREFERRED: &[&str] = &[
-        "Q4_K_M", "Q4_K_S", "Q4_1", "Q5_K_M", "Q5_K_S", "Q8_0", "BF16",
-    ];
-    PREFERRED
-        .iter()
-        .position(|needle| file.contains(needle))
-        .map(|pos| pos + 1)
-        .unwrap_or(PREFERRED.len() + 2)
+    skippy_model_artifact::selection::file_preference_score(file)
 }
 
 async fn remote_size_label(url: &str) -> Option<String> {

@@ -444,9 +444,7 @@ fn resolve_download_layer_package_ref(model_ref: &str) -> Option<String> {
     if is_layer_package_ref(model_ref) {
         return Some(model_ref.to_string());
     }
-    let _ = remote_catalog::ensure_catalog();
-    remote_catalog::find_layer_package(model_ref)
-        .or_else(|| remote_catalog::find_huggingface_layer_package(model_ref))
+    remote_catalog::resolve_layer_package_download(model_ref)
 }
 
 pub async fn dispatch_models_command(command: &ModelsCommand) -> Result<()> {

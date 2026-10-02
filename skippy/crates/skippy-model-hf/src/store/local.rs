@@ -10,6 +10,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 use std::time::UNIX_EPOCH;
 
+mod checkpoint;
 mod metadata_cache;
 mod mmproj;
 
@@ -809,10 +810,14 @@ pub fn find_model_path(model_ref: &str) -> PathBuf {
         return path;
     }
     let canonical_dir = huggingface_hub_cache_dir();
-    if let Ok(parsed) = skippy_model_ref::ModelRef::parse(model_ref)
-        && let Some(found) = find_hf_cache_model_ref_path(&canonical_dir, &parsed)
-    {
-        return found;
+    if let Ok(parsed) = skippy_model_ref::ModelRef::parse(model_ref) {
+        if let Some(found) = checkpoint::find_cached_safetensors_checkpoint(&canonical_dir, &parsed)
+        {
+            return found;
+        }
+        if let Some(found) = find_hf_cache_model_ref_path(&canonical_dir, &parsed) {
+            return found;
+        }
     }
 
     if let Some(found) = find_hf_cache_model_path(&canonical_dir, model_ref) {

@@ -1,5 +1,4 @@
 use anyhow::{Context, Result, ensure};
-use futures::StreamExt;
 use hf_hub::progress::{DownloadEvent, ProgressEvent, ProgressHandler};
 use std::{
     path::{Path, PathBuf},
@@ -7,13 +6,34 @@ use std::{
     time::Duration,
 };
 
+mod acquisition;
+mod discovery;
+mod maintenance;
+mod package;
+mod stage_cache;
+
+pub use discovery::ModelSearchRequest;
+pub use package::ModelPackageRequest;
+pub use stage_cache::ModelCertificationRequest;
+
 /// Parsed `skippy models` action, decoupled from clap.
 #[derive(Debug, Clone)]
 pub enum ModelAction {
+    Package(ModelPackageRequest),
+    Certify(ModelCertificationRequest),
+    Prune {
+        yes: bool,
+    },
+    Cleanup {
+        unused_since: Option<String>,
+        yes: bool,
+    },
     /// Resolve a Hub revision and download its selected model files.
     Download {
         /// Hub reference: org/repo@revision:filename-or-quantization.
         model_ref: String,
+        draft: bool,
+        direct: bool,
     },
     /// Preview or remove exactly one installed model, using Mesh's shared delete policy.
     Delete {
@@ -23,9 +43,11 @@ pub enum ModelAction {
     /// List local model repositories and snapshots without contacting the Hub.
     Installed,
     Recommended,
-    Search {
-        query: String,
-        limit: usize,
+    Search(ModelSearchRequest),
+    Updates {
+        repo: Option<String>,
+        all: bool,
+        check: bool,
     },
     Show {
         model_ref: String,
@@ -35,6 +57,7 @@ pub enum ModelAction {
 pub struct DownloadedModel {
     pub primary_path: PathBuf,
     pub load_path: PathBuf,
+    pub projector_path: Option<PathBuf>,
     pub report: serde_json::Value,
 }
 
@@ -82,7 +105,36 @@ pub async fn download_model(
     sha256: Option<&str>,
     size_bytes: Option<u64>,
 ) -> Result<DownloadedModel> {
+    let mut downloaded = download_primary_model(cache, model_ref, sha256, size_bytes).await?;
+    let artifact = &downloaded.report["artifact"];
+    let catalog = skippy_model_hf::remote_catalog::find_model_exact(model_ref).or_else(|| {
+        let repo = artifact["source_repo"].as_str()?;
+        let revision = artifact["source_revision"].as_str();
+        let file = artifact["primary_file"].as_str()?;
+        skippy_model_hf::remote_catalog::matching_model_for_huggingface(repo, revision, file)
+    });
+    if let Some(asset) = catalog.and_then(|model| model.mmproj) {
+        let revision = asset
+            .revision
+            .as_deref()
+            .map(|revision| format!("@{revision}"))
+            .unwrap_or_default();
+        let projector_ref = format!("{}{}/{}", asset.repo, revision, asset.source_file);
+        let projector = download_primary_model(cache, &projector_ref, None, None).await?;
+        downloaded.report["projector_path"] = serde_json::json!(projector.primary_path);
+        downloaded.projector_path = Some(projector.primary_path);
+    }
+    Ok(downloaded)
+}
+
+async fn download_primary_model(
+    cache: &Path,
+    model_ref: &str,
+    sha256: Option<&str>,
+    size_bytes: Option<u64>,
+) -> Result<DownloadedModel> {
     validate_digest(sha256)?;
+    crate::console::status(&format!("📦 Resolving {model_ref}"))?;
     let _cache_lock = skippy_model_hf::local_cache::lock_cache(cache)?;
     let repository = skippy_model_hf::HfModelRepository::builder()
         .cache_dir(cache)
@@ -91,10 +143,22 @@ pub async fn download_model(
         .build()?;
     let resolved_ref = skippy_model_hf::remote_catalog::find_model_exact(model_ref)
         .map(|model| model.exact_ref())
+        .or_else(|| {
+            (!model_ref.contains('/'))
+                .then(|| skippy_model_hf::remote_catalog::resolve_model_download(model_ref))
+                .flatten()
+                .map(|model| {
+                    let revision = model
+                        .revision
+                        .as_deref()
+                        .map(|revision| format!("@{revision}"))
+                        .unwrap_or_default();
+                    format!("{}{}/{}", model.repo, revision, model.file)
+                })
+        })
         .unwrap_or_else(|| model_ref.to_string());
     let artifact =
         skippy_model_artifact::resolve_model_artifact_ref(&resolved_ref, &repository).await?;
-    crate::console::status(&format!("📦 Resolving {}", artifact.model_id))?;
     let progress = hf_hub::progress::Progress::new(DownloadProgress {
         last_percent: Mutex::new(None),
     });
@@ -121,6 +185,7 @@ pub async fn download_model(
     };
     ensure!(!paths.is_empty(), "downloaded artifact file list is empty");
     let mut files = Vec::with_capacity(paths.len());
+    let mut managed_paths = Vec::with_capacity(paths.len());
     let mut primary_path = None;
     for (file, path) in paths {
         let primary = file.path == artifact.primary_file;
@@ -135,6 +200,7 @@ pub async fn download_model(
             file.sha256.as_deref()
         };
         files.push(verify_file(&path, expected_size, expected_sha)?);
+        managed_paths.push(path.clone());
         if primary {
             primary_path = Some(path);
         }
@@ -148,6 +214,15 @@ pub async fn download_model(
     } else {
         primary_path.clone()
     };
+    if let Err(error) = skippy_model_hf::store::usage::track_managed_model_usage(
+        &primary_path,
+        &managed_paths,
+        &artifact.model_id,
+        Some(&artifact.canonical_ref),
+        "huggingface",
+    ) {
+        crate::console::status(&format!("⚠ Could not record model usage: {error:#}"))?;
+    }
     let report = serde_json::json!({
         "cache_dir": cache, "artifact": artifact, "primary_path": primary_path,
         "load_path": load_path, "files": files
@@ -155,6 +230,7 @@ pub async fn download_model(
     Ok(DownloadedModel {
         primary_path,
         load_path,
+        projector_path: None,
         report,
     })
 }
@@ -202,23 +278,28 @@ fn verify_file(
 pub async fn run(command: ModelAction) -> Result<()> {
     let cache = model_cache_dir();
     match command {
-        ModelAction::Download { model_ref } => {
-            let downloaded = download_model(&cache, &model_ref, None, None).await?;
-            crate::console::present(&downloaded.report, |output| {
-                writeln!(output, "✅ Model ready: {model_ref}")?;
-                writeln!(output, "   {}", downloaded.primary_path.display())
-            })
+        ModelAction::Package(request) => package::run(request).await,
+        ModelAction::Certify(request) => stage_cache::certify(request).await,
+        ModelAction::Prune { yes } => stage_cache::prune(yes),
+        ModelAction::Cleanup { unused_since, yes } => {
+            maintenance::cleanup(unused_since.as_deref(), yes)
         }
+        ModelAction::Download {
+            model_ref,
+            draft,
+            direct,
+        } => acquisition::download_command(&cache, &model_ref, draft, direct).await,
         ModelAction::Delete { model, yes } => delete_model(&model, yes).await,
         ModelAction::Installed => {
-            let names = skippy_model_hf::store::local::scan_installed_models_in(&cache);
-            let report = serde_json::json!({"cache_dir": cache, "models": names});
+            let artifacts = skippy_model_hf::store::installed::scan_installed_artifacts_in(&cache);
+            let report = serde_json::json!({"cache_dir": cache, "results": artifacts});
             crate::console::present(&report, |output| {
-                if names.is_empty() {
+                if artifacts.is_empty() {
                     writeln!(output, "No models installed.")?;
                 }
-                for name in &names {
-                    writeln!(output, "📦 {name}")?;
+                for artifact in &artifacts {
+                    writeln!(output, "📦 {}", artifact.model_ref)?;
+                    writeln!(output, "   {}", artifact.path.display())?;
                 }
                 Ok(())
             })
@@ -252,7 +333,8 @@ pub async fn run(command: ModelAction) -> Result<()> {
                 Ok(())
             })
         }
-        ModelAction::Search { query, limit } => search_models(&query, limit).await,
+        ModelAction::Search(request) => discovery::search_models(request).await,
+        ModelAction::Updates { repo, all, check } => maintenance::updates(repo, all, check),
         ModelAction::Show { model_ref } => show_model(&cache, &model_ref).await,
     }
 }
@@ -262,8 +344,14 @@ async fn delete_model(model: &str, yes: bool) -> Result<()> {
 
     let paths = delete::resolve_model_identifier_with_catalog(model, &CuratedDeleteCatalog).await?;
     ensure!(!paths.is_empty(), "Model not found: {model}");
+    let stage_cache = stage_cache::stage_cache_dir();
+    let derived_stage_paths =
+        skippy_api::materialized_cache::materialized_stages_for_sources(&stage_cache, &paths)?;
     if !yes {
-        let report = serde_json::json!({"model": model, "paths": paths, "dry_run": true});
+        let report = serde_json::json!({
+            "model": model, "paths": paths,
+            "derived_stage_paths": derived_stage_paths, "dry_run": true
+        });
         return crate::console::present(&report, |output| {
             writeln!(
                 output,
@@ -273,9 +361,21 @@ async fn delete_model(model: &str, yes: bool) -> Result<()> {
             for path in &paths {
                 writeln!(output, "   {}", path.display())?;
             }
+            if !derived_stage_paths.is_empty() {
+                writeln!(
+                    output,
+                    "   Also remove {} derived stage file(s)",
+                    derived_stage_paths.len()
+                )?;
+            }
             writeln!(output, "   Run with --yes to delete them")
         });
     }
+    let removed_derived_cache_files =
+        skippy_api::materialized_cache::remove_materialized_stages_for_sources(
+            &stage_cache,
+            &paths,
+        )?;
     let result = delete::delete_model_by_identifier_with_catalog_in(
         model,
         &CuratedDeleteCatalog,
@@ -288,7 +388,7 @@ async fn delete_model(model: &str, yes: bool) -> Result<()> {
         "reclaimed_bytes": result.reclaimed_bytes,
         "removed_metadata_files": result.removed_metadata_files,
         "removed_usage_records": result.removed_usage_records,
-        "removed_derived_cache_files": result.removed_derived_cache_files,
+        "removed_derived_cache_files": removed_derived_cache_files,
         "dry_run": false,
     });
     crate::console::present(&report, |output| {
@@ -297,36 +397,6 @@ async fn delete_model(model: &str, yes: bool) -> Result<()> {
             "🗑️ Deleted {} local model file(s)",
             result.deleted_paths.len()
         )
-    })
-}
-
-async fn search_models(query: &str, limit: usize) -> Result<()> {
-    ensure!(
-        limit > 0 && limit <= 100,
-        "--limit must be between 1 and 100"
-    );
-    let client = hf_hub::HFClient::builder().build()?;
-    let stream = client
-        .list_models()
-        .search(query.to_string())
-        .filter("gguf")
-        .limit(limit)
-        .send()?;
-    futures::pin_mut!(stream);
-    let mut results = Vec::new();
-    while let Some(item) = stream.next().await {
-        let model = item?;
-        results.push(serde_json::json!({"repo":model.id,"downloads":model.downloads}));
-    }
-    let report = serde_json::json!({"query":query,"results":results});
-    crate::console::present(&report, |output| {
-        if results.is_empty() {
-            writeln!(output, "No GGUF repositories found for {query}.")?;
-        }
-        for item in &results {
-            writeln!(output, "🔎 {}", item["repo"].as_str().unwrap_or("unknown"))?;
-        }
-        Ok(())
     })
 }
 

@@ -11,11 +11,12 @@ use std::{
     path::PathBuf,
     sync::{Arc, Mutex},
 };
-const BUILTIN_PREFILL_CHUNK_SIZE: usize = 64;
-const BUILTIN_PREFILL_ADAPTIVE_START: usize = 64;
-const BUILTIN_PREFILL_ADAPTIVE_STEP: usize = 64;
-const BUILTIN_PREFILL_ADAPTIVE_MAX: usize = 512;
-const BUILTIN_PREFILL_ADAPTIVE_TARGET_MS: f64 = 100.0;
+const BUILTIN_PREFILL_CHUNK_SIZE: usize = skippy_config::local_serving::PREFILL_CHUNK_SIZE;
+const BUILTIN_PREFILL_ADAPTIVE_START: usize = skippy_config::local_serving::PREFILL_ADAPTIVE_START;
+const BUILTIN_PREFILL_ADAPTIVE_STEP: usize = skippy_config::local_serving::PREFILL_ADAPTIVE_STEP;
+const BUILTIN_PREFILL_ADAPTIVE_MAX: usize = skippy_config::local_serving::PREFILL_ADAPTIVE_MAX;
+const BUILTIN_PREFILL_ADAPTIVE_TARGET_MS: f64 =
+    skippy_config::local_serving::PREFILL_ADAPTIVE_TARGET_MS;
 const DEFAULT_NATIVE_MTP_MAX_TOKENS: usize = 3;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -84,7 +85,7 @@ impl OpenAiOptions {
             ),
             generation_admission_timeout_secs: DEFAULT_GENERATION_ADMISSION_TIMEOUT_SECS,
             prefill_chunk_size: BUILTIN_PREFILL_CHUNK_SIZE,
-            prefill_chunk_policy: "fixed".to_string(),
+            prefill_chunk_policy: skippy_config::local_serving::PREFILL_CHUNK_POLICY.to_string(),
             prefill_chunk_schedule: None,
             prefill_adaptive_start: BUILTIN_PREFILL_ADAPTIVE_START,
             prefill_adaptive_step: BUILTIN_PREFILL_ADAPTIVE_STEP,

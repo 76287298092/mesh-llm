@@ -222,11 +222,11 @@ pub struct ServeBinaryArgs {
         help = "Maximum seconds an OpenAI generation request may wait for admission; 0 waits until cancellation."
     )]
     pub openai_generation_admission_timeout_secs: u64,
-    #[arg(long, default_value_t = 256)]
+    #[arg(long, default_value_t = skippy_config::local_serving::PREFILL_CHUNK_SIZE)]
     pub openai_prefill_chunk_size: usize,
     #[arg(
         long,
-        default_value = "adaptive-ramp",
+        default_value = "fixed",
         help = "OpenAI prefill chunk policy: fixed, schedule, or adaptive-ramp. Passing --openai-prefill-chunk-schedule keeps legacy schedule behavior."
     )]
     pub openai_prefill_chunk_policy: String,
@@ -235,11 +235,11 @@ pub struct ServeBinaryArgs {
         help = "Comma-separated OpenAI prefill chunk schedule. Example: 128,256,512 sends the first chunk at 128 tokens, second at 256, and repeats 512 after that."
     )]
     pub openai_prefill_chunk_schedule: Option<String>,
-    #[arg(long, default_value_t = 128)]
+    #[arg(long, default_value_t = skippy_config::local_serving::PREFILL_ADAPTIVE_START)]
     pub openai_prefill_adaptive_start: usize,
-    #[arg(long, default_value_t = 128)]
+    #[arg(long, default_value_t = skippy_config::local_serving::PREFILL_ADAPTIVE_STEP)]
     pub openai_prefill_adaptive_step: usize,
-    #[arg(long, default_value_t = 384)]
+    #[arg(long, default_value_t = skippy_config::local_serving::PREFILL_ADAPTIVE_MAX)]
     pub openai_prefill_adaptive_max: usize,
     #[arg(
         long,
@@ -287,6 +287,19 @@ pub struct ServeOpenAiArgs {
     /// GPU layers for a local model; -1 offloads all supported layers.
     #[arg(long, conflicts_with = "config", allow_hyphen_values = true)]
     pub n_gpu_layers: Option<i32>,
+    /// Quantize SafeTensors weights while loading; defaults to preserve.
+    #[arg(
+        long = "quant",
+        visible_alias = "checkpoint-quantization",
+        conflicts_with = "config"
+    )]
+    pub checkpoint_quantization: Option<String>,
+    /// Importance matrix for low-bit SafeTensors checkpoint quantization.
+    #[arg(long, conflicts_with = "config")]
+    pub checkpoint_imatrix: Option<PathBuf>,
+    /// Multimodal projector GGUF; otherwise use a matching installed sidecar.
+    #[arg(long, conflicts_with = "config")]
+    pub mmproj: Option<PathBuf>,
     /// Optional advisory digest cache directory for local checkpoint files.
     #[arg(long, conflicts_with = "config")]
     pub hash_cache: Option<PathBuf>,
@@ -332,11 +345,11 @@ pub struct ServeOpenAiArgs {
         help = "Maximum seconds a generation request may wait for admission; 0 waits until cancellation."
     )]
     pub generation_admission_timeout_secs: u64,
-    #[arg(long, default_value_t = 256)]
+    #[arg(long, default_value_t = skippy_config::local_serving::PREFILL_CHUNK_SIZE)]
     pub prefill_chunk_size: usize,
     #[arg(
         long,
-        default_value = "adaptive-ramp",
+        default_value = "fixed",
         help = "Prefill chunk policy for split OpenAI serving: fixed, schedule, or adaptive-ramp. Passing --prefill-chunk-schedule keeps legacy schedule behavior."
     )]
     pub prefill_chunk_policy: String,
@@ -345,11 +358,11 @@ pub struct ServeOpenAiArgs {
         help = "Comma-separated prefill chunk schedule for split OpenAI serving. Example: 128,256,512 sends the first chunk at 128 tokens, second at 256, and repeats 512 after that."
     )]
     pub prefill_chunk_schedule: Option<String>,
-    #[arg(long, default_value_t = 128)]
+    #[arg(long, default_value_t = skippy_config::local_serving::PREFILL_ADAPTIVE_START)]
     pub prefill_adaptive_start: usize,
-    #[arg(long, default_value_t = 128)]
+    #[arg(long, default_value_t = skippy_config::local_serving::PREFILL_ADAPTIVE_STEP)]
     pub prefill_adaptive_step: usize,
-    #[arg(long, default_value_t = 384)]
+    #[arg(long, default_value_t = skippy_config::local_serving::PREFILL_ADAPTIVE_MAX)]
     pub prefill_adaptive_max: usize,
     #[arg(long, default_value_t = 100.0)]
     pub prefill_adaptive_target_ms: f64,
@@ -456,11 +469,41 @@ pub struct PlanSplitArgs {
 impl From<ModelCommand> for skippy_commands::models::ModelAction {
     fn from(command: ModelCommand) -> Self {
         match command {
-            ModelCommand::Download { model_ref } => Self::Download { model_ref },
+            ModelCommand::Package(args) => Self::Package(args.into()),
+            ModelCommand::Certify(args) => Self::Certify(args.into()),
+            ModelCommand::Prune { yes } => Self::Prune { yes },
+            ModelCommand::Cleanup { unused_since, yes } => Self::Cleanup { unused_since, yes },
+            ModelCommand::Download {
+                model_ref,
+                draft,
+                direct,
+            } => Self::Download {
+                model_ref,
+                draft,
+                direct,
+            },
             ModelCommand::Delete { model, yes } => Self::Delete { model, yes },
             ModelCommand::Installed => Self::Installed,
             ModelCommand::Recommended => Self::Recommended,
-            ModelCommand::Search { query, limit } => Self::Search { query, limit },
+            ModelCommand::Updates { repo, all, check } => Self::Updates { repo, all, check },
+            ModelCommand::Search {
+                query,
+                mlx,
+                catalog,
+                limit,
+                sort,
+                ..
+            } => Self::Search(skippy_commands::models::ModelSearchRequest {
+                query,
+                filter: if mlx {
+                    skippy_model_hf::search::ArtifactFilter::Mlx
+                } else {
+                    skippy_model_hf::search::ArtifactFilter::Gguf
+                },
+                catalog_only: catalog,
+                limit,
+                sort: sort.into(),
+            }),
             ModelCommand::Show { model_ref } => Self::Show { model_ref },
         }
     }
@@ -515,6 +558,87 @@ mod tests {
     use super::*;
 
     #[test]
+    fn model_package_and_cache_commands_are_standalone() {
+        let cli = Cli::try_parse_from([
+            "skippy",
+            "models",
+            "package",
+            "unsloth/Qwen3-8B-GGUF:Q4_K_M",
+            "--dry-run",
+        ])
+        .unwrap();
+        let Command::Models {
+            command: ModelCommand::Package(args),
+        } = cli.command
+        else {
+            panic!("expected model package command");
+        };
+        assert_eq!(args.quant, None);
+        assert!(args.dry_run);
+
+        let cli = Cli::try_parse_from(["skippy", "models", "prune", "--yes"]).unwrap();
+        assert!(matches!(
+            cli.command,
+            Command::Models {
+                command: ModelCommand::Prune { yes: true }
+            }
+        ));
+    }
+
+    #[test]
+    fn model_search_routes_filter_and_sort() {
+        let cli = Cli::try_parse_from([
+            "skippy",
+            "models",
+            "search",
+            "qwen",
+            "vision",
+            "--mlx",
+            "--catalog",
+            "--sort",
+            "parameters-desc",
+        ])
+        .unwrap();
+        let Command::Models { command } = cli.command else {
+            panic!("expected model command");
+        };
+        let skippy_commands::models::ModelAction::Search(request) = command.into() else {
+            panic!("expected model search action");
+        };
+        assert_eq!(request.query, ["qwen", "vision"]);
+        assert_eq!(request.filter, skippy_model_hf::search::ArtifactFilter::Mlx);
+        assert_eq!(request.sort, skippy_model_hf::search::Sort::ParametersDesc);
+        assert!(request.catalog_only);
+    }
+
+    #[test]
+    fn model_updates_matches_mesh_modes_and_alias() {
+        let cli = Cli::try_parse_from(["skippy", "models", "updates", "--check"]).unwrap();
+        assert!(matches!(
+            cli.command,
+            Command::Models {
+                command: ModelCommand::Updates {
+                    repo: None,
+                    all: false,
+                    check: true
+                }
+            }
+        ));
+
+        let cli =
+            Cli::try_parse_from(["skippy", "models", "update", "Qwen/Qwen3-8B-GGUF"]).unwrap();
+        let Command::Models {
+            command: ModelCommand::Updates { repo, all, check },
+        } = cli.command
+        else {
+            panic!("expected model updates command");
+        };
+        assert_eq!(repo.as_deref(), Some("Qwen/Qwen3-8B-GGUF"));
+        assert!(!all);
+        assert!(!check);
+    }
+
+    #[test]
     fn prompt_accepts_a_running_endpoint_without_model_files() {
         let cli = Cli::try_parse_from([
             "skippy",
@@ -556,7 +680,7 @@ mod tests {
     }
 
     #[test]
-    fn openai_prefill_policy_defaults_to_adaptive_ramp() {
+    fn openai_prefill_policy_matches_mesh_defaults() {
         let cli = Cli::try_parse_from([
             "skippy",
             "serve",
@@ -571,10 +695,11 @@ mod tests {
             panic!("expected serve command");
         };
         let args = args.stage;
-        assert_eq!(args.openai_prefill_chunk_policy, "adaptive-ramp");
-        assert_eq!(args.openai_prefill_adaptive_start, 128);
-        assert_eq!(args.openai_prefill_adaptive_step, 128);
-        assert_eq!(args.openai_prefill_adaptive_max, 384);
+        assert_eq!(args.openai_prefill_chunk_policy, "fixed");
+        assert_eq!(args.openai_prefill_chunk_size, 64);
+        assert_eq!(args.openai_prefill_adaptive_start, 64);
+        assert_eq!(args.openai_prefill_adaptive_step, 64);
+        assert_eq!(args.openai_prefill_adaptive_max, 512);
         assert_eq!(args.openai_prefill_adaptive_target_ms, 100.0);
         assert_eq!(args.openai_generation_concurrency, None);
         assert!(!args.openai_adaptive_generation_concurrency);
@@ -588,10 +713,11 @@ mod tests {
             panic!("expected serve command");
         };
         let args = args.public;
-        assert_eq!(args.prefill_chunk_policy, "adaptive-ramp");
-        assert_eq!(args.prefill_adaptive_start, 128);
-        assert_eq!(args.prefill_adaptive_step, 128);
-        assert_eq!(args.prefill_adaptive_max, 384);
+        assert_eq!(args.prefill_chunk_policy, "fixed");
+        assert_eq!(args.prefill_chunk_size, 64);
+        assert_eq!(args.prefill_adaptive_start, 64);
+        assert_eq!(args.prefill_adaptive_step, 64);
+        assert_eq!(args.prefill_adaptive_max, 512);
         assert_eq!(args.prefill_adaptive_target_ms, 100.0);
         assert_eq!(args.generation_concurrency, None);
         assert!(!args.adaptive_generation_concurrency);
@@ -664,10 +790,32 @@ mod tests {
 
 #[derive(Subcommand)]
 pub enum ModelCommand {
+    /// Package a GGUF model into a Skippy layer package with Hugging Face Jobs.
+    Package(ModelPackageArgs),
+    /// Certify a Skippy layer package locally or against a running API.
+    Certify(ModelCertifyArgs),
+    /// Preview or remove unpinned materialized Skippy stage files.
+    Prune {
+        #[arg(long)]
+        yes: bool,
+    },
+    /// Preview or remove managed models from the shared Hugging Face cache.
+    Cleanup {
+        #[arg(long)]
+        unused_since: Option<String>,
+        #[arg(long)]
+        yes: bool,
+    },
     /// Resolve a Hub revision and download its selected model files.
     Download {
         /// Hub reference: org/repo@revision:filename-or-quantization.
         model_ref: String,
+        /// Also download the recommended speculative draft model.
+        #[arg(long)]
+        draft: bool,
+        /// Download the exact Hub artifact instead of a catalog layer package.
+        #[arg(long)]
+        direct: bool,
     },
     /// Preview or delete one installed model, never a remote Hub repository.
     Delete {
@@ -680,12 +828,147 @@ pub enum ModelCommand {
     Installed,
     /// Show recommended models from the shared remote catalog.
     Recommended,
-    /// Find GGUF repositories on Hugging Face.
+    /// Check or refresh cached Hugging Face repositories.
+    #[command(visible_alias = "update")]
+    Updates {
+        /// Repo ID such as Qwen/Qwen3-8B-GGUF.
+        repo: Option<String>,
+        /// Operate on every cached Hugging Face repository.
+        #[arg(long)]
+        all: bool,
+        /// Check upstream revisions without downloading files.
+        #[arg(long)]
+        check: bool,
+    },
+    /// Find GGUF or MLX repositories on Hugging Face.
     Search {
-        query: String,
+        #[arg(required = true)]
+        query: Vec<String>,
+        #[arg(long, conflicts_with = "mlx")]
+        gguf: bool,
+        #[arg(long)]
+        mlx: bool,
+        #[arg(long)]
+        catalog: bool,
         #[arg(long, default_value_t = 20)]
         limit: usize,
+        #[arg(long, value_enum, default_value_t = ModelSearchSort::Trending)]
+        sort: ModelSearchSort,
     },
     /// Resolve one model reference and show its selected artifact.
     Show { model_ref: String },
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
+pub enum ModelSearchSort {
+    Trending,
+    Downloads,
+    Likes,
+    Created,
+    Updated,
+    ParametersDesc,
+    ParametersAsc,
+}
+
+impl From<ModelSearchSort> for skippy_model_hf::search::Sort {
+    fn from(sort: ModelSearchSort) -> Self {
+        match sort {
+            ModelSearchSort::Trending => Self::Trending,
+            ModelSearchSort::Downloads => Self::Downloads,
+            ModelSearchSort::Likes => Self::Likes,
+            ModelSearchSort::Created => Self::Created,
+            ModelSearchSort::Updated => Self::Updated,
+            ModelSearchSort::ParametersDesc => Self::ParametersDesc,
+            ModelSearchSort::ParametersAsc => Self::ParametersAsc,
+        }
+    }
+}
+
+#[derive(clap::Args)]
+pub struct ModelCertifyArgs {
+    pub model: String,
+    #[arg(long)]
+    pub report_out: Option<PathBuf>,
+    #[arg(long)]
+    pub package_only: bool,
+    #[arg(long)]
+    pub api_base: Option<String>,
+    #[arg(long, default_value = "Say ok.")]
+    pub prompt: String,
+    #[arg(long, default_value_t = 2)]
+    pub max_tokens: u32,
+}
+
+impl From<ModelCertifyArgs> for skippy_commands::models::ModelCertificationRequest {
+    fn from(args: ModelCertifyArgs) -> Self {
+        Self {
+            model: args.model,
+            report_out: args.report_out,
+            package_only: args.package_only,
+            api_base: args.api_base,
+            prompt: args.prompt,
+            max_tokens: args.max_tokens,
+        }
+    }
+}
+
+#[derive(clap::Args)]
+pub struct ModelPackageArgs {
+    pub source_repo: Option<String>,
+    #[arg(long)]
+    pub quant: Option<String>,
+    #[arg(long)]
+    pub target: Option<String>,
+    #[arg(long)]
+    pub model_id: Option<String>,
+    #[arg(long)]
+    pub generation_defaults: Option<PathBuf>,
+    #[arg(long, default_value = "auto")]
+    pub flavor: String,
+    #[arg(long, default_value = "1h")]
+    pub timeout: String,
+    #[arg(long, default_value = "main")]
+    pub mesh_llm_ref: String,
+    #[arg(long)]
+    pub experimental: bool,
+    #[arg(long)]
+    pub dry_run: bool,
+    #[arg(long)]
+    pub confirm: bool,
+    #[arg(long)]
+    pub follow: bool,
+    #[arg(long)]
+    pub status: Option<String>,
+    #[arg(long)]
+    pub logs: Option<String>,
+    #[arg(long)]
+    pub cancel: Option<String>,
+    #[arg(long)]
+    pub list: bool,
+    #[arg(long)]
+    pub update_script: bool,
+}
+
+impl From<ModelPackageArgs> for skippy_commands::models::ModelPackageRequest {
+    fn from(args: ModelPackageArgs) -> Self {
+        Self {
+            source_repo: args.source_repo,
+            quant: args.quant,
+            target: args.target,
+            model_id: args.model_id,
+            generation_defaults: args.generation_defaults,
+            flavor: args.flavor,
+            timeout: args.timeout,
+            mesh_llm_ref: args.mesh_llm_ref,
+            experimental: args.experimental,
+            dry_run: args.dry_run,
+            confirm: args.confirm,
+            follow: args.follow,
+            status: args.status,
+            logs: args.logs,
+            cancel: args.cancel,
+            list: args.list,
+            update_script: args.update_script,
+        }
+    }
 }
