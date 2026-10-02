@@ -2,8 +2,46 @@ use std::sync::Mutex;
 
 use super::context_planning::{
     MeasuredBufferFootprint, RuntimeResourcePlan, RuntimeResourcePlanBreakdown,
-    reconcile_memory_plan_with_measurements,
 };
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct MemoryPlanReconciliation {
+    charged_compute_reserve_bytes: u64,
+    measured_compute_bytes: Option<u64>,
+    measured_kv_bytes: Option<u64>,
+    residual_free_bytes: Option<u64>,
+}
+
+fn reconcile_memory_plan_with_measurements(
+    breakdown: &RuntimeResourcePlanBreakdown,
+    measured: Option<skippy_runtime::MeasuredNativeBuffers>,
+) -> MemoryPlanReconciliation {
+    let host_memory_observed = measured.is_some_and(|value| value.host_memory_observed);
+    let mib_to_bytes = |mib: Option<f64>| mib.map(|value| (value * 1024.0 * 1024.0).round() as u64);
+    let measured_compute_bytes = mib_to_bytes(measured.and_then(|value| value.compute_mib));
+    let measured_kv_bytes = mib_to_bytes(measured.and_then(|value| value.kv_mib));
+    let residual_free_bytes = match (
+        host_memory_observed,
+        measured_compute_bytes,
+        measured_kv_bytes,
+    ) {
+        (false, Some(compute), Some(kv)) => Some(
+            breakdown
+                .vram_bytes
+                .saturating_sub(breakdown.model_bytes)
+                .saturating_sub(breakdown.projector_bytes)
+                .saturating_sub(compute)
+                .saturating_sub(kv),
+        ),
+        _ => None,
+    };
+    MemoryPlanReconciliation {
+        charged_compute_reserve_bytes: breakdown.compute_charge_bytes,
+        measured_compute_bytes,
+        measured_kv_bytes,
+        residual_free_bytes,
+    }
+}
 
 #[derive(Clone, Copy)]
 pub(super) enum MemoryPlanStartPath {
@@ -151,6 +189,7 @@ mod tests {
     use super::{
         MEASURED_PLAN_SNAPSHOT, MeasuredPlanSnapshot, MemoryPlanMeasurementKey,
         completed_measurement_snapshot, measured_buffers_footprint,
+        reconcile_memory_plan_with_measurements,
     };
     use crate::runtime::context_planning::{
         MeasuredBufferFootprint, RuntimeResourcePlanBreakdown, RuntimeResourcePlanSource,
@@ -257,5 +296,44 @@ mod tests {
             )
             .is_none()
         );
+    }
+
+    #[test]
+    fn reconciliation_uses_actual_native_buffers_and_ignores_host_offload() {
+        let breakdown = RuntimeResourcePlanBreakdown {
+            vram_bytes: 16 * 1024 * 1024 * 1024,
+            model_bytes: 3 * 1024 * 1024 * 1024,
+            projector_bytes: 0,
+            kv_budget_bytes: 0,
+            planned_kv_bytes: 0,
+            kv_bytes_per_token: 0,
+            compute_charge_bytes: 2 * 1024 * 1024 * 1024,
+            planning_source: RuntimeResourcePlanSource::StaticEstimate,
+            measured_fit: None,
+            slots: 4,
+            context_length: 16_384,
+            slots_auto: true,
+            context_auto: true,
+        };
+        let measured = skippy_runtime::MeasuredNativeBuffers {
+            compute_mib: Some(512.0),
+            kv_mib: Some(2048.0),
+            host_memory_observed: false,
+        };
+        let reconciled = reconcile_memory_plan_with_measurements(&breakdown, Some(measured));
+        assert_eq!(reconciled.measured_compute_bytes, Some(512 * 1024 * 1024));
+        assert_eq!(reconciled.measured_kv_bytes, Some(2048 * 1024 * 1024));
+        assert_eq!(
+            reconciled.residual_free_bytes,
+            Some(10 * 1024 * 1024 * 1024 + 512 * 1024 * 1024)
+        );
+        let host_offloaded = reconcile_memory_plan_with_measurements(
+            &breakdown,
+            Some(skippy_runtime::MeasuredNativeBuffers {
+                host_memory_observed: true,
+                ..measured
+            }),
+        );
+        assert_eq!(host_offloaded.residual_free_bytes, None);
     }
 }

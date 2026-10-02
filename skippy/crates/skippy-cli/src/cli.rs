@@ -281,7 +281,7 @@ pub struct ServeOpenAiArgs {
     /// Local GGUF (first shard) or safetensors checkpoint to prepare and serve.
     #[arg(long, conflicts_with = "config")]
     pub model_path: Option<PathBuf>,
-    /// Context size for a local model. Defaults to 4096.
+    /// Context size for a local model. Defaults to the VRAM-aware model plan (up to 128k).
     #[arg(long, conflicts_with = "config")]
     pub ctx_size: Option<u32>,
     /// GPU layers for a local model; -1 offloads all supported layers.
@@ -321,7 +321,7 @@ pub struct ServeOpenAiArgs {
     pub default_max_tokens: u32,
     #[arg(
         long,
-        help = "Maximum number of concurrent chat generation requests. Defaults to the KV-derived lane count."
+        help = "Maximum concurrent chat generations. Auto defaults to four lanes sharing one VRAM-planned KV pool."
     )]
     pub generation_concurrency: Option<usize>,
     #[arg(

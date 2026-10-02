@@ -5,6 +5,8 @@ use skippy_api::{SingleStageOptions, hash_cache::SidecarDigestCache};
 use skippy_config::load_json;
 use skippy_protocol::StageConfig;
 
+use crate::local_resource_planning::{LocalResourcePlanningInput, plan_local_resources};
+
 pub(crate) fn prepare_openai_stage(args: &ServeOpenAiArgs) -> Result<StageConfig> {
     match (&args.config, &args.model_path) {
         (Some(path), None) => {
@@ -58,6 +60,19 @@ pub(crate) fn prepare_openai_stage(args: &ServeOpenAiArgs) -> Result<StageConfig
                 &path,
                 cache.as_ref(),
             )?;
+            let plan = plan_local_resources(LocalResourcePlanningInput {
+                model_path: &identity.source_model_path,
+                model_bytes: identity.source_model_bytes,
+                projector_path: options.projector_path.as_deref(),
+                n_gpu_layers: options.n_gpu_layers,
+                ctx_size_override: args.ctx_size,
+                parallel_override: args.generation_concurrency,
+                cache_type_k: &options.cache_type_k,
+                cache_type_v: &options.cache_type_v,
+            });
+            options.ctx_size = plan.context_length;
+            options.generation_concurrency = plan.slots;
+            options.validate()?;
             // Load from the verified source locator (including managed multipart
             // views), not from an independently resolved input path.
             options.model_path = identity.source_model_path.clone();
@@ -152,7 +167,7 @@ mod tests {
             bytes.extend_from_slice(&value.to_le_bytes());
         }
         std::fs::write(&path, bytes).unwrap();
-        let args = args(&[
+        let explicit_args = args(&[
             "skippy",
             "serve",
             "--model-path",
@@ -166,7 +181,7 @@ mod tests {
             "--generation-concurrency",
             "2",
         ]);
-        let config = prepare_openai_stage(&args).unwrap();
+        let config = prepare_openai_stage(&explicit_args).unwrap();
         let identity =
             skippy_api::source::synthetic_direct_gguf_package("tiny", &path, None).unwrap();
         assert_eq!(
@@ -188,6 +203,11 @@ mod tests {
         assert!(config.resident_tensor_names.is_empty());
         assert!(config.execution_contract.is_empty());
         assert!(config.run_id.starts_with("skippy-"));
+
+        let default_args = args(&["skippy", "serve", "--model-path", path.to_str().unwrap()]);
+        let default_config = prepare_openai_stage(&default_args).unwrap();
+        assert_eq!(default_config.ctx_size, 4096);
+        assert_eq!(default_config.lane_count, 4);
     }
 
     #[test]

@@ -1,6 +1,7 @@
 mod cli;
 mod conversion;
 mod local_model;
+mod local_resource_planning;
 mod runtime;
 mod serve;
 

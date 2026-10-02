@@ -1,10 +1,12 @@
 # Skippy Coordinator
 
-`skippy-coordinator` owns the pure coordinator lease and fencing rules for
-Skippy split topologies. It deliberately does not know about QUIC, gossip,
-protobuf, Tokio, iroh endpoint IDs, or process management. Those parts live in
-`mesh-llm-host-runtime`; this crate only answers:
+`skippy-coordinator` owns pure single-node resource planning, split-topology
+planning, and coordinator lease/fencing rules. It deliberately does not know
+about QUIC, gossip, protobuf, Tokio, iroh endpoint IDs, or process management.
+Those parts live in `mesh-llm-host-runtime`; this crate only answers:
 
+- What context and lane count fit a local model's memory budget?
+- Which split stages fit the participating nodes' memory budgets?
 - Is this coordinator claim valid?
 - Does this newer claim supersede an older coordinator?
 - Is this load fenced by the current accepted claim?

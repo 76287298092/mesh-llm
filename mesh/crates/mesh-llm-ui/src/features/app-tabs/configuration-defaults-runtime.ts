@@ -463,28 +463,6 @@ export const CONFIGURATION_DEFAULT_RUNTIME_SETTINGS = [
     }
   },
   {
-    id: 'kv-unified',
-    categoryId: 'memory',
-    icon: 'memory',
-    label: 'Unified KV',
-    description: 'Choose whether sequences share one unified KV buffer.',
-    inheritedLabel: 'Applied when a placement does not override unified KV',
-    visibility: 'advanced',
-    tomlSection: MODEL_FIT_TOML_SECTION,
-    mutability: 'restart-required',
-    control: {
-      kind: 'choice',
-      name: 'kv_unified',
-      value: 'auto',
-      presentation: 'segmented',
-      options: [
-        { value: 'auto', label: 'auto' },
-        { value: 'on', label: 'on' },
-        { value: 'off', label: 'off' }
-      ]
-    }
-  },
-  {
     id: 'cache-ram-mib',
     categoryId: 'memory',
     icon: 'memory',

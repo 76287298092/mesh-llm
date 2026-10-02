@@ -49,7 +49,6 @@ These defaults apply across the supported CPU, Metal, CUDA, and ROCm runtimes.
 |---|---|---|---|
 | Pin key/value cache formats | `model_fit.cache_type_k`, `model_fit.cache_type_v` | `auto` | config file |
 | Control KV device offload | `model_fit.kv_offload` | `auto` | config file |
-| Control unified KV allocation | `model_fit.kv_unified` | `auto` | config file |
 | Control the attention kernel required by quantized V | `model_fit.flash_attention` | derived from V dtype | config file |
 | Cap retained idle native sessions | `model_fit.cache_idle_slots` | lane count | config file |
 | Disable all prompt-prefix reuse | `model_fit.prompt_cache` | `auto` | config file |
@@ -71,7 +70,6 @@ Configure the representation directly when you need deterministic behavior:
 cache_type_k = "q8_0"
 cache_type_v = "q8_0"
 kv_offload = "auto"
-kv_unified = "auto"
 flash_attention = "enabled"
 ```
 
@@ -82,7 +80,7 @@ The relevant controls are:
 | `cache_type_k` | `auto`, `f16`, `q8_0`, `q4_0` | Storage and compute dtype for attention keys |
 | `cache_type_v` | `auto`, `f16`, `q8_0`, `q4_0` | Storage and compute dtype for attention values |
 | `kv_offload` | `auto`, `true`, `false` | Whether KV tensors may reside on the selected accelerator rather than host memory |
-| `kv_unified` | `auto`, `true`, `false` | Whether runtime slots use the backend unified KV allocation |
+| `kv_unified` | `auto`, `true` | Legacy compatibility setting. Skippy always uses unified KV; `false` is rejected. |
 | `flash_attention` | `auto`, `enabled`, `disabled` | Selects the fused attention path; a quantized V cache requires the enabled path |
 
 Q8_0 and Q4_0 encode values in 32-element blocks. A model whose KV head

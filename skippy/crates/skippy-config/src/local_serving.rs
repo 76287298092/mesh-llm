@@ -3,7 +3,9 @@
 pub const CTX_SIZE: u32 = 4096;
 pub const BATCH: u32 = 512;
 pub const UBATCH: u32 = 512;
-pub const PARALLEL: usize = 32;
+// Automatic local serving uses the shared KV planner; this remains the
+// fallback for callers that construct a stage without model metadata.
+pub const PARALLEL: usize = 4;
 pub const PREFILL_CHUNK_SIZE: usize = 64;
 pub const PREFILL_ADAPTIVE_START: usize = 64;
 pub const PREFILL_ADAPTIVE_STEP: usize = 64;

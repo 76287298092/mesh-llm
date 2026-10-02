@@ -320,6 +320,12 @@ fn validate_model_fit(config: &ModelFitConfig, base_path: &str) -> DiagnosticRes
         config.kv_unified.as_ref(),
         &format!("{base_path}.kv_unified"),
     )?;
+    if matches!(config.kv_unified, Some(BoolOrAuto::Bool(false))) {
+        return Err(validation_diagnostic(
+            &format!("{base_path}.kv_unified"),
+            format!("{base_path}.kv_unified cannot be false: Skippy always uses unified KV"),
+        ));
+    }
     validate_bool_or_auto(
         config.prompt_cache.as_ref(),
         &format!("{base_path}.prompt_cache"),
@@ -1175,6 +1181,22 @@ mod tests {
     use super::*;
     use crate::diagnostic::legacy_validation_error_text;
     use crate::{DrySamplingConfig, MeshConfig, validate_config, validate_config_diagnostics};
+
+    #[test]
+    fn model_fit_rejects_non_unified_kv() {
+        let config: MeshConfig = toml::from_str(
+            r#"
+[defaults.model_fit]
+kv_unified = false
+"#,
+        )
+        .expect("config should parse before validation");
+
+        let diagnostics = validate_config_diagnostics(&config);
+        let text = legacy_validation_error_text(&diagnostics);
+        assert!(text.contains("defaults.model_fit.kv_unified"), "{text}");
+        assert!(text.contains("Skippy always uses unified KV"), "{text}");
+    }
 
     #[test]
     fn speculative_strategy_allows_package_declared_names() {

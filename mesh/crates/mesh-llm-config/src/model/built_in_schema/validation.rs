@@ -78,6 +78,10 @@ fn built_in_schema_marks_curated_defaults_user_visible() {
         ConfigVisibility::Advanced
     );
     assert_eq!(
+        schema_setting("defaults.model_fit.kv_unified").visibility,
+        ConfigVisibility::Hidden
+    );
+    assert_eq!(
         schema_setting("defaults.hardware.model_runtime").visibility,
         ConfigVisibility::Hidden
     );

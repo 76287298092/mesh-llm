@@ -30,6 +30,13 @@ supported, so use a GGUF variant such as
 reuses installed exact refs from the shared Hugging Face cache and reports the
 model ID and API address after `GET /v1/models` succeeds.
 
+For a local GGUF, Skippy uses the same memory-aware context planner as
+Mesh: it sizes one unified KV pool from the model metadata, weight footprint,
+and available device memory, up to a 128k-token ceiling, then defaults to four
+lanes sharing that pool. KV stays F16 by default; weight file size does not
+change its quantization. `--ctx-size` and `--generation-concurrency` override
+the corresponding automatic choices.
+
 For a SafeTensors family supported by the native checkpoint loader, `--quant`
 uses Mesh's on-load quantization recipes (`preserve` is the default). Low-bit
 recipes that need an importance matrix also accept

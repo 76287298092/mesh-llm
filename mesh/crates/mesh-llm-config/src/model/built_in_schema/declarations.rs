@@ -344,7 +344,11 @@ fn model_fit_settings(
         basic_setting(&format!("{prefix}.cache_type_k"), kv_cache_type_schema()),
         basic_setting(&format!("{prefix}.cache_type_v"), kv_cache_type_schema()),
         basic_setting(&format!("{prefix}.kv_offload"), bool_or_auto_schema()),
-        basic_setting(&format!("{prefix}.kv_unified"), bool_or_auto_schema()),
+        hidden_setting(
+            &format!("{prefix}.kv_unified"),
+            bool_or_auto_schema(),
+            "Legacy setting: Skippy always uses unified KV; false is rejected",
+        ),
         basic_setting(
             &format!("{prefix}.cache_ram_mib"),
             ConfigValueSchema::Integer,
