@@ -411,16 +411,24 @@ impl Drop for RetainedObjcObject {
     }
 }
 
-/// Returns the Metal device to query, retained.
+/// Returns the Metal device the survey queries, retained.
 ///
-/// `MTLCreateSystemDefaultDevice` returns nil on macOS 14 in a command-line
-/// process that has not loaded CoreGraphics (measured on an M2 Pro, macOS
-/// 14.5: nil with Metal linked alone, the GPU once CoreGraphics is linked).
-/// Every Metal query then reported nothing, the node planned on 0 GB and
-/// refused to place a model that fit. `MTLCopyAllDevices` does not depend on
-/// CoreGraphics, so fall back to its first device when the default is nil.
+/// This is the system default device whenever there is one. When
+/// `MTLCreateSystemDefaultDevice` returns nil, it is instead the FIRST device
+/// `MTLCopyAllDevices` enumerates — which is not necessarily the device the
+/// system would have chosen. `MTLCopyAllDevices` does not guarantee an order,
+/// so on a Mac with more than one GPU the name and working-set budget may then
+/// describe a different GPU than the default. Apple Silicon Macs have a single
+/// GPU, so for them the two always agree.
+///
+/// Why the fallback exists: `MTLCreateSystemDefaultDevice` returns nil on
+/// macOS 14 in a command-line process that has not loaded CoreGraphics
+/// (measured on an M2 Pro, macOS 14.5: nil with Metal linked alone, the GPU
+/// once CoreGraphics is linked). Every Metal query then reported nothing, the
+/// node planned on 0 GB and refused to place a model that fit. Reporting an
+/// enumerated GPU is better than reporting none.
 #[cfg(target_os = "macos")]
-unsafe fn metal_default_device(metal: &libloading::Library) -> Option<RetainedObjcObject> {
+unsafe fn metal_survey_device(metal: &libloading::Library) -> Option<RetainedObjcObject> {
     use std::ffi::{c_char, c_void};
 
     #[link(name = "objc")]
@@ -462,7 +470,8 @@ unsafe fn metal_default_device(metal: &libloading::Library) -> Option<RetainedOb
 }
 
 /// Queries the Metal-recommended working-set size in bytes for the default
-/// device — best-effort, OS-reported, not a verified measurement.
+/// device (or, when there is none, the first enumerated device — see
+/// `metal_survey_device`) — best-effort, OS-reported, not a verified measurement.
 #[cfg(target_os = "macos")]
 fn query_metal_recommended_working_set_bytes() -> Option<u64> {
     use std::ffi::{c_char, c_void};
@@ -477,7 +486,7 @@ fn query_metal_recommended_working_set_bytes() -> Option<u64> {
         let metal =
             libloading::Library::new("/System/Library/Frameworks/Metal.framework/Versions/A/Metal")
                 .ok()?;
-        let retained = metal_default_device(&metal)?;
+        let retained = metal_survey_device(&metal)?;
         let device = retained.0;
         let selector = c"recommendedMaxWorkingSetSize";
         let selector = sel_registerName(selector.as_ptr());
@@ -490,7 +499,8 @@ fn query_metal_recommended_working_set_bytes() -> Option<u64> {
 }
 
 /// Queries the GPU name as reported by the OS via `MTLDevice.name` (e.g.
-/// "Apple M4 Max" or "AMD Radeon Pro 5500M") — best-effort, not a verified
+/// "Apple M4 Max" or "AMD Radeon Pro 5500M") for the same device as the
+/// working-set query (see `metal_survey_device`) — best-effort, not a verified
 /// measurement, but sourced from the GPU device rather than the CPU.
 #[cfg(target_os = "macos")]
 #[cfg_attr(
@@ -515,7 +525,7 @@ fn query_metal_device_name() -> Option<String> {
         let metal =
             libloading::Library::new("/System/Library/Frameworks/Metal.framework/Versions/A/Metal")
                 .ok()?;
-        let retained = metal_default_device(&metal)?;
+        let retained = metal_survey_device(&metal)?;
         let device = retained.0;
         let name_sel = sel_registerName(c"name".as_ptr());
         if name_sel.is_null() {
