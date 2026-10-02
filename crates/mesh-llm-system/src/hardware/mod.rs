@@ -411,6 +411,56 @@ impl Drop for RetainedObjcObject {
     }
 }
 
+/// Returns the Metal device to query, retained.
+///
+/// `MTLCreateSystemDefaultDevice` returns nil on macOS 14 in a command-line
+/// process that has not loaded CoreGraphics (measured on an M2 Pro, macOS
+/// 14.5: nil with Metal linked alone, the GPU once CoreGraphics is linked).
+/// Every Metal query then reported nothing, the node planned on 0 GB and
+/// refused to place a model that fit. `MTLCopyAllDevices` does not depend on
+/// CoreGraphics, so fall back to its first device when the default is nil.
+#[cfg(target_os = "macos")]
+unsafe fn metal_default_device(metal: &libloading::Library) -> Option<RetainedObjcObject> {
+    use std::ffi::{c_char, c_void};
+
+    #[link(name = "objc")]
+    unsafe extern "C" {
+        fn sel_registerName(name: *const c_char) -> *mut c_void;
+        fn objc_msgSend(receiver: *mut c_void, selector: *mut c_void, ...) -> usize;
+        fn objc_retain(obj: *mut c_void) -> *mut c_void;
+    }
+
+    unsafe {
+        let create_device = metal
+            .get::<unsafe extern "C" fn() -> *mut c_void>(b"MTLCreateSystemDefaultDevice")
+            .ok()?;
+        let device = create_device();
+        if !device.is_null() {
+            return Some(RetainedObjcObject(device));
+        }
+
+        // Create rule: the array is returned retained and released on drop.
+        let copy_all = metal
+            .get::<unsafe extern "C" fn() -> *mut c_void>(b"MTLCopyAllDevices")
+            .ok()?;
+        let devices = copy_all();
+        if devices.is_null() {
+            return None;
+        }
+        let devices = RetainedObjcObject(devices);
+        let first_sel = sel_registerName(c"firstObject".as_ptr());
+        if first_sel.is_null() {
+            return None;
+        }
+        // Borrowed from the array; retain it before the array is released.
+        let first = objc_msgSend(devices.0, first_sel) as *mut c_void;
+        if first.is_null() {
+            return None;
+        }
+        Some(RetainedObjcObject(objc_retain(first)))
+    }
+}
+
 /// Queries the Metal-recommended working-set size in bytes for the default
 /// device — best-effort, OS-reported, not a verified measurement.
 #[cfg(target_os = "macos")]
@@ -427,14 +477,8 @@ fn query_metal_recommended_working_set_bytes() -> Option<u64> {
         let metal =
             libloading::Library::new("/System/Library/Frameworks/Metal.framework/Versions/A/Metal")
                 .ok()?;
-        let create_device = metal
-            .get::<unsafe extern "C" fn() -> *mut c_void>(b"MTLCreateSystemDefaultDevice")
-            .ok()?;
-        let device = create_device();
-        if device.is_null() {
-            return None;
-        }
-        let _device = RetainedObjcObject(device);
+        let retained = metal_default_device(&metal)?;
+        let device = retained.0;
         let selector = c"recommendedMaxWorkingSetSize";
         let selector = sel_registerName(selector.as_ptr());
         if selector.is_null() {
@@ -471,14 +515,8 @@ fn query_metal_device_name() -> Option<String> {
         let metal =
             libloading::Library::new("/System/Library/Frameworks/Metal.framework/Versions/A/Metal")
                 .ok()?;
-        let create_device = metal
-            .get::<unsafe extern "C" fn() -> *mut c_void>(b"MTLCreateSystemDefaultDevice")
-            .ok()?;
-        let device = create_device();
-        if device.is_null() {
-            return None;
-        }
-        let _device = RetainedObjcObject(device);
+        let retained = metal_default_device(&metal)?;
+        let device = retained.0;
         let name_sel = sel_registerName(c"name".as_ptr());
         if name_sel.is_null() {
             return None;
