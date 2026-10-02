@@ -1353,6 +1353,7 @@ fn legacy_proto_config_to_mesh(
             name: p.name.clone(),
             enabled: p.enabled,
             web_ui_enabled: None,
+            web_ui_primary_tab: None,
             command: p.command.clone(),
             args: p.args.clone(),
             url: None,
@@ -1382,6 +1383,7 @@ fn legacy_proto_config_to_mesh(
         models,
         plugins,
         logging: Default::default(),
+        payments: Default::default(),
         extra: Default::default(),
     };
     if let Some(mode) = snapshot

@@ -16,6 +16,7 @@ fn web_ui_manifest() -> proto::PluginWebUiManifest {
             route: "index.html".into(),
             bundle_id: "main".into(),
             entry_script: "assets/app.js".into(),
+            placement: proto::PluginWebUiPagePlacement::Auxiliary as i32,
         }],
         config_sections: vec![proto::PluginWebUiConfigSectionManifest {
             id: "settings".into(),
@@ -80,6 +81,7 @@ fn wallet_entry(enabled: Option<bool>) -> PluginConfigEntry {
         name: WALLET_LEXE_PLUGIN_ID.into(),
         enabled,
         web_ui_enabled: None,
+        web_ui_primary_tab: None,
         command: None,
         args: Vec::new(),
         url: None,
@@ -144,6 +146,35 @@ fn builtin_wallet_is_served_by_this_executable_like_blobstore() {
         "capability resolution needs the manifest, so the process starts eagerly"
     );
     assert!(resolved.inactive.is_empty());
+}
+
+#[test]
+fn builtin_plugin_arguments_follow_the_plugin_flag() {
+    let spec = super::config::builtin_plugin_spec(
+        BLOBSTORE_PLUGIN_ID,
+        &["--root".into(), "/srv/blobs".into()],
+    )
+    .unwrap();
+    assert_eq!(
+        spec.args,
+        [
+            "--log-format",
+            "json",
+            "--plugin",
+            BLOBSTORE_PLUGIN_ID,
+            "--plugin-arg=--root",
+            "--plugin-arg=/srv/blobs",
+        ]
+    );
+}
+
+#[tokio::test]
+async fn builtin_plugin_without_arguments_refuses_them() {
+    let error = run_plugin_process(BLOBSTORE_PLUGIN_ID.into(), vec!["--verbose".into()])
+        .await
+        .unwrap_err()
+        .to_string();
+    assert!(error.contains("takes no arguments"), "{error}");
 }
 
 #[test]
@@ -226,6 +257,7 @@ fn external_wallet_plugin_replaces_the_builtin_by_capability_not_name() {
                 name: "my-wallet".into(),
                 enabled: Some(true),
                 web_ui_enabled: None,
+                web_ui_primary_tab: None,
                 command: Some("/opt/wallets/my-wallet".into()),
                 args: Vec::new(),
                 url: None,
@@ -249,6 +281,7 @@ fn external_plugin_can_be_configured() {
             name: "demo".into(),
             enabled: Some(true),
             web_ui_enabled: None,
+            web_ui_primary_tab: None,
             command: Some("mesh-llm-plugin-demo".into()),
             args: vec!["--stdio".into()],
             url: None,
@@ -280,6 +313,7 @@ fn failed_plugin_summary_redacts_urls_before_serialization() {
             ..PluginStartupOptions::default()
         },
         web_ui_enabled: None,
+        web_ui_primary_tab: None,
         installed_metadata: None,
     };
     let error = anyhow::anyhow!(
@@ -301,6 +335,7 @@ fn blobstore_can_be_disabled() {
             name: BLOBSTORE_PLUGIN_ID.into(),
             enabled: Some(false),
             web_ui_enabled: None,
+            web_ui_primary_tab: None,
             command: None,
             args: Vec::new(),
             url: None,
@@ -322,6 +357,7 @@ fn external_plugin_can_be_enabled_with_url() {
             name: "endpoint-plugin".into(),
             enabled: Some(true),
             web_ui_enabled: None,
+            web_ui_primary_tab: None,
             command: Some("endpoint-plugin".into()),
             args: Vec::new(),
             url: Some("http://gpu-box:8000/v1".into()),
@@ -348,6 +384,7 @@ fn external_plugin_rejects_url_that_is_empty_after_normalization() {
             name: "endpoint-plugin".into(),
             enabled: Some(true),
             web_ui_enabled: None,
+            web_ui_primary_tab: None,
             command: Some("endpoint-plugin".into()),
             args: Vec::new(),
             url: Some("\u{2003}\t\n".into()),
@@ -370,6 +407,7 @@ fn remote_plugin_control_url_is_rejected_without_authentication() {
             name: "remote-plugin".into(),
             enabled: Some(true),
             web_ui_enabled: None,
+            web_ui_primary_tab: None,
             command: None,
             args: Vec::new(),
             url: Some(raw_url.into()),
@@ -397,6 +435,7 @@ fn external_plugin_can_be_enabled_with_command_args() {
             name: "endpoint-plugin".into(),
             enabled: Some(true),
             web_ui_enabled: None,
+            web_ui_primary_tab: None,
             command: Some("/opt/plugins/endpoint-plugin".into()),
             args: vec!["--verbose".into()],
             url: None,
@@ -422,6 +461,7 @@ fn external_plugin_ignores_disabled_entry_without_install() {
             name: "endpoint-plugin".into(),
             enabled: Some(false),
             web_ui_enabled: None,
+            web_ui_primary_tab: None,
             command: None,
             args: Vec::new(),
             url: Some("http://gpu-box:8000/v1".into()),
@@ -457,6 +497,7 @@ fn resolves_external_plugin() {
             name: "demo".into(),
             enabled: Some(true),
             web_ui_enabled: None,
+            web_ui_primary_tab: None,
             command: Some("/tmp/demo".into()),
             args: vec!["--flag".into()],
             url: None,
@@ -487,6 +528,7 @@ async fn plugin_load_failure_keeps_declared_web_ui_metadata() {
                 ..PluginStartupOptions::default()
             },
             web_ui_enabled: None,
+            web_ui_primary_tab: None,
             installed_metadata: Some(installed_metadata_with_web_ui(
                 InstalledPluginWebUiValidationStatus::Valid,
                 Some("web"),
