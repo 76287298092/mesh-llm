@@ -411,97 +411,69 @@ impl Drop for RetainedObjcObject {
     }
 }
 
-/// Returns the Metal device the survey queries, retained.
-///
-/// This is the system default device whenever there is one. When
-/// `MTLCreateSystemDefaultDevice` returns nil, it is instead the FIRST device
-/// `MTLCopyAllDevices` enumerates — which is not necessarily the device the
-/// system would have chosen. `MTLCopyAllDevices` does not guarantee an order,
-/// so on a Mac with more than one GPU the name and working-set budget may then
-/// describe a different GPU than the default. Apple Silicon Macs have a single
-/// GPU, so for them the two always agree.
-///
-/// Why the fallback exists: `MTLCreateSystemDefaultDevice` returns nil on
-/// macOS 14 in a command-line process that has not loaded CoreGraphics
-/// (measured on an M2 Pro, macOS 14.5: nil with Metal linked alone, the GPU
-/// once CoreGraphics is linked). Every Metal query then reported nothing, the
-/// node planned on 0 GB and refused to place a model that fit. Reporting an
-/// enumerated GPU is better than reporting none.
+/// Sends an argument-less Objective-C message and returns the raw result.
 #[cfg(target_os = "macos")]
-unsafe fn metal_survey_device(metal: &libloading::Library) -> Option<RetainedObjcObject> {
+unsafe fn msg_send(receiver: *mut std::ffi::c_void, selector: &std::ffi::CStr) -> usize {
     use std::ffi::{c_char, c_void};
 
     #[link(name = "objc")]
     unsafe extern "C" {
         fn sel_registerName(name: *const c_char) -> *mut c_void;
         fn objc_msgSend(receiver: *mut c_void, selector: *mut c_void, ...) -> usize;
-        fn objc_retain(obj: *mut c_void) -> *mut c_void;
     }
 
-    unsafe {
-        let create_device = metal
-            .get::<unsafe extern "C" fn() -> *mut c_void>(b"MTLCreateSystemDefaultDevice")
-            .ok()?;
-        let device = create_device();
-        if !device.is_null() {
-            return Some(RetainedObjcObject(device));
-        }
-
-        // Create rule: the array is returned retained and released on drop.
-        let copy_all = metal
-            .get::<unsafe extern "C" fn() -> *mut c_void>(b"MTLCopyAllDevices")
-            .ok()?;
-        let devices = copy_all();
-        if devices.is_null() {
-            return None;
-        }
-        let devices = RetainedObjcObject(devices);
-        let first_sel = sel_registerName(c"firstObject".as_ptr());
-        if first_sel.is_null() {
-            return None;
-        }
-        // Borrowed from the array; retain it before the array is released.
-        let first = objc_msgSend(devices.0, first_sel) as *mut c_void;
-        if first.is_null() {
-            return None;
-        }
-        Some(RetainedObjcObject(objc_retain(first)))
-    }
+    unsafe { objc_msgSend(receiver, sel_registerName(selector.as_ptr())) }
 }
 
-/// Queries the Metal-recommended working-set size in bytes for the default
-/// device (or, when there is none, the first enumerated device — see
-/// `metal_survey_device`) — best-effort, OS-reported, not a verified measurement.
+/// Runs `query` against the Metal device the survey describes.
+///
+/// That is the system default device. When `MTLCreateSystemDefaultDevice`
+/// returns nil -- as it does on macOS 14 in a command-line process that has
+/// not loaded CoreGraphics -- it is the first device `MTLCopyAllDevices`
+/// lists instead. That list is unordered, so on a multi-GPU Mac it may not be
+/// the device the system would pick; Apple Silicon has one GPU, so there the
+/// two agree. Without the fallback the survey reported no GPU at all.
 #[cfg(target_os = "macos")]
-fn query_metal_recommended_working_set_bytes() -> Option<u64> {
-    use std::ffi::{c_char, c_void};
+fn with_metal_device<T>(query: impl FnOnce(*mut std::ffi::c_void) -> Option<T>) -> Option<T> {
+    use std::ffi::c_void;
 
-    #[link(name = "objc")]
-    unsafe extern "C" {
-        fn sel_registerName(name: *const c_char) -> *mut c_void;
-        fn objc_msgSend(receiver: *mut c_void, selector: *mut c_void, ...) -> usize;
-    }
+    type CreateFn = unsafe extern "C" fn() -> *mut c_void;
 
     unsafe {
         let metal =
             libloading::Library::new("/System/Library/Frameworks/Metal.framework/Versions/A/Metal")
                 .ok()?;
-        let retained = metal_survey_device(&metal)?;
-        let device = retained.0;
-        let selector = c"recommendedMaxWorkingSetSize";
-        let selector = sel_registerName(selector.as_ptr());
-        if selector.is_null() {
+        let default_device = RetainedObjcObject(metal
+            .get::<CreateFn>(b"MTLCreateSystemDefaultDevice")
+            .ok()?());
+        if !default_device.0.is_null() {
+            return query(default_device.0);
+        }
+        // The array owns its devices, so the first one stays valid while `devices` lives.
+        let devices = RetainedObjcObject(metal.get::<CreateFn>(b"MTLCopyAllDevices").ok()?());
+        if devices.0.is_null() {
             return None;
         }
-        let bytes = objc_msgSend(device, selector) as u64;
-        (bytes > 0).then_some(bytes)
+        let first = msg_send(devices.0, c"firstObject") as *mut c_void;
+        if first.is_null() { None } else { query(first) }
     }
 }
 
+/// Queries the Metal-recommended working-set size in bytes for the survey's
+/// device (see `with_metal_device`) — best-effort, OS-reported, not a
+/// verified measurement.
+#[cfg(target_os = "macos")]
+fn query_metal_recommended_working_set_bytes() -> Option<u64> {
+    with_metal_device(|device| {
+        let bytes = unsafe { msg_send(device, c"recommendedMaxWorkingSetSize") } as u64;
+        (bytes > 0).then_some(bytes)
+    })
+}
+
 /// Queries the GPU name as reported by the OS via `MTLDevice.name` (e.g.
-/// "Apple M4 Max" or "AMD Radeon Pro 5500M") for the same device as the
-/// working-set query (see `metal_survey_device`) — best-effort, not a verified
-/// measurement, but sourced from the GPU device rather than the CPU.
+/// "Apple M4 Max" or "AMD Radeon Pro 5500M") for the survey's device (see
+/// `with_metal_device`) — best-effort, not a verified measurement, but
+/// sourced from the GPU device rather than the CPU.
 #[cfg(target_os = "macos")]
 #[cfg_attr(
     all(feature = "skippy-devices", not(feature = "dynamic-native-runtime")),
@@ -510,41 +482,14 @@ fn query_metal_recommended_working_set_bytes() -> Option<u64> {
 fn query_metal_device_name() -> Option<String> {
     use std::ffi::{CStr, c_char, c_void};
 
-    // `objc_msgSend` is declared to return `usize` here (matching the other
-    // FFI declaration of the same linked symbol above) and the pointer
-    // results below are recovered with `as *mut/*const _` casts, to avoid a
-    // `clashing_extern_declarations` warning from two conflicting return
-    // types for one symbol.
-    #[link(name = "objc")]
-    unsafe extern "C" {
-        fn sel_registerName(name: *const c_char) -> *mut c_void;
-        fn objc_msgSend(receiver: *mut c_void, selector: *mut c_void, ...) -> usize;
-    }
-
-    unsafe {
-        let metal =
-            libloading::Library::new("/System/Library/Frameworks/Metal.framework/Versions/A/Metal")
-                .ok()?;
-        let retained = metal_survey_device(&metal)?;
-        let device = retained.0;
-        let name_sel = sel_registerName(c"name".as_ptr());
-        if name_sel.is_null() {
+    with_metal_device(|device| unsafe {
+        let name = msg_send(device, c"name") as *mut c_void;
+        if name.is_null() {
             return None;
         }
-        let name_obj = objc_msgSend(device, name_sel) as *mut c_void;
-        if name_obj.is_null() {
-            return None;
-        }
-        let utf8_sel = sel_registerName(c"UTF8String".as_ptr());
-        if utf8_sel.is_null() {
-            return None;
-        }
-        let utf8_ptr = objc_msgSend(name_obj, utf8_sel) as *const c_char;
-        if utf8_ptr.is_null() {
-            return None;
-        }
-        Some(CStr::from_ptr(utf8_ptr).to_string_lossy().into_owned())
-    }
+        let utf8 = msg_send(name, c"UTF8String") as *const c_char;
+        (!utf8.is_null()).then(|| CStr::from_ptr(utf8).to_string_lossy().into_owned())
+    })
 }
 
 #[cfg(feature = "skippy-devices")]
