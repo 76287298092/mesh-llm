@@ -154,7 +154,7 @@ fn outcome_was_served(outcome: &proxy::RouteDispatchOutcome) -> bool {
 /// this node's own served-model quant/architecture/identity_hash). Omitting
 /// the whole block on the plugin path closes both windows at once rather than
 /// leaving the model-identity half open.
-async fn publish_raw_proxy_terminal(
+pub(super) async fn publish_raw_proxy_terminal(
     node: &mesh::Node,
     channel: &dyn OpenAiExchangeChannel,
     exchange_id: &str,

@@ -6,12 +6,12 @@ This is the checked-in implementation. Normative rules live in
 and acceptance criteria are in `.omo/specs/pr-ci-optimization.md`.
 
 The affected-crate fallback roster in `scripts/affected-crates.sh` includes
-`mesh-llm-moa-plugin`, `mesh-llm-wallet`, and `mesh-wallet-lexe` alongside
-their related workspace crates; `just ci-crate-lists` checks it against
-workspace membership. The publish chain orders `mesh-llm-plugin` before
-`mesh-llm-wallet`, then `mesh-wallet-lexe` and `mesh-llm-payments`, including
-optional dependencies. It also publishes `mesh-mixture-of-agents` before
-`mesh-llm-moa-plugin`, and both before `mesh-llm-host-runtime`.
+`mesh-llm-moa-plugin` and `mesh-llm-wallet` alongside their related workspace
+crates; `just ci-crate-lists` checks it against workspace membership. The
+publish chain orders `mesh-llm-plugin` before `mesh-llm-wallet` and
+`mesh-llm-payments`, including optional dependencies. It also publishes
+`mesh-mixture-of-agents` before `mesh-llm-moa-plugin`, and both before
+`mesh-llm-host-runtime`.
 
 ## Entry points
 
@@ -614,9 +614,21 @@ runtime producers are not duplicated.
   `ci-windows-product-smoke-slice.yml` — platform-local callers of the core,
   scripted, model-download, and Laya smokes. The registry-pinned Laya
   Multilingual F16 GGUF runs startup plus every upstream golden `/systemone`
-  read on Linux CPU/CUDA/Vulkan, conditional `gpu-amd` ROCm, macOS Metal, and
+  read on Linux CPU/CUDA, conditional `gpu-nvidia` Vulkan and `gpu-amd` ROCm,
+  macOS Metal, and
   Windows CPU. Each row consumes its composed backend product and selects the
   exact native device name, so an unavailable backend fails at model load.
+  The Vulkan Laya row requires `MESH_VULKAN_INFERENCE_RUNNER_ENABLED=true`
+  after `verify-vulkan-device` passes in a live runner pod. It enables the
+  explicit Vulkan profile when that runner lacks `vulkaninfo`; model startup
+  and golden reads still exercise the device. The source-checked Laya action
+  repeats the exact variable gate so an older protected workflow cannot run
+  the smoke on an uncertified PR runner before the workflow gate reaches main.
+  Windows product restore passes LF-terminated manifest fields to Git Bash so
+  its runtime path does not retain Python's Windows carriage return. The Laya
+  parity driver decodes golden fixtures as UTF-8 on Windows, and the smoke
+  harness preserves its result if a child briefly holds its log open during
+  temporary-directory cleanup.
   Windows CUDA/ROCm/Vulkan remain build-only because CI has no matching Windows
   accelerator runners. The core smoke restores the
   registry-derived dense SmolLM2-135M Q8 and recurrent IBM Granite 4.0 H 350M
@@ -819,7 +831,8 @@ release row no longer disables sccache.
 Fork pull requests use GitHub-hosted runners. Eligible same-repository PRs may
 use Depot while the repository-wide gate and time-bounded cache-risk exception
 in `ci/DEPOT_PR_RISK_EXCEPTION.md` are active. The
-other current exception is uncredentialed CUDA or Vulkan smoke on the approved
+other current exception is uncredentialed CUDA smoke, plus Vulkan smoke when
+`MESH_VULKAN_INFERENCE_RUNNER_ENABLED` is exactly `true`, on the approved
 ephemeral `gpu-nvidia` scale set described above. A future ROCm row uses the
 repository-scoped `gpu-amd` role only when
 `MESH_ROCM_INFERENCE_RUNNER_ENABLED` is exactly `true`. PRs use the same protected reusable
@@ -1245,8 +1258,11 @@ both domains until the later catalog cleanup; existing main routing is unchanged
 
 ### Protected executor compatibility for the product extraction
 
-The protected executor workflows pin both resolver actions to commit
-`38d63b2f6e27998034fdf0452150c7cc081fe921`, so older PR source checkouts do not need
+The protected executor workflows pin `resolve-source-layout` to commit
+`38d63b2f6e27998034fdf0452150c7cc081fe921` and `resolve-cargo-packages` to
+`196eba4c21f9b445d0bf11f7938f87e799dd7c8c` (which passes planned packages
+absent from the candidate through to the checked-out-workspace filter, so a PR
+that deletes a crate is not rejected), so older PR source checkouts do not need
 the new helper files. The package resolver loads its Python implementation
 from that same pinned action checkout and inspects the candidate only through
 Cargo metadata in the existing executor trust context.
