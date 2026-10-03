@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 
-const cargoToml = readFileSync(new URL('../../../Cargo.toml', import.meta.url), 'utf8');
+const cargoToml = readFileSync(new URL('../../../../Cargo.toml', import.meta.url), 'utf8');
 const sdkVersion = cargoToml.match(
   /\[workspace\.package\][\s\S]*?\nversion\s*=\s*"([^"]+)"/
 )?.[1];
