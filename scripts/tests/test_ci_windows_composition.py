@@ -633,6 +633,46 @@ class CiWindowsCompositionTests(unittest.TestCase):
         self.assertIn("steps.windows_packages.outputs.crates", source)
         self.assertNotIn("foreach ($crate in 'model-artifact'", source)
 
+    def test_windows_dynamic_runtime_crates_can_name_the_system_feature(self) -> None:
+        """The dynamic-runtime owners run with `mesh-llm-system/dynamic-native-runtime`.
+
+        Cargo accepts that feature only for `mesh-llm-system` itself or for a
+        package that depends on it directly, so a crate added to that step
+        without the dependency would fail the row before any test runs.
+        """
+        workflow = yaml.safe_load(PLATFORM_CHECKS_WORKFLOW.read_text(encoding="utf-8"))
+        steps = workflow["jobs"]["platform_checks"]["steps"]
+        resolve = next(step for step in steps if step.get("id") == "windows_dynamic_packages")
+        run = next(step for step in steps if step.get("name") == "Run Windows unit tests")
+        self.assertIn(
+            "steps.windows_dynamic_packages.outputs.crates",
+            run["env"]["WINDOWS_DYNAMIC_TEST_CRATES"],
+        )
+        dynamic_loop = run["run"].split(
+            "foreach ($crate in @($env:WINDOWS_DYNAMIC_TEST_CRATES | ConvertFrom-Json)) {",
+            1,
+        )[1].split("}", 1)[0]
+        self.assertIn(
+            "cargo test --locked -p $crate --lib --features mesh-llm-system/dynamic-native-runtime",
+            dynamic_loop,
+        )
+
+        packages = _workspace_crates(ROOT)
+        system = tomllib.loads(
+            (packages["mesh-llm-system"] / "Cargo.toml").read_text(encoding="utf-8")
+        )
+        self.assertIn("dynamic-native-runtime", system["features"])
+        crates = json.loads(resolve["with"]["crates"])
+        self.assertTrue(crates)
+        for crate in crates:
+            with self.subTest(crate=crate):
+                if crate == "mesh-llm-system":
+                    continue
+                manifest = tomllib.loads(
+                    (packages[crate] / "Cargo.toml").read_text(encoding="utf-8")
+                )
+                self.assertIn("mesh-llm-system", manifest.get("dependencies", {}))
+
     def test_every_cfg_divergent_crate_is_routed_or_explicitly_unverified(self) -> None:
         """Platform-divergent code must be compiled on Windows or declared not to be.
 
