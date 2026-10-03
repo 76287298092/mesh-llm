@@ -60,6 +60,9 @@ skippy-bench eval sync --pack core
 skippy-bench eval run speed-bench --base-url http://127.0.0.1:9337/v1 --model org/repo:Q4_K_M --metrics-http http://127.0.0.1:18080 --metrics-run-id run-local-qwen
 ```
 
+`local-single` starts a public inference endpoint and drives `/v1/completions`.
+Split workers communicate only over the binary stage protocol.
+
 Benchmark-managed Skippy server runs require a release `skippy-serving` binary.
 Run `just release-build` before `run`, `focused-runtime`, `local-single`, or
 local split binary benchmarks. These commands default to

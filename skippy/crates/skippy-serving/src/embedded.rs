@@ -15,7 +15,6 @@ use tokio::{sync::oneshot, task::JoinHandle};
 use crate::{
     binary_transport::BinaryStageOptions,
     frontend::{EmbeddedOpenAiArgs, serve_embedded_openai_with_shutdown},
-    http::{StageHttpOptions, serve_stage_http_with_shutdown},
     runtime_state::{
         RuntimeLaunchOverrides, RuntimeSessionStats, RuntimeState, load_runtime_with_overrides,
         load_runtime_with_overrides_and_open_events,
@@ -416,16 +415,6 @@ impl Drop for EmbeddedServerHandle {
             let _ = shutdown.send(());
         }
     }
-}
-
-pub fn start_stage_http(options: StageHttpOptions) -> EmbeddedServerHandle {
-    let bind_addr = options.bind_addr;
-    spawn_async_server("stage-http", bind_addr, |shutdown| async move {
-        serve_stage_http_with_shutdown(options, async move {
-            let _ = shutdown.await;
-        })
-        .await
-    })
 }
 
 pub fn start_embedded_openai(args: EmbeddedOpenAiArgs) -> EmbeddedServerHandle {

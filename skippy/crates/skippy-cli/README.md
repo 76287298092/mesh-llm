@@ -170,9 +170,8 @@ skippy prompt --endpoint http://127.0.0.1:9337/v1 --model local-model
 
 `--prompt` can be added to the stage-0 `serve` command. A downstream stage has
 no public API, so `--prompt` and `--worker-only` cannot be combined. The binary
-stage transport is the normal split path. Internal HTTP stages use
-`--stage-transport http --worker-only` and run on their own listener; that
-internal `/v1/messages` route is separate from the public Anthropic route.
+stage transport is the only split path. Workers expose the binary protocol
+on their stage listener; stage zero exposes the public OpenAI and Anthropic APIs.
 
 Serving tuning flags use names such as `--bind-addr`,
 `--generation-concurrency`, and `--prefill-chunk-size` for both local and

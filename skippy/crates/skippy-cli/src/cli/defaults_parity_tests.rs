@@ -141,3 +141,26 @@ fn serve_rejects_prefixed_tuning_flags() {
         );
     }
 }
+
+#[test]
+fn worker_transport_only_accepts_binary() {
+    for (transport, accepted) in [("binary", true), ("http", false)] {
+        let result = Cli::try_parse_from([
+            "skippy",
+            "serve",
+            "--config",
+            "stage.json",
+            "--worker-only",
+            "--stage-transport",
+            transport,
+        ]);
+        if accepted {
+            assert!(result.is_ok());
+        } else {
+            assert_eq!(
+                result.err().unwrap().kind(),
+                clap::error::ErrorKind::InvalidValue
+            );
+        }
+    }
+}

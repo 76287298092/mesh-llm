@@ -25,17 +25,20 @@ struct CreateRunResponse {
 }
 
 #[derive(Deserialize)]
-struct StageStatus {
-    ready: bool,
-    runtime_loaded: bool,
+struct ModelsResponse {
+    data: Vec<ModelEntry>,
+}
+
+#[derive(Deserialize)]
+struct ModelEntry {
+    id: String,
 }
 
 #[derive(Serialize)]
-struct TextRequest<'a> {
-    request_id: &'a str,
-    session_id: &'a str,
+struct CompletionRequest<'a> {
+    model: &'a str,
     prompt: &'a str,
-    max_new_tokens: usize,
+    max_tokens: usize,
 }
 
 pub fn local_single(args: LocalSingleArgs) -> Result<()> {
@@ -51,7 +54,7 @@ pub fn local_single(args: LocalSingleArgs) -> Result<()> {
     let run_id = args.run_id.unwrap_or_else(generate_run_id);
     let metrics_http = format!("http://{}", args.metrics_http_addr);
     let metrics_otlp = format!("http://{}", args.metrics_otlp_grpc_addr);
-    let stage_http = format!("http://{}", args.stage_bind_addr);
+    let api_http = format!("http://{}", args.stage_bind_addr);
     let db = args.db.unwrap_or_else(|| temp_db_path(&run_id));
     let stage_config = temp_config_path(&run_id);
     let model_identity = model_identity_for_path(&args.model_id, Some(&args.model_path))?;
@@ -129,6 +132,8 @@ pub fn local_single(args: LocalSingleArgs) -> Result<()> {
         stage_config
             .to_str()
             .context("stage config path is not valid UTF-8")?,
+        "--bind-addr",
+        &args.stage_bind_addr.to_string(),
         "--metrics-otlp-grpc",
         &metrics_otlp,
     ]);
@@ -142,13 +147,17 @@ pub fn local_single(args: LocalSingleArgs) -> Result<()> {
     let _stage = ChildGuard::spawn(stage_command)?;
 
     retry(args.startup_timeout_secs, || {
-        let status = client
-            .get(format!("{stage_http}/v1/status"))
+        let models = client
+            .get(format!("{api_http}/v1/models"))
             .send()
             .and_then(|response| response.error_for_status())
             .map_err(anyhow::Error::new)?
-            .json::<StageStatus>()?;
-        if status.ready && status.runtime_loaded {
+            .json::<ModelsResponse>()?;
+        if models
+            .data
+            .iter()
+            .any(|model| model.id == model_identity.model_id)
+        {
             Ok(())
         } else {
             Err(anyhow!("stage is not ready yet"))
@@ -156,21 +165,20 @@ pub fn local_single(args: LocalSingleArgs) -> Result<()> {
     })
     .context("stage server did not become ready")?;
 
-    let request = TextRequest {
-        request_id: "local-single-request-1",
-        session_id: "local-single-session-1",
+    let request = CompletionRequest {
+        model: &model_identity.model_id,
         prompt: &args.prompt,
-        max_new_tokens: args.max_new_tokens,
+        max_tokens: args.max_new_tokens,
     };
     let text_response: Value = client
-        .post(format!("{stage_http}/v1/text"))
+        .post(format!("{api_http}/v1/completions"))
         .json(&request)
         .send()
-        .context("failed to send text request")?
+        .context("failed to send completion request")?
         .error_for_status()
-        .context("text request failed")?
+        .context("completion request failed")?
         .json()
-        .context("failed to parse text response")?;
+        .context("failed to parse completion response")?;
 
     thread::sleep(Duration::from_secs(1));
     client

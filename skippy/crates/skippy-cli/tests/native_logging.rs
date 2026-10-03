@@ -24,7 +24,7 @@ fn native_failure_replays_diagnostics_as_jsonl_events() {
         .arg(bundle)
         .args(["--output", "jsonl", "serve", "--config"])
         .arg(path)
-        .args(["--stage-transport", "http", "--worker-only"])
+        .args(["--stage-transport", "binary", "--worker-only"])
         .output()
         .unwrap();
     assert!(!output.status.success());

@@ -7,9 +7,9 @@ pub mod binary_transport;
 pub mod compute_meter;
 pub mod embedded;
 pub mod frontend;
-pub mod http;
 pub mod kv_integration;
 pub mod kv_proto;
+mod listener;
 pub mod readiness;
 pub mod runtime_state;
 
@@ -45,7 +45,7 @@ pub use embedded::{
     EmbeddedState, SkippyRuntimeHandle, start_binary_stage, start_embedded_openai,
     start_openai_backend, start_openai_backend_with_lifecycle_observer,
     start_openai_backend_with_tokenizer,
-    start_openai_backend_with_tokenizer_and_lifecycle_observer, start_stage_http,
+    start_openai_backend_with_tokenizer_and_lifecycle_observer,
 };
 pub use frontend::{
     CONTEXT_BUDGET_MAX_TOKENS, DECODE_BATCH_HEADROOM_TOKENS, DEFAULT_EMBEDDED_MAX_TOKENS,

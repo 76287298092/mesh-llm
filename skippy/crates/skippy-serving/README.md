@@ -19,8 +19,8 @@ With `dynamic-native-runtime`, serving commands resolve and load a verified loca
 native runtime before opening any model. `--runtime-bundle` accepts a bundle root
 (repeatable), `--runtime-cache` selects a cache, and `--runtime-release` defaults
 to Skippy's `RUNTIME_VERSION`. `--runtime-selection` accepts a backend or exact
-artifact ID. These global flags work with `serve`, `serve-binary`, and
-`serve-openai`; `example-config` does not load native code.
+artifact ID. These global flags work with `skippy serve`;
+`skippy example-config` does not load native code.
 
 Selection uses `skippy_runtime_install::startup::select_local_native_runtime_plan`,
 also used by Mesh's embedded local startup. Release, compiled Skippy ABI,
@@ -98,23 +98,22 @@ written.
 ## Commands
 
 ```bash
-skippy-serving example-config
-skippy-serving serve --config stage.json
-skippy-serving serve-binary --config stage.json
-skippy-serving serve-openai --config stage.json --bind-addr 127.0.0.1:9337
-skippy-serving --runtime-bundle /path/to/runtime serve-openai --model-path /models/model.gguf --model-id local-model --ctx-size 4096
-skippy-serving serve-binary --config stage-0.json --topology topology.json --bind-addr 127.0.0.1:9337 --generation-concurrency 1
+skippy example-config
+skippy serve --config stage.json --bind-addr 127.0.0.1:9337
+skippy --runtime-bundle /path/to/runtime serve --model-path /models/model.gguf --model-id local-model --ctx-size 4096
+skippy serve --config stage-1.json --stage-transport binary --worker-only
+skippy serve --config stage-0.json --stage-transport binary --topology topology.json --bind-addr 127.0.0.1:9337 --generation-concurrency 1
 ```
 
-`serve-openai --model-path` prepares a local GGUF (including multipart sources)
+`serve --model-path` prepares a local GGUF (including multipart sources)
 or safetensors checkpoint through the same `skippy-api` identity and stage
 builder used by Mesh. It does not require a stage JSON file or a Mesh process.
-Choose exactly one of `--model-path` and `--config`. For local preparation,
-`--n-gpu-layers` defaults to `-1`, `--ctx-size` to `4096`, and
-`--generation-concurrency` to `1`. `--hash-cache` explicitly selects an optional
-advisory checkpoint digest cache; strict local GGUF verification hashes its
-source bytes. This command prepares one complete local stage; split serving
-still requires graph-admitted stage configurations.
+Choose exactly one of `--model-path` and `--config`. Local preparation uses
+VRAM-aware context planning and four generation lanes by default.
+`--hash-cache` selects an optional advisory checkpoint digest cache; strict
+local GGUF verification hashes its source bytes. Split serving requires
+graph-admitted stage configurations and binary transport. Workers expose no
+HTTP API; stage zero serves the public inference APIs.
 
 ## Embedding API
 
@@ -123,10 +122,10 @@ Mesh should use the `embedded` module instead of shelling out to the CLI:
 - `SkippyRuntimeHandle::load(...)` loads a stage runtime from Rust-owned
   `StageConfig` / `StageTopology` values and exposes status, telemetry,
   session stats, and explicit shutdown.
-- `start_stage_http(...)`, `start_binary_stage(...)`, and
+- `start_binary_stage(...)` and
   `start_embedded_openai(...)` start managed servers and return
   `EmbeddedServerHandle` values with status and graceful shutdown.
-- `StageHttpOptions`, `BinaryStageOptions`, and `EmbeddedOpenAiArgs` are the
+- `BinaryStageOptions` and `EmbeddedOpenAiArgs` are the
   host-friendly equivalents of the old CLI argument structs. CLI commands now
   convert into these options and call the same serving functions.
 
@@ -160,33 +159,30 @@ deadline handling.
 
 ## Notes
 
-- `serve-binary` is the tuned binary stage-to-stage path.
-- `serve-binary` participates in the breaking generation-11 stage protocol.
+- `serve --stage-transport binary` is the tuned binary stage-to-stage path.
+- Binary stages participate in the breaking generation-11 stage protocol.
   Stage compatibility requires the complete `stage-generation-11` control,
   status-list, strict-content-identity, stage-admission, and stale-window-discard
   bundle. Older peers, including generation 7 peers, are rejected during split
-  planning rather than being mixed into a generation-11 topology. A manually
-  wired `serve-binary --downstream` chain has no generation handshake, so every
-  stage in that chain must be upgraded together.
-- `serve-binary` accepts upstream protocol connections concurrently. Model
+  planning rather than being mixed into a generation-11 topology.
+- Binary stages accept upstream protocol connections concurrently. Model
   execution remains serialized by the per-process runtime lock, but readiness,
   abandoned, or broken connections do not monopolize the listener and block the
   next OpenAI-driven request from reaching the downstream chain.
-- Non-final `serve-binary` stages prefer the OS-selected route for downstream
+- Non-final binary stages prefer the OS-selected route for downstream
   sockets, then validate that the local socket address matches the
   non-unspecified IP in `bind_addr`. If that route-selected path fails, the
   server falls back through explicit source/interface binding, including the
   macOS interface-scoped socket option. In a multi-NIC lab, set `bind_addr` to
   the private LAN address, such as `192.168.0.x:19031`, so both inbound serving
   and outbound stage-to-stage traffic are pinned to that interface.
-- `serve-openai` exposes model discovery, chat/completions, Responses,
+- `serve` exposes model discovery, chat/completions, Responses,
   embeddings, rerank, and audio endpoints using the shared `skippy-inference-api`
-  crate for a local
-  final/single-stage config with no downstream peer. Split serving uses
-  embedded stage-0 OpenAI serving from `serve-binary --bind-addr` because
-  prediction returns flow directly from the final stage to stage 0.
-  The older standalone `serve-openai --first-stage-addr` adapter is no longer
-  supported. `--model-id` is the exact served model id to advertise
+  crate for a local final/single-stage config with no downstream peer. Split serving uses
+  embedded stage-0 OpenAI serving with `--stage-transport binary` and
+  `--bind-addr` because prediction returns flow directly from the final stage
+  to stage 0.
+  `--model-id` is the exact served model id to advertise
   and accept, for example `org/repo:Q4_K_M`; it is not parsed as stage topology.
   `--generation-concurrency` controls how many chat generation requests may run
   at once and defaults to the config's KV-derived `lane_count`.
@@ -203,7 +199,7 @@ deadline handling.
   `timeout` error frame in the stream, not an empty response. Embedded serving
   exposes the same controls. Keep all three explicit in benchmark reports because
   they determine active execution, overload behavior, and tail latency.
-- `serve-openai` and embedded stage-0 OpenAI serving emit OpenAI-surface
+- `serve` and embedded stage-0 OpenAI serving emit OpenAI-surface
   telemetry when `--metrics-otlp-grpc` and `--telemetry-level debug` are set.
   The spans account for the full request path visible to the backend:
   HTTP request, request summary, chat template or prompt preparation, generation
@@ -271,7 +267,7 @@ deadline handling.
   promoting it for concurrent serving.
 - Benchy usage lives in [`skippy/docs/LLAMA_BENCHY.md`](../../docs/LLAMA_BENCHY.md).
 - The local OpenAI smoke harness is `scripts/openai-smoke.sh`.
-- `serve-binary` forwards eligible non-final prefill activation frames on a
+- Binary stages forward eligible non-final prefill activation frames on a
   bounded background writer by default. Use `--no-async-prefill-forward` only
   when comparing against the synchronous prefill path.
 - `runtime-slice` loads the exact graph-admitted resident tensor closure from a
@@ -298,7 +294,7 @@ deadline handling.
 ## Middle-Out Prefill
 
 During prefill, activation frames are much larger than token/control traffic.
-`--prefill-chunk-size` is chosen by the driver, while `serve-binary` enforces
+`--prefill-chunk-size` is chosen by the driver, while binary stages enforce
 bounded downstream credit with `--max-inflight` and `--reply-credit-limit`.
 When `--async-prefill-forward` is enabled, eligible non-final prefill activation
 writes run on a bounded background writer so compute for the next chunk can

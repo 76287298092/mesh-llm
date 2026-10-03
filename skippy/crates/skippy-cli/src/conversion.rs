@@ -1,32 +1,11 @@
-use crate::cli::{ServeArgs, ServeBinaryArgs};
+use crate::cli::ServeBinaryArgs;
 use anyhow::{Context, Result, bail};
 use skippy_config::load_json;
 use skippy_protocol::{StageConfig, StageTopology};
 use skippy_serving::{
     binary_transport::{BinaryStageOptions, EmbeddedOpenAiStageOptions, WireCondition},
     frontend::SpeculativeDecodeConfig,
-    http::StageHttpOptions,
 };
-pub fn stage_http_options(args: ServeArgs) -> Result<StageHttpOptions> {
-    let config = load_json::<StageConfig>(&args.config)
-        .with_context(|| format!("load stage config {}", args.config.display()))?;
-    let topology = match args.topology.as_ref() {
-        Some(path) => Some(
-            load_json::<StageTopology>(path)
-                .with_context(|| format!("load topology {}", path.display()))?,
-        ),
-        None => None,
-    };
-    let bind_addr = args.bind_addr.unwrap_or(config.bind_addr.parse()?);
-    Ok(StageHttpOptions {
-        config,
-        topology,
-        bind_addr,
-        metrics_otlp_grpc: args.metrics_otlp_grpc,
-        telemetry_queue_capacity: args.telemetry_queue_capacity,
-        telemetry_level: args.telemetry_level.into(),
-    })
-}
 pub fn binary_stage_options(args: ServeBinaryArgs) -> Result<BinaryStageOptions> {
     if args.openai_generation_concurrency == Some(0) {
         bail!("--generation-concurrency must be greater than zero");

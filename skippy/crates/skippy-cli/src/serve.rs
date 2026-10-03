@@ -1,4 +1,4 @@
-//! One public serving entry point with explicit internal stage transports.
+//! One public serving entry point with binary internal stage transport.
 
 use std::{
     future::Future,
@@ -16,8 +16,7 @@ use tokio::{process::Command, sync::oneshot, task::JoinHandle};
 
 use crate::{
     cli::{
-        OpenAiGuardrailsCliMode, ServeArgs, ServeBinaryArgs, ServeCommandArgs, ServeOpenAiArgs,
-        StageTransport,
+        OpenAiGuardrailsCliMode, ServeBinaryArgs, ServeCommandArgs, ServeOpenAiArgs, StageTransport,
     },
     conversion, shutdown_signal,
 };
@@ -86,7 +85,6 @@ pub async fn run(mut args: ServeCommandArgs) -> Result<()> {
         }
     }
     match args.stage_transport {
-        Some(StageTransport::Http) => serve_http_stage(args).await,
         Some(StageTransport::Binary) => serve_binary_stage(args).await,
         None => serve_public(args).await,
     }
@@ -124,9 +122,6 @@ pub(crate) fn validate(args: &ServeCommandArgs) -> Result<()> {
     if args.public.config.is_none() && args.public.model_path.is_none() && args.model.is_none() {
         bail!("provide --model, --model-path, or --config");
     }
-    if args.stage_transport == Some(StageTransport::Http) && !args.worker_only {
-        bail!("HTTP stage transport requires --worker-only; use binary for a public stage-0 API");
-    }
     Ok(())
 }
 
@@ -159,29 +154,6 @@ async fn serve_public(args: ServeCommandArgs) -> Result<()> {
         Some(model_open_events),
     )
     .await
-}
-
-async fn serve_http_stage(args: ServeCommandArgs) -> Result<()> {
-    if args.public.kv_cache_disk.is_some()
-        || args.public.kv_cache_disk_dir.is_some()
-        || args.public.kv_cache_min_free.is_some()
-    {
-        bail!("disk prompt cache options require local or binary stage serving");
-    }
-    let startup_timeout = Duration::from_secs(args.public.startup_timeout_secs.max(1));
-    let config = args.public.config.context("--config is required")?;
-    let options = conversion::stage_http_options(ServeArgs {
-        config,
-        topology: args.public.topology,
-        bind_addr: args.public.bind_addr,
-        metrics_otlp_grpc: args.public.metrics_otlp_grpc,
-        telemetry_queue_capacity: args.public.telemetry_queue_capacity,
-        telemetry_level: args.public.telemetry_level,
-    })?;
-    let bind_addr = options.bind_addr;
-    let model_id = options.config.model_id.clone();
-    let server = skippy_serving::http::serve_stage_http_with_shutdown(options, shutdown_signal()?);
-    serve_worker_with_readiness(server, bind_addr, model_id, "http", startup_timeout).await
 }
 
 async fn serve_binary_stage(mut args: ServeCommandArgs) -> Result<()> {
@@ -487,7 +459,7 @@ mod tests {
     use clap::Parser;
 
     #[test]
-    fn http_worker_bind_override_is_explicit() {
+    fn binary_worker_bind_override_is_explicit() {
         for (flags, expected) in [
             (Vec::<&str>::new(), None),
             (
@@ -502,7 +474,7 @@ mod tests {
                 "stage.json",
                 "--worker-only",
                 "--stage-transport",
-                "http",
+                "binary",
             ];
             argv.extend(flags);
             let cli = Cli::try_parse_from(argv).unwrap();

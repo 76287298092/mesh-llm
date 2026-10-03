@@ -70,7 +70,6 @@ pub enum Command {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
 pub enum StageTransport {
     Binary,
-    Http,
 }
 
 #[derive(Parser)]
@@ -81,7 +80,7 @@ pub struct ServeCommandArgs {
     /// Open an interactive prompt after the public API is ready.
     #[arg(long)]
     pub prompt: bool,
-    /// Internal stage transport for a prepared stage configuration.
+    /// Binary stage transport for a prepared stage configuration.
     #[arg(long, value_enum, requires = "config")]
     pub stage_transport: Option<StageTransport>,
     /// Run an internal stage without a public inference API.
@@ -93,22 +92,6 @@ pub struct ServeCommandArgs {
     #[command(flatten)]
     #[command(next_help_heading = "Binary stage tuning")]
     pub stage: ServeBinaryArgs,
-}
-
-#[derive(Parser)]
-pub struct ServeArgs {
-    #[arg(long)]
-    pub config: PathBuf,
-    #[arg(long)]
-    pub topology: Option<PathBuf>,
-    #[arg(long)]
-    pub bind_addr: Option<SocketAddr>,
-    #[arg(long)]
-    pub metrics_otlp_grpc: Option<String>,
-    #[arg(long, default_value_t = 1024)]
-    pub telemetry_queue_capacity: usize,
-    #[arg(long, value_enum, default_value_t = TelemetryLevel::Summary)]
-    pub telemetry_level: TelemetryLevel,
 }
 
 #[derive(clap::Args)]
@@ -259,8 +242,8 @@ pub struct ServeOpenAiArgs {
     pub hash_cache: Option<PathBuf>,
     #[arg(long)]
     pub topology: Option<PathBuf>,
-    /// Public API address (default: 127.0.0.1:9337); in HTTP worker mode,
-    /// overrides the listener address in the stage config only when supplied.
+    /// Public API address (default: 127.0.0.1:9337); in worker mode,
+    /// overrides the binary listener address in the stage config when supplied.
     #[arg(long)]
     pub bind_addr: Option<SocketAddr>,
     #[arg(
