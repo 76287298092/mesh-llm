@@ -42,7 +42,8 @@ pub(super) use super::local_split::{
     SplitCoordinatorAck, SplitCoordinatorDrainEvent, SplitCoordinatorEvent,
     SplitCoordinatorLocalFallbackEvent, SplitCoordinatorReplaceEvent, SplitGenerationCleanup,
     SplitRuntimeReason, SplitRuntimeStart, StartupRuntimePlan, now_unix_nanos,
-    start_runtime_split_model, startup_runtime_plan, stop_split_generation_cleanup,
+    serve_over_capacity_locally, start_runtime_split_model, startup_runtime_plan,
+    stop_split_generation_cleanup,
 };
 pub(super) fn skippy_native_model_open_events(
     model_name: String,

@@ -15,8 +15,9 @@ use super::{
     refresh_dashboard_context_usage, register_runtime_instance, remove_dashboard_context_usage,
     remove_dashboard_process, remove_runtime_local_target, reserve_runtime_capacity_for_model,
     runtime_model_planning_bytes, runtime_model_required_bytes,
-    runtime_process_payload_with_status, start_runtime_local_model, start_runtime_split_model,
-    startup_runtime_plan, stop_split_generation_cleanup, unregister_runtime_instance,
+    runtime_process_payload_with_status, serve_over_capacity_locally, start_runtime_local_model,
+    start_runtime_split_model, startup_runtime_plan, stop_split_generation_cleanup,
+    unregister_runtime_instance,
     update_pi_models_json, upsert_dashboard_process,
 };
 use crate::api;
@@ -675,7 +676,12 @@ pub(super) async fn startup_prepare_launch(
         ctx.node.advertised_memory.ram_offload_bytes,
     );
     let model_bytes = startup_planning_model_bytes(&ctx).await?;
-    let runtime_plan = startup_runtime_plan(ctx.split, local_capacity, model_bytes);
+    let runtime_plan = startup_runtime_plan(
+        ctx.split,
+        local_capacity,
+        model_bytes,
+        serve_over_capacity_locally(),
+    );
     let launch_kind = startup_launch_kind(runtime_plan, ctx.survey_launch_kind);
     Some(StartupPreparedLaunch {
         local_capacity,

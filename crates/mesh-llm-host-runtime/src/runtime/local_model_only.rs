@@ -22,7 +22,7 @@ use std::time::Duration;
 
 const OPENAI_STARTUP_TIMEOUT: Duration = Duration::from_secs(10);
 const OPENAI_STATUS_POLL_INTERVAL: Duration = Duration::from_millis(25);
-const EXPERIMENTAL_MMAP_OVERCOMMIT_ENV: &str = "MESH_LLM_EXPERIMENTAL_MMAP_OVERCOMMIT";
+pub(super) const EXPERIMENTAL_MMAP_OVERCOMMIT_ENV: &str = "MESH_LLM_EXPERIMENTAL_MMAP_OVERCOMMIT";
 
 pub(super) fn validate_local_model_only_options(options: &RuntimeOptions) -> Result<()> {
     anyhow::ensure!(!options.client, "--local-model-only cannot run as a client");
@@ -326,7 +326,7 @@ async fn run_local_model_only_inner(
     result
 }
 
-fn experimental_mmap_overcommit_requested() -> Result<bool> {
+pub(super) fn experimental_mmap_overcommit_requested() -> Result<bool> {
     match std::env::var_os(EXPERIMENTAL_MMAP_OVERCOMMIT_ENV) {
         None => Ok(false),
         Some(value) if value == "1" => Ok(true),

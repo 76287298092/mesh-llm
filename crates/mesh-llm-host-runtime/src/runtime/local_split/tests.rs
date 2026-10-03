@@ -1000,9 +1000,33 @@ fn split_stage_topology_instance_populates_stage_zero_endpoint() {
 #[test]
 fn startup_runtime_plan_auto_splits_when_model_exceeds_local_capacity() {
     assert_eq!(
-        startup_runtime_plan(false, 3_000_000_000, 4_800_000_000),
+        startup_runtime_plan(false, 3_000_000_000, 4_800_000_000, false),
         StartupRuntimePlan::Split {
             reason: SplitRuntimeReason::LocalCapacity
+        }
+    );
+}
+
+#[test]
+fn startup_runtime_plan_serves_over_capacity_locally_when_mapping_is_opted_in() {
+    // A mapped model with a bounded resident set is servable on one node even
+    // though it is larger than memory: the split runtime it would otherwise be
+    // sent to drives activations into a downstream stage, and a lone node has
+    // none, so splitting here is not a fallback — it is a dead end.
+    assert_eq!(
+        startup_runtime_plan(false, 3_000_000_000, 4_800_000_000, true),
+        StartupRuntimePlan::Local
+    );
+}
+
+#[test]
+fn startup_runtime_plan_still_honours_explicit_split_over_local_overcommit() {
+    // The opt-in only answers the capacity question. An operator who asked for
+    // split still gets split.
+    assert_eq!(
+        startup_runtime_plan(true, 3_000_000_000, 4_800_000_000, true),
+        StartupRuntimePlan::Split {
+            reason: SplitRuntimeReason::Forced
         }
     );
 }
@@ -1074,7 +1098,7 @@ async fn generation9_local_direct_gguf_identity_ignores_worker_path() {
 #[test]
 fn startup_runtime_plan_keeps_local_when_model_fits_without_split_flag() {
     assert_eq!(
-        startup_runtime_plan(false, 6_000_000_000, 4_800_000_000),
+        startup_runtime_plan(false, 6_000_000_000, 4_800_000_000, false),
         StartupRuntimePlan::Local
     );
 }
@@ -1082,7 +1106,7 @@ fn startup_runtime_plan_keeps_local_when_model_fits_without_split_flag() {
 #[test]
 fn startup_runtime_plan_respects_explicit_split_for_fitting_model() {
     assert_eq!(
-        startup_runtime_plan(true, 6_000_000_000, 4_800_000_000),
+        startup_runtime_plan(true, 6_000_000_000, 4_800_000_000, false),
         StartupRuntimePlan::Split {
             reason: SplitRuntimeReason::Forced
         }

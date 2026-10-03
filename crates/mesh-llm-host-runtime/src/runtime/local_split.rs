@@ -149,17 +149,37 @@ pub(super) async fn stop_split_generation_cleanup(
     stop_split_generation(node, &cleanup.generation, shutdown_generation).await;
 }
 
+/// Whether this node may serve a model larger than its memory from the local
+/// path.
+///
+/// `model_fits_runtime_capacity` asks whether the model fits in memory. For a
+/// mapped model that is the wrong question: what has to fit is the window the
+/// runtime keeps resident, and the runtime bounds that itself. Answering it
+/// anyway is what sends an over-capacity model to the split runtime, and a split
+/// pipeline drives activations into a downstream stage — so a lone node can
+/// never satisfy it, no matter how much reachable storage it has. That is the
+/// wall this opt-in removes.
+///
+/// Off unless `MESH_LLM_EXPERIMENTAL_MMAP_OVERCOMMIT=1`, so a default
+/// installation keeps refusing an over-capacity model up front instead of
+/// discovering it at first decode. An unreadable or invalid value fails closed
+/// to the old answer rather than taking the risk on the operator's behalf.
+pub(super) fn serve_over_capacity_locally() -> bool {
+    super::local_model_only::experimental_mmap_overcommit_requested().unwrap_or(false)
+}
+
 pub(super) fn startup_runtime_plan(
     explicit_split: bool,
     local_vram_bytes: u64,
     model_bytes: u64,
+    serve_over_capacity_locally: bool,
 ) -> StartupRuntimePlan {
     if explicit_split {
         return StartupRuntimePlan::Split {
             reason: SplitRuntimeReason::Forced,
         };
     }
-    if model_fits_runtime_capacity(model_bytes, local_vram_bytes) {
+    if serve_over_capacity_locally || model_fits_runtime_capacity(model_bytes, local_vram_bytes) {
         StartupRuntimePlan::Local
     } else {
         StartupRuntimePlan::Split {
