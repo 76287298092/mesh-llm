@@ -246,6 +246,22 @@ pub(super) fn default_runtime_headroom_bytes(vram_bytes: u64) -> u64 {
         .min(vram_bytes)
 }
 
+/// Reachable weight budget a participant may be planned against: every weight
+/// byte it can get at — resident memory plus storage it can page its own stage's
+/// weights from — less the runtime headroom it must keep. Headroom is a resident
+/// cost, so it is scaled by resident memory rather than by reachable storage.
+///
+/// This is the quantity the planner calls `usable_vram_bytes`, and it is the
+/// same expression `usable_nodes` computes from `detected_vram_bytes` minus
+/// `runtime_headroom_bytes`. It is deliberately not `vram_bytes`: a node with no
+/// accelerator still has both terms, and a node serving a model far larger than
+/// its memory is exactly the case this expresses.
+pub(super) fn participant_usable_bytes(participant: &SplitParticipant) -> u64 {
+    participant
+        .staging_bytes()
+        .saturating_sub(default_runtime_headroom_bytes(participant.resident_bytes()))
+}
+
 pub(super) fn split_participants_for_stages(
     participants: &[SplitParticipant],
     stages: &[RuntimeSliceStagePlan],
@@ -615,6 +631,25 @@ fn participant_index_by_id(participants: &[SplitParticipant]) -> HashMap<String,
         .collect()
 }
 
+/// Bytes a participant can put behind a stage: what it holds resident plus what
+/// it can page in from its own storage for that stage.
+///
+/// Placement used to ask whether the mesh could *hold* the model: the aggregate
+/// gate compared total `vram_bytes` against the source model bytes, and every
+/// stage was charged its full weight bytes against node VRAM. For a node whose
+/// weights sit on its own storage and are demand-paged, that is the wrong
+/// question — it made a host that can serve the model look like a host that
+/// cannot, and a host with no accelerator memory could not participate at all.
+///
+/// This is not accelerator capacity and does not claim to be: it is the
+/// reachable weight budget. The *resident* bound is enforced where it belongs,
+/// by the runtime's residency budget and the kernel ceiling on its process, not
+/// here; placement has to establish that the bytes are reachable and that the
+/// stage's resident costs fit. See `SplitParticipant::staging_bytes`.
+fn staging_budget_bytes(participant: &SplitParticipant) -> u64 {
+    participant.staging_bytes()
+}
+
 fn runtime_slice_plan_input(
     package: &skippy::SkippyPackageIdentity,
     participants: &[SplitParticipant],
@@ -631,14 +666,22 @@ fn runtime_slice_plan_input(
         context_length_override: resources.ctx_size_override,
         parallel_lanes_override: resources.parallel_override,
         target_decode_tpot_ms: Some(DEFAULT_TARGET_DECODE_TPOT_MS),
-        minimum_nodes: super::local::SPLIT_DEFAULT_MIN_PARTICIPANTS,
+        minimum_nodes: super::local::split_min_participants(),
         nodes: participants
             .iter()
             .map(|participant| SplitTopologyPlanNode {
                 node_id: participant.node_id.to_string(),
-                detected_vram_bytes: participant.vram_bytes,
-                max_vram_bytes: Some(participant.vram_bytes),
-                runtime_headroom_bytes: default_runtime_headroom_bytes(participant.vram_bytes),
+                // The planner's budget is what the node can *reach*: resident
+                // memory plus storage it can page its own stage's weights from.
+                // This is what makes a model larger than every host plannable,
+                // and it is why the budget is not `vram_bytes`. The planner only
+                // ever reads `min(detected, max)`, so the ceiling goes here and
+                // `max_vram_bytes` stays open.
+                detected_vram_bytes: participant.staging_bytes(),
+                max_vram_bytes: None,
+                runtime_headroom_bytes: default_runtime_headroom_bytes(
+                    participant.resident_bytes(),
+                ),
                 stage_transfer_latency_ms: participant.rtt_ms,
                 decode_bytes_per_second: participant.decode_bytes_per_second,
             })
@@ -753,12 +796,18 @@ fn planner_recurrent_bytes_by_layer(recurrent: &[u64], layer_count: u32) -> Vec<
     vec![0; layer_count as usize]
 }
 
-/// What a stage costs under the topology planner's capacity model: the
-/// weights of the range it holds, context-scaled KV charged at the compute
-/// reserve, and lane-scaled recurrent state. Mirrors
+/// Every byte the stage owns, priced: its full weight range, context-scaled KV
+/// charged at the compute reserve, and lane-scaled recurrent state. Mirrors
 /// `layer_required_bytes` in `skippy_coordinator::topology`, including the
 /// 100/85 KV compute-reserve charge from `split_candidate_bytes_per_layer`;
 /// KV is a single shared allocation, so the lane count never multiplies it.
+///
+/// Charging the full range is deliberate, even though no host holds a 246 GiB
+/// model resident. A discount here would make this validator more permissive
+/// than the planner that produced the placement, so it would wave through a cut
+/// the planner itself rejected. What makes such a model plannable is not a
+/// discount on the weights — it is that the node's *reachable* budget counts the
+/// storage it pages its own stage's weights from. See `participant_usable_bytes`.
 fn stage_required_bytes(
     stage: &RuntimeSliceStagePlan,
     layer_weights: &[u64],
@@ -769,21 +818,21 @@ fn stage_required_bytes(
 ) -> u64 {
     let start = (stage.layer_start as usize).min(layer_weights.len());
     let end = (stage.layer_end as usize).min(layer_weights.len());
-    layer_weights[start..end]
+    let mut total = 0u128;
+    for (weight, recurrent) in layer_weights[start..end]
         .iter()
         .zip(recurrent_by_layer[start..end].iter())
-        .fold(0u128, |total, (weight, recurrent)| {
-            let kv_with_compute_reserve = u128::from(kv_per_layer)
-                .saturating_mul(u128::from(context_length))
-                .saturating_mul(KV_COMPUTE_RESERVE_NUMERATOR)
-                .div_ceil(KV_COMPUTE_RESERVE_DENOMINATOR);
-            let recurrent = u128::from(*recurrent).saturating_mul(parallel_lanes as u128);
-            total
-                .saturating_add(u128::from(*weight))
-                .saturating_add(kv_with_compute_reserve)
-                .saturating_add(recurrent)
-        })
-        .min(u128::from(u64::MAX)) as u64
+    {
+        let kv_with_compute_reserve = u128::from(kv_per_layer)
+            .saturating_mul(u128::from(context_length))
+            .saturating_mul(KV_COMPUTE_RESERVE_NUMERATOR)
+            .div_ceil(KV_COMPUTE_RESERVE_DENOMINATOR);
+        total = total
+            .saturating_add(u128::from(*weight))
+            .saturating_add(kv_with_compute_reserve)
+            .saturating_add(u128::from(*recurrent).saturating_mul(parallel_lanes as u128));
+    }
+    total.min(u128::from(u64::MAX)) as u64
 }
 
 /// Move the cut to `boundaries`, keeping each stage's node and order. Ignored
@@ -865,18 +914,14 @@ fn split_topology_failure_reason(
     );
     let total_usable_vram = participants
         .iter()
-        .map(|participant| {
-            participant
-                .vram_bytes
-                .saturating_sub(default_runtime_headroom_bytes(participant.vram_bytes))
-        })
+        .map(participant_usable_bytes)
         .sum::<u64>();
     let max_placeable_layers = participants
         .iter()
         .map(|participant| {
             max_layers_for_participant(
-                participant.vram_bytes,
-                default_runtime_headroom_bytes(participant.vram_bytes),
+                participant_usable_bytes(participant),
+                0,
                 bytes_per_layer,
             )
         })
@@ -938,14 +983,14 @@ fn split_topology_fit_labels(
     participants
         .iter()
         .map(|participant| {
-            let headroom = default_runtime_headroom_bytes(participant.vram_bytes);
-            let usable = participant.vram_bytes.saturating_sub(headroom);
-            let max_layers =
-                max_layers_for_participant(participant.vram_bytes, headroom, bytes_per_layer);
+            let headroom = default_runtime_headroom_bytes(participant.resident_bytes());
+            let usable = participant_usable_bytes(participant);
+            let max_layers = max_layers_for_participant(usable, 0, bytes_per_layer);
             format!(
-                "{}:budget={} headroom={} usable={} max_layers={}",
+                "{}:reachable={} resident={} headroom={} usable={} max_layers={}",
                 participant.node_id.fmt_short(),
-                format_gb(participant.vram_bytes),
+                format_gb(participant.staging_bytes()),
+                format_gb(participant.resident_bytes()),
                 format_gb(headroom),
                 format_gb(usable),
                 max_layers
@@ -959,9 +1004,11 @@ pub(super) fn split_participant_labels(participants: &[SplitParticipant]) -> Vec
         .iter()
         .map(|participant| {
             format!(
-                "{}:{} cached={} missing={} rtt={}ms transfer={}",
+                "{}:vram={} resident={} staging={} cached={} missing={} rtt={}ms transfer={}",
                 participant.node_id.fmt_short(),
                 format_gb(participant.vram_bytes),
+                format_gb(participant.resident_bytes()),
+                format_gb(participant.staging_bytes()),
                 format_gb(participant.cached_slice_bytes),
                 format_gb(participant.missing_artifact_bytes),
                 participant.rtt_ms.unwrap_or_default(),
@@ -1004,28 +1051,35 @@ pub(super) fn validate_split_capacity(
     excluded: &[SplitParticipantExclusion],
     capacity: &SplitCapacityModel,
 ) -> Result<()> {
-    let total_vram_bytes = participants
+    // Reachable weight bytes, not accelerator bytes: a node whose weights are on
+    // its own storage can serve a model far larger than its memory. See
+    // `staging_budget_bytes`.
+    let total_staging_bytes = participants
         .iter()
-        .map(|participant| participant.vram_bytes)
+        .map(staging_budget_bytes)
         .sum::<u64>();
     // Use raw model weight for aggregate split check — the topology planner
     // already performed detailed per-node budgeting with KV and headroom.
     let required_total_bytes = package.source_model_bytes;
     anyhow::ensure!(
-        total_vram_bytes >= required_total_bytes,
+        total_staging_bytes >= required_total_bytes,
         "{}",
         format_aggregate_split_capacity_error(
             model_ref,
             required_total_bytes,
-            total_vram_bytes,
+            total_staging_bytes,
             participants,
             excluded
         )
     );
 
-    let vram_by_node = participants
+    let resident_by_node = participants
         .iter()
-        .map(|participant| (participant.node_id, participant.vram_bytes))
+        .map(|participant| (participant.node_id, participant.resident_bytes()))
+        .collect::<HashMap<_, _>>();
+    let staging_by_node = participants
+        .iter()
+        .map(|participant| (participant.node_id, staging_budget_bytes(participant)))
         .collect::<HashMap<_, _>>();
     let layer_weights = planner_layer_weight_bytes(package);
     let recurrent_by_layer = planner_recurrent_bytes_by_layer(
@@ -1036,16 +1090,23 @@ pub(super) fn validate_split_capacity(
         .kv_bytes_per_token
         .div_ceil(u64::from(package.layer_count.max(1)));
     for stage in stages {
-        let node_vram = vram_by_node
+        let node_resident = resident_by_node
             .get(&stage.node_id)
             .copied()
             .unwrap_or_default();
+        let node_staging = staging_by_node
+            .get(&stage.node_id)
+            .copied()
+            .unwrap_or_default();
+        // Headroom is a resident cost, so it is scaled by resident memory; the
+        // stage may occupy everything else the node can reach, which is resident
+        // memory plus the storage it pages its own stage's weights from.
         let headroom = if capacity.budgets_runtime_headroom {
-            default_runtime_headroom_bytes(node_vram)
+            default_runtime_headroom_bytes(node_resident)
         } else {
             0
         };
-        let usable_vram_bytes = node_vram.saturating_sub(headroom);
+        let usable_vram_bytes = node_staging.saturating_sub(headroom);
         let required_bytes = stage_required_bytes(
             stage,
             &layer_weights,
@@ -1056,16 +1117,36 @@ pub(super) fn validate_split_capacity(
         );
         anyhow::ensure!(
             usable_vram_bytes >= required_bytes,
-            "{} assigned to {} for {model_ref} exceeds node capacity: requires {} against usable {} (node budget {} minus {} runtime headroom) for {} layer(s) of repriced weights plus context-scaled KV at the compute reserve and recurrent state (context {}, {} lane(s))",
+            "{} assigned to {} for {model_ref} exceeds node capacity: requires {} against usable {} (reachable {} minus {} runtime headroom, over {} resident) for {} layer(s) of repriced weights plus context-scaled KV at the compute reserve and recurrent state (context {}, {} lane(s))",
             stage.stage_id,
             stage.node_id.fmt_short(),
             format_gb(required_bytes),
             format_gb(usable_vram_bytes),
-            format_gb(node_vram),
+            format_gb(node_staging),
             format_gb(headroom),
+            format_gb(node_resident),
             stage.layer_end.saturating_sub(stage.layer_start),
             capacity.context_length,
             capacity.parallel_lanes,
+        );
+
+        // Everything the stage owns must be reachable: resident, or paged in
+        // from this node's own storage. This is the check that replaces "the
+        // mesh must be able to hold the model" — the mesh does not have to, and
+        // for a model larger than every host it cannot.
+        let owned_weight_bytes = layer_weights
+            [(stage.layer_start as usize).min(layer_weights.len())
+                ..(stage.layer_end as usize).min(layer_weights.len())]
+            .iter()
+            .fold(0u64, |total, weight| total.saturating_add(*weight));
+        anyhow::ensure!(
+            node_staging >= owned_weight_bytes,
+            "{} assigned to {} for {model_ref} owns {} of weights but only {} is reachable on that node ({} resident plus locally pageable storage); the model source must be available to the node that holds the stage",
+            stage.stage_id,
+            stage.node_id.fmt_short(),
+            format_gb(owned_weight_bytes),
+            format_gb(node_staging),
+            format_gb(node_resident),
         );
     }
     Ok(())

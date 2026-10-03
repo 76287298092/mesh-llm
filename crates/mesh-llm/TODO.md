@@ -68,22 +68,32 @@ Fetch model files directly from mesh peers instead of HuggingFace. Peers already
 - Download logic tries peers first, falls back to HuggingFace
 - Extend gossip to include filenames on disk so peers know what's fetchable
 
-## SSD Expert Streaming
+## Mesh-Native Distributed SSD Inference
 
-Run giant MoE models on a single node by streaming active experts from NVMe instead of fitting everything in RAM.
+Target: execute one request across Mesh layer stages while each node stores
+its assigned weights on local storage and operates within a measured,
+per-node memory budget. This does not pool physical RAM.
 
-[flash-moe](https://github.com/danveloper/flash-moe) already does this — runs Qwen3.5-397B-A17B at 5.5 tok/s on a 48GB M3 Max with 6GB resident memory. See [ROADMAP.md](../../ROADMAP.md).
+Design and acceptance criteria:
+[DISTRIBUTED_SSD_INFERENCE.md](../../docs/design/DISTRIBUTED_SSD_INFERENCE.md).
 
-Initial adapter: mesh-llm registers Flash-MoE through the external [`flash-moe`](https://github.com/Mesh-LLM/flash-moe) plugin, either by letting the plugin spawn the Flash-MoE `infer --serve` process or by attaching an already-running OpenAI-compatible endpoint. The adapter keeps Flash-MoE installation, source builds, and model artifact preparation outside mesh-llm.
+- [ ] Advertise safe per-node stage budgets and local stage-artifact/native
+  backend capabilities; keep telemetry advisory and test load-time admission.
+- [ ] Convert multi-file GGUF sources into verified, content-addressed
+  layer-stage artifacts without a full in-memory assembly.
+- [ ] Implement bounded demand-backed native tensor loading; `mmap` alone is
+  not proof of bounded physical-memory use.
+- [ ] Implement and certify DeepSeek-V4.1 `deepseek41` native runtime support
+  for the exact target artifact; follow
+  [DEEPSEEK41_COMPATIBILITY.md](../../docs/design/DEEPSEEK41_COMPATIBILITY.md).
+  Package-only certification is not native loader or graph certification.
+- [ ] Demonstrate one request crossing two or more Skippy layer stages, with
+  per-node RAM high-water marks and cold/warm SSD I/O measurements.
+- [ ] Evaluate remote expert workers as a separate, opt-in protocol only after
+  layer staging and local SSD residency are correct.
 
-Remaining work: document the exact Flash-MoE artifact preparation flow and add real-machine smoke coverage for the target Qwen3.5-397B path.
-
-## MoE Expert Sharding
-
-Design: [MoE_PLAN.md](../../docs/design/MoE_PLAN.md) · Auto-deploy: [MoE_DEPLOY_DESIGN.md](../../docs/design/MoE_DEPLOY_DESIGN.md) · Validation: [MoE_SPLIT_REPORT.md](../../docs/design/MoE_SPLIT_REPORT.md)
-
-- [ ] **Lazy `moe-analyze`** — auto-run ranking for unknown MoE models.
-- [ ] **Scale testing** — Mixtral 8×22B, Qwen3-235B-A22B across multi-node.
+Flash-MoE remains an optional external single-node endpoint adapter. It is not
+the implementation of distributed Skippy stages or remote expert execution.
 
 ## Smart Router
 - [ ] **Context-aware routing**: Hosts advertise `n_ctx` in gossip. Router estimates request token count and skips hosts that can't fit it. Today a long chat routed to a small-context host returns 400 with no fallback.

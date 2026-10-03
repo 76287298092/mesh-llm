@@ -8,7 +8,9 @@ use super::status::{ModelTargetCapacityAdvicePayload, ModelTargetCapacityAdviceS
 use crate::mesh::{NodeRole, PeerInfo};
 use crate::models;
 use crate::runtime;
+use crate::runtime::local_package::split_min_participants;
 use std::collections::HashMap;
+use std::path::Path;
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct ModelTargetCapacityInput<'a> {
@@ -17,6 +19,10 @@ pub(crate) struct ModelTargetCapacityInput<'a> {
     pub(crate) serving_node_count: usize,
     pub(crate) local_role: &'a NodeRole,
     pub(crate) local_vram_bytes: u64,
+    /// System RAM this node offers for a stage's weights, as advertised. Not
+    /// accelerator memory and never reported as any: a node with no accelerator
+    /// still has this, and it is what a CPU-served stage lives in.
+    pub(crate) local_host_ram_bytes: u64,
     pub(crate) peers: &'a [PeerInfo],
     pub(crate) size_lookup: &'a ModelTargetSizeLookup,
 }
@@ -31,6 +37,74 @@ struct ModelSizeHint {
 pub(crate) struct ModelTargetSizeLookup {
     hints_by_key: HashMap<String, ModelSizeHint>,
     split_capable_by_key: HashMap<String, bool>,
+}
+
+/// Size and split capability of a layer package that lives on this disk.
+///
+/// The catalog-backed lookup below cannot see a package the operator produced
+/// locally: `required_bytes` came out `None`, the advice read
+/// `unknown_model_size`, and split placement had no size to plan against even
+/// though the package states its own size. Read that instead of guessing, and
+/// only from a path that is actually a package directory.
+fn local_package_size_hint(query: &str) -> Option<ModelSizeHint> {
+    let dir = Path::new(query);
+    if !dir.is_dir() {
+        return None;
+    }
+    let manifest_path = dir.join(models::artifact_transfer::PACKAGE_MANIFEST_FILE);
+    let metadata = std::fs::metadata(&manifest_path).ok()?;
+    // The manifest is a small JSON document; refuse anything that is not one.
+    if !metadata.is_file() || metadata.len() > (1 << 20) {
+        return None;
+    }
+    let manifest = std::fs::read(&manifest_path).ok()?;
+    let parsed: serde_json::Value = serde_json::from_slice(&manifest).ok()?;
+
+    // Prefer the source model's own file list — that is the weight total the
+    // split planner prices — and fall back to the artifact catalog.
+    let source_files_bytes = parsed
+        .get("source_model")
+        .and_then(|source| source.get("files"))
+        .and_then(|files| files.as_array())
+        .map(|files| {
+            files
+                .iter()
+                .filter_map(|file| file.get("byte_size").and_then(|size| size.as_u64()))
+                .sum::<u64>()
+        })
+        .filter(|total| *total > 0);
+    let artifact_bytes = parsed
+        .get("artifact_catalog")
+        .and_then(|catalog| catalog.get("entries"))
+        .and_then(|entries| entries.as_array())
+        .map(|entries| {
+            entries
+                .iter()
+                .filter_map(|entry| entry.get("byte_size").and_then(|size| size.as_u64()))
+                .sum::<u64>()
+        })
+        .filter(|total| *total > 0);
+    let model_bytes = source_files_bytes.or(artifact_bytes)?;
+
+    // A package whose catalog carries per-layer artifacts is the shape the
+    // split path consumes; anything else is not a split candidate.
+    let split_capable = parsed
+        .get("artifact_catalog")
+        .and_then(|catalog| catalog.get("entries"))
+        .and_then(|entries| entries.as_array())
+        .is_some_and(|entries| {
+            entries.iter().any(|entry| {
+                entry
+                    .get("path")
+                    .and_then(|path| path.as_str())
+                    .is_some_and(|path| path.starts_with("layers/"))
+            })
+        });
+
+    Some(ModelSizeHint {
+        model_bytes,
+        split_capable,
+    })
 }
 
 impl ModelTargetSizeLookup {
@@ -105,7 +179,10 @@ impl ModelTargetSizeLookup {
     }
 
     fn find(&self, query: &str) -> Option<ModelSizeHint> {
-        self.hints_by_key.get(&normalize_match_key(query)).copied()
+        self.hints_by_key
+            .get(&normalize_match_key(query))
+            .copied()
+            .or_else(|| local_package_size_hint(query))
     }
 
     fn split_capable(&self, query: &str) -> Option<bool> {
@@ -213,7 +290,12 @@ impl ModelTargetSizeLookup {
 pub(crate) fn evaluate_model_target_capacity(
     input: ModelTargetCapacityInput<'_>,
 ) -> ModelTargetCapacityAdvicePayload {
-    let capacity = collect_capacity(input.local_role, input.local_vram_bytes, input.peers);
+    let capacity = collect_capacity(
+        input.local_role,
+        input.local_vram_bytes,
+        input.local_host_ram_bytes,
+        input.peers,
+    );
     let size_hint = input.size_lookup.find(input.model_ref).or_else(|| {
         input
             .model_name
@@ -301,7 +383,7 @@ pub(crate) fn evaluate_model_target_capacity(
     }
 
     if split_capable_for_capacity
-        && capacity.eligible_node_count >= 2
+        && capacity.eligible_node_count >= split_min_participants()
         && capacity.aggregate_capacity_bytes >= required_bytes
     {
         return advice(
@@ -316,7 +398,8 @@ pub(crate) fn evaluate_model_target_capacity(
         );
     }
 
-    let comparable_capacity = if split_capable_for_capacity && capacity.eligible_node_count >= 2 {
+    let comparable_capacity =
+        if split_capable_for_capacity && capacity.eligible_node_count >= split_min_participants() {
         capacity.aggregate_capacity_bytes
     } else {
         capacity.best_single_node_capacity_bytes.unwrap_or_default()
@@ -347,33 +430,64 @@ struct CapacitySummary {
 fn collect_capacity(
     local_role: &NodeRole,
     local_vram_bytes: u64,
+    local_host_ram_bytes: u64,
     peers: &[PeerInfo],
 ) -> CapacitySummary {
     let mut summary = CapacitySummary::default();
-    record_node_capacity(&mut summary, local_role, local_vram_bytes);
+    record_node_capacity(
+        &mut summary,
+        local_role,
+        local_vram_bytes,
+        local_host_ram_bytes,
+    );
     for peer in peers {
-        record_node_capacity(&mut summary, &peer.role, peer.vram_bytes);
+        record_node_capacity(
+            &mut summary,
+            &peer.role,
+            peer.vram_bytes,
+            split_peer_host_ram_bytes(peer),
+        );
     }
     summary
 }
 
-fn record_node_capacity(summary: &mut CapacitySummary, role: &NodeRole, vram_bytes: u64) {
+/// System RAM a peer advertises for staging a stage's weights.
+fn split_peer_host_ram_bytes(peer: &PeerInfo) -> u64 {
+    peer.memory
+        .as_ref()
+        .map(|memory| memory.ram_offload_bytes)
+        .unwrap_or(0)
+}
+
+fn record_node_capacity(
+    summary: &mut CapacitySummary,
+    role: &NodeRole,
+    vram_bytes: u64,
+    host_ram_bytes: u64,
+) {
     if matches!(role, NodeRole::Client) {
         summary.excluded_client_node_count += 1;
         return;
     }
-    if vram_bytes == 0 {
+    // Capacity is memory a stage can actually live in — accelerator plus system
+    // RAM. A CPU-only node has no accelerator and is still a node that can hold
+    // a stage, so `vram_bytes == 0` alone must not make it ineligible; that
+    // reading reported an entire CPU mesh as having no eligible hosts.
+    let capacity_bytes = vram_bytes.saturating_add(host_ram_bytes);
+    if capacity_bytes == 0 {
         summary.missing_capacity_node_count += 1;
         return;
     }
 
     summary.eligible_node_count += 1;
-    summary.aggregate_capacity_bytes = summary.aggregate_capacity_bytes.saturating_add(vram_bytes);
+    summary.aggregate_capacity_bytes = summary
+        .aggregate_capacity_bytes
+        .saturating_add(capacity_bytes);
     summary.best_single_node_capacity_bytes = Some(
         summary
             .best_single_node_capacity_bytes
-            .map(|best| best.max(vram_bytes))
-            .unwrap_or(vram_bytes),
+            .map(|best| best.max(capacity_bytes))
+            .unwrap_or(capacity_bytes),
     );
 }
 
@@ -523,6 +637,7 @@ mod tests {
             serving_node_count: 0,
             local_role: &local_role,
             local_vram_bytes: 8_000_000_000,
+            local_host_ram_bytes: 0,
             peers: &[],
             size_lookup: &lookup,
         });
@@ -545,6 +660,7 @@ mod tests {
             serving_node_count: 0,
             local_role: &local_role,
             local_vram_bytes: 8_000_000_000,
+            local_host_ram_bytes: 0,
             peers: &[],
             size_lookup: &lookup,
         });

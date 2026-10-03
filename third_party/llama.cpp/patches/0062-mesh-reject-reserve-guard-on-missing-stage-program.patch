@@ -1,0 +1,48 @@
+From 64c1274878481ad383ffdb34ab843b48219a320a Mon Sep 17 00:00:00 2001
+From: Mesh-LLM CI <ci@mesh-llm.local>
+Date: Sat, 3 Oct 2026 10:25:21 +0800
+Subject: [PATCH] mesh: record why a reserve guard on a missing stage program
+ was rejected
+
+sched_reserve reserves the graph selected by active_stage_program(). With a program
+present the builder emits only the staged layer range; with none it emits every
+layer, and graph_reserve then allocates real buffers for all of them. That
+un-sliced reserve is what froze the host while layers [0,2) were being diagnosed.
+
+Refusing the reserve whenever a stage plan has no program looked like the obvious
+fix. It is wrong. The first reserve of a stage-plan runtime happens while the
+context is being created, and the program is extracted afterwards, so a null
+program is the normal state at that point rather than an error. The guard rejected
+every range and every run of the synthetic tiny model with "stage plan runtime has
+no stage program; refusing to reserve the whole-model graph", so it is removed and
+this note replaces it, to save the next person the attempt.
+
+What established this is tools/v41-mktiny.cpp: a synthetic deepseek41 model at toy
+dimensions that exercises the same loader, graph builder and stage-program
+extraction in seconds and for a few hundred kilobytes. It showed six reserves on a
+null program followed by a successful context creation -- something no full-size
+experiment could have shown without risking the machine again.
+---
+ src/llama-context.cpp | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/src/llama-context.cpp b/src/llama-context.cpp
+index 686f0ab..4052cd0 100644
+--- a/src/llama-context.cpp
++++ b/src/llama-context.cpp
+@@ -712,6 +712,12 @@ void llama_context::sched_reserve(const skippy_graph_build_inputs & graph_build_
+             program->program.computation_generation != computation_generation) {
+         throw std::runtime_error("stage program computation configuration changed after installation");
+     }
++    // NOTE: a guard refusing the reserve whenever a stage plan has no program was tried here and
++    // removed. It is not a legitimate state to test for: the first reserve of a stage-plan runtime
++    // happens while the context is being created and the program is extracted afterwards, so
++    // active_stage_program() is legitimately null at that point. The synthetic tiny model in
++    // tools/v41-mktiny.cpp shows this in seconds -- every one of its six reserves runs with a null
++    // program, and the runtime still opens once its stage program installs.
+     if (!sched_need_reserve) {
+         return;
+     }
+-- 
+2.55.0.windows.4
+

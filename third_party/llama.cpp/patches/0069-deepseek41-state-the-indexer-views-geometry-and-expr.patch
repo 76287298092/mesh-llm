@@ -1,0 +1,385 @@
+From c8d4a7a8c6919afde86367ab412d3328bbf5baa5 Mon Sep 17 00:00:00 2001
+From: Mesh-LLM CI <ci@mesh-llm.local>
+Date: Sat, 3 Oct 2026 12:48:29 +0800
+Subject: [PATCH] deepseek41: state the indexer views' geometry, and express a
+ capped candidate count
+
+Installing a stage program for any range reaching layer 2 failed in the proof replay.
+Layers 2/8/14/20/24/28/32/36 are the indexer layers, so [0,2) never reached the code
+and [0,40) always did:
+
+    stage program VIEW geometry exceeds source storage for idx_q_rot-2 (view)
+    source bytes=32768 dims=128x32x2x2 strides=4x512x16384x32768
+
+span = 512 + 31*512 + 16384 + 32768 = 65536 against a 32768-byte source, exactly 2x.
+dims[2] is the token axis divided by the stream count and was recorded as a constant.
+Three more sites failed behind it: idx_k and comp_k, whose n_comp is the mask extent, and
+the value tensor of the top-k mask's set_rows, whose row count is min(extent, top_k).
+
+There is no separate "proof geometry" here. llama_model::build_graph either replays an
+installed stage program or builds and captures one, so the first call captures -- the
+reserve worst case, n_tokens=8 n_seqs=2 -- and every later call replays the real prefill.
+A replay failure that is not "outside the recorded stage program control-flow domain" is
+fatal, which is right: the fallback would be an un-sliced reserve, and that is the freeze
+vector. So every runtime-dependent quantity in these graphs has to be expressible.
+
+Five changes, all confined to the DeepSeek-V4/V4.1 family:
+
+1. deepseek41 idx_q and idx_w state their geometry the way V4's indexer_q and
+   indexer_weights already do -- tokens_per_kv_stream(), kv_stream_count(),
+   source_stride_per_kv_stream(). The V4.1 port stated none of them.
+
+2. deepseek41 idx_k and comp_k take their row count from source_dimension(0, 2), the axis
+   of the tensor they view. dsv4_csa_extent()/dsv4_lid_extent() are the intended form and
+   agree with it at capture, but a replayed program outlives the runtime values of the
+   geometry it was captured under, and an extent read from the viewed tensor cannot
+   overrun that tensor.
+
+3. The replayed TOP_K count is clamped to the source extent. Every builder that emits
+   TOP_K chooses min(extent, its own top_k) -- deepseek4, deepseek32, deepseek41,
+   dots3note, glm-dsa and hy-v4 all do -- so the recorded count is already clamped to the
+   capture extent, and replaying it verbatim against a narrower source trips
+   GGML_ASSERT(a->ne[0] >= k) inside ggml_top_k and aborts the process. Re-applying that
+   same clamp reproduces the value the builder would have chosen, and is a no-op for any
+   model that replays at or above its capture geometry.
+
+4. dsv4_csa_extent_capped/hca/lid(cap) express min(extent, cap), modelled on the existing
+   tokens_per_sequence_capped, which carries its cap the same way. Additive: a model that
+   does not opt in is unaffected.
+
+5. build_top_k_mask derives the set_rows value tensor from top_k_3d, which already carries
+   the clamped count, instead of from a ggml_new_tensor_4d scratch. A scratch becomes a
+   ROOT of the program and a root records literal dimensions, so no geometry expression
+   reaches one -- which is also why the dimensions[2]/[3] notes that were already on that
+   scratch did nothing. A reshape to (1, k, ...) preserves the element count and a cast
+   gives the value type, and both resolve from their source.
+
+Note that ggml_cast is supported by the extractor: it is GGML_OP_CPY with no second
+source, not an operation named CAST.
+
+Verified on the real model, under a Job Object commit cap and a hard working-set ceiling:
+
+    [0,3)   PLAN-OK  OPEN-OK  PREFILL OK  FRAME OK
+            closure 44.203 GiB   peak_rss 0.664 GiB
+    [0,40)  PLAN-OK  OPEN-OK  PREFILL OK  FRAME OK
+            closure 246.344 GiB  ws_peak 3072 MiB  exit 0  elapsed 20 s
+
+[0,40) is source and terminal, so it emits no activation frame (parts=0); that is the
+single-node whole-model case, on a host with 15.69 GiB of RAM.
+
+MESH_LLAMA_WS_BUDGET_MB still has to be raised to 12400 MiB to derive a valid n_ubatch.
+That derivation has no lower bound and is not addressed here.
+---
+ src/models/deepseek4.cpp              | 39 ++++++++++---
+ src/models/deepseek41.cpp             | 82 ++++++++++++++++++++++++++-
+ src/models/models.h                   |  6 ++
+ src/skippy/stage_program.h            |  8 +++
+ src/skippy/stage_program_geometry.cpp | 32 +++++++++++
+ src/skippy/stage_program_replay.cpp   | 18 +++++-
+ 6 files changed, 176 insertions(+), 9 deletions(-)
+
+diff --git a/src/models/deepseek4.cpp b/src/models/deepseek4.cpp
+index 46b51b9..42761ac 100644
+--- a/src/models/deepseek4.cpp
++++ b/src/models/deepseek4.cpp
+@@ -857,6 +857,7 @@ ggml_tensor * llama_model_deepseek4::graph::build_lid_top_k(
+ ggml_tensor * llama_model_deepseek4::graph::build_top_k_mask(
+         ggml_tensor * kq_mask,
+         ggml_tensor * top_k,
++        const skippy_stage_geometry_expression & rows_extent,
+         const char * name,
+         int il) const {
+     GGML_ASSERT(kq_mask);
+@@ -903,12 +904,34 @@ ggml_tensor * llama_model_deepseek4::graph::build_top_k_mask(
+         skippy_stage_geometry_note(top_k_3d, geometry);
+     }
+ 
+-    ggml_tensor * zeros = ggml_new_tensor_4d(ctx0, cparams.flash_attn ? GGML_TYPE_F16 : GGML_TYPE_F32, 1, top_k_3d->ne[0], top_k_3d->ne[1], top_k_3d->ne[2]);
+-    auto zeros_geometry = skippy_stage_geometry_static(zeros);
+-    zeros_geometry.dimensions[2] = skippy_stage_geometry_expression::tokens_per_kv_stream();
+-    zeros_geometry.dimensions[3] = skippy_stage_geometry_expression::kv_stream_count();
+-    skippy_stage_geometry_note(zeros, zeros_geometry);
+-    zeros = ggml_fill(ctx0, zeros, 0.0f);
++    // The value tensor needs one row per index, and a ggml_new_tensor_* scratch cannot provide one
++    // that follows: such a scratch is materialised as a root, whose dimensions are recorded
++    // literally, so the row count stays at its capture-time value while the indices follow the
++    // runtime one and the proof rejects the set_rows for the mismatch. A VIEW's geometry is
++    // evaluated, so take the rows from the mask, which is already expressed against the request.
++    // ggml_fill (not ggml_fill_inplace) keeps the value buffer distinct from the mask it views.
++    // The value tensor needs one row per index, and rows_extent states that count. A
++    // ggml_new_tensor_* scratch cannot carry it: the scratch is materialised as a ROOT of the stage
++    // program and a root's dimensions are recorded as literals, so no expression reaches it, which
++    // leaves the count at its capture-time value while the indices follow the runtime one and the
++    // proof rejects the set_rows below. Derive the shape from top_k_3d instead, which already
++    // carries the clamped count: a reshape to (1, k, ...) preserves the element count, and casting
++    // it gives the value tensor's type. A reshape's and a cpy's geometry are both resolved from
++    // their source, so the count follows the runtime.
++    ggml_tensor * zeros_shape = ggml_reshape_4d(ctx0, top_k_3d,
++            1, top_k_3d->ne[0], top_k_3d->ne[1], top_k_3d->ne[2]);
++    {
++        auto geometry = skippy_stage_geometry_static(zeros_shape);
++        geometry.dimensions = {
++            skippy_stage_geometry_expression::constant(1),
++            skippy_stage_geometry_expression::source_dimension(0, 0),
++            skippy_stage_geometry_expression::source_dimension(0, 1),
++            skippy_stage_geometry_expression::source_dimension(0, 2),
++        };
++        skippy_stage_geometry_note(zeros_shape, geometry);
++    }
++    ggml_tensor * zeros = ggml_fill(ctx0,
++            ggml_cast(ctx0, zeros_shape, cparams.flash_attn ? GGML_TYPE_F16 : GGML_TYPE_F32), 0.0f);
+ 
+     ggml_tensor * kq_mask_top_k = ggml_set_rows(ctx0, kq_mask_all, zeros, top_k_3d);
+     kq_mask_top_k = ggml_view_4d(ctx0, kq_mask_top_k,
+@@ -994,7 +1017,9 @@ ggml_tensor * llama_model_deepseek4::graph::build_csa_lid_attention(
+     cb(k_all, "csa_k_all", il);
+ 
+     ggml_tensor * raw_mask = inp_attn->get_kq_mask();
+-    ggml_tensor * csa_mask = build_top_k_mask(inp_csa.kq_mask, top_k, "csa_top_k_mask", il);
++    ggml_tensor * csa_mask = build_top_k_mask(inp_csa.kq_mask, top_k,
++            skippy_stage_geometry_expression::dsv4_csa_extent_capped(hparams.indexer_top_k),
++            "csa_top_k_mask", il);
+ 
+     ggml_tensor * kq_mask = ggml_concat(ctx0, raw_mask, csa_mask, 0);
+     cb(kq_mask, "csa_lid_kq_mask", il);
+diff --git a/src/models/deepseek41.cpp b/src/models/deepseek41.cpp
+index 7882cff..a375284 100644
+--- a/src/models/deepseek41.cpp
++++ b/src/models/deepseek41.cpp
+@@ -573,15 +573,77 @@ ggml_tensor * llama_model_deepseek41::graph::build_indexer_top_k(
+     idx_k = ggml_view_4d(ctx0, idx_k,
+             idx_k->ne[0], idx_k->ne[1], n_comp, idx_k->ne[3],
+             idx_k->nb[1], idx_k->nb[2], idx_k->nb[3], 0);
++    {
++        // n_comp is a runtime extent, not a constant, so recording the capture-time value makes the
++        // view claim more rows than the tensor it views once that extent shrinks, and the proof
++        // rejects it for exceeding source storage.
++        //
++        // The extent is taken from the source's own axis 2 and not from a runtime extent
++        // expression. The measured LID extent (get_n_kv) is not this row count -- the cache's get_k
++        // slices it down before returning -- so expressing the view in terms of it re-introduces the
++        // overrun. Reading the axis from the tensor being viewed cannot: the view is a row slice of
++        // that axis by construction, so its span is bounded by the source's own storage.
++        auto geometry = skippy_stage_geometry_static(idx_k);
++        geometry.dimensions[0] = skippy_stage_geometry_expression::source_dimension(0, 0);
++        geometry.dimensions[1] = skippy_stage_geometry_expression::source_dimension(0, 1);
++        geometry.dimensions[2] = skippy_stage_geometry_expression::source_dimension(0, 2);
++        geometry.dimensions[3] = skippy_stage_geometry_expression::source_dimension(0, 3);
++        geometry.byte_strides[1] = skippy_stage_geometry_expression::source_stride(0, 1);
++        geometry.byte_strides[2] = skippy_stage_geometry_expression::source_stride(0, 2);
++        geometry.byte_strides[3] = skippy_stage_geometry_expression::source_stride(0, 3);
++        skippy_stage_geometry_note(idx_k, geometry);
++    }
+     cb(idx_k, "idx_k", il);
+ 
+     const int64_t n_stream = idx_k->ne[3];
+     idx_q = ggml_view_4d(ctx0, idx_q,
+             idx_q->ne[0], idx_q->ne[1], idx_q->ne[2]/n_stream, n_stream,
+             idx_q->nb[1], idx_q->nb[2], idx_q->nb[3]/n_stream, 0);
++    {
++        // Both views below divide a source extent by n_stream, so a recipe that records only the
++        // capture-time extents and strides describes a view that outgrows its source as soon as the
++        // token count at replay differs from the one at capture. The proof reads the recipe, not the
++        // tensor, and rejects it: "VIEW geometry exceeds source storage for idx_q_rot-*. (view)".
++        // The V4 indexer states these same two views in terms of the runtime stream geometry
++        // (deepseek4.cpp, indexer_q and indexer_weights) and V4.1 has to state them the same way.
++        auto geometry = skippy_stage_geometry_static(idx_q);
++        geometry.dimensions = {
++            skippy_stage_geometry_expression::source_dimension(0, 0),
++            skippy_stage_geometry_expression::source_dimension(0, 1),
++            skippy_stage_geometry_expression::tokens_per_kv_stream(),
++            skippy_stage_geometry_expression::kv_stream_count(),
++        };
++        geometry.byte_strides = {
++            skippy_stage_geometry_expression::source_stride(0, 0),
++            skippy_stage_geometry_expression::source_stride(0, 1),
++            skippy_stage_geometry_expression::source_stride(0, 2),
++            skippy_stage_geometry_expression::source_stride_per_kv_stream(0, 3),
++        };
++        geometry.view_offset = skippy_stage_geometry_expression::constant(0);
++        skippy_stage_geometry_note(idx_q, geometry);
++    }
+     idx_w = ggml_view_4d(ctx0, idx_w,
+             idx_w->ne[0], idx_w->ne[1]/n_stream, idx_w->ne[2], n_stream,
+             idx_w->nb[1], idx_w->nb[2]/n_stream, idx_w->nb[3]/n_stream, 0);
++    {
++        // Same construction as idx_q above and the same latent defect: the extent on axis 1 is the
++        // token count divided by the stream count, and axes 2 and 3 divide source strides.
++        auto geometry = skippy_stage_geometry_static(idx_w);
++        geometry.dimensions = {
++            skippy_stage_geometry_expression::source_dimension(0, 0),
++            skippy_stage_geometry_expression::tokens_per_kv_stream(),
++            skippy_stage_geometry_expression::source_dimension(0, 2),
++            skippy_stage_geometry_expression::kv_stream_count(),
++        };
++        geometry.byte_strides = {
++            skippy_stage_geometry_expression::source_stride(0, 0),
++            skippy_stage_geometry_expression::source_stride(0, 1),
++            skippy_stage_geometry_expression::source_stride_per_kv_stream(0, 2),
++            skippy_stage_geometry_expression::source_stride_per_kv_stream(0, 3),
++        };
++        geometry.view_offset = skippy_stage_geometry_expression::constant(0);
++        skippy_stage_geometry_note(idx_w, geometry);
++    }
+ 
+     idx_q = ggml_permute(ctx0, idx_q, 0, 2, 1, 3);
+     idx_k = ggml_permute(ctx0, idx_k, 0, 2, 1, 3);
+@@ -802,6 +864,20 @@ ggml_tensor * llama_model_deepseek41::graph::build_attention_v41(
+     comp_k = ggml_view_4d(ctx0, comp_k,
+             comp_k->ne[0], comp_k->ne[1], n_comp, comp_k->ne[3],
+             comp_k->nb[1], comp_k->nb[2], comp_k->nb[3], 0);
++    {
++        // Same omission as idx_k above: n_comp is a runtime extent, not a constant, and the CSA
++        // extent reported by get_n_kv() is not this view's row count either. Read the axis from the
++        // tensor being viewed.
++        auto geometry = skippy_stage_geometry_static(comp_k);
++        geometry.dimensions[0] = skippy_stage_geometry_expression::source_dimension(0, 0);
++        geometry.dimensions[1] = skippy_stage_geometry_expression::source_dimension(0, 1);
++        geometry.dimensions[2] = skippy_stage_geometry_expression::source_dimension(0, 2);
++        geometry.dimensions[3] = skippy_stage_geometry_expression::source_dimension(0, 3);
++        geometry.byte_strides[1] = skippy_stage_geometry_expression::source_stride(0, 1);
++        geometry.byte_strides[2] = skippy_stage_geometry_expression::source_stride(0, 2);
++        geometry.byte_strides[3] = skippy_stage_geometry_expression::source_stride(0, 3);
++        skippy_stage_geometry_note(comp_k, geometry);
++    }
+     cb(comp_k, "comp_k", il);
+ 
+     ggml_tensor * k_all = ggml_concat(ctx0, raw_k, comp_k, 2);
+@@ -809,7 +885,11 @@ ggml_tensor * llama_model_deepseek41::graph::build_attention_v41(
+ 
+     ggml_tensor * raw_mask  = inp_attn->get_kq_mask();
+     ggml_tensor * comp_mask = top_k
+-        ? build_top_k_mask(inp_comp.kq_mask, top_k, "comp_top_k_mask", il)
++        ? build_top_k_mask(inp_comp.kq_mask, top_k,
++                use_csa
++                    ? skippy_stage_geometry_expression::dsv4_csa_extent_capped(hparams.indexer_top_k)
++                    : skippy_stage_geometry_expression::dsv4_hca_extent_capped(hparams.indexer_top_k),
++                "comp_top_k_mask", il)
+         : inp_comp.kq_mask;
+ 
+     ggml_tensor * kq_mask = ggml_concat(ctx0, raw_mask, comp_mask, 0);
+diff --git a/src/models/models.h b/src/models/models.h
+index 90130c1..3078335 100644
+--- a/src/models/models.h
++++ b/src/models/models.h
+@@ -1388,9 +1388,15 @@ struct llama_model_deepseek4 : public llama_model_base {
+                 ggml_tensor * inp_pos,
+                 int il) const;
+ 
++        // rows_extent states how many rows the zero-filled value tensor carries. That count is the
++        // number of positions top_k selected -- min(candidate extent, the indexer's top_k) -- and it
++        // must be expressible: the scratch is built with ggml_new_tensor_*, so it has no source
++        // tensor for a relative geometry expression to resolve against, and a recorded constant
++        // leaves it at the capture-time count while the indices follow the runtime one.
+         ggml_tensor * build_top_k_mask(
+                 ggml_tensor * kq_mask,
+                 ggml_tensor * top_k,
++                const skippy_stage_geometry_expression & rows_extent,
+                 const char * name,
+                 int il) const;
+ 
+diff --git a/src/skippy/stage_program.h b/src/skippy/stage_program.h
+index 1581f46..fc71a45 100644
+--- a/src/skippy/stage_program.h
++++ b/src/skippy/stage_program.h
+@@ -28,6 +28,11 @@ struct skippy_stage_geometry_expression {
+         runtime_dsv4_csa_extent,
+         runtime_dsv4_hca_extent,
+         runtime_dsv4_lid_extent,
++        // The same three extents capped at a caller-supplied bound, for models that select
++        // min(extent, configured_top_k) candidates. Modelled on runtime_tokens_per_sequence_capped.
++        runtime_dsv4_csa_extent_capped,
++        runtime_dsv4_hca_extent_capped,
++        runtime_dsv4_lid_extent_capped,
+         runtime_kv_stream_start,
+         runtime_kv_stream_count,
+         runtime_tokens_per_kv_stream,
+@@ -68,6 +73,9 @@ struct skippy_stage_geometry_expression {
+     static skippy_stage_geometry_expression dsv4_csa_extent(int64_t multiplier = 1, int64_t divisor = 1, int64_t addend = 0);
+     static skippy_stage_geometry_expression dsv4_hca_extent(int64_t multiplier = 1, int64_t divisor = 1, int64_t addend = 0);
+     static skippy_stage_geometry_expression dsv4_lid_extent(int64_t multiplier = 1, int64_t divisor = 1, int64_t addend = 0);
++    static skippy_stage_geometry_expression dsv4_csa_extent_capped(int64_t cap);
++    static skippy_stage_geometry_expression dsv4_hca_extent_capped(int64_t cap);
++    static skippy_stage_geometry_expression dsv4_lid_extent_capped(int64_t cap);
+     static skippy_stage_geometry_expression kv_stream_start(int64_t multiplier = 1, int64_t divisor = 1, int64_t addend = 0);
+     static skippy_stage_geometry_expression kv_stream_count(int64_t multiplier = 1, int64_t divisor = 1, int64_t addend = 0);
+     static skippy_stage_geometry_expression tokens_per_kv_stream(int64_t multiplier = 1, int64_t addend = 0);
+diff --git a/src/skippy/stage_program_geometry.cpp b/src/skippy/stage_program_geometry.cpp
+index 0c5ba25..fb6d47c 100644
+--- a/src/skippy/stage_program_geometry.cpp
++++ b/src/skippy/stage_program_geometry.cpp
+@@ -136,6 +136,15 @@ bool evaluate_expression(
+         case skippy_stage_geometry_expression::kind::runtime_dsv4_lid_extent:
+             base = runtime.dsv4_lid_extent;
+             break;
++        case skippy_stage_geometry_expression::kind::runtime_dsv4_csa_extent_capped:
++            base = std::min(runtime.dsv4_csa_extent, expression.constant_value);
++            break;
++        case skippy_stage_geometry_expression::kind::runtime_dsv4_hca_extent_capped:
++            base = std::min(runtime.dsv4_hca_extent, expression.constant_value);
++            break;
++        case skippy_stage_geometry_expression::kind::runtime_dsv4_lid_extent_capped:
++            base = std::min(runtime.dsv4_lid_extent, expression.constant_value);
++            break;
+         case skippy_stage_geometry_expression::kind::runtime_kv_stream_start:
+             base = runtime.kv_stream_start;
+             break;
+@@ -367,6 +376,29 @@ skippy_stage_geometry_expression skippy_stage_geometry_expression::dsv4_lid_exte
+     return make_runtime_expression(kind::runtime_dsv4_lid_extent, multiplier, divisor, addend);
+ }
+ 
++// Every indexer in this tree selects candidates with min(extent, its configured top_k), so the
++// number of selected positions is not a constant and not bare extent either -- it is whichever is
++// smaller at the geometry being resolved. A scratch tensor sized to hold those positions therefore
++// has no expressible shape unless the capped form exists. The cap is carried in constant_value, the
++// same way tokens_per_sequence_capped carries its own.
++skippy_stage_geometry_expression skippy_stage_geometry_expression::dsv4_csa_extent_capped(int64_t cap) {
++    auto result = make_runtime_expression(kind::runtime_dsv4_csa_extent_capped, 1, 1, 0);
++    result.constant_value = cap;
++    return result;
++}
++
++skippy_stage_geometry_expression skippy_stage_geometry_expression::dsv4_hca_extent_capped(int64_t cap) {
++    auto result = make_runtime_expression(kind::runtime_dsv4_hca_extent_capped, 1, 1, 0);
++    result.constant_value = cap;
++    return result;
++}
++
++skippy_stage_geometry_expression skippy_stage_geometry_expression::dsv4_lid_extent_capped(int64_t cap) {
++    auto result = make_runtime_expression(kind::runtime_dsv4_lid_extent_capped, 1, 1, 0);
++    result.constant_value = cap;
++    return result;
++}
++
+ skippy_stage_geometry_expression skippy_stage_geometry_expression::kv_stream_start(
+         int64_t multiplier, int64_t divisor, int64_t addend) {
+     return make_runtime_expression(kind::runtime_kv_stream_start, multiplier, divisor, addend);
+diff --git a/src/skippy/stage_program_replay.cpp b/src/skippy/stage_program_replay.cpp
+index 1cd7b50..a6c7998 100644
+--- a/src/skippy/stage_program_replay.cpp
++++ b/src/skippy/stage_program_replay.cpp
+@@ -526,7 +526,23 @@ ggml_tensor * replay_operation(
+             tensor = ggml_lightning_indexer(context, sources[0], sources[1], sources[2], sources[3]);
+             break;
+         case GGML_OP_TOP_K:
+-            tensor = ggml_top_k(context, sources[0], operation_parameter<int32_t>(operation, 0));
++            {
++                // Every builder that emits TOP_K chooses k as min(the candidate extent, its own
++                // configured top_k) -- deepseek4, deepseek32, deepseek41, dots3note, glm-dsa and
++                // hy-v4 all do. The recorded k is therefore already clamped to the extent at
++                // capture, and replaying it verbatim against a narrower source trips
++                // GGML_ASSERT(a->ne[0] >= k) inside ggml_top_k, which aborts the process.
++                //
++                // Re-applying that same clamp against the replayed source reproduces the value the
++                // builder would have chosen at this geometry. It is a no-op whenever the source is
++                // at least as wide as it was at capture, so no model that replays at its capture
++                // geometry or wider changes behaviour.
++                const int32_t recorded = operation_parameter<int32_t>(operation, 0);
++                const int64_t available = sources[0] == nullptr ? 0 : sources[0]->ne[0];
++                const int32_t k = available > 0 && available < (int64_t) recorded
++                        ? (int32_t) available : recorded;
++                tensor = ggml_top_k(context, sources[0], k);
++            }
+             break;
+         case GGML_OP_CUMSUM:
+             tensor = ggml_cumsum(context, sources[0]);

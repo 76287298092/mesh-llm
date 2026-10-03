@@ -1,0 +1,46 @@
+From 4815a4892202dd9f511104fde3f119882bb43856 Mon Sep 17 00:00:00 2001
+From: Mesh-LLM CI <ci@mesh-llm.local>
+Date: Sat, 3 Oct 2026 00:13:02 +0800
+Subject: mesh: disable the fused V4 hyper-connection ops, which are
+ numerically wrong on CPU
+
+Bisect on DeepSeek-V4.1-Flash-Q2_K, greedy from the prompt 'Hello':
+  fused_dsv4_hc_* ON  (default) -> token 223 (' ') then junk
+  fused_dsv4_hc_* OFF           -> token 40544 ('Again'), real words
+LID fusion is not implicated: HC ON + LID OFF still produces the junk.
+
+resolve_fused_ops() only compares the fused node's device with the layer's device, so a
+numerically wrong fused kernel is enabled without any correctness check. Turn the three V4
+hyper-connection fusions off until they are fixed.
+---
+ src/llama-context.cpp | 15 ++++++++++-----
+ 1 file changed, 10 insertions(+), 5 deletions(-)
+
+diff --git a/src/llama-context.cpp b/src/llama-context.cpp
+index e2213e5..686f0ab 100644
+--- a/src/llama-context.cpp
++++ b/src/llama-context.cpp
+@@ -272,13 +272,18 @@ llama_context::llama_context(
+     cparams.fused_gdn_ch = true;
+     cparams.auto_fgdn    = false;
+ 
+-    cparams.fused_lid = true;
++    cparams.fused_lid = false;
+     cparams.auto_flid = false;
+ 
+-    cparams.fused_dsv4_hc_pre  = true;
+-    cparams.fused_dsv4_hc_comb = true;
+-    cparams.fused_dsv4_hc_post = true;
+-    cparams.auto_fhc           = true;
++    // The fused V4 hyper-connection operations are numerically wrong on CPU for DeepSeek-V4.1:
++    // with them enabled the first greedy token from "Hello" is a space followed by junk
++    // (223, 140, 126, 2098), with them disabled it is a real word (40544 = "Again"). The probe in
++    // resolve_fused_ops() only checks device placement, not correctness, so a wrong fused kernel is
++    // enabled silently. Leave them off until the kernels are fixed.
++    cparams.fused_dsv4_hc_pre  = false;
++    cparams.fused_dsv4_hc_comb = false;
++    cparams.fused_dsv4_hc_post = false;
++    cparams.auto_fhc           = false;
+ 
+     // with causal attention, the batch size is limited by the context size
+     cparams.n_batch = cparams.causal_attn ? std::min(cparams.n_ctx, params.n_batch) : params.n_batch;

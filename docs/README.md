@@ -14,6 +14,8 @@ Use this hub to find project guides that are not owned by a single Rust crate.
 | SDK usage, examples, errors, lifecycle, platform support | [SDK.md](SDK.md) |
 | Language-specific SDK examples | [Rust](sdk/rust.md), [Node.js](sdk/node.md), [Swift](sdk/swift.md), [Kotlin/Android](sdk/kotlin.md) |
 | Run big models with Skippy layer splits | [SKIPPY_SPLITS.md](SKIPPY_SPLITS.md) |
+| Combine multi-node layer stages with node-local SSD-backed weights | [Distributed SSD inference design](design/DISTRIBUTED_SSD_INFERENCE.md) |
+| DeepSeek-V4.1 native runtime compatibility and porting gates | [DeepSeek-V4.1 compatibility plan](design/DEEPSEEK41_COMPATIBILITY.md) |
 | Embedding, rerank, encoder-decoder, OCR, and audio models | [NON_CHAT_MODELS.md](NON_CHAT_MODELS.md) |
 | Contribute or publish layer package repositories | [LAYER_PACKAGE_REPOS.md](LAYER_PACKAGE_REPOS.md) |
 | Goose, Claude Code, OpenCode, Pi, curl, blackboard | [AGENTS.md](AGENTS.md) |

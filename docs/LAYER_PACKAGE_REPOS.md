@@ -247,6 +247,18 @@ skippy-model-package verify-package-v2 ./package --source <model.gguf>
 skippy-model-package validate-glm-dsa-contract ./package
 ```
 
+On Windows, when the pinned static llama build is unavailable, build or run
+the tool with `--features runtime-dynamic` to use an installed Mesh native
+runtime. Set `MESH_LLM_NATIVE_RUNTIME_DIR` to the trusted runtime directory
+containing `manifest.json`; the tool loads only libraries declared by that
+manifest, rejects paths outside the runtime directory, and checks the Skippy
+ABI before making native calls. For example:
+
+```powershell
+$env:MESH_LLM_NATIVE_RUNTIME_DIR = "E:\MeshLLM\native-runtimes\meshllm-native-runtime-windows-x86_64-cpu"
+cargo run -p skippy-model-package --features runtime-dynamic -- inspect .\model.gguf
+```
+
 Validate before publishing:
 
 ```bash

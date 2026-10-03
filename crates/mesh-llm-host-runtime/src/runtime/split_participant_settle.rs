@@ -1,7 +1,7 @@
 use super::local_package::{
-    SPLIT_DEFAULT_MIN_PARTICIPANTS, SplitParticipant, SplitParticipantSnapshot,
-    collect_split_participant_membership, collect_split_participants,
-    ensure_split_participant_timeout_has_quorum,
+    SplitParticipant, SplitParticipantSnapshot, collect_split_participant_membership,
+    collect_split_participants, ensure_split_participant_timeout_has_quorum,
+    split_min_participants,
 };
 use super::split_planning::{split_participant_exclusion_labels, split_participant_labels};
 use crate::inference::skippy;
@@ -37,7 +37,7 @@ impl SplitMembershipSettleBarrier {
             self.signature = signature;
             self.stable_since = Some(now);
         }
-        if participants.len() >= SPLIT_DEFAULT_MIN_PARTICIPANTS
+        if participants.len() >= split_min_participants()
             && self.first_quorum_observed.is_none()
         {
             self.first_quorum_observed = Some(now);
@@ -46,7 +46,7 @@ impl SplitMembershipSettleBarrier {
     }
 
     fn is_ready(&self, participant_count: usize, now: tokio::time::Instant) -> bool {
-        if participant_count < SPLIT_DEFAULT_MIN_PARTICIPANTS {
+        if participant_count < split_min_participants() {
             return false;
         }
         let Some(first_quorum_observed) = self.first_quorum_observed else {

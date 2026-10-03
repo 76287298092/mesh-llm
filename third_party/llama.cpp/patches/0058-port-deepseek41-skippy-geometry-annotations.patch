@@ -1,0 +1,239 @@
+From a159e19fab41d9ad86ede31f8d6973eaabf3ac7b Mon Sep 17 00:00:00 2001
+From: Mesh-LLM CI <ci@mesh-llm.local>
+Date: Fri, 2 Oct 2026 23:44:21 +0800
+Subject: port: DeepSeek-V4.1 (deepseek41) + Skippy geometry annotations +
+ on-demand mmap load
+
+- port upstream llama.cpp PR #28696 (deepseek41) onto the Mesh v0.77.0 Skippy baseline
+- keep Skuppy graph-semantics annotations on the V4.1 graph (23 sites, matching V4)
+- export dsv4_note_tokens/dsv4_note_source_dimension so the V4.1 builder can annotate
+- MESH_LLAMA_MMAP_PREFETCH=0 maps the model without faulting it in, so a model far
+  larger than RAM loads in seconds and pages come in on demand
+---
+ src/llama-model.cpp       | 15 ++++++++++++++-
+ src/models/deepseek4.cpp  |  6 +++---
+ src/models/deepseek41.cpp | 26 +++++++++++++++++++++++++-
+ src/models/models.h       | 11 +++++++++++
+ 4 files changed, 53 insertions(+), 5 deletions(-)
+
+diff --git a/src/llama-model.cpp b/src/llama-model.cpp
+index 42b7b93..ce7c7a9 100644
+--- a/src/llama-model.cpp
++++ b/src/llama-model.cpp
+@@ -1792,7 +1792,20 @@ bool llama_model_base::load_tensors(llama_model_loader & ml) {
+         }
+     }
+ 
+-    ml.init_mappings(true, use_mlock ? &pimpl->mlock_mmaps : nullptr);
++    // Prefetching faults the whole file in up front (PrefetchVirtualMemory on Windows,
++    // MAP_POPULATE elsewhere). A model that does not fit in RAM must not do that: map it and let
++    // the pages come in on demand instead. Lazy tensors are already excluded from the prefetch
++    // range, so this switch only widens that same treatment to the rest of the file.
++    //   MESH_LLAMA_MMAP_PREFETCH=0  -> map only, read on demand (default: prefetch)
++    static const bool mesh_mmap_prefetch = []() {
++        const char * value = getenv("MESH_LLAMA_MMAP_PREFETCH");
++        return value == nullptr || (value[0] != '0' && value[0] != '\0');
++    }();
++    if (!mesh_mmap_prefetch) {
++        LLAMA_LOG_WARN("%s: mmap prefetch disabled; model pages are read on demand\n", __func__);
++    }
++
++    ml.init_mappings(mesh_mmap_prefetch, use_mlock ? &pimpl->mlock_mmaps : nullptr);
+     pimpl->mappings.reserve(ml.mappings.size());
+ 
+     // create the backend buffers
+diff --git a/src/models/deepseek4.cpp b/src/models/deepseek4.cpp
+index 91b572e..46b51b9 100644
+--- a/src/models/deepseek4.cpp
++++ b/src/models/deepseek4.cpp
+@@ -213,18 +213,18 @@ ggml_tensor * dsv4_view_2d(
+     return result;
+ }
+ 
+-static void dsv4_note_tokens(ggml_tensor * tensor, int32_t axis) {
++void dsv4_note_tokens(ggml_tensor * tensor, int32_t axis) {
+     auto geometry = skippy_stage_geometry_static(tensor);
+     geometry.dimensions[axis] = skippy_stage_geometry_expression::tokens();
+     skippy_stage_geometry_note(tensor, geometry);
+ }
+ 
+-static void dsv4_note_source_dimension(
++void dsv4_note_source_dimension(
+         ggml_tensor * tensor,
+         int32_t target_axis,
+         int32_t source,
+         int32_t source_axis,
+-        int64_t divisor = 1) {
++        int64_t divisor) {
+     auto geometry = skippy_stage_geometry_static(tensor);
+     geometry.dimensions[target_axis] =
+             skippy_stage_geometry_expression::source_dimension(source, source_axis, 1, divisor);
+diff --git a/src/models/deepseek41.cpp b/src/models/deepseek41.cpp
+index d0521ce..9aec757 100644
+--- a/src/models/deepseek41.cpp
++++ b/src/models/deepseek41.cpp
+@@ -374,6 +374,7 @@ ggml_tensor * llama_model_deepseek41::graph::build_inp_engram(
+     // gather then flatten, laying the buckets out slowest, as the reference does
+     ggml_tensor * emb = ggml_get_rows(ctx0, model.layers[il].engram_embd, rows);
+     emb = ggml_reshape_2d(ctx0, emb, key_len * n_cols, n_tokens);
++    dsv4_note_tokens(emb, 1);
+     cb(emb, "engram_embd", il);
+ 
+     return emb;
+@@ -390,10 +391,13 @@ ggml_tensor * llama_model_deepseek41::graph::build_engram(
+ 
+     // one projection makes a key per hc copy plus one value they all share
+     ggml_tensor * kv = build_lora_mm(model.layers[il].engram_wkv, emb);
++    dsv4_note_tokens(kv, 1);
+     cb(kv, "engram_kv", il);
+ 
+     ggml_tensor * key   = ggml_cont(ctx0, ggml_view_2d(ctx0, kv, hc_dim, nt, kv->nb[1], 0));
+     ggml_tensor * value = ggml_cont(ctx0, ggml_view_2d(ctx0, kv, n_embd, nt, kv->nb[1], hc_dim*kv->nb[0]));
++    dsv4_note_tokens(key,   1);
++    dsv4_note_tokens(value, 1);
+ 
+     // The gate scales reach ggml_mul, which takes only f32, and a file quantized before
+     // llama-quant.cpp learned to skip them carries them quantized. get_rows dequantizes.
+@@ -410,16 +414,21 @@ ggml_tensor * llama_model_deepseek41::graph::build_engram(
+     // side of the dot product gives the same result.
+     auto grouped_norm = [&](ggml_tensor * t, ggml_tensor * w) {
+         t = ggml_reshape_3d(ctx0, t, n_embd, hc, nt);
++        dsv4_note_tokens(t, 2);
+         t = ggml_rms_norm(ctx0, t, norm_rms_eps);
+         t = ggml_reshape_2d(ctx0, t, hc_dim, nt);
++        dsv4_note_tokens(t, 1);
+         t = ggml_mul(ctx0, t, ggml_reshape_2d(ctx0, w, hc_dim, 1));
+-        return ggml_reshape_3d(ctx0, t, n_embd, hc, nt);
++        t = ggml_reshape_3d(ctx0, t, n_embd, hc, nt);
++        dsv4_note_tokens(t, 2);
++        return t;
+     };
+ 
+     ggml_tensor * k = grouped_norm(key, as_f32(model.layers[il].engram_k));
+     ggml_tensor * q = grouped_norm(x,   as_f32(model.layers[il].engram_q));
+ 
+     ggml_tensor * s = ggml_sum_rows(ctx0, ggml_mul(ctx0, k, q));
++    dsv4_note_tokens(s, 2);
+     s = ggml_scale(ctx0, s, 1.0f/sqrtf((float) n_embd));
+ 
+     // signed square root before the sigmoid, matching the training kernel.
+@@ -428,11 +437,14 @@ ggml_tensor * llama_model_deepseek41::graph::build_engram(
+     // the same way.
+     ggml_tensor * mag  = ggml_sqrt(ctx0, ggml_clamp(ctx0, ggml_abs(ctx0, s), 1e-6f, INFINITY));
+     ggml_tensor * gate = ggml_sigmoid(ctx0, ggml_mul(ctx0, ggml_sgn(ctx0, s), mag));
++    dsv4_note_tokens(gate, 2);
+     cb(gate, "engram_gate", il);
+ 
+     // the value is shared across the copies, only the gate differs
+     ggml_tensor * v = ggml_reshape_3d(ctx0, value, n_embd, 1, nt);
++    dsv4_note_tokens(v, 2);
+     v = ggml_repeat_4d(ctx0, v, n_embd, hc, nt, 1);
++    dsv4_note_tokens(v, 2);
+ 
+     return ggml_add(ctx0, x, ggml_mul(ctx0, v, gate));
+ }
+@@ -480,12 +492,14 @@ ggml_tensor * llama_model_deepseek41::graph::build_attention_tail(
+     const dsv41_rope_cfg rc = rope_cfg(il);
+ 
+     out = ggml_reshape_3d(ctx0, out, n_embd_head, n_head, nt);
++    dsv4_note_tokens(out, 2);
+     out = ggml_rope_ext_back(ctx0, out, inp_pos, nullptr, n_embd_head_rope, rope_type, rc.n_ctx_orig,
+             rc.base, rc.scale, rc.ext_factor, rc.attn_factor, rc.beta_fast, rc.beta_slow);
+     out = ggml_rope_set_offset(out, n_embd_head_nope);
+     cb(out, "attn_derope", il);
+ 
+     out = ggml_reshape_3d(ctx0, out, o_group_dim, n_groups, nt);
++    dsv4_note_tokens(out, 2);
+     out = ggml_permute(ctx0, out, 0, 2, 1, 3);
+ 
+     ggml_tensor * oa = ggml_mul_mat(ctx0, layer.wo_a, out);
+@@ -493,6 +507,7 @@ ggml_tensor * llama_model_deepseek41::graph::build_attention_tail(
+ 
+     oa = ggml_permute(ctx0, oa, 0, 2, 1, 3);
+     oa = ggml_cont_2d(ctx0, oa, o_lora_rank*n_groups, nt);
++    dsv4_note_tokens(oa, 1);
+ 
+     out = build_lora_mm(layer.wo_b, oa);
+     cb(out, "attn_out", il);
+@@ -523,6 +538,7 @@ ggml_tensor * llama_model_deepseek41::graph::build_indexer_top_k(
+ 
+     ggml_tensor * idx_q = build_lora_mm(layer.indexer_attn_q_b, qr);
+     idx_q = ggml_reshape_3d(ctx0, idx_q, n_idx_head_dim, n_idx_head, nt);
++    dsv4_note_tokens(idx_q, 2);
+     idx_q = ggml_rope_ext(ctx0, idx_q, inp_pos, nullptr, n_idx_head_rope, rope_type, n_ctx_orig,
+             hparams.dsv4_compress_rope_base, freq_scale, ext_factor,
+             dsv4_rope_attn_factor(freq_scale, ext_factor), beta_fast, beta_slow);
+@@ -584,6 +600,7 @@ ggml_tensor * llama_model_deepseek41::graph::build_indexer_top_k(
+     const uint32_t n_top_k = score->ne[0] < hparams.indexer_top_k ? score->ne[0] : hparams.indexer_top_k;
+ 
+     ggml_tensor * top_k = ggml_cont(ctx0, ggml_top_k(ctx0, score, n_top_k));
++    dsv4_note_tokens(top_k, 1);
+     cb(top_k, "idx_top_k", il);
+ 
+     return top_k;
+@@ -620,6 +637,7 @@ ggml_tensor * llama_model_deepseek41::graph::build_attention_v41(
+ 
+     ggml_tensor * q = build_lora_mm(layer.wq_b, qr);
+     q = ggml_reshape_3d(ctx0, q, n_embd_head, n_head, nt);
++    dsv4_note_tokens(q, 2);
+     q = ggml_rope_ext(ctx0, q, inp_pos, nullptr, n_embd_head_rope, rope_type, rc.n_ctx_orig,
+             rc.base, rc.scale, rc.ext_factor, rc.attn_factor, rc.beta_fast, rc.beta_slow);
+     q = ggml_rope_set_offset(q, n_embd_head - n_embd_head_rope);
+@@ -629,6 +647,7 @@ ggml_tensor * llama_model_deepseek41::graph::build_attention_v41(
+     ggml_tensor * kv = build_lora_mm(layer.wkv, cur);
+     kv = build_norm(kv, layer.attn_kv_norm, nullptr, LLM_NORM_RMS, il);
+     kv = ggml_reshape_3d(ctx0, kv, n_embd_head, 1, nt);
++    dsv4_note_tokens(kv, 2);
+     kv = ggml_rope_ext(ctx0, kv, inp_pos, nullptr, n_embd_head_rope, rope_type, rc.n_ctx_orig,
+             rc.base, rc.scale, rc.ext_factor, rc.attn_factor, rc.beta_fast, rc.beta_slow);
+     kv = ggml_rope_set_offset(kv, n_embd_head - n_embd_head_rope);
+@@ -818,7 +837,9 @@ llama_model_deepseek41::graph::graph(const llama_model & model, const llm_graph_
+ 
+     const int64_t hc = hparams.dsv4_hc_mult;
+     ggml_tensor * inpL = ggml_reshape_3d(ctx0, inp, n_embd, 1, n_tokens);
++    dsv4_note_tokens(inpL, 2);
+     inpL = ggml_repeat_4d(ctx0, inpL, n_embd, hc, n_tokens, 1);
++    dsv4_note_tokens(inpL, 2);
+     cb(inpL, "hc_init", -1);
+ 
+     // Layer 0 has no previous sublayer to take a mix from, so the reference hands it a one-hot
+@@ -826,6 +847,7 @@ llama_model_deepseek41::graph::graph(const llama_model & model, const llm_graph_
+     ggml_tensor * pre_mix = ggml_concat(ctx0,
+             ggml_fill(ctx0, ggml_new_tensor_2d(ctx0, GGML_TYPE_F32, 1,      n_tokens), 1.0f),
+             ggml_fill(ctx0, ggml_new_tensor_2d(ctx0, GGML_TYPE_F32, hc - 1, n_tokens), 0.0f), 0);
++    dsv4_note_tokens(pre_mix, 1);
+     cb(pre_mix, "hc_pre_init", -1);
+ 
+     for (int il = 0; il < n_layer; ++il) {
+@@ -927,7 +949,9 @@ llama_model_deepseek41::graph::graph(const llama_model & model, const llm_graph_
+ 
+     if (inp_out_ids) {
+         ggml_tensor * flat = ggml_reshape_2d(ctx0, inpL, n_embd*hc, n_tokens);
++        dsv4_note_tokens(flat, 1);
+         inpL = ggml_reshape_3d(ctx0, ggml_get_rows(ctx0, flat, inp_out_ids), n_embd, hc, n_outputs);
++        dsv4_note_source_dimension(inpL, 2, 0, 1);
+         pre_mix = ggml_get_rows(ctx0, pre_mix, inp_out_ids);
+     }
+ 
+diff --git a/src/models/models.h b/src/models/models.h
+index bd2a42c..55e8d96 100644
+--- a/src/models/models.h
++++ b/src/models/models.h
+@@ -28,6 +28,17 @@ ggml_tensor * dsv4_view_2d(
+         int64_t        ne1,
+         int64_t        i0);
+ 
++// Geometry intent records shared by the V4 and V4.1 graphs. A site states how a tensor's shape
++// follows the runtime shape; the V4.1 builder annotates its own sites with these.
++void dsv4_note_tokens(ggml_tensor * tensor, int32_t axis);
++
++void dsv4_note_source_dimension(
++        ggml_tensor * tensor,
++        int32_t target_axis,
++        int32_t source,
++        int32_t source_axis,
++        int64_t divisor = 1);
++
+ dsv4_state_tensors dsv4_build_state_restore(
+         ggml_context * ctx,
+         const llm_graph_input_dsv4::comp_input & inp,

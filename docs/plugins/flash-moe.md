@@ -6,6 +6,11 @@ Use it for the SSD expert streaming roadmap path: a giant MoE model fits on one 
 
 This is intentionally a single-node backend adapter. It does not change the mesh protocol, Skippy stage protocol, model-package format, or llama.cpp patch queue.
 
+For the proposed Mesh-native design that combines Skippy layer stages with
+node-local SSD-backed weights, including the boundaries of this adapter, see
+[Distributed SSD Inference](../design/DISTRIBUTED_SSD_INFERENCE.md). The
+design is not implemented by enabling this plugin.
+
 ## Prerequisites
 
 Flash-MoE is an external backend. Mesh-llm does not vendor, install, or build the Flash-MoE binary, model conversion tooling, or SSD-streaming artifacts.

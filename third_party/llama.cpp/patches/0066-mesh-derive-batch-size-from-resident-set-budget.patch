@@ -1,0 +1,164 @@
+From c94dcc691ece7cadd47fe87d039645693e773b6f Mon Sep 17 00:00:00 2001
+From: Mesh-LLM CI <ci@mesh-llm.local>
+Date: Sat, 3 Oct 2026 10:51:56 +0800
+Subject: [PATCH] mesh: derive the batch size from the resident-set budget
+
+The budget added in 0059 and the range eviction in 0065 both act after the fact: pages are already
+resident by the time either looks. What actually decides how many pages a step touches is the batch
+size, because every token that reaches a MoE layer faults in n_expert_used of that layer's experts.
+Measured on V4.1 that is the difference between 5.48 GiB peak at ubatch 1 and being killed at 8.06
+GiB with the default batch -- a value that had to be found by hand.
+
+Derive it instead. Loading now computes the expert working set of one token as
+
+    expert_bytes * n_expert_used / n_expert, restricted to the layers this stage owns
+
+(for V4.1, 2.86 GiB) and picks the largest batch the budget can hold after reserving headroom for the
+graph, KV cache and runtime. The reserve is a quarter of the budget capped at 512 MiB, not a flat
+512 MiB: a 2 GB device may legitimately run an 800 MiB budget, which a flat reserve would have made
+unsatisfiable.
+
+An explicit MESH_LLAMA_UBATCH still wins, and a budget that cannot hold even one token is reported
+as an error and pinned to batch 1 rather than thrown from: this runs on a context-construction path
+that does not convert exceptions into a load failure, so throwing there aborts the process instead
+of reporting anything.
+
+Verified on tools/v41-mktiny.cpp: the derivation fires and scales with the budget, and omitting
+MESH_LLAMA_WS_BUDGET_MB leaves the previous behaviour untouched. The "cannot hold one token" branch
+is NOT exercised -- it needs a real model whose experts dwarf the budget.
+---
+ src/llama-mmap.cpp           | 13 +++++---
+ src/llama-mmap.h             |  5 +++
+ src/skippy/model_loading.cpp | 65 ++++++++++++++++++++++++++++++++++++
+ 3 files changed, 79 insertions(+), 4 deletions(-)
+
+diff --git a/src/llama-mmap.cpp b/src/llama-mmap.cpp
+index 6d807f0..9752cb6 100644
+--- a/src/llama-mmap.cpp
++++ b/src/llama-mmap.cpp
+@@ -912,10 +912,7 @@ static size_t llama_residency_current_bytes() {
+ #endif
+ }
+ 
+-// Bound the resident set of a model that is mapped but far larger than RAM. Decoding touches
+-// weights in every layer, so the resident set grows with each token.
+-//   MESH_LLAMA_WS_BUDGET_MB=6000   -> trim whenever the resident set passes 6 GiB
+-bool llama_residency_trim_if_over_budget() {
++size_t llama_residency_budget_bytes() {
+     static const size_t budget_bytes = []() -> size_t {
+         const char * value = getenv("MESH_LLAMA_WS_BUDGET_MB");
+         if (value == nullptr) {
+@@ -924,6 +921,14 @@ bool llama_residency_trim_if_over_budget() {
+         const long long mb = atoll(value);
+         return mb > 0 ? (size_t) mb * 1024u * 1024u : 0;
+     }();
++    return budget_bytes;
++}
++
++// Bound the resident set of a model that is mapped but far larger than RAM. Decoding touches
++// weights in every layer, so the resident set grows with each token.
++//   MESH_LLAMA_WS_BUDGET_MB=6000   -> trim whenever the resident set passes 6 GiB
++bool llama_residency_trim_if_over_budget() {
++    const size_t budget_bytes = llama_residency_budget_bytes();
+ 
+     if (budget_bytes == 0) {
+         return false;
+diff --git a/src/llama-mmap.h b/src/llama-mmap.h
+index 9c03be8..cc92dcc 100644
+--- a/src/llama-mmap.h
++++ b/src/llama-mmap.h
+@@ -95,3 +95,8 @@ bool llama_residency_trim_if_over_budget();
+ // llama_model_loader::init_mappings(). Without this the trim can only ask the OS to shrink the whole
+ // process, which also throws away the KV cache and the graph being computed.
+ void llama_residency_register_mapping(void * addr, size_t size);
++
++// The configured resident-set budget in bytes, or 0 when MESH_LLAMA_WS_BUDGET_MB is unset. Loading
++// reads this to derive a batch size the budget can actually hold, instead of re-reading the
++// environment and risking a different answer.
++size_t llama_residency_budget_bytes();
+diff --git a/src/skippy/model_loading.cpp b/src/skippy/model_loading.cpp
+index d47a8c0..586d40d 100644
+--- a/src/skippy/model_loading.cpp
++++ b/src/skippy/model_loading.cpp
+@@ -713,6 +713,7 @@ enum skippy_status skippy_finish_model_open(
+     params.n_ctx = context_size_total;
+     params.n_batch = config != nullptr && config->n_batch > 0 ? static_cast<uint32_t>(config->n_batch) : context_size_per_lane;
+     params.n_ubatch = config != nullptr && config->n_ubatch > 0 ? static_cast<uint32_t>(config->n_ubatch) : 0u;
++    const bool ubatch_was_requested = config != nullptr && config->n_ubatch > 0;
+     params.n_threads = config != nullptr && config->n_threads > 0 ? config->n_threads : skippy_default_thread_count();
+     params.n_threads_batch = config != nullptr && config->n_threads_batch > 0 ? config->n_threads_batch : params.n_threads;
+     params.n_seq_max = stage_model->lane_count;
+@@ -735,6 +736,70 @@ enum skippy_status skippy_finish_model_open(
+         // physical batch, matching llama-embedding's runtime contract.
+         params.n_ubatch = params.n_batch;
+     }
++
++    // Bound the working set by construction rather than by reaction. Every token that reaches a MoE
++    // layer faults in n_expert_used of that layer's experts, so the pages a batch touches scale with
++    // its token count -- and the residency trim can only react once they are already resident.
++    // Deriving the batch size from the budget means a configuration that would blow past it cannot
++    // be chosen in the first place.
++    //
++    //   expert working set per token ~= expert_bytes * n_expert_used / n_expert,
++    //   restricted to the layers this stage owns.
++    //
++    // For V4.1 that is 2.86 GiB, which is exactly the figure the budget had to be hand-tuned around
++    // before this existed: ubatch 1 with a 5000 MiB budget held, the default ubatch did not.
++    if (!ubatch_was_requested && !embedding_workload && llama_residency_budget_bytes() > 0) {
++        const auto & hp = model->hparams;
++
++        uint64_t expert_bytes = 0;
++        for (const auto & entry : model->tensors_by_name) {
++            if (entry.second != nullptr && entry.first.find("_exps.") != std::string::npos) {
++                expert_bytes += (uint64_t) ggml_nbytes(entry.second);
++            }
++        }
++
++        const int64_t n_layer_total = hp.n_layer();
++        int64_t       n_layer_stage = n_layer_total;
++        if (skippy_runtime_has_stage_plan(config)) {
++            n_layer_stage = config->layer_end - config->layer_start;
++        }
++        if (n_layer_total > 0 && n_layer_stage > 0 && n_layer_stage < n_layer_total) {
++            expert_bytes = expert_bytes * (uint64_t) n_layer_stage / (uint64_t) n_layer_total;
++        }
++
++        const uint64_t per_token = hp.n_expert > 0
++                ? expert_bytes / hp.n_expert * hp.n_expert_used() : 0;
++
++        if (per_token > 0) {
++            // The budget covers the whole resident set, so leave the graph, the KV cache and the
++            // runtime their headroom instead of spending all of it on weights. Proportional, not a
++            // fixed floor: a 2 GB device may legitimately run with an 800 MiB budget, which a flat
++            // 512 MiB reserve would have made unsatisfiable.
++            const uint64_t budget = llama_residency_budget_bytes();
++            const uint64_t reserve = budget/4 < 512ull*1024ull*1024ull ? budget/4 : 512ull*1024ull*1024ull;
++            const uint64_t usable  = budget - reserve;
++            const uint64_t fits    = usable / per_token;
++
++            if (fits == 0) {
++                // One token's experts do not fit. Report it as an error and run at the smallest
++                // batch rather than throwing: this is reached from a context-construction path that
++                // does not convert exceptions into a load failure, so throwing here aborts the
++                // process instead of reporting anything.
++                LLAMA_LOG_ERROR("%s: resident-set budget %zu MiB cannot hold a single token of this "
++                        "model, which faults in %zu MiB of experts; raise MESH_LLAMA_WS_BUDGET_MB or "
++                        "narrow the stage's layer range\n", __func__,
++                        (size_t) (budget/(1024ull*1024ull)), (size_t) (per_token/(1024ull*1024ull)));
++                params.n_ubatch = 1;
++            } else {
++                const uint32_t derived = fits < (uint64_t) params.n_batch
++                        ? (uint32_t) fits : params.n_batch;
++                LLAMA_LOG_WARN("%s: budget %zu MiB allows n_ubatch %u (n_batch %u), expert working "
++                        "set %zu MiB per token\n", __func__, (size_t) (budget/(1024ull*1024ull)),
++                        derived, params.n_batch, (size_t) (per_token/(1024ull*1024ull)));
++                params.n_ubatch = derived;
++            }
++        }
++    }
+     const bool glm_dsa_op_timing_enabled = skippy_glm_dsa_op_timing_enabled();
+     const bool glm_dsa_tensor_trace_enabled = skippy_glm_dsa_tensor_trace_enabled();
+     if (model->arch == LLM_ARCH_GLM_DSA && (glm_dsa_op_timing_enabled || glm_dsa_tensor_trace_enabled)) {
+-- 
+2.55.0.windows.4
+

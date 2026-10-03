@@ -13,6 +13,36 @@ use std::path::Path;
 
 pub(super) const SPLIT_DEFAULT_MIN_PARTICIPANTS: usize = 2;
 
+/// Opt-in that lowers the split participant floor from two nodes to one.
+///
+/// Split is a pipeline across nodes, so two is the default and stays the
+/// default: one node holding the whole layer range is not a split, it is a
+/// whole-model load carrying split's bookkeeping. The floor becomes *optional*
+/// rather than mandatory through this switch, so a single node can be driven
+/// through the split path deliberately -- for diagnostics, and for hosts whose
+/// capacity can never satisfy the per-node model on their own. Unset or "0"
+/// keeps the default; "1" allows one; anything else is ignored with a warning
+/// rather than guessed at.
+pub(super) const SPLIT_MIN_PARTICIPANTS_ENV: &str = "MESH_LLM_ALLOW_SINGLE_NODE_SPLIT";
+
+pub(crate) fn split_min_participants() -> usize {
+    match std::env::var_os(SPLIT_MIN_PARTICIPANTS_ENV) {
+        None => SPLIT_DEFAULT_MIN_PARTICIPANTS,
+        Some(value) => match value.to_string_lossy().as_ref() {
+            "0" => SPLIT_DEFAULT_MIN_PARTICIPANTS,
+            "1" => 1,
+            other => {
+                tracing::warn!(
+                    value = other,
+                    "{SPLIT_MIN_PARTICIPANTS_ENV} must be unset, '0', or '1'; keeping the \
+                     default floor of {SPLIT_DEFAULT_MIN_PARTICIPANTS} nodes"
+                );
+                SPLIT_DEFAULT_MIN_PARTICIPANTS
+            }
+        },
+    }
+}
+
 /// Try to extract GGUF architecture metadata from a layer package's shared
 /// metadata file.  Layer packages store a `shared/metadata.gguf` that carries
 /// the model's KV pairs (context_length, head counts, etc.) without any tensor
@@ -269,6 +299,10 @@ type SplitParticipantSignature = Vec<(String, u64, u64, u64, Option<u32>, bool, 
 pub(super) struct SplitParticipant {
     pub(super) node_id: iroh::EndpointId,
     pub(super) vram_bytes: u64,
+    /// System RAM this node can stage a slice from, as it advertised it. Not
+    /// accelerator memory and not reported as any: a node with no accelerator
+    /// still has this, and it is what a CPU-served stage lives in.
+    pub(super) host_ram_bytes: u64,
     first_joined_mesh_ts: Option<u64>,
     pub(super) cached_slice_bytes: u64,
     pub(super) missing_artifact_bytes: u64,
@@ -289,6 +323,7 @@ impl SplitParticipant {
         Self {
             node_id,
             vram_bytes,
+            host_ram_bytes: 0,
             first_joined_mesh_ts,
             cached_slice_bytes: 0,
             missing_artifact_bytes: 0,
@@ -297,6 +332,26 @@ impl SplitParticipant {
             availability_score: 0,
             decode_bytes_per_second: None,
         }
+    }
+
+    pub(super) fn with_host_ram_bytes(mut self, host_ram_bytes: u64) -> Self {
+        self.host_ram_bytes = host_ram_bytes;
+        self
+    }
+
+    /// Memory this node must hold its stage in: accelerator plus system RAM.
+    /// This is the quantity a stage's KV, recurrent state, compute headroom and
+    /// resident weight window are charged against.
+    pub(super) fn resident_bytes(&self) -> u64 {
+        self.vram_bytes.saturating_add(self.host_ram_bytes)
+    }
+
+    /// Weight bytes this node can put behind a stage: resident memory plus what
+    /// it can page in from its own storage. This is what placement may plan
+    /// against, and it is deliberately not `vram_bytes`.
+    pub(super) fn staging_bytes(&self) -> u64 {
+        self.resident_bytes()
+            .saturating_add(self.cached_slice_bytes)
     }
 
     pub(super) fn with_decode_speed(mut self, decode_bytes_per_second: Option<u64>) -> Self {
@@ -376,17 +431,32 @@ pub(super) fn ensure_split_participant_timeout_has_quorum(
     best: &[SplitParticipant],
     best_excluded: &[SplitParticipantExclusion],
 ) -> Result<()> {
-    if best.len() >= SPLIT_DEFAULT_MIN_PARTICIPANTS {
+    let minimum = split_min_participants();
+    if best.len() >= minimum {
         return Ok(());
     }
-    anyhow::bail!(
-        "split runtime needs at least two participating nodes for {model_ref}; found {} eligible [{}]; excluded [{}]; blockers [{}]; next_step: {}",
-        best.len(),
-        split_participant_labels(best).join(", "),
-        split_participant_exclusion_labels(best_excluded).join(", "),
-        split_participant_blocker_labels(best_excluded).join("; "),
-        split_participant_next_step(best_excluded)
-    )
+    // Keep the default wording byte-for-byte: `runtime::startup_retry` and
+    // `runtime::startup_handles` both recognise a split quorum failure by
+    // matching "at least two participating nodes" inside this message.
+    if minimum >= SPLIT_DEFAULT_MIN_PARTICIPANTS {
+        anyhow::bail!(
+            "split runtime needs at least two participating nodes for {model_ref}; found {} eligible [{}]; excluded [{}]; blockers [{}]; next_step: {}",
+            best.len(),
+            split_participant_labels(best).join(", "),
+            split_participant_exclusion_labels(best_excluded).join(", "),
+            split_participant_blocker_labels(best_excluded).join("; "),
+            split_participant_next_step(best_excluded)
+        )
+    } else {
+        anyhow::bail!(
+            "split runtime needs a participating node for {model_ref}; found {} eligible [{}]; excluded [{}]; blockers [{}]; next_step: {}",
+            best.len(),
+            split_participant_labels(best).join(", "),
+            split_participant_exclusion_labels(best_excluded).join(", "),
+            split_participant_blocker_labels(best_excluded).join("; "),
+            split_participant_next_step(best_excluded)
+        )
+    }
 }
 
 pub(super) fn split_participant_blocker_labels(
@@ -479,11 +549,14 @@ pub(super) async fn collect_split_participant_membership(
     model_ref: &str,
     local_source_required: bool,
 ) -> SplitParticipantSnapshot {
-    let mut participants = vec![SplitParticipant::new(
-        node.id(),
-        node.vram_bytes(),
-        Some(node.first_joined_mesh_ts().await.unwrap_or(0)),
-    )];
+    let mut participants = vec![
+        SplitParticipant::new(
+            node.id(),
+            node.vram_bytes(),
+            Some(node.first_joined_mesh_ts().await.unwrap_or(0)),
+        )
+        .with_host_ram_bytes(node.advertised_memory.ram_offload_bytes),
+    ];
     let mut excluded = Vec::new();
     for peer in node.peers().await {
         if let Some(reason) = split_peer_preflight_exclusion_reason(
@@ -498,11 +571,10 @@ pub(super) async fn collect_split_participant_membership(
             });
             continue;
         }
-        participants.push(SplitParticipant::new(
-            peer.id,
-            peer.vram_bytes,
-            peer.first_joined_mesh_ts,
-        ));
+        participants.push(
+            SplitParticipant::new(peer.id, peer.vram_bytes, peer.first_joined_mesh_ts)
+                .with_host_ram_bytes(split_peer_host_ram_bytes(&peer)),
+        );
     }
     sort_split_participants(&mut participants);
     excluded.sort_by_key(|exclusion| exclusion.node_id.to_string());
@@ -554,6 +626,7 @@ pub(super) async fn collect_split_participants(
             Some(node.first_joined_mesh_ts().await.unwrap_or(0)),
             package,
         )
+        .with_host_ram_bytes(node.advertised_memory.ram_offload_bytes)
         .with_decode_speed(decode_bytes_per_second_from_gbps(
             local_bandwidth.as_deref(),
         )),
@@ -588,6 +661,7 @@ pub(super) async fn collect_split_participants(
             Ok(package_signal) => {
                 participants.push(
                     SplitParticipant::new(peer.id, peer.vram_bytes, peer.first_joined_mesh_ts)
+                        .with_host_ram_bytes(split_peer_host_ram_bytes(&peer))
                         .with_package_signals(
                             package_signal,
                             peer.rtt_ms,
@@ -647,14 +721,75 @@ pub(super) fn split_peer_stage_host_exclusion_reason(
     if !split_peer_can_run_stage_runtime(peer) {
         return Some(SplitParticipantExclusionReason::Client);
     }
-    if peer.vram_bytes == 0 {
+    if peer.vram_bytes == 0 && split_peer_host_ram_bytes(peer) == 0 {
         return Some(SplitParticipantExclusionReason::MissingVram);
     }
     None
 }
 
+/// System RAM a peer can serve a stage from, independent of accelerator memory.
+///
+/// A node with no accelerator memory is not a node without memory: it has the
+/// RAM it advertised, and a stage placed on it is served from there. Gating
+/// participation on `vram_bytes != 0` said otherwise, which excluded exactly the
+/// hosts this split path is meant to reach. The number already arrives on the
+/// wire inside `PeerAnnouncement.memory`; nothing here invents capacity, it
+/// reads what the peer advertised. A peer that itemized no `memory` block
+/// reports zero and keeps the accelerator-only behaviour.
+pub(super) fn split_peer_host_ram_bytes(peer: &mesh::PeerInfo) -> u64 {
+    peer.memory
+        .as_ref()
+        .map(|memory| memory.ram_offload_bytes)
+        .unwrap_or(0)
+}
+
 pub(super) fn split_peer_can_run_stage_runtime(peer: &mesh::PeerInfo) -> bool {
     matches!(peer.role, NodeRole::Worker | NodeRole::Host { .. })
+}
+
+/// True when any of `refs` is a local layer package that declares `model_id`.
+///
+/// A package is requested by path (`--model <dir>`) but identified by the
+/// `model_id` inside its own manifest. The want-checks compare against the
+/// canonical name, so a node serving a package by path looked like a node that
+/// did not want the model at all — it was excluded as `missing_model_interest`
+/// while holding the model. Resolve the path to the declared id here instead of
+/// requiring every producer and consumer to spell the same model the same way.
+pub(crate) fn refs_declare_model_id(refs: &[String], model_id: &str) -> bool {
+    if model_id.is_empty() {
+        return false;
+    }
+    refs.iter()
+        .any(|value| package_declares_model_id(value, model_id))
+}
+
+/// `true` when `path` is a directory whose `model-package.json` names
+/// `model_id`. Anything that is not a readable package manifest is `false`.
+fn package_declares_model_id(path: &str, model_id: &str) -> bool {
+    let dir = std::path::Path::new(path);
+    if !dir.is_dir() {
+        return false;
+    }
+    let manifest_path = dir.join("model-package.json");
+    let Ok(metadata) = std::fs::metadata(&manifest_path) else {
+        return false;
+    };
+    // The manifest is a small JSON document; refuse anything that is not one.
+    if !metadata.is_file() || metadata.len() > (1 << 20) {
+        return false;
+    }
+    let Ok(manifest) = std::fs::read(&manifest_path) else {
+        return false;
+    };
+    serde_json::from_slice::<serde_json::Value>(&manifest)
+        .ok()
+        .and_then(|parsed| {
+            parsed
+                .get("model_id")
+                .and_then(|value| value.as_str())
+                .map(str::to_string)
+        })
+        .is_some_and(|declared| declared == model_id)
 }
 
 pub(super) fn split_peer_wants_model(
@@ -675,6 +810,9 @@ pub(super) fn split_peer_wants_model(
             .explicit_model_interests
             .iter()
             .any(|model| model == model_ref)
+        || refs_declare_model_id(&peer.requested_models, model_ref)
+        || refs_declare_model_id(&peer.explicit_model_interests, model_ref)
+        || refs_declare_model_id(&peer.available_models, model_ref)
 }
 
 pub(super) async fn split_peer_package_signal(

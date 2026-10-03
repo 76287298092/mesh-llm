@@ -1,0 +1,77 @@
+name: build mesh-llm host (windows x86_64)
+
+# Produces `mesh-llm.exe` — the Rust host only.
+#
+# The native runtime (`native-runtimes/**/lib/llama.dll` and friends) is a
+# separate, heavily patched llama.cpp fork and is NOT rebuilt here. This
+# workflow exists so the host can be compiled somewhere other than the machine
+# it is deployed to.
+#
+# Why the release profile is overridden
+# -------------------------------------
+# The repository's release profile uses `lto = "thin"` with
+# `codegen-units = 1`, which puts a whole crate in one LLVM module. On a 16 GB
+# builder rustc exhausts memory and dies with STATUS_STACK_BUFFER_OVERRUN
+# (0xC0000409) or stalls with the pagefile pinned. Sixteen codegen units with
+# LTO off, plus a bounded job count, compiles the same tree on 16 GB. These are
+# the exact values that build successfully on the development workstation.
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - deepseek41-v41-port
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 180
+    env:
+      CARGO_TERM_COLOR: always
+      CARGO_PROFILE_RELEASE_CODEGEN_UNITS: '16'
+      CARGO_PROFILE_RELEASE_LTO: 'false'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The host's build script reads repository metadata, so keep history.
+          fetch-depth: 0
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build the host
+        run: cargo build --release -p mesh-llm -j 2
+
+      - name: Report the binary
+        shell: pwsh
+        run: |
+          $exe = 'target/release/mesh-llm.exe'
+          if (-not (Test-Path $exe)) { throw "missing $exe" }
+          $item = Get-Item $exe
+          $hash = (Get-FileHash $exe -Algorithm SHA256).Hash
+          "path   : $($item.FullName)"
+          "bytes  : $($item.Length)"
+          "built  : $($item.LastWriteTime)"
+          "sha256 : $hash"
+          "sha8   : $($hash.Substring(0,8))"
+          "sha256=$hash" >> $env:GITHUB_OUTPUT
+        id: binary
+
+      - name: Job summary
+        shell: pwsh
+        run: |
+          @(
+            '### mesh-llm.exe'
+            ''
+            "- sha256: ``${{ steps.binary.outputs.sha256 }}``"
+          ) >> $env:GITHUB_STEP_SUMMARY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mesh-llm-exe-windows-x86_64
+          path: target/release/mesh-llm.exe
+          if-no-files-found: error
+          retention-days: 30

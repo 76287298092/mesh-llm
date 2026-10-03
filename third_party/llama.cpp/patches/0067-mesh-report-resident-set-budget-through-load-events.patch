@@ -1,0 +1,79 @@
+From f90d5c2fec989daf7b853cedeb912ff7680dd46f Mon Sep 17 00:00:00 2001
+From: Mesh-LLM CI <ci@mesh-llm.local>
+Date: Sat, 3 Oct 2026 10:53:58 +0800
+Subject: [PATCH] mesh: report the resident-set budget through the load event
+ channel
+
+0066 derived the batch size from the budget but only logged it. A log line is not a report: nothing
+downstream can act on it, and a caller who never reads stderr cannot tell that the bound it got is
+not the bound it asked for.
+
+Emit SKIPPY_RUNTIME_EVENT_KIND_MODEL_LOAD_MEMORY_ALLOCATED with the budget in numeric_summary_0 and
+the derived batch in numeric_summary_1, alongside the existing phase/tokenizer observations. The two
+values are carried from where the batch is derived to the load-event block in the same function; the
+event is emitted only when a budget was actually in force.
+
+Verified by installing a per-call reporter on the synthetic tiny model through
+skippy_model_open_from_parts_with_events. Without a reporter these events go to a process reporter
+that does not surface them, so the observation was previously indistinguishable from not firing:
+
+    EVENT kind=100 model=... s0=2               detail=execution context ready
+    EVENT kind=103 model=... s0=128             detail=tokenizer ready
+    EVENT kind=101 model=... s0=209715200 s1=8  detail=resident-set budget 200 MiB, derived n_ubatch 8
+---
+ src/skippy/model_loading.cpp | 25 +++++++++++++++++++++++++
+ 1 file changed, 25 insertions(+)
+
+diff --git a/src/skippy/model_loading.cpp b/src/skippy/model_loading.cpp
+index 586d40d..5e0d881 100644
+--- a/src/skippy/model_loading.cpp
++++ b/src/skippy/model_loading.cpp
+@@ -748,6 +748,11 @@ enum skippy_status skippy_finish_model_open(
+     //
+     // For V4.1 that is 2.86 GiB, which is exactly the figure the budget had to be hand-tuned around
+     // before this existed: ubatch 1 with a 5000 MiB budget held, the default ubatch did not.
++    // What the budget decided, carried forward to the load-event block below so the caller can see
++    // it through the runtime reporter rather than only in the log.
++    uint64_t residency_budget_used   = 0;
++    uint32_t residency_ubatch_used   = 0;
++
+     if (!ubatch_was_requested && !embedding_workload && llama_residency_budget_bytes() > 0) {
+         const auto & hp = model->hparams;
+ 
+@@ -798,6 +803,8 @@ enum skippy_status skippy_finish_model_open(
+                         derived, params.n_batch, (size_t) (per_token/(1024ull*1024ull)));
+                 params.n_ubatch = derived;
+             }
++            residency_budget_used = budget;
++            residency_ubatch_used = params.n_ubatch;
+         }
+     }
+     const bool glm_dsa_op_timing_enabled = skippy_glm_dsa_op_timing_enabled();
+@@ -1005,6 +1012,24 @@ enum skippy_status skippy_finish_model_open(
+             0,
+             "tokenizer ready",
+             sizeof("tokenizer ready") - 1);
++    if (residency_budget_used > 0) {
++        // The two numbers that make this node's bound auditable: the budget it was given, and the
++        // batch it derived from it. A caller that sees the bound is not what it expected can say so,
++        // which a log line it never reads cannot achieve.
++        char detail[160];
++        const int written = snprintf(detail, sizeof(detail),
++                "resident-set budget %llu MiB, derived n_ubatch %u",
++                (unsigned long long) (residency_budget_used / (1024ull*1024ull)),
++                residency_ubatch_used);
++        skippy_emit_model_load_observation(
++                event_scope,
++                SKIPPY_RUNTIME_EVENT_KIND_MODEL_LOAD_MEMORY_ALLOCATED,
++                native_model_id,
++                residency_budget_used,
++                residency_ubatch_used,
++                detail,
++                written > 0 ? (uint64_t) written : 0);
++    }
+     if (stage_model->mtp_ctx != nullptr) {
+         skippy_emit_model_load_observation(
+                 event_scope,
+-- 
+2.55.0.windows.4
+

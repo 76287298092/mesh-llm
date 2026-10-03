@@ -151,6 +151,16 @@ OpenAI endpoint must bind beyond loopback. Startup fails if the complete model
 does not fit within detected local capacity (or `--max-vram`); it never falls
 back to distributed serving.
 
+For a deliberately risky, local-only mmap experiment, set
+`MESH_LLM_EXPERIMENTAL_MMAP_OVERCOMMIT=1` and explicitly configure
+`hardware.mmap = true` for the selected model (or in `[defaults.hardware]`).
+This bypasses the local capacity admission check and lets the planner attempt
+to open the model as a file-backed mapping. It does not reserve RAM, guarantee
+that the backend keeps weights off the working set, or prevent Windows from
+paging heavily or terminating the process. The override is accepted only by
+`--local-model-only`; it is never used for mesh advertisement or placement.
+Leave it unset for normal capacity-checked operation.
+
 Values passed to `--model`, `--gguf`, and `--mmproj` must be absolute paths and
 must not be symlinks. If you downloaded a model through
 Hugging Face, resolve the cache symlink before passing the path:

@@ -1,7 +1,8 @@
 use super::loading::stage_health_ticks;
 use super::recovery::{
     SplitLossRecoveryDecision, SplitWithdrawGraceAction,
-    split_active_stage_nodes_pending_eligibility, split_connected_node_ids,
+    split_active_stage_nodes_pending_eligibility, split_below_minimum_message,
+    split_connected_node_ids,
     split_locked_loss_recovery_decision, split_loss_recovery_decision,
     split_missing_active_stage_nodes, split_participants_meet_minimum, split_stages_meet_minimum,
     split_unavailable_active_stage_nodes, split_withdraw_grace_action,
@@ -20,7 +21,7 @@ use crate::inference::{election, skippy};
 use crate::mesh;
 use crate::plugin;
 use crate::runtime::local_package::{
-    SPLIT_DEFAULT_MIN_PARTICIPANTS, SplitParticipantSnapshot, split_node_labels,
+    SplitParticipantSnapshot, split_min_participants, split_node_labels,
 };
 use crate::runtime::survey;
 use anyhow::Result;
@@ -679,7 +680,8 @@ impl SplitTopologyCoordinator {
         let participants = split_participants_for_stages(planned_participants, &stages);
         anyhow::ensure!(
             split_stages_meet_minimum(&stages),
-            "split runtime needs at least two stage participants"
+            "{}",
+            split_below_minimum_message("stage participants", stages.len())
         );
         SplitTopologyGeneration::new(topology_id, run_id, generation, participants, stages)
             .with_admissions(admissions)
@@ -1240,7 +1242,7 @@ pub(super) fn split_candidate_for_replan(
     participant_count: usize,
     candidate: Option<SplitTopologyGeneration>,
 ) -> Option<SplitTopologyGeneration> {
-    if participant_count < SPLIT_DEFAULT_MIN_PARTICIPANTS {
+    if participant_count < split_min_participants() {
         return None;
     }
     candidate

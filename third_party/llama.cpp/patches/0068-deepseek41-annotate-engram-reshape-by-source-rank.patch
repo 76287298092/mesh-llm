@@ -1,0 +1,71 @@
+From bb8a651ec0972bcb3d76762ee33d8dcc3503133c Mon Sep 17 00:00:00 2001
+From: Mesh-LLM CI <ci@mesh-llm.local>
+Date: Sat, 3 Oct 2026 11:02:10 +0800
+Subject: [PATCH] deepseek41: annotate the engram reshape by source rank
+
+Installing a stage program for any range reaching layer 1 failed in the proof replay:
+
+    stage program RESHAPE changes element count for l_last-0 (reshaped)
+    source=512 dims=64x4x2x1 target=64x4x4x1
+
+The reshape is the first one in the engram's grouped_norm, and its two callers pass different ranks:
+
+    grouped_norm(key, ...)   key is (hc_dim, nt)      -- flat, must be split into copies
+    grouped_norm(x,   ...)   x is the layer input (n_embd, hc, nt) -- already split
+
+0061 annotated that reshape as dsv4_note_source_dimension(t, 2, 0, 1), "dim 2 comes from the
+source's axis 1". That is right for the flat key, whose axis 1 is the token axis. For the layer input
+axis 1 is hc, so the recipe recorded 4 where the graph has the token axis, and the proof rejected it
+as an element-count change: source 64x4x2 against a recorded target of 64x4x4. hc being 4 is why the
+two numbers look like hc and nt.
+
+Annotate by rank: a note of the token axis when the source is already split, the source-relative note
+when it is flat.
+
+Verified on the synthetic tiny model, where this blocked every range above layer 0:
+
+    [0,2)  PLAN-OK  OPEN-OK  PREFILL OK   (contains the engram layer)
+    [1,2)  PLAN-OK  OPEN-OK               (pure import stage)
+    [0,1)  unchanged
+    chain [0,1) + [1,2)  CHAIN OK
+
+[1,2) now reaches the point of asserting its own contract -- "non-first runtime slices require
+activation input" -- because the harness feeds it no frontier. That is the consuming half of the
+split contract becoming reachable for the first time, not a failure.
+---
+ src/models/deepseek41.cpp | 18 ++++++++++++------
+ 1 file changed, 12 insertions(+), 6 deletions(-)
+
+diff --git a/src/models/deepseek41.cpp b/src/models/deepseek41.cpp
+index 12e9a06..7882cff 100644
+--- a/src/models/deepseek41.cpp
++++ b/src/models/deepseek41.cpp
+@@ -403,13 +403,19 @@ ggml_tensor * llama_model_deepseek41::graph::build_engram(
+     // keeps engram_q and engram_k apart but only ever uses their product, so applying one to each
+     // side of the dot product gives the same result.
+     auto grouped_norm = [&](ggml_tensor * t, ggml_tensor * w) {
+-        // Each reshape records where its token axis comes from, not just that the axis is a token
+-        // axis. The stage planner resolves a reshape from the *source* extent, and at n_tokens == 1
+-        // the destination (hc_dim, 1, 1, 1) has several axes equal to the token count, so a
+-        // destination-only note is ambiguous. build_hc_head annotates its identical reshape the
+-        // same way.
++        // The two callers pass different ranks, and the first reshape has to be annotated
++        // accordingly. The engram key is flat (hc_dim, nt) and must be split into copies, so its
++        // token axis arrives through the source's axis 1. The layer input already is
++        // (n_embd, hc, nt), and there axis 1 is hc: annotating it as the source of dim 2 recorded 4
++        // where the graph has the token axis, which the proof then rejected as an element-count
++        // change (source 64x4x2, recorded target 64x4x4).
++        const bool already_split = ggml_n_dims(t) >= 3;
+         t = ggml_reshape_3d(ctx0, t, n_embd, hc, nt);
+-        dsv4_note_source_dimension(t, 2, 0, 1);
++        if (already_split) {
++            dsv4_note_tokens(t, 2);
++        } else {
++            dsv4_note_source_dimension(t, 2, 0, 1);
++        }
+         t = ggml_rms_norm(ctx0, t, norm_rms_eps);
+         t = ggml_reshape_2d(ctx0, t, hc_dim, nt);
+         dsv4_note_source_dimension(t, 1, 0, 2);
+-- 
+2.55.0.windows.4
+

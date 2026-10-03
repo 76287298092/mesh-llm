@@ -35,8 +35,8 @@ use super::operational_logging::{
 mod native_runtime_events;
 
 pub(super) use super::local_package::{
-    SPLIT_DEFAULT_MIN_PARTICIPANTS, SplitParticipant, SplitParticipantExclusion,
-    runtime_model_planning_bytes, scan_layer_package_metadata,
+    SplitParticipant, SplitParticipantExclusion, runtime_model_planning_bytes,
+    scan_layer_package_metadata, split_min_participants,
 };
 pub(super) use super::local_split::{
     SplitCoordinatorAck, SplitCoordinatorDrainEvent, SplitCoordinatorEvent,

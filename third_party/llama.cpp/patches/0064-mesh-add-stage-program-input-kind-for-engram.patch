@@ -1,0 +1,213 @@
+From e4dbaba03d6831812247e9310da807b50f34b2ea Mon Sep 17 00:00:00 2001
+From: Mesh-LLM CI <ci@mesh-llm.local>
+Date: Sat, 3 Oct 2026 10:37:37 +0800
+Subject: [PATCH] mesh: add a stage program input kind for the deepseek41
+ engram
+
+Installing a stage program for any range containing an engram layer failed with:
+
+    stage program request root has no owned input recipe: dsv41.engram.rows.0
+
+Registering the leaf with request_input is necessary but not sufficient. capture_input() in
+stage_program_extraction_roots.cpp is a type switch over the llm_graph_input_* classes, and each
+branch is what actually turns an input's tensors into an owned program input. The engram class was
+not in it, so nothing was captured no matter how the tensor was registered.
+
+Added the same way qwen4exp_ple is handled:
+
+  - llm_graph_input_engram moves from deepseek41.cpp into models.h as a nested class of
+    llama_model_deepseek41, because the extractor has to recognise it by type. Its constructor and
+    can_reuse() follow it out of the header, since both need the complete KV cache type.
+  - input_kind::deepseek41_engram is appended to the enum rather than grouped with the other family
+    inputs: these values are part of a program identity, so inserting one would renumber the rest.
+  - the input recipe carries the engram layer, because the rows tensor is per layer and the real
+    model has two engram layers (1 and 14), which one stage range can span.
+  - the runtime branch rebuilds the input exactly as build_inp_engram() does.
+
+Verified on tools/v41-mktiny.cpp: the "no owned input recipe" failure is gone and the install now
+proceeds to the proof stage, where it fails on an unrelated RESHAPE geometry mismatch in a CONCAT
+chain along the hc axis.
+---
+ src/models/deepseek41.cpp                     | 45 +++++++------------
+ src/models/models.h                           | 27 +++++++++++
+ src/skippy/stage_program.cpp                  | 21 +++++++++
+ src/skippy/stage_program.h                    |  6 +++
+ src/skippy/stage_program_extraction_roots.cpp |  4 ++
+ 5 files changed, 73 insertions(+), 30 deletions(-)
+
+diff --git a/src/models/deepseek41.cpp b/src/models/deepseek41.cpp
+index 66c76e9..12e9a06 100644
+--- a/src/models/deepseek41.cpp
++++ b/src/models/deepseek41.cpp
+@@ -263,36 +263,20 @@ std::unique_ptr<llm_graph_context> llama_model_deepseek41::build_arch_graph(cons
+ //   rolling_i = (t[0]*m[0]) ^ ... ^ (t[i]*m[i]);  row = rolling_i % prime[i][h] + offset[i][h]
+ // The hash runs host-side because ggml has no 64 bit integers and no xor. Look-back stops at the
+ // start of the sequence, and the compressed token map folds case and accents together first.
+-class llm_graph_input_engram : public llm_graph_input_i {
+-public:
+-    llm_graph_input_engram(const llama_model_deepseek41 & pmodel,
+-                           const llama_kv_cache_dsv4_raw_context * mctx,
+-                           int eg) : pmodel(pmodel), mctx(mctx), eg(eg) {}
+-    virtual ~llm_graph_input_engram() = default;
+-
+-    void set_input(const llama_ubatch * ubatch) override;
+-
+-    bool can_reuse(const llm_graph_params & params) override {
+-        mctx = static_cast<const llama_kv_cache_dsv4_context *>(params.mctx)->get_raw();
+-        const int64_t n_cols = (pmodel.hparams.engram_max_ngram_size - 1) * pmodel.hparams.engram_n_head;
+-        return rows->ne[0] == n_cols * params.ubatch.n_tokens;
+-    }
+-
+-    ggml_tensor * rows = nullptr;   // I32 [n_cols * n_tokens]
+-
+-    const llama_model_deepseek41 & pmodel;
+-
+-    // the predecessor tokens live in the attention KV cells (ext.tok)
+-    const llama_kv_cache_dsv4_raw_context * mctx;
+-
+-    // which engram layer this is, so the right multipliers and buckets are used
+-    const int eg;
+-
+-    // scratch, reused across set_input() calls
+-    std::vector<llama_token> prev;
+-};
++// The input class itself is declared in models.h so the stage-program extractor can recognise it by
++// type; only its behaviour lives here.
++llama_model_deepseek41::llm_graph_input_engram::llm_graph_input_engram(
++        const llama_model_deepseek41 & pmodel,
++        const llama_kv_cache_dsv4_raw_context * mctx,
++        int eg) : pmodel(pmodel), mctx(mctx), eg(eg) {}
++
++bool llama_model_deepseek41::llm_graph_input_engram::can_reuse(const llm_graph_params & params) {
++    mctx = static_cast<const llama_kv_cache_dsv4_context *>(params.mctx)->get_raw();
++    const int64_t n_cols = (pmodel.hparams.engram_max_ngram_size - 1) * pmodel.hparams.engram_n_head;
++    return rows->ne[0] == n_cols * params.ubatch.n_tokens;
++}
+ 
+-void llm_graph_input_engram::set_input(const llama_ubatch * ubatch) {
++void llama_model_deepseek41::llm_graph_input_engram::set_input(const llama_ubatch * ubatch) {
+     const auto & hp = pmodel.hparams;
+ 
+     const int64_t n_tokens = ubatch->n_tokens;
+@@ -364,7 +348,8 @@ ggml_tensor * llama_model_deepseek41::graph::build_inp_engram(
+ 
+     const auto * mctx_cur = static_cast<const llama_kv_cache_dsv4_context *>(mctx);
+ 
+-    auto inp = std::make_unique<llm_graph_input_engram>(pmodel, mctx_cur->get_raw(), pmodel.engram_index(il));
++    auto inp = std::make_unique<llama_model_deepseek41::llm_graph_input_engram>(
++            pmodel, mctx_cur->get_raw(), pmodel.engram_index(il));
+ 
+     inp->rows = ggml_new_tensor_1d(ctx0, GGML_TYPE_I32, n_cols * n_tokens);
+     ggml_set_input(inp->rows);
+diff --git a/src/models/models.h b/src/models/models.h
+index 55e8d96..90130c1 100644
+--- a/src/models/models.h
++++ b/src/models/models.h
+@@ -1449,6 +1449,33 @@ struct llama_model_deepseek41 : public llama_model_deepseek4 {
+     void load_arch_hparams(llama_model_loader & ml) override;
+     void load_arch_tensors(llama_model_loader & ml) override;
+ 
++    // Gathers this layer's engram rows on the host: the hash needs 64-bit arithmetic and xor, which
++    // ggml does not have. Declared here rather than in deepseek41.cpp because the stage-program
++    // extractor has to recognise the input class by type to read its rows tensor -- the same reason
++    // llm_graph_input_ple is declared in this header.
++    class llm_graph_input_engram : public llm_graph_input_i {
++    public:
++        llm_graph_input_engram(const llama_model_deepseek41 & pmodel,
++                               const llama_kv_cache_dsv4_raw_context * mctx,
++                               int eg);
++
++        void set_input(const llama_ubatch * ubatch) override;
++        bool can_reuse(const llm_graph_params & params) override;
++
++        ggml_tensor * rows = nullptr;   // I32 [n_cols * n_tokens]
++
++        const llama_model_deepseek41 & pmodel;
++
++        // the predecessor tokens live in the attention KV cells (ext.tok)
++        const llama_kv_cache_dsv4_raw_context * mctx;
++
++        // which engram layer this is, so the right multipliers and buckets are used
++        const int eg;
++
++        // scratch, reused across set_input() calls
++        std::vector<llama_token> prev;
++    };
++
+     // engram hash constants, read from the file
+     // these live here rather than in hparams because the token map alone is half a megabyte
+     uint32_t engram_n_layer = 0;
+diff --git a/src/skippy/stage_program.cpp b/src/skippy/stage_program.cpp
+index c734a09..839ceac 100644
+--- a/src/skippy/stage_program.cpp
++++ b/src/skippy/stage_program.cpp
+@@ -706,6 +706,27 @@ bool skippy_stage_program::instantiate(
+                 result.add_input(std::move(recipe));
+                 break;
+             }
++            case input_kind::deepseek41_engram: {
++                const auto * dsv41_model = dynamic_cast<const llama_model_deepseek41 *>(&model);
++                const auto * dsv4_memory = dynamic_cast<const llama_kv_cache_dsv4_context *>(params.mctx);
++                if (dsv41_model == nullptr || dsv4_memory == nullptr || dsv4_memory->get_raw() == nullptr ||
++                        input.deepseek41_engram_layer < 0) {
++                    error = "stage program DeepSeek-V4.1 engram input requires a compatible model and DSV4 memory";
++                    return false;
++                }
++                // Rebuilt exactly as build_inp_engram() does it: the rows tensor is sized from the
++                // layer's bucket count, and set_input() fills it from the attention KV cells.
++                const auto & hp = dsv41_model->hparams;
++                const int64_t n_cols = (hp.engram_max_ngram_size - 1) * hp.engram_n_head;
++                auto recipe = std::make_unique<llama_model_deepseek41::llm_graph_input_engram>(
++                        *dsv41_model, dsv4_memory->get_raw(), input.deepseek41_engram_layer);
++                recipe->rows = ggml_new_tensor_1d(context, GGML_TYPE_I32,
++                        n_cols * static_cast<int64_t>(params.ubatch.n_tokens));
++                ggml_set_input(recipe->rows);
++                bind(input.values[0], recipe->rows);
++                result.add_input(std::move(recipe));
++                break;
++            }
+             case input_kind::minimax_m3_msa: {
+                 if (memory_msa == nullptr || input.minimax_m3_msa_block_size <= 0) {
+                     error = "stage program MiniMax-M3 MSA input has no compatible runtime memory";
+diff --git a/src/skippy/stage_program.h b/src/skippy/stage_program.h
+index 8628afb..1581f46 100644
+--- a/src/skippy/stage_program.h
++++ b/src/skippy/stage_program.h
+@@ -131,6 +131,9 @@ struct skippy_stage_program {
+         qwen4exp_qsa,
+         qwen4exp_ple,
+         minimax_m3_msa,
++        // Appended rather than grouped with the other family inputs: these values are part of a
++        // program's identity, so inserting one would renumber everything after it.
++        deepseek41_engram,
+     };
+ 
+     enum class state_partition : uint8_t {
+@@ -180,6 +183,9 @@ struct skippy_stage_program {
+         bool qwen4exp_qsa_block_bias = false;
+         int32_t minimax_m3_msa_block_size = 0;
+         int32_t minimax_m3_msa_local_blocks = 0;
++        // Which engram layer this input belongs to. The rows tensor is per layer, so a stage range
++        // that spans both engram layers (1 and 14 in the real model) carries two of these.
++        int32_t deepseek41_engram_layer = -1;
+     };
+ 
+     struct operation {
+diff --git a/src/skippy/stage_program_extraction_roots.cpp b/src/skippy/stage_program_extraction_roots.cpp
+index c46b968..2ecd0d8 100644
+--- a/src/skippy/stage_program_extraction_roots.cpp
++++ b/src/skippy/stage_program_extraction_roots.cpp
+@@ -422,6 +422,10 @@ bool extraction::capture_input(const llm_graph_input_i * input) {
+         } else if (const auto * typed = dynamic_cast<const llama_model_qwen4exp::llm_graph_input_ple *>(input)) {
+             recipe.kind = skippy_stage_program::input_kind::qwen4exp_ple;
+             capture(typed->rows, 0, 0);
++        } else if (const auto * typed = dynamic_cast<const llama_model_deepseek41::llm_graph_input_engram *>(input)) {
++            recipe.kind = skippy_stage_program::input_kind::deepseek41_engram;
++            recipe.deepseek41_engram_layer = typed->eg;
++            capture(typed->rows, 0, 0);
+         } else if (const auto * typed = dynamic_cast<const llm_graph_input_dsv4 *>(input)) {
+             recipe.kind = skippy_stage_program::input_kind::dsv4;
+             capture(typed->get_raw()->self_k_idxs, 0, 0);
+-- 
+2.55.0.windows.4
+

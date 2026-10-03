@@ -90,8 +90,10 @@ pub(super) fn resolve_configured_topology_assignments(
         .as_deref()
         .context("configured locked topology is missing stages")?;
     anyhow::ensure!(
-        stages.len() >= super::local::SPLIT_DEFAULT_MIN_PARTICIPANTS,
-        "configured locked topology requires at least two stages"
+        stages.len() >= super::local::split_min_participants(),
+        "configured locked topology requires at least {} stage(s); found {}",
+        super::local::split_min_participants(),
+        stages.len()
     );
     stages
         .iter()
@@ -202,8 +204,10 @@ fn validate_lock_identity(
         package.manifest_sha256
     );
     anyhow::ensure!(
-        topology.stages.len() >= super::local::SPLIT_DEFAULT_MIN_PARTICIPANTS,
-        "split topology lock requires at least two stages"
+        topology.stages.len() >= super::local::split_min_participants(),
+        "split topology lock requires at least {} stage(s); found {}",
+        super::local::split_min_participants(),
+        topology.stages.len()
     );
     Ok(())
 }

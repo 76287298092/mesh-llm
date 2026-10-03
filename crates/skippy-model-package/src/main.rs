@@ -21,6 +21,77 @@ mod write;
 use cli::{Args, Command};
 use package::{ArtifactHook, ExplicitSourceIdentity};
 
+#[cfg(feature = "runtime-dynamic")]
+fn native_runtime_library_paths(runtime_root: &std::path::Path) -> Result<Vec<std::path::PathBuf>> {
+    let root = runtime_root.canonicalize().with_context(|| {
+        format!(
+            "resolve native runtime directory {}",
+            runtime_root.display()
+        )
+    })?;
+    let manifest_path = root.join("manifest.json");
+    let manifest_bytes = std::fs::read(&manifest_path)
+        .with_context(|| format!("read native runtime manifest {}", manifest_path.display()))?;
+    let manifest: serde_json::Value = serde_json::from_slice(&manifest_bytes)
+        .with_context(|| format!("parse native runtime manifest {}", manifest_path.display()))?;
+    let declared_root = manifest
+        .pointer("/runtime/libraries")
+        .and_then(serde_json::Value::as_array)
+        .context("native runtime manifest is missing runtime.libraries")?;
+    anyhow::ensure!(
+        !declared_root.is_empty(),
+        "native runtime manifest declares no libraries"
+    );
+
+    let mut paths = Vec::with_capacity(declared_root.len());
+    for entry in declared_root {
+        let relative = entry
+            .as_str()
+            .context("native runtime library path must be a string")?;
+        let relative_path = std::path::Path::new(relative);
+        anyhow::ensure!(
+            !relative_path.as_os_str().is_empty()
+                && relative_path
+                    .components()
+                    .all(|component| matches!(component, std::path::Component::Normal(_))),
+            "native runtime library path must remain package-relative: {relative:?}"
+        );
+        let candidate = root.join(relative_path);
+        let library = candidate
+            .canonicalize()
+            .with_context(|| format!("resolve native runtime library {}", candidate.display()))?;
+        anyhow::ensure!(
+            library.starts_with(&root) && library.is_file(),
+            "native runtime library is not a file inside {}: {}",
+            root.display(),
+            library.display()
+        );
+        paths.push(library);
+    }
+    Ok(paths)
+}
+
+#[cfg(feature = "runtime-dynamic")]
+fn load_native_runtime() -> Result<()> {
+    let runtime_root = std::env::var_os("MESH_LLM_NATIVE_RUNTIME_DIR")
+        .map(std::path::PathBuf::from)
+        .context(
+            "MESH_LLM_NATIVE_RUNTIME_DIR must point to a trusted Mesh native runtime directory containing manifest.json",
+        )?;
+    let libraries = native_runtime_library_paths(&runtime_root)?;
+    // The library list comes from the operator-selected, locally installed
+    // runtime manifest and is validated to stay inside that runtime directory.
+    unsafe { skippy_runtime::load_native_runtime_libraries(&libraries) }
+        .with_context(|| format!("load Mesh native runtime from {}", runtime_root.display()))?;
+    eprintln!("Loaded Mesh native runtime {}", runtime_root.display());
+    Ok(())
+}
+
+#[cfg(not(feature = "runtime-dynamic"))]
+fn load_native_runtime() -> Result<()> {
+    Ok(())
+}
+
 fn prepare_model_download_directories() {
     let prepared = match model_hf::prepare_download_directories() {
         Ok(prepared) => prepared,
@@ -47,6 +118,7 @@ const MAIN_STACK_SIZE: usize = 8 * 1024 * 1024;
 
 fn main() -> Result<()> {
     let args = Args::parse();
+    load_native_runtime()?;
     // Local inspection and verification must not touch download caches.
     if !matches!(
         args.command,
@@ -142,5 +214,43 @@ fn run(args: Args) -> Result<()> {
         Command::RepairGlmDsaGenerationPolicy { package, in_place } => {
             glm_dsa_generation_policy::repair_package(&package, in_place)
         }
+    }
+}
+
+#[cfg(test)]
+#[cfg(feature = "runtime-dynamic")]
+mod native_runtime_tests {
+    use super::native_runtime_library_paths;
+    use std::fs;
+
+    #[test]
+    fn runtime_paths_follow_manifest_order_and_stay_inside_runtime_root() {
+        let root = tempfile::tempdir().expect("create temporary runtime");
+        fs::create_dir(root.path().join("lib")).expect("create library directory");
+        fs::write(root.path().join("lib/ggml.dll"), []).expect("write dependency fixture");
+        fs::write(root.path().join("lib/llama.dll"), []).expect("write primary fixture");
+        fs::write(
+            root.path().join("manifest.json"),
+            br#"{"runtime":{"libraries":["lib/ggml.dll","lib/llama.dll"]}}"#,
+        )
+        .expect("write runtime manifest");
+
+        let paths = native_runtime_library_paths(root.path()).expect("resolve native libraries");
+        assert_eq!(paths.len(), 2);
+        assert!(paths[0].ends_with("lib/ggml.dll"));
+        assert!(paths[1].ends_with("lib/llama.dll"));
+    }
+
+    #[test]
+    fn runtime_manifest_rejects_parent_traversal() {
+        let root = tempfile::tempdir().expect("create temporary runtime");
+        fs::write(
+            root.path().join("manifest.json"),
+            br#"{"runtime":{"libraries":["../outside.dll"]}}"#,
+        )
+        .expect("write runtime manifest");
+
+        let error = native_runtime_library_paths(root.path()).expect_err("reject path traversal");
+        assert!(format!("{error:#}").contains("package-relative"));
     }
 }

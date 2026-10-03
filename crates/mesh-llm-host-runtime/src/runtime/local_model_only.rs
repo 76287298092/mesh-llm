@@ -22,6 +22,7 @@ use std::time::Duration;
 
 const OPENAI_STARTUP_TIMEOUT: Duration = Duration::from_secs(10);
 const OPENAI_STATUS_POLL_INTERVAL: Duration = Duration::from_millis(25);
+const EXPERIMENTAL_MMAP_OVERCOMMIT_ENV: &str = "MESH_LLM_EXPERIMENTAL_MMAP_OVERCOMMIT";
 
 pub(super) fn validate_local_model_only_options(options: &RuntimeOptions) -> Result<()> {
     anyhow::ensure!(!options.client, "--local-model-only cannot run as a client");
@@ -228,6 +229,24 @@ async fn run_local_model_only_inner(
         "could not determine local model size: {}",
         model.resolved_path.display()
     );
+    let mmap_overcommit = experimental_mmap_overcommit_requested()?;
+    if mmap_overcommit {
+        let model_mmap = model
+            .config_model_id
+            .as_deref()
+            .and_then(|model_id| config.models.iter().find(|entry| entry.model == model_id))
+            .and_then(|entry| entry.hardware.as_ref())
+            .and_then(|hardware| hardware.mmap.as_ref());
+        let default_mmap = config
+            .defaults
+            .as_ref()
+            .and_then(|defaults| defaults.hardware.as_ref())
+            .and_then(|hardware| hardware.mmap.as_ref());
+        anyhow::ensure!(
+            explicit_mmap_enabled(model_mmap, default_mmap),
+            "{EXPERIMENTAL_MMAP_OVERCOMMIT_ENV}=1 requires hardware.mmap = true for this model"
+        );
+    }
     let local_capacity_bytes = local_capacity_bytes(
         options.max_vram,
         model.pinned_gpu.as_ref(),
@@ -235,12 +254,25 @@ async fn run_local_model_only_inner(
         host_ram_offload,
     );
     let required_bytes = runtime_model_required_bytes(model_bytes);
-    anyhow::ensure!(
-        local_capacity_bytes >= required_bytes,
-        "local model requires {:.2} GB but this process has {:.2} GB; local model-only serving never falls back to a split",
-        required_bytes as f64 / 1e9,
-        local_capacity_bytes as f64 / 1e9
-    );
+    if !mmap_overcommit {
+        anyhow::ensure!(
+            local_capacity_bytes >= required_bytes,
+            "local model requires {:.2} GB but this process has {:.2} GB; local model-only serving never falls back to a split",
+            required_bytes as f64 / 1e9,
+            local_capacity_bytes as f64 / 1e9
+        );
+    }
+    let capacity_budget_bytes = if mmap_overcommit {
+        tracing::warn!(
+            model_bytes,
+            required_bytes,
+            detected_capacity_bytes = local_capacity_bytes,
+            "experimental mmap overcommit is enabled; model weights will be demand-paged from disk and inference may be extremely slow or exhaust system memory"
+        );
+        required_bytes
+    } else {
+        local_capacity_bytes
+    };
 
     let bind_addr = local_openai_bind_addr(&options);
     let runtime = acquire_instance_runtime(&options);
@@ -265,7 +297,7 @@ async fn run_local_model_only_inner(
         ctx_size_override: model.ctx_size,
         pinned_gpu: model.pinned_gpu.as_ref(),
         device_override: startup_device_override(model.gpu_id.as_deref()),
-        capacity_budget_bytes: local_capacity_bytes,
+        capacity_budget_bytes,
         cache_type_k_override: model.cache_type_k.as_deref(),
         cache_type_v_override: model.cache_type_v.as_deref(),
         n_batch_override: model.n_batch,
@@ -292,6 +324,28 @@ async fn run_local_model_only_inner(
     let result = run_loaded_local_model(launch, &model_name, bind_addr, runtime_event_driver).await;
     cleanup_run_auto_runtime_dir(runtime);
     result
+}
+
+fn experimental_mmap_overcommit_requested() -> Result<bool> {
+    match std::env::var_os(EXPERIMENTAL_MMAP_OVERCOMMIT_ENV) {
+        None => Ok(false),
+        Some(value) if value == "1" => Ok(true),
+        Some(value) if value == "0" => Ok(false),
+        Some(value) => anyhow::bail!(
+            "{EXPERIMENTAL_MMAP_OVERCOMMIT_ENV} must be unset, '0', or '1'; got {:?}",
+            value
+        ),
+    }
+}
+
+fn explicit_mmap_enabled(
+    model_setting: Option<&mesh_llm_config::BoolOrAuto>,
+    default_setting: Option<&mesh_llm_config::BoolOrAuto>,
+) -> bool {
+    matches!(
+        model_setting.or(default_setting),
+        Some(mesh_llm_config::BoolOrAuto::Bool(true))
+    )
 }
 
 fn native_serving_plugin_factory(
@@ -669,7 +723,7 @@ mod tests {
 
 #[cfg(test)]
 mod local_capacity_tests {
-    use super::local_capacity_bytes;
+    use super::{explicit_mmap_enabled, local_capacity_bytes};
     use crate::runtime::StartupPinnedGpuTarget;
     use crate::system::hardware::{GpuFacts, HardwareSurvey};
 
@@ -708,5 +762,23 @@ mod local_capacity_tests {
             local_capacity_bytes(None, Some(&pinned), &hw, true),
             31_427_447_193
         );
+    }
+
+    #[test]
+    fn mmap_overcommit_requires_an_explicit_effective_true_setting() {
+        use mesh_llm_config::BoolOrAuto;
+
+        assert!(explicit_mmap_enabled(
+            None,
+            Some(&BoolOrAuto::Bool(true))
+        ));
+        assert!(!explicit_mmap_enabled(
+            Some(&BoolOrAuto::Bool(false)),
+            Some(&BoolOrAuto::Bool(true))
+        ));
+        assert!(!explicit_mmap_enabled(
+            None,
+            Some(&BoolOrAuto::String("auto".to_string()))
+        ));
     }
 }

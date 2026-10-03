@@ -1,9 +1,8 @@
 use super::MeshApi;
 use super::status::{ModelTargetCapacityAdvicePayload, ModelTargetCapacityAdviceState};
 use crate::mesh::{NodeRole, PeerInfo, SplitStagePathSnapshot};
+use crate::runtime::local_package::split_min_participants;
 use serde::Serialize;
-
-const MIN_SPLIT_PARTICIPANTS: usize = 2;
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct SplitReadinessInput {
@@ -22,6 +21,11 @@ pub(crate) struct SplitReadinessNodeInput {
     pub(crate) source: SplitReadinessNodeSource,
     pub(crate) role: SplitReadinessNodeRole,
     pub(crate) vram_bytes: u64,
+    /// System RAM the node would serve a stage from. Accelerator memory and
+    /// host RAM are separate budgets; a host with no accelerator still has this
+    /// one, and reporting only `vram_bytes` made it look like a host with no
+    /// memory at all.
+    pub(crate) host_ram_bytes: u64,
     pub(crate) requested_models: Vec<String>,
     pub(crate) explicit_model_interests: Vec<String>,
     pub(crate) serving_models: Vec<String>,
@@ -122,6 +126,7 @@ impl MeshApi {
             source: SplitReadinessNodeSource::Local,
             role: split_node_role(&role),
             vram_bytes: node.vram_bytes(),
+            host_ram_bytes: node.advertised_memory.ram_offload_bytes,
             requested_models: node.requested_models().await,
             explicit_model_interests: node.explicit_model_interests().await,
             serving_models: node.serving_models().await,
@@ -204,6 +209,11 @@ fn peer_readiness_input(
         source: SplitReadinessNodeSource::Peer,
         role: split_node_role(&peer.role),
         vram_bytes: peer.vram_bytes,
+        host_ram_bytes: peer
+            .memory
+            .as_ref()
+            .map(|memory| memory.ram_offload_bytes)
+            .unwrap_or(0),
         requested_models: peer.requested_models,
         explicit_model_interests: peer.explicit_model_interests,
         serving_models: peer.serving_models,
@@ -231,7 +241,7 @@ fn split_node_exclusion_reason(
     if node.role == SplitReadinessNodeRole::Client {
         return Some(SplitReadinessExclusionReason::Client);
     }
-    if node.vram_bytes == 0 {
+    if node.vram_bytes == 0 && node.host_ram_bytes == 0 {
         return Some(SplitReadinessExclusionReason::MissingVram);
     }
     if !node_wants_model(model_ref, node) {
@@ -285,7 +295,7 @@ fn split_readiness_verdict(
     if model_ref.trim().is_empty() {
         return SplitReadinessVerdict::NoModel;
     }
-    if participant_count < MIN_SPLIT_PARTICIPANTS {
+    if participant_count < split_min_participants() {
         return SplitReadinessVerdict::WaitingForPeers;
     }
     let Some(capacity_advice) = capacity_advice else {
@@ -375,7 +385,7 @@ fn participant_capacity_state(
         return ModelTargetCapacityAdviceState::SingleNodeFit;
     }
     if split_capable
-        && summary.eligible_node_count >= MIN_SPLIT_PARTICIPANTS
+        && summary.eligible_node_count >= split_min_participants()
         && summary.aggregate_capacity_bytes >= required_bytes
     {
         return ModelTargetCapacityAdviceState::SplitCandidate;
@@ -402,7 +412,8 @@ fn participant_capacity_shortfall(
     split_capable: bool,
     summary: SplitReadinessCapacitySummary,
 ) -> Option<u64> {
-    let comparable_capacity = if split_capable && summary.eligible_node_count >= 2 {
+    let comparable_capacity =
+        if split_capable && summary.eligible_node_count >= split_min_participants() {
         summary.aggregate_capacity_bytes
     } else {
         summary.best_single_node_capacity_bytes.unwrap_or_default()
@@ -608,6 +619,20 @@ fn node_wants_model(model_ref: &str, node: &SplitReadinessNodeInput) -> bool {
             .model_source
             .as_deref()
             .is_some_and(|candidate| model_matches(candidate, model_ref))
+        // A layer package is requested by path and identified by the `model_id`
+        // in its manifest, so the name comparison above misses it.
+        || crate::runtime::local_package::refs_declare_model_id(
+            &node.requested_models,
+            model_ref,
+        )
+        || crate::runtime::local_package::refs_declare_model_id(
+            &node.explicit_model_interests,
+            model_ref,
+        )
+        || crate::runtime::local_package::refs_declare_model_id(
+            &node.available_models,
+            model_ref,
+        )
 }
 
 fn model_source_state(model_ref: &str, node: &SplitReadinessNodeInput) -> &'static str {
@@ -799,6 +824,7 @@ mod tests {
             source: SplitReadinessNodeSource::Peer,
             role,
             vram_bytes: 8_000_000_000,
+            host_ram_bytes: 8_000_000_000,
             requested_models: requested_models
                 .iter()
                 .map(|value| value.to_string())

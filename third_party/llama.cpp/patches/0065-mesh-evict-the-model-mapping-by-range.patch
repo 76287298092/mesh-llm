@@ -1,0 +1,201 @@
+From 9805635f13b1bbb0b14074e920a1366d648af9df Mon Sep 17 00:00:00 2001
+From: Mesh-LLM CI <ci@mesh-llm.local>
+Date: Sat, 3 Oct 2026 10:48:35 +0800
+Subject: [PATCH] mesh: evict the model mapping by range instead of the whole
+ process
+
+The residency trim added in 0059 had two problems, both fatal to the ARM target.
+
+On POSIX it did nothing at all -- a stub returning false -- so on Linux and Android the resident set
+of a 246 GiB mapped model grew with every token and nothing ever brought it back down.
+
+On Windows it called SetProcessWorkingSetSize(-1, -1), which shrinks the *entire* working set. The
+KV cache and the pages the current graph just touched go with the model pages, and the next token
+faults them all back. That is why the measured resident set sawtoothed between 0.01 and 4.65 GiB
+across a single decode.
+
+The trim could not do better because it had no idea what to evict: the model's mappings belong to
+llama_model_loader and are gone by the time a context is computing. So record them. init_mappings()
+now calls llama_residency_register_mapping() for each mapping it creates, and the trim walks that
+list:
+
+  - Linux and Android: madvise(MADV_DONTNEED) over exactly those ranges. The pages stay backed by
+    the artifact, so the next access faults them back in from the file -- the streaming behaviour
+    the SSD path is for -- while the KV cache and the active graph stay resident.
+  - Windows: unchanged in mechanism, because there is no per-range way to evict a mapped file view.
+    The comment now says so rather than implying the blunt trim is the intended design.
+
+Resident-set measurement is factored out, since the budget check needs it on both platforms:
+GetProcessMemoryInfo on Windows, /proc/self/statm on Linux and Android.
+
+Verified on tools/v41-mktiny.cpp that the trim still fires and the whole path (plan, install, open,
+session, prefill, activation frame) is unaffected. The POSIX branch itself is NOT verified -- it
+needs a Linux host, which is the point of the change.
+---
+ src/llama-mmap.cpp         | 94 ++++++++++++++++++++++++++++++++------
+ src/llama-mmap.h           |  5 ++
+ src/llama-model-loader.cpp |  3 ++
+ 3 files changed, 89 insertions(+), 13 deletions(-)
+
+diff --git a/src/llama-mmap.cpp b/src/llama-mmap.cpp
+index 4774370..6d807f0 100644
+--- a/src/llama-mmap.cpp
++++ b/src/llama-mmap.cpp
+@@ -6,10 +6,13 @@
+ 
+ #include <cstring>
+ #include <climits>
++#include <cstdio>
+ #include <cstdlib>
+ #include <stdexcept>
+ #include <cerrno>
+ #include <algorithm>
++#include <utility>
++#include <vector>
+ 
+ #ifdef __has_include
+     #if __has_include(<unistd.h>)
+@@ -866,10 +869,51 @@ size_t llama_path_max() {
+     return PATH_MAX;
+ }
+ 
++// Address ranges of the model's file mappings. Recorded so the trim can name what to evict instead
++// of asking the OS to shrink the whole process.
++static std::vector<std::pair<void *, size_t>> & llama_residency_regions() {
++    static std::vector<std::pair<void *, size_t>> regions;
++    return regions;
++}
++
++void llama_residency_register_mapping(void * addr, size_t size) {
++    if (addr == nullptr || size == 0) {
++        return;
++    }
++    llama_residency_regions().emplace_back(addr, size);
++}
++
++// Current resident set of this process. Windows reports it directly; Linux and Android have no
++// portable call for it, so read it from /proc.
++static size_t llama_residency_current_bytes() {
++#if defined(_WIN32)
++    PROCESS_MEMORY_COUNTERS counters = {};
++    if (!GetProcessMemoryInfo(GetCurrentProcess(), &counters, sizeof(counters))) {
++        return 0;
++    }
++    return (size_t) counters.WorkingSetSize;
++#else
++    FILE * statm = fopen("/proc/self/statm", "r");
++    if (statm == nullptr) {
++        return 0;
++    }
++    long total_pages    = 0;
++    long resident_pages = 0;
++    const int matched = fscanf(statm, "%ld %ld", &total_pages, &resident_pages);
++    fclose(statm);
++    if (matched != 2 || resident_pages < 0) {
++        return 0;
++    }
++    const long page_size = sysconf(_SC_PAGESIZE);
++    if (page_size <= 0) {
++        return 0;
++    }
++    return (size_t) resident_pages * (size_t) page_size;
++#endif
++}
++
+ // Bound the resident set of a model that is mapped but far larger than RAM. Decoding touches
+-// weights in every layer, so the resident set grows with each token, and Windows offers no
+-// user-space way to evict a mapped page. Once the resident set passes the budget, ask the OS to
+-// trim it: the pages stay backed by the file mapping and fault back in on demand.
++// weights in every layer, so the resident set grows with each token.
+ //   MESH_LLAMA_WS_BUDGET_MB=6000   -> trim whenever the resident set passes 6 GiB
+ bool llama_residency_trim_if_over_budget() {
+     static const size_t budget_bytes = []() -> size_t {
+@@ -885,24 +929,48 @@ bool llama_residency_trim_if_over_budget() {
+         return false;
+     }
+ 
+-#ifdef _WIN32
+-    PROCESS_MEMORY_COUNTERS counters = {};
+-    if (!GetProcessMemoryInfo(GetCurrentProcess(), &counters, sizeof(counters))) {
+-        return false;
+-    }
+-    LLAMA_LOG_WARN("%s: budget = %zu MiB, working set = %zu MiB\n", __func__,
+-            budget_bytes / (1024u * 1024u), (size_t) counters.WorkingSetSize / (1024u * 1024u));
+-    if (counters.WorkingSetSize <= budget_bytes) {
++    const size_t rss = llama_residency_current_bytes();
++    if (rss == 0 || rss <= budget_bytes) {
+         return false;
+     }
++
++#if defined(_WIN32)
++    // Windows offers no per-range way to evict a mapped file view, so this shrinks the whole
++    // working set: the KV cache and the pages the current graph just touched go with it, and the
++    // next token faults them all back. It is the only lever available here, not a good one.
+     if (!SetProcessWorkingSetSize(GetCurrentProcess(), (SIZE_T) -1, (SIZE_T) -1)) {
+         LLAMA_LOG_WARN("%s: SetProcessWorkingSetSize failed: %s\n", __func__,
+                 llama_format_win_err(GetLastError()).c_str());
+         return false;
+     }
+ #else
+-    // POSIX could drop clean file-backed pages here, but the staging path does not use it yet.
+-    return false;
++    // Linux and Android can evict exactly the model mapping. Those pages stay backed by the
++    // artifact, so the next access faults them back in from the file -- the streaming behaviour the
++    // SSD path wants -- while the KV cache and the active graph stay resident.
++    size_t evicted = 0;
++    size_t regions = 0;
++    for (const auto & region : llama_residency_regions()) {
++        regions++;
++#if defined(MADV_DONTNEED)
++        if (madvise(region.first, region.second, MADV_DONTNEED) == 0) {
++            evicted += region.second;
++        } else {
++            LLAMA_LOG_WARN("%s: madvise(DONTNEED) failed for %zu bytes: %s\n", __func__,
++                    region.second, strerror(errno));
++        }
++#endif
++    }
++    if (evicted == 0) {
++        // Either nothing was registered or the platform has no eviction hint. Say so once rather
++        // than reporting a trim that did not happen.
++        LLAMA_LOG_WARN("%s: rss = %zu MiB passed budget %zu MiB but no mapping could be evicted "
++                "(%zu region(s) registered)\n", __func__,
++                rss / (1024u * 1024u), budget_bytes / (1024u * 1024u), regions);
++        return false;
++    }
++    LLAMA_LOG_WARN("%s: rss = %zu MiB passed budget %zu MiB, madvise(DONTNEED) over %zu region(s), "
++            "%zu MiB\n", __func__, rss / (1024u * 1024u), budget_bytes / (1024u * 1024u),
++            regions, evicted / (1024u * 1024u));
+ #endif
+ 
+     static bool logged = false;
+diff --git a/src/llama-mmap.h b/src/llama-mmap.h
+index 6a71776..9c03be8 100644
+--- a/src/llama-mmap.h
++++ b/src/llama-mmap.h
+@@ -90,3 +90,8 @@ size_t llama_path_max();
+ 
+ // Bound the resident set of a model that is mapped but far larger than RAM. See llama-mmap.cpp.
+ bool llama_residency_trim_if_over_budget();
++
++// Record one model file mapping so the trim knows which address ranges it may evict. Called by
++// llama_model_loader::init_mappings(). Without this the trim can only ask the OS to shrink the whole
++// process, which also throws away the KV cache and the graph being computed.
++void llama_residency_register_mapping(void * addr, size_t size);
+diff --git a/src/llama-model-loader.cpp b/src/llama-model-loader.cpp
+index 12cc614..8cd6002 100644
+--- a/src/llama-model-loader.cpp
++++ b/src/llama-model-loader.cpp
+@@ -1582,6 +1582,9 @@ void llama_model_loader::init_mappings(bool prefetch, llama_mlocks * mlock_mmaps
+             std::unique_ptr<llama_mmap> mapping = std::make_unique<llama_mmap>(file.get(), prefetch_size, is_numa,
+                     lazy.for_file(idx));
+             mmaps_used.emplace_back(mapping->size(), 0);
++            // Let the residency trim evict this mapping by address range. On Linux and Android that
++            // is a targeted madvise; without the range recorded the trim has no per-range lever.
++            llama_residency_register_mapping(mapping->addr(), mapping->size());
+             if (mlock_mmaps) {
+                 std::unique_ptr<llama_mlock> mlock_mmap(new llama_mlock());
+                 mlock_mmap->init(mapping->addr());
+-- 
+2.55.0.windows.4
+

@@ -1,0 +1,47 @@
+From a83cd3a3d693801bd66f82e6d0c63656d4be2dcf Mon Sep 17 00:00:00 2001
+From: Mesh-LLM CI <ci@mesh-llm.local>
+Date: Sat, 3 Oct 2026 10:32:23 +0800
+Subject: [PATCH] deepseek41: note the engram gate-weight reshape as static
+
+The stage program install for any range containing an engram layer failed with:
+
+    stage program reshape requires an explicit non-singleton geometry recipe:
+    blk.1.engram_k.weight (reshaped) dims=256x1x1x1 source_dims=64x4x1x1
+    source_dynamic_axis=-1
+
+The reshape in question is not a token-relative one. It is the gate weights being flattened to
+broadcast over the hc copies, ggml_reshape_2d(w, hc_dim, 1), and it owns no dynamic axis at all. At
+n_tokens == 1 its destination (hc_dim, 1, 1, 1) has several axes equal to the token count, so the
+extractor cannot rule out a token-relative reading and rejects the program. Recording the static
+geometry removes the ambiguity; deepseek4.cpp annotates its views the same way.
+
+Found with tools/v41-mktiny.cpp, a synthetic tiny deepseek41 model that reproduces this failure
+exactly (64x4 -> 256 there, 5120x4 -> 20480 on the real model) in seconds. The next failure is
+further along: the engram request input has no stage-program input kind, which needs the same
+treatment qwen4exp_ple got.
+---
+ src/models/deepseek41.cpp | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/src/models/deepseek41.cpp b/src/models/deepseek41.cpp
+index d8539b5..66c76e9 100644
+--- a/src/models/deepseek41.cpp
++++ b/src/models/deepseek41.cpp
+@@ -428,7 +428,13 @@ ggml_tensor * llama_model_deepseek41::graph::build_engram(
+         t = ggml_rms_norm(ctx0, t, norm_rms_eps);
+         t = ggml_reshape_2d(ctx0, t, hc_dim, nt);
+         dsv4_note_source_dimension(t, 1, 0, 2);
+-        t = ggml_mul(ctx0, t, ggml_reshape_2d(ctx0, w, hc_dim, 1));
++        // The gate weights are reshaped only to broadcast over the copies. That reshape owns no
++        // dynamic axis, and at n_tokens == 1 its destination (hc_dim, 1, 1, 1) has several axes equal
++        // to the token count, so without an explicit static note the planner cannot rule out a
++        // token-relative reading and rejects the whole stage program.
++        ggml_tensor * gate = ggml_reshape_2d(ctx0, w, hc_dim, 1);
++        skippy_stage_geometry_note(gate, skippy_stage_geometry_static(gate));
++        t = ggml_mul(ctx0, t, gate);
+         t = ggml_reshape_3d(ctx0, t, n_embd, hc, nt);
+         dsv4_note_source_dimension(t, 2, 0, 1);
+         return t;
+-- 
+2.55.0.windows.4
+

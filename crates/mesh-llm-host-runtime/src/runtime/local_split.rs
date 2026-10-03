@@ -48,7 +48,7 @@ use coordinator::{
     SplitTopologyCoordinator, SplitTopologyGeneration, spawn_split_topology_coordinator,
     stop_split_generation,
 };
-use recovery::split_stages_meet_minimum;
+use recovery::{split_below_minimum_message, split_stages_meet_minimum};
 
 fn split_coordinator_lease_until_unix_ms() -> u64 {
     super::local::current_time_unix_ms()
@@ -233,7 +233,8 @@ pub(super) async fn start_runtime_split_model(
         split_participants_for_stages(&participant_snapshot.participants, &stages);
     anyhow::ensure!(
         split_stages_meet_minimum(&stages),
-        "split runtime needs at least two stage participants"
+        "{}",
+        split_below_minimum_message("stage participants", stages.len())
     );
     let stage0 = stages
         .first()

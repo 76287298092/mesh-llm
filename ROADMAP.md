@@ -57,10 +57,14 @@ Partially done. Unified demand map via gossip, standby nodes promote to serve, a
 
 Blackboard is moving out to its own plugin repository. The mesh-llm host keeps the generic plugin transport and CLI dispatch; blackboard installs through the plugin manager and owns its own CLI/MCP surface there.
 
-## MoE expert sharding ✅
+## MoE-aware replica routing ✅
 
-Implemented. Auto-detects MoE, computes overlapping expert assignments, splits locally, and uses session-sticky routing with zero cross-node expert traffic.
-Best thought of as experimental, most results show this doesn't perform as well as one would hope, more research is needed to see if expert sharding this way is actually practical.
+Implemented as experimental MoE-aware local assignments and session-sticky
+replica routing. This does not dispatch a single request's experts across
+nodes; no cross-node expert traffic is part of that path. See the
+[distributed SSD inference design](docs/design/DISTRIBUTED_SSD_INFERENCE.md)
+for the separate staged execution and future expert-worker target.
+Performance remains experimental.
 
 ## Platform targetting, Desktop apps, embedding of mesh SDK, distribution
 

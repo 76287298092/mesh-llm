@@ -2,7 +2,7 @@ use super::coordinator::SplitTopologyGeneration;
 use super::{RuntimeSliceStagePlan, SplitParticipant};
 use crate::inference::skippy;
 use crate::mesh;
-use crate::runtime::local_package::SPLIT_DEFAULT_MIN_PARTICIPANTS;
+use crate::runtime::local_package::{SPLIT_DEFAULT_MIN_PARTICIPANTS, split_min_participants};
 use std::time::{Duration, Instant};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -93,11 +93,25 @@ pub(super) fn split_candidate_uses_unavailable_stage_node(
 }
 
 pub(super) fn split_participants_meet_minimum(participants: &[SplitParticipant]) -> bool {
-    participants.len() >= SPLIT_DEFAULT_MIN_PARTICIPANTS
+    participants.len() >= split_min_participants()
 }
 
 pub(super) fn split_stages_meet_minimum(stages: &[RuntimeSliceStagePlan]) -> bool {
-    stages.len() >= SPLIT_DEFAULT_MIN_PARTICIPANTS
+    stages.len() >= split_min_participants()
+}
+
+/// Error text for a split that found too few participants or stages.
+///
+/// Keeps the historical "at least two" wording while the configured floor is
+/// two: the startup retry classifier matches those exact substrings and treats
+/// them as retryable, so the floor is only restated when it really is lower.
+pub(super) fn split_below_minimum_message(noun: &str, found: usize) -> String {
+    let minimum = split_min_participants();
+    if minimum >= SPLIT_DEFAULT_MIN_PARTICIPANTS {
+        format!("split runtime needs at least two {noun}; found {found}")
+    } else {
+        format!("split runtime needs at least {minimum} {noun}; found {found}")
+    }
 }
 
 pub(super) fn split_missing_active_stage_nodes(

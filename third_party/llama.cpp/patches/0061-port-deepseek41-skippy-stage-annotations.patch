@@ -1,0 +1,106 @@
+From f03708b249f2200146df7e9ddfc2714c895fe40f Mon Sep 17 00:00:00 2001
+From: Mesh-LLM CI <ci@mesh-llm.local>
+Date: Sat, 3 Oct 2026 10:12:50 +0800
+Subject: [PATCH] deepseek41: add the Skippy stage annotations the port was
+ missing
+
+A stage plan for any V4.1 layer range was rejected outright, so no range could
+install a stage program. Three separate omissions in the port, each located by
+matching the call sites the rest of the tree already has:
+
+ - begin_block/end_block around the layer body. All 139 other builders in
+   src/models call this pair; without it res->block_boundaries stays empty and
+   skippy_infer_state_effects rejects every range with "state inference requires
+   an exact graph and paired block boundaries".
+
+ - request_input on the engram rows leaf. It is an input tensor created in
+   build_inp_engram, and any input leaf without an identity fails graph identity
+   with "semantic graph has an unregistered request input". qwen4exp's per-layer
+   embedding rows carry the same call.
+
+ - source-relative geometry on the three reshapes in grouped_norm. The planner
+   resolves a reshape from its *source* extent, and at n_tokens == 1 the
+   destination (hc_dim, 1, 1, 1) has several axes equal to the token count, so a
+   destination-only note is ambiguous. Without this the stage program fails with
+   "reshape requires an explicit non-singleton geometry recipe". V4's
+   build_hc_head annotates its identical reshape the same way.
+
+With these, layers [0,1) plan, open and prefill: 26 resident tensors, a 4.838 GiB
+closure, a 667-node sliced graph, and 0.340 GiB peak RSS against a 4.838 GiB map.
+
+The grouped_norm change is the one part not confirmed by a run: verifying it needs
+a range that includes an engram layer, and every such range is too large for the
+host this was developed on. It is annotated to match the reference operation.
+---
+ src/models/deepseek41.cpp | 22 +++++++++++++++++++---
+ 1 file changed, 19 insertions(+), 3 deletions(-)
+
+diff --git a/src/models/deepseek41.cpp b/src/models/deepseek41.cpp
+index 9aec757..d8539b5 100644
+--- a/src/models/deepseek41.cpp
++++ b/src/models/deepseek41.cpp
+@@ -368,6 +368,9 @@ ggml_tensor * llama_model_deepseek41::graph::build_inp_engram(
+ 
+     inp->rows = ggml_new_tensor_1d(ctx0, GGML_TYPE_I32, n_cols * n_tokens);
+     ggml_set_input(inp->rows);
++    // The stage planner requires every input leaf to carry an identity; llm_graph_input_engram
++    // fills this one in set_input(). Same contract as qwen4exp's per-layer embedding rows.
++    request_input(inp->rows, "dsv41.engram.rows");
+     ggml_tensor * rows = inp->rows;
+     res->add_input(std::move(inp));
+ 
+@@ -396,6 +399,8 @@ ggml_tensor * llama_model_deepseek41::graph::build_engram(
+ 
+     ggml_tensor * key   = ggml_cont(ctx0, ggml_view_2d(ctx0, kv, hc_dim, nt, kv->nb[1], 0));
+     ggml_tensor * value = ggml_cont(ctx0, ggml_view_2d(ctx0, kv, n_embd, nt, kv->nb[1], hc_dim*kv->nb[0]));
++    // The views carry the token axis kv was noted with; without the note the reshapes below cannot
++    // resolve which source axis is dynamic.
+     dsv4_note_tokens(key,   1);
+     dsv4_note_tokens(value, 1);
+ 
+@@ -413,14 +418,19 @@ ggml_tensor * llama_model_deepseek41::graph::build_engram(
+     // keeps engram_q and engram_k apart but only ever uses their product, so applying one to each
+     // side of the dot product gives the same result.
+     auto grouped_norm = [&](ggml_tensor * t, ggml_tensor * w) {
++        // Each reshape records where its token axis comes from, not just that the axis is a token
++        // axis. The stage planner resolves a reshape from the *source* extent, and at n_tokens == 1
++        // the destination (hc_dim, 1, 1, 1) has several axes equal to the token count, so a
++        // destination-only note is ambiguous. build_hc_head annotates its identical reshape the
++        // same way.
+         t = ggml_reshape_3d(ctx0, t, n_embd, hc, nt);
+-        dsv4_note_tokens(t, 2);
++        dsv4_note_source_dimension(t, 2, 0, 1);
+         t = ggml_rms_norm(ctx0, t, norm_rms_eps);
+         t = ggml_reshape_2d(ctx0, t, hc_dim, nt);
+-        dsv4_note_tokens(t, 1);
++        dsv4_note_source_dimension(t, 1, 0, 2);
+         t = ggml_mul(ctx0, t, ggml_reshape_2d(ctx0, w, hc_dim, 1));
+         t = ggml_reshape_3d(ctx0, t, n_embd, hc, nt);
+-        dsv4_note_tokens(t, 2);
++        dsv4_note_source_dimension(t, 2, 0, 1);
+         return t;
+     };
+ 
+@@ -851,6 +861,11 @@ llama_model_deepseek41::graph::graph(const llama_model & model, const llm_graph_
+     cb(pre_mix, "hc_pre_init", -1);
+ 
+     for (int il = 0; il < n_layer; ++il) {
++        // Record this layer's entry/exit tensors. Every other builder in the tree does this and
++        // Skippy's stage planner needs the pair to infer state effects and to place a layer range;
++        // without them block_boundaries is empty and every range is rejected.
++        begin_block(inpL, il);
++
+         if ((size_t) il < cparams.embeddings_layer_inp.size() && cparams.embeddings_layer_inp[il]) {
+             res->t_layer_inp[il] = dsv41_hc_mean(ctx0, inpL);
+             cb(res->t_layer_inp[il], "layer_inp", il);
+@@ -939,6 +954,7 @@ llama_model_deepseek41::graph::graph(const llama_model & model, const llm_graph_
+         inpL = build_hc_post(cur, residual, post, comb, il);
+         inpL = build_cvec(inpL, il);
+         cb(inpL, "l_last", il);
++        end_block(inpL, il);
+     }
+ 
+     if ((size_t) n_layer < cparams.embeddings_layer_inp.size() && cparams.embeddings_layer_inp[n_layer]) {
+-- 
+2.55.0.windows.4
+

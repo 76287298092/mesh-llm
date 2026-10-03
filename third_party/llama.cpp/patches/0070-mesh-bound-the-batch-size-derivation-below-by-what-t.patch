@@ -1,0 +1,122 @@
+From 0ee7281eb1d72838d4d7e3e8f7b291016e534423 Mon Sep 17 00:00:00 2001
+From: Mesh-LLM CI <ci@mesh-llm.local>
+Date: Sat, 3 Oct 2026 12:54:16 +0800
+Subject: [PATCH] mesh: bound the batch-size derivation below by what the
+ runtime can use
+
+skippy_finish_model_open derived n_ubatch = (budget - reserve) / per_token and accepted
+whatever came out, including 0 and 1. That is not a smaller working configuration.
+split_equal asserts n_ubatch > n_keep_tail, and n_keep_tail is n_rs_seq + 1, with n_rs_seq
+forced to at least 2 for the recurrent and hybrid architectures, so the smallest batch that
+can be used at all is 4. A derived value under it reaches that assert and takes the process
+down with 0xC0000409 instead of reporting anything.
+
+Measured on V4.1 [0,40), whose experts fault in 2932 MiB per token:
+
+    budget  3000 MiB -> derived 1 -> 0xC0000409
+    budget  7000 MiB -> derived 2 -> 0xC0000409
+    budget 12240 MiB -> derived 3 -> 0xC0000409   (usable/per_token = 11728/2932 = 3.999)
+    budget 12400 MiB -> derived 4 -> runs
+
+The tighter the budget the more certainly it aborts, which is the wrong direction for a
+feature meant for small hosts.
+
+The derivation now takes the largest batch the budget holds, caps it by n_batch, and refuses
+the open with SKIPPY_STATUS_INVALID_ARGUMENT when that is below n_rs_seq + 2, naming both
+numbers and the per-token expert cost. The n_rs_seq floor is resolved before the derivation
+so the bound is checked against the value that will actually be used rather than a later
+assignment, which is why that one line moved up.
+
+Verified on V4.1 [0,40):
+
+    budget  3000 MiB -> "allows n_ubatch 0, but this runtime needs at least 4: its experts
+                         fault in 2932 MiB per token and the recurrent state requires
+                         n_ubatch > n_rs_seq + 1 (2 + 1)", exit 7, no assert, no crash
+    budget 12400 MiB -> PLAN-OK OPEN-OK PREFILL OK FRAME OK exit 0
+---
+ src/skippy/model_loading.cpp | 57 ++++++++++++++++++++++++------------
+ 1 file changed, 39 insertions(+), 18 deletions(-)
+
+diff --git a/src/skippy/model_loading.cpp b/src/skippy/model_loading.cpp
+index 5e0d881..8a923d0 100644
+--- a/src/skippy/model_loading.cpp
++++ b/src/skippy/model_loading.cpp
+@@ -753,6 +753,13 @@ enum skippy_status skippy_finish_model_open(
+     uint64_t residency_budget_used   = 0;
+     uint32_t residency_ubatch_used   = 0;
+ 
++    // split_equal asserts n_ubatch > n_keep_tail, and n_keep_tail is n_rs_seq + 1. The recurrent and
++    // hybrid architectures force n_rs_seq to at least 2 further down, so the smallest batch that can
++    // be used at all is 4. Resolve it here, before the budget derivation that has to check against it.
++    if (llm_arch_is_recurrent(model->arch) || llm_arch_is_hybrid(model->arch)) {
++        params.n_rs_seq = std::max<uint32_t>(params.n_rs_seq, 2);
++    }
++
+     if (!ubatch_was_requested && !embedding_workload && llama_residency_budget_bytes() > 0) {
+         const auto & hp = model->hparams;
+ 
+@@ -785,24 +792,39 @@ enum skippy_status skippy_finish_model_open(
+             const uint64_t usable  = budget - reserve;
+             const uint64_t fits    = usable / per_token;
+ 
+-            if (fits == 0) {
+-                // One token's experts do not fit. Report it as an error and run at the smallest
+-                // batch rather than throwing: this is reached from a context-construction path that
+-                // does not convert exceptions into a load failure, so throwing here aborts the
+-                // process instead of reporting anything.
+-                LLAMA_LOG_ERROR("%s: resident-set budget %zu MiB cannot hold a single token of this "
+-                        "model, which faults in %zu MiB of experts; raise MESH_LLAMA_WS_BUDGET_MB or "
+-                        "narrow the stage's layer range\n", __func__,
+-                        (size_t) (budget/(1024ull*1024ull)), (size_t) (per_token/(1024ull*1024ull)));
+-                params.n_ubatch = 1;
+-            } else {
+-                const uint32_t derived = fits < (uint64_t) params.n_batch
+-                        ? (uint32_t) fits : params.n_batch;
+-                LLAMA_LOG_WARN("%s: budget %zu MiB allows n_ubatch %u (n_batch %u), expert working "
+-                        "set %zu MiB per token\n", __func__, (size_t) (budget/(1024ull*1024ull)),
+-                        derived, params.n_batch, (size_t) (per_token/(1024ull*1024ull)));
+-                params.n_ubatch = derived;
++            // The largest batch the budget can hold, capped by what the configuration permits.
++            const uint64_t largest = fits < (uint64_t) params.n_batch ? fits : (uint64_t) params.n_batch;
++
++            // n_ubatch has to exceed n_keep_tail, which is n_rs_seq + 1, so the smallest batch this
++            // runtime can use at all is n_rs_seq + 2. A batch below that is not a smaller working
++            // configuration: it reaches the assert in split_equal and takes the process down with
++            // 0xC0000409 instead of reporting anything. That is what a small budget used to do, and
++            // the tighter the budget the more certainly -- the opposite of what a feature meant for
++            // small hosts should do. Report both numbers and fail the open.
++            const uint64_t minimum = (uint64_t) params.n_rs_seq + 2;
++            if (largest < minimum) {
++                char message[512];
++                snprintf(message, sizeof(message),
++                        "resident-set budget %zu MiB allows n_ubatch %zu, but this runtime needs at "
++                        "least %zu: its experts fault in %zu MiB per token and the recurrent state "
++                        "requires n_ubatch > n_rs_seq + 1 (%u + 1). Raise MESH_LLAMA_WS_BUDGET_MB or "
++                        "narrow the stage's layer range",
++                        (size_t) (budget/(1024ull*1024ull)), (size_t) largest, (size_t) minimum,
++                        (size_t) (per_token/(1024ull*1024ull)), (unsigned) params.n_rs_seq);
++                LLAMA_LOG_ERROR("%s: %s\n", __func__, message);
++                llama_model_free(model);
++                if (event_scope != nullptr) {
++                    event_scope->emit_failure(SKIPPY_STATUS_INVALID_ARGUMENT,
++                            "resident-set budget cannot hold the smallest batch this runtime can use");
++                }
++                skippy_set_error(out_error, SKIPPY_STATUS_INVALID_ARGUMENT, message);
++                return SKIPPY_STATUS_INVALID_ARGUMENT;
+             }
++
++            LLAMA_LOG_WARN("%s: budget %zu MiB allows n_ubatch %zu (n_batch %u), expert working "
++                    "set %zu MiB per token\n", __func__, (size_t) (budget/(1024ull*1024ull)),
++                    (size_t) largest, params.n_batch, (size_t) (per_token/(1024ull*1024ull)));
++            params.n_ubatch = (uint32_t) largest;
+             residency_budget_used = budget;
+             residency_ubatch_used = params.n_ubatch;
+         }
+@@ -829,7 +851,6 @@ enum skippy_status skippy_finish_model_open(
+     }
+     if (llm_arch_is_recurrent(model->arch) || llm_arch_is_hybrid(model->arch)) {
+         params.n_seq_max = std::max<uint32_t>(params.n_seq_max, std::max<uint32_t>(2, stage_model->lane_count * 2));
+-        params.n_rs_seq = std::max<uint32_t>(params.n_rs_seq, 2);
+         params.kv_unified = true;
+     }
+     // Batched activation exports are sliced by request offset, which is the

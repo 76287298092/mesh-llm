@@ -34,11 +34,55 @@ pub fn total_model_bytes(model: &Path) -> u64 {
             // memory planning charges the real weight bytes; a directory of
             // plain GGUFs is not a loadable single model, but summing its
             // files is still the least-wrong size estimate for routing.
-            dir_file_bytes(model)
+            //
+            // A layer package is the exception that makes the flat sum wrong:
+            // it is a directory *with* subdirectories (`layers/`, `shared/`),
+            // so the flat sum sees only the manifest — a few kilobytes — and
+            // every consumer downstream reads the model as ~0 bytes. The
+            // package declares its own total, so use that.
+            layer_package_declared_bytes(model).unwrap_or_else(|| dir_file_bytes(model))
         }
         Ok(metadata) => metadata.len(),
         Err(_) => 0,
     }
+}
+
+/// Total weight bytes a v2 layer package declares for its source model.
+///
+/// `None` for anything that is not a layer package, so callers keep the
+/// directory behaviour they had.
+fn layer_package_declared_bytes(dir: &Path) -> Option<u64> {
+    let manifest_path = dir.join("model-package.json");
+    let metadata = std::fs::metadata(&manifest_path).ok()?;
+    // The manifest is a small JSON document; refuse anything that is not one.
+    if !metadata.is_file() || metadata.len() > (1 << 20) {
+        return None;
+    }
+    let manifest = std::fs::read(&manifest_path).ok()?;
+    let parsed: serde_json::Value = serde_json::from_slice(&manifest).ok()?;
+    let sum_byte_size = |items: Option<&serde_json::Value>| -> Option<u64> {
+        items
+            .and_then(|items| items.as_array())
+            .map(|items| {
+                items
+                    .iter()
+                    .filter_map(|item| item.get("byte_size").and_then(|size| size.as_u64()))
+                    .sum::<u64>()
+            })
+            .filter(|total| *total > 0)
+    };
+    sum_byte_size(
+        parsed
+            .get("source_model")
+            .and_then(|source| source.get("files")),
+    )
+    .or_else(|| {
+        sum_byte_size(
+            parsed
+                .get("artifact_catalog")
+                .and_then(|catalog| catalog.get("entries")),
+        )
+    })
 }
 
 /// Sum the regular-file sizes directly inside `dir` (non-recursive; model

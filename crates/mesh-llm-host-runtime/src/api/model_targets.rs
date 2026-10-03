@@ -119,6 +119,7 @@ impl MeshApi {
 
         let local_role = node.role().await;
         let local_vram_bytes = node.vram_bytes();
+        let local_host_ram_bytes = node.advertised_memory.ram_offload_bytes;
         let peers = node.peers().await;
         let catalog = node.mesh_catalog_entries().await;
         let active_demand = node.active_demand().await;
@@ -137,6 +138,7 @@ impl MeshApi {
             my_hosted_models,
             local_role,
             local_vram_bytes,
+            local_host_ram_bytes,
             now: current_unix_secs(),
         })
     }
@@ -153,6 +155,7 @@ struct ModelTargetSource {
     my_hosted_models: Vec<String>,
     local_role: mesh::NodeRole,
     local_vram_bytes: u64,
+    local_host_ram_bytes: u64,
     now: u64,
 }
 
@@ -181,6 +184,7 @@ fn build_model_target_lookup(source: ModelTargetSource) -> ModelTargetLookup {
         targets,
         &source.local_role,
         source.local_vram_bytes,
+        source.local_host_ram_bytes,
         &source.peers,
         &size_lookup,
     );
@@ -343,6 +347,7 @@ fn build_target_payloads(
     targets: Vec<ModelTargetAccumulator>,
     local_role: &mesh::NodeRole,
     local_vram_bytes: u64,
+    local_host_ram_bytes: u64,
     peers: &[mesh::PeerInfo],
     size_lookup: &ModelTargetSizeLookup,
 ) -> Vec<ModelTargetPayload> {
@@ -357,6 +362,7 @@ fn build_target_payloads(
                 serving_node_count: target.serving_node_count,
                 local_role,
                 local_vram_bytes,
+                local_host_ram_bytes,
                 peers,
                 size_lookup,
             });
@@ -603,6 +609,7 @@ mod tests {
             my_hosted_models: Vec::new(),
             local_role: mesh::NodeRole::Worker,
             local_vram_bytes: 0,
+            local_host_ram_bytes: 0,
             now: 1,
         });
 
