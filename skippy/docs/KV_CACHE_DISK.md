@@ -50,6 +50,12 @@ Bare numbers and decimal/`GB`-style units are rejected.
 | Minimum free reserve | `minimum_free_mib` | `MESH_LLM_KV_CACHE_MIN_FREE` (SIZE) | `--kv-cache-min-free SIZE` |
 | Payload codec | `codec` (`native`/`cachegen`) | — | — |
 
+Standalone `skippy serve` (local and binary stage modes) accepts the same three disk cache CLI flags and
+`MESH_LLM_KV_CACHE_*` environment variables. Mesh configuration-file settings
+remain Mesh input; standalone serving uses the flags or environment variables
+to select equivalent Skippy-owned cache behavior. Both default to disk caching
+off and use the same Skippy manager, budget policy, and serving integration.
+
 Notes:
 
 - In the config file, `budget_mib` is a plain MiB integer and is **only valid

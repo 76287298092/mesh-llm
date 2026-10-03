@@ -14,7 +14,6 @@ use super::RuntimeOptions;
 
 const MIB: u64 = 1024 * 1024;
 const LEGACY_DEFAULT_BUDGET_BYTES: u64 = 32 * 1024 * 1024 * 1024;
-const AUTO_MAX_BUDGET_BYTES: u64 = 64 * 1024 * 1024 * 1024;
 
 static NODE_KV_DISK_CACHE: OnceLock<RwLock<NodeKvDiskCache>> = OnceLock::new();
 
@@ -141,8 +140,11 @@ pub(crate) fn apply_live_kv_disk_limits(config: &MeshConfig) -> Result<KvDiskLiv
         let current = manager.limits();
         let budget = match resolved.mode {
             KvDiskTierMode::Fixed => resolved.budget_bytes.unwrap_or(current.budget_bytes),
-            KvDiskTierMode::Auto => auto_budget_bytes(manager.root(), resolved.minimum_free_bytes)?
-                .min(current.budget_bytes),
+            KvDiskTierMode::Auto => skippy_cache::disk_policy::auto_budget_bytes(
+                manager.root(),
+                resolved.minimum_free_bytes,
+            )?
+            .min(current.budget_bytes),
             KvDiskTierMode::Off => current.budget_bytes,
         };
         resolved.budget_bytes = Some(budget);
@@ -182,78 +184,29 @@ pub(crate) fn restore_live_kv_disk_limits(rollback: KvDiskLiveRollback) {
 }
 
 fn acquire_manager(config: &mut ResolvedKvDiskConfig) -> Result<Option<L3CacheManager>> {
-    std::fs::create_dir_all(&config.directory).with_context(|| {
-        format!(
-            "create disk prompt-cache root {}",
-            config.directory.display()
-        )
-    })?;
-    let budget_bytes = match config.mode {
-        KvDiskTierMode::Off => return Ok(None),
-        KvDiskTierMode::Fixed => config
-            .budget_bytes
-            .context("fixed disk prompt-cache mode has no budget")?,
+    use skippy_cache::disk_policy::{DiskCacheBudget, acquire_disk_cache, auto_budget_bytes};
+
+    let budget = match config.mode {
+        KvDiskTierMode::Off => DiskCacheBudget::Off,
+        KvDiskTierMode::Fixed => DiskCacheBudget::Fixed(
+            config
+                .budget_bytes
+                .context("fixed disk prompt-cache mode has no budget")?,
+        ),
         KvDiskTierMode::Auto => {
-            let budget = auto_budget_bytes(&config.directory, config.minimum_free_bytes)?;
-            config.budget_bytes = Some(budget);
-            if budget == 0 {
+            std::fs::create_dir_all(&config.directory)?;
+            let bytes = auto_budget_bytes(&config.directory, config.minimum_free_bytes)?;
+            config.budget_bytes = Some(bytes);
+            if bytes == 0 {
                 config.warnings.push(
                     "automatic disk prompt-cache budget is zero after the minimum-free reserve; disk cache remains disabled"
                         .to_string(),
                 );
-                return Ok(None);
             }
-            budget
+            DiskCacheBudget::Fixed(bytes)
         }
     };
-    Ok(Some(L3CacheManager::acquire(
-        &config.directory,
-        StoreLimits::new(budget_bytes, config.minimum_free_bytes),
-    )?))
-}
-
-fn auto_budget_bytes(root: &Path, minimum_free_bytes: u64) -> Result<u64> {
-    let available = skippy_cache::fsinfo::available_bytes(root)?;
-    let managed = managed_root_bytes(root)?;
-    Ok(auto_budget_from_space(
-        available,
-        managed,
-        minimum_free_bytes,
-    ))
-}
-
-fn auto_budget_from_space(available: u64, managed: u64, minimum_free: u64) -> u64 {
-    let capacity_basis = available.saturating_add(managed);
-    let twenty_percent = capacity_basis / 5;
-    let allocatable = available
-        .saturating_sub(minimum_free)
-        .saturating_add(managed);
-    twenty_percent.min(allocatable).min(AUTO_MAX_BUDGET_BYTES)
-}
-
-fn managed_root_bytes(root: &Path) -> Result<u64> {
-    let mut total = 0_u64;
-    let mut pending = vec![root.to_path_buf()];
-    while let Some(directory) = pending.pop() {
-        for entry in std::fs::read_dir(&directory)
-            .with_context(|| format!("read cache directory {}", directory.display()))?
-        {
-            let entry = entry?;
-            let metadata = std::fs::symlink_metadata(entry.path())?;
-            if metadata.file_type().is_symlink() {
-                bail!(
-                    "disk prompt-cache root contains a symlink: {}",
-                    entry.path().display()
-                );
-            }
-            if metadata.is_dir() {
-                pending.push(entry.path());
-            } else {
-                total = total.saturating_add(metadata.len());
-            }
-        }
-    }
-    Ok(total)
+    acquire_disk_cache(&config.directory, budget, config.minimum_free_bytes)
 }
 
 fn resolve_kv_disk_config_with_env(
@@ -404,12 +357,11 @@ fn resolve_kv_disk_config_with_env(
 }
 
 fn parse_mode_or_size(value: &str, name: &str) -> Result<(KvDiskTierMode, Option<u64>)> {
-    match value.trim() {
-        "off" => Ok((KvDiskTierMode::Off, None)),
-        "auto" => Ok((KvDiskTierMode::Auto, None)),
-        size => parse_iec_size(size)
-            .map(|bytes| (KvDiskTierMode::Fixed, Some(bytes)))
-            .with_context(|| format!("invalid {name} value {value:?}")),
+    use skippy_cache::disk_policy::{DiskCacheBudget, parse_disk_budget};
+    match parse_disk_budget(value).with_context(|| format!("invalid {name} value {value:?}"))? {
+        DiskCacheBudget::Off => Ok((KvDiskTierMode::Off, None)),
+        DiskCacheBudget::Auto => Ok((KvDiskTierMode::Auto, None)),
+        DiskCacheBudget::Fixed(bytes) => Ok((KvDiskTierMode::Fixed, Some(bytes))),
     }
 }
 
@@ -627,11 +579,17 @@ mod tests {
     #[test]
     fn auto_budget_uses_available_plus_managed_as_stable_capacity_basis() {
         let gib = 1024_u64.pow(3);
-        assert_eq!(auto_budget_from_space(100 * gib, 0, 16 * gib), 20 * gib);
         assert_eq!(
-            auto_budget_from_space(84 * gib, 16 * gib, 16 * gib),
+            skippy_cache::disk_policy::auto_budget_from_space(100 * gib, 0, 16 * gib),
             20 * gib
         );
-        assert_eq!(auto_budget_from_space(8 * gib, 0, 16 * gib), 0);
+        assert_eq!(
+            skippy_cache::disk_policy::auto_budget_from_space(84 * gib, 16 * gib, 16 * gib),
+            20 * gib
+        );
+        assert_eq!(
+            skippy_cache::disk_policy::auto_budget_from_space(8 * gib, 0, 16 * gib),
+            0
+        );
     }
 }

@@ -184,6 +184,11 @@ pub fn local_openai_options(
         telemetry_level: args.telemetry_level.into(),
         openai_guardrails: args.openai_guardrails.into(),
         model_open_events: None,
+        disk_cache: crate::disk_cache::from_public_settings(
+            args.kv_cache_disk.as_deref(),
+            args.kv_cache_disk_dir,
+            args.kv_cache_min_free.as_deref(),
+        )?,
     })
 }
 

@@ -162,6 +162,12 @@ async fn serve_public(args: ServeCommandArgs) -> Result<()> {
 }
 
 async fn serve_http_stage(args: ServeCommandArgs) -> Result<()> {
+    if args.public.kv_cache_disk.is_some()
+        || args.public.kv_cache_disk_dir.is_some()
+        || args.public.kv_cache_min_free.is_some()
+    {
+        bail!("disk prompt cache options require local or binary stage serving");
+    }
     let startup_timeout = Duration::from_secs(args.public.startup_timeout_secs.max(1));
     let config = args.public.config.context("--config is required")?;
     let options = conversion::stage_http_options(ServeArgs {
@@ -179,6 +185,11 @@ async fn serve_http_stage(args: ServeCommandArgs) -> Result<()> {
 }
 
 async fn serve_binary_stage(mut args: ServeCommandArgs) -> Result<()> {
+    let disk_cache = crate::disk_cache::from_public_settings(
+        args.public.kv_cache_disk.as_deref(),
+        args.public.kv_cache_disk_dir.clone(),
+        args.public.kv_cache_min_free.as_deref(),
+    )?;
     if args.worker_only && args.stage.openai_bind_addr.is_some() {
         bail!("--openai-bind-addr conflicts with --worker-only");
     }
@@ -198,7 +209,8 @@ async fn serve_binary_stage(mut args: ServeCommandArgs) -> Result<()> {
             .bind_addr
             .unwrap_or_else(default_public_bind_addr),
     );
-    let options = conversion::binary_stage_options(args.stage)?;
+    let mut options = conversion::binary_stage_options(args.stage)?;
+    options.l3_manager = disk_cache.and_then(skippy_api::serving::LocalDiskCacheOptions::acquire);
     let Some(openai) = options.openai.as_ref() else {
         if args.prompt {
             bail!("--prompt requires stage 0 to expose the public inference API");

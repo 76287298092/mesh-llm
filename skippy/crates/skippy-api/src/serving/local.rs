@@ -3,7 +3,30 @@ use super::{ModelLoadRequest, ModelOpenEvents, OpenAiOptions};
 use anyhow::{Result, bail};
 use skippy_protocol::{StageConfig, StageTopology};
 use skippy_serving::{EmbeddedRuntimeOptions, SpeculativeDecodeConfig};
-use std::{future::Future, net::SocketAddr, sync::Arc};
+use std::{future::Future, net::SocketAddr, path::PathBuf, sync::Arc};
+
+/// Node disk cache settings, resolved by the caller from its configuration.
+pub struct LocalDiskCacheOptions {
+    pub directory: PathBuf,
+    pub budget: skippy_cache::disk_policy::DiskCacheBudget,
+    pub minimum_free_bytes: u64,
+}
+
+impl LocalDiskCacheOptions {
+    pub fn acquire(self) -> Option<skippy_cache::L3CacheManager> {
+        match skippy_cache::disk_policy::acquire_disk_cache(
+            &self.directory,
+            self.budget,
+            self.minimum_free_bytes,
+        ) {
+            Ok(manager) => manager,
+            Err(error) => {
+                tracing::warn!(%error, "disk prompt cache unavailable; using cold prefill");
+                None
+            }
+        }
+    }
+}
 
 /// Prepared local OpenAI serving options. Model acquisition and argument parsing belong to callers.
 pub struct LocalOpenAiOptions {
@@ -30,6 +53,7 @@ pub struct LocalOpenAiOptions {
     pub telemetry_level: skippy_serving::telemetry::TelemetryLevel,
     pub openai_guardrails: skippy_serving::frontend::OpenAiGuardrailsMode,
     pub model_open_events: Option<Arc<skippy_runtime::ModelOpenEventQueue>>,
+    pub disk_cache: Option<LocalDiskCacheOptions>,
 }
 
 impl LocalOpenAiOptions {
@@ -82,6 +106,7 @@ impl LocalOpenAiOptions {
             openai.speculative = speculative;
         }
         let native_mtp_enabled = self.config.native_mtp_enabled;
+        let l3_manager = self.disk_cache.and_then(LocalDiskCacheOptions::acquire);
         Ok((
             self.bind_addr,
             ModelLoadRequest {
@@ -118,7 +143,7 @@ impl LocalOpenAiOptions {
                     0.0, None,
                 )?,
                 serving_telemetry: None,
-                l3_manager: None,
+                l3_manager,
             },
         ))
     }
@@ -164,6 +189,7 @@ mod tests {
             telemetry_level: skippy_serving::telemetry::TelemetryLevel::Off,
             openai_guardrails: skippy_serving::frontend::OpenAiGuardrailsMode::Disabled,
             model_open_events: None,
+            disk_cache: None,
         }
     }
 
@@ -180,6 +206,19 @@ mod tests {
             request.runtime.mtp_source,
             skippy_runtime::MtpSource::Integrated
         );
+    }
+
+    #[test]
+    fn standalone_attaches_shared_disk_cache_manager() {
+        let directory = tempfile::tempdir().unwrap();
+        let mut options = options();
+        options.disk_cache = Some(LocalDiskCacheOptions {
+            directory: directory.path().to_path_buf(),
+            budget: skippy_cache::disk_policy::DiskCacheBudget::Fixed(1024 * 1024),
+            minimum_free_bytes: 0,
+        });
+        let (_, request) = options.into_request().unwrap();
+        assert!(request.l3_manager.is_some());
     }
 
     #[test]
