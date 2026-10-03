@@ -1159,7 +1159,7 @@ Membership extraction adds `mesh-llm-membership` to the affected-crate fallback 
 
 The protected executor workflows pin `resolve-source-layout` to commit
 `38d63b2f6e27998034fdf0452150c7cc081fe921` and `resolve-cargo-packages` to
-`196eba4c21f9b445d0bf11f7938f87e799dd7c8c` (which passes planned packages
+`5c8fb4d472bc57058c8153761c561daa77dd5b94` (which passes planned packages
 absent from the candidate through to the checked-out-workspace filter, so a PR
 that deletes a crate is not rejected), so older PR source checkouts do not need
 the new helper files. The package resolver loads its Python implementation
