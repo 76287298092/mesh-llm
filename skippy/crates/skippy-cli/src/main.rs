@@ -1,5 +1,6 @@
 mod cli;
 mod conversion;
+mod disk_cache;
 mod local_model;
 mod local_resource_planning;
 mod runtime;

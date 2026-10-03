@@ -1,5 +1,6 @@
 pub mod cachegen;
 pub mod config;
+pub mod disk_policy;
 pub mod fsinfo;
 pub mod identity;
 pub mod l2;

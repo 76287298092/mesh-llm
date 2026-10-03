@@ -3,8 +3,9 @@
 Skippy is a standalone model-serving product. MeshLLM is a separate product in
 the same Cargo workspace and composes Skippy; dependencies point from Mesh to
 Skippy, never the reverse. Both products share the release version and native
-runtime artifacts, but each has its own CLI, configuration, data paths, and
-product behavior.
+runtime artifacts. Each has its own CLI, configuration, and data paths; Mesh
+translates those inputs into the Skippy-owned serving and KV behavior shared
+by both products.
 
 ## Entry points and contracts
 

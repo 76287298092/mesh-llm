@@ -383,6 +383,15 @@ pub struct ServeOpenAiArgs {
         help = "OpenAI compatibility guardrail mode for standalone serving: disabled, metrics, or enforce."
     )]
     pub openai_guardrails: OpenAiGuardrailsCliMode,
+    #[arg(
+        long,
+        help = "Disk prompt cache: off, auto, or an IEC budget such as 32GiB"
+    )]
+    pub kv_cache_disk: Option<String>,
+    #[arg(long, help = "Absolute directory for the disk prompt cache")]
+    pub kv_cache_disk_dir: Option<PathBuf>,
+    #[arg(long, help = "Minimum free disk space, such as 16GiB")]
+    pub kv_cache_min_free: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
