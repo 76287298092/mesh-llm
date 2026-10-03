@@ -15,6 +15,10 @@ name = "hf_hub"
 features = ["blocking"]
 rustdoc-args = ["--cfg", "docsrs"]
 
+# The `hf-xet` package exposes its Rust library as `xet`.
+[package.metadata.cargo-machete]
+ignored = ["hf-xet"]
+
 [dependencies]
 bytes = "1"
 reqwest = { version = "0.13", features = ["json", "stream", "multipart", "query"] }
