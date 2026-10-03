@@ -583,12 +583,17 @@ async fn virtual_model_candidates(
         // replica exists. Keep the committee on free replicas until
         // committee-level payment is designed (#2059) — the candidate path's
         // half of the retired MoA self-fill exclusion (#2097).
-        let remote_hosts = crate::network::openai::payment_routing::exclude_paid_hosts(
+        let mut remote_hosts = crate::network::openai::payment_routing::exclude_paid_hosts(
             node,
             &model_id,
             discovered_hosts,
         )
         .await;
+        // Explicitly pinned nested calls fail closed on a blocked peer. Do not
+        // offer it as a virtual-model candidate in the first place, or it can
+        // become the direct route's non-retryable first choice.
+        node.peer_blocks
+            .retain_unblocked(&mut remote_hosts, crate::network::peer_blocks::now_ms());
         for host in remote_hosts {
             let context_length = node.peer_model_context_length(host, &model_id).await;
             if context_can_satisfy(required_tokens, context_length) {
@@ -771,6 +776,38 @@ mod tests {
         );
         free.endpoint.close().await;
         paid.endpoint.close().await;
+        node.endpoint.close().await;
+    }
+
+    #[cfg(feature = "payments")]
+    #[tokio::test]
+    async fn blocked_replica_is_not_offered_as_a_direct_fallback_candidate() {
+        let node = crate::mesh::Node::new_for_tests(crate::mesh::NodeRole::Client)
+            .await
+            .expect("test node must start");
+        let blocked = replica_node().await;
+        let healthy = replica_node().await;
+        advertise_replica(&node, &blocked, "small-model", None).await;
+        advertise_replica(&node, &healthy, "small-model", None).await;
+        node.peer_blocks
+            .block(
+                &blocked.id(),
+                crate::network::peer_blocks::BlockLength::UntilUndone,
+                crate::network::peer_blocks::Requester::Operator,
+                None,
+                crate::network::peer_blocks::now_ms(),
+            )
+            .expect("block peer");
+        let candidates =
+            virtual_model_candidates(&node, vec!["small-model".into()], &Default::default(), None)
+                .await;
+        assert_eq!(candidates.len(), 1);
+        assert_eq!(
+            candidates[0].target_node_id,
+            Some(hex::encode(healthy.id().as_bytes()))
+        );
+        blocked.endpoint.close().await;
+        healthy.endpoint.close().await;
         node.endpoint.close().await;
     }
 

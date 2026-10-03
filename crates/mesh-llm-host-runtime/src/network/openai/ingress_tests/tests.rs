@@ -1244,7 +1244,7 @@ async fn route_missing_local_model_enters_remote_mesh_branch_when_peer_serves_mo
         br#"{"model":"acme/remote-model:Q4_K_M","messages":[{"role":"user","content":"hi"}]}"#;
     let nonce = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
     let raw = format!(
-        "POST /v1/chat/completions HTTP/1.1\r\nHost: t\r\nContent-Type: application/json\r\nContent-Length: {len}\r\nx-capsule-client-nonce: {nonce}\r\n\r\n",
+        "POST /v1/chat/completions HTTP/1.1\r\nHost: t\r\nContent-Type: application/json\r\nContent-Length: {len}\r\nx-capsule-client-nonce: {nonce}\r\nx-mesh-twin-bracket: pair-7\r\n\r\n",
         len = body.len(),
         nonce = nonce,
     )
@@ -1360,6 +1360,11 @@ async fn route_missing_local_model_enters_remote_mesh_branch_when_peer_serves_mo
         events[0].nonce, events[1].nonce,
         "effective and terminal envelopes must carry the same nonce"
     );
+
+    // (5) The client's twin bracket id, copied unread onto both envelopes.
+    for event in events.iter() {
+        assert_eq!(event.twin_bracket_id.as_deref(), Some("pair-7"));
+    }
 }
 
 /// Verifies that `route_missing_local_model` sets `nonce_source =
@@ -1495,6 +1500,10 @@ async fn route_missing_local_model_sidecar_generated_nonce_origin_sets_sidecar_f
 
     assert_eq!(events[0].phase, OpenAiExchangePhase::EffectiveRequest);
     assert_eq!(events[1].phase, OpenAiExchangePhase::Terminal);
+    assert!(
+        events.iter().all(|event| event.twin_bracket_id.is_none()),
+        "no x-mesh-twin-bracket header, no twin_bracket_id"
+    );
 
     // Both envelopes must report SidecarGeneratedFallback because
     // x-capsule-nonce-origin was present on the request.
@@ -1551,6 +1560,80 @@ fn parse_mesh_target_header_rejects_malformed_value() {
 fn parse_mesh_target_header_rejects_multiple_values_as_ambiguous() {
     let value = hex::encode(test_endpoint_id(0x11).as_bytes());
     assert!(parse_mesh_target_header(&[value.clone(), value]).is_err());
+}
+
+#[test]
+fn parse_twin_bracket_header_copies_one_valid_value() {
+    assert_eq!(parse_twin_bracket_header(&[]), Ok(None));
+    assert_eq!(
+        parse_twin_bracket_header(&[" run-2026.09:pair_7 ".to_string()]),
+        Ok(Some("run-2026.09:pair_7".to_string()))
+    );
+}
+
+#[test]
+fn parse_twin_bracket_header_rejects_malformed_or_repeated_values() {
+    let too_long = "x".repeat(129);
+    for bad in ["", "has space", "slash/no", too_long.as_str()] {
+        assert!(
+            parse_twin_bracket_header(&[bad.to_string()]).is_err(),
+            "{bad:?} must be rejected"
+        );
+    }
+    assert!(parse_twin_bracket_header(&["a".to_string(), "b".to_string()]).is_err());
+}
+
+#[test]
+fn parse_twin_bracket_header_trims_only_http_whitespace() {
+    for padded in [" pair-7", "pair-7 ", "\tpair-7\t", " \t pair-7 \t "] {
+        assert_eq!(
+            parse_twin_bracket_header(&[padded.to_string()]),
+            Ok(Some("pair-7".to_string())),
+            "{padded:?} is SP/HTAB-padded and must be trimmed"
+        );
+    }
+    for ws in ['\u{00A0}', '\u{2003}', '\u{3000}'] {
+        for bad in [
+            format!("{ws}pair-7"),
+            format!("pair-7{ws}"),
+            format!("pa{ws}ir-7"),
+            format!(" {ws}pair-7 "),
+        ] {
+            assert!(
+                parse_twin_bracket_header(std::slice::from_ref(&bad)).is_err(),
+                "{bad:?} carries non-HTTP whitespace and must be rejected"
+            );
+        }
+    }
+}
+
+#[test]
+fn twin_bracket_header_values_keep_non_http_whitespace_for_the_parser() {
+    let raw = "POST /v1/chat/completions HTTP/1.1\r\nHost: t\r\nx-mesh-twin-bracket: \u{00A0}pair-7\u{3000}\r\nContent-Length: 2\r\n\r\n{}";
+    let request = proxy::BufferedHttpRequest {
+        raw: raw.as_bytes().to_vec(),
+        method: "POST".to_owned(),
+        path: "/v1/chat/completions".to_owned(),
+        client_path: "/v1/chat/completions".to_owned(),
+        request_id: RequestId::default(),
+        body_json: None,
+        body_json_attempted: false,
+        body_bytes: None,
+        body_len_bytes: 2,
+        completion_tokens: None,
+        stream: None,
+        model_name: None,
+        request_object_request_ids: Vec::new(),
+        response_adapter: proxy::ResponseAdapter::OpenAiChatCompletionsJson,
+        correlation_id: None,
+    };
+
+    let values = request.twin_bracket_header_values().unwrap();
+    assert_eq!(values, vec!["\u{00A0}pair-7\u{3000}".to_string()]);
+    assert!(
+        twin_bracket_id(&request).is_err(),
+        "must be a 400, not accepted"
+    );
 }
 
 #[test]
@@ -1684,6 +1767,55 @@ async fn resolve_remote_mesh_route_fails_closed_for_a_target_that_does_not_serve
 }
 
 #[tokio::test]
+async fn resolve_remote_mesh_route_names_the_operator_block_on_a_blocked_target() {
+    use crate::network::peer_blocks::{BlockLength, Requester, now_ms};
+
+    let model = "acme/code-model:Q4_K_M";
+    let node = mesh::Node::new_for_tests(mesh::NodeRole::Client)
+        .await
+        .expect("test node should start");
+    let peer = test_remote_peer(0x10, model);
+    let target = peer.id;
+    node.insert_test_peer(peer).await;
+    let targets = election::ModelTargets::default();
+    let affinity = affinity::AffinityRouter::new();
+    let ctx = remote_mesh_test_ctx(&node, &targets, &affinity);
+
+    assert!(
+        matches!(
+            resolve_remote_mesh_route(&ctx, model, Some(target), &[]).await,
+            RemoteMeshRoute::Targets(_)
+        ),
+        "setup: an unblocked target that serves the model resolves to a forced pool"
+    );
+
+    node.peer_blocks
+        .block(
+            &target,
+            BlockLength::UntilUndone,
+            Requester::Operator,
+            None,
+            now_ms(),
+        )
+        .expect("block the peer");
+
+    match resolve_remote_mesh_route(&ctx, model, Some(target), &[]).await {
+        RemoteMeshRoute::TargetUnavailable { blocked, .. } => assert!(
+            blocked,
+            "the operator's block, not a missing model, is why the target is unavailable"
+        ),
+        other => panic!(
+            "a blocked explicit target must fail closed, got: {}",
+            match other {
+                RemoteMeshRoute::Targets(_) => "Targets",
+                RemoteMeshRoute::TargetUnavailable { .. } => unreachable!(),
+                RemoteMeshRoute::NoRemoteHost => "NoRemoteHost",
+            }
+        ),
+    }
+}
+
+#[tokio::test]
 async fn resolve_remote_mesh_route_exclude_removes_a_peer_from_the_candidate_set() {
     let model = "acme/code-model:Q4_K_M";
     let node = mesh::Node::new_for_tests(mesh::NodeRole::Client)
@@ -1710,7 +1842,7 @@ async fn resolve_remote_mesh_route_exclude_removes_a_peer_from_the_candidate_set
             "expected the non-excluded peer to remain routable, got a different route: {}",
             match other {
                 RemoteMeshRoute::Targets(_) => unreachable!(),
-                RemoteMeshRoute::TargetUnavailable { target_hex } => target_hex,
+                RemoteMeshRoute::TargetUnavailable { target_hex, .. } => target_hex,
                 RemoteMeshRoute::NoRemoteHost => "NoRemoteHost".to_string(),
             }
         ),
@@ -2388,6 +2520,7 @@ fn remote_delivered_terminal_carries_the_relayed_response_digests() {
             target: None,
             observed_served_by_hex: Some(peer_hex.clone()),
             request_digest: Some("d".repeat(64)),
+            twin_bracket_id: None,
         },
         &outcome,
     );
@@ -2445,6 +2578,7 @@ async fn local_route_terminal_names_the_peer_that_delivered() {
             target: None,
             observed_served_by_hex: Some(peer_hex.clone()),
             request_digest: Some(digest.clone()),
+            twin_bracket_id: None,
         }),
         RawProxyTerminalFacts {
             served_locally: true,
@@ -2470,6 +2604,83 @@ async fn local_route_terminal_names_the_peer_that_delivered() {
     assert_ne!(served_by, Some(node.id().to_string()));
     assert_eq!(terminal.nonce.as_deref(), Some("nonce-local-route"));
     assert_eq!(terminal.request_digest.as_deref(), Some(digest.as_str()));
+}
+
+/// A peer reached through local candidates: the terminal published as
+/// `RemoteMesh` keeps the client's twin bracket id, as the remote-mesh
+/// branch's terminal does.
+#[tokio::test]
+async fn local_route_terminal_from_a_peer_keeps_the_twin_bracket_id() {
+    use crate::plugin::openai_exchange::{
+        ClientNonceSource, OpenAiExchangeDispatchPath, OpenAiExchangePhase,
+    };
+
+    let node = mesh::Node::new_for_tests(crate::mesh::NodeRole::Worker)
+        .await
+        .expect("test node");
+    let recording = RecordingChannel::default();
+    let raw = "POST /v1/chat/completions HTTP/1.1\r\nHost: t\r\nx-capsule-client-nonce: nonce-local-pair\r\nx-mesh-twin-bracket: pair-7\r\nContent-Length: 2\r\n\r\n{}";
+    let request = proxy::BufferedHttpRequest {
+        raw: raw.as_bytes().to_vec(),
+        method: "POST".to_owned(),
+        path: "/v1/chat/completions".to_owned(),
+        client_path: "/v1/chat/completions".to_owned(),
+        request_id: RequestId::default(),
+        body_json: None,
+        body_json_attempted: false,
+        body_bytes: None,
+        body_len_bytes: 2,
+        completion_tokens: None,
+        stream: None,
+        model_name: Some("acme/shared-model".to_owned()),
+        request_object_request_ids: Vec::new(),
+        response_adapter: proxy::ResponseAdapter::OpenAiChatCompletionsJson,
+        correlation_id: None,
+    };
+    let peer_hex = "ab".repeat(32);
+    let outcome = proxy::RouteDispatchOutcome::Responded(200);
+    publish_local_route_terminal(
+        &node,
+        &recording,
+        "exchange-local-pair",
+        "acme/shared-model",
+        &outcome,
+        Some(local_route_delivered_by_peer(
+            &request,
+            "exchange-local-pair".to_string(),
+            "acme/shared-model",
+            peer_hex.clone(),
+            None,
+            None,
+        )),
+        RawProxyTerminalFacts {
+            served_locally: true,
+            ..Default::default()
+        },
+    )
+    .await;
+
+    let events = recording.events.lock().unwrap();
+    assert_eq!(events.len(), 1);
+    let terminal = &events[0];
+    assert_eq!(terminal.phase, OpenAiExchangePhase::Terminal);
+    assert_eq!(
+        terminal.dispatch_path,
+        OpenAiExchangeDispatchPath::RemoteMesh
+    );
+    assert_eq!(
+        terminal
+            .serving_provenance
+            .as_ref()
+            .map(|provenance| provenance.served_by_node_id.as_str()),
+        Some(peer_hex.as_str())
+    );
+    assert_eq!(terminal.nonce.as_deref(), Some("nonce-local-pair"));
+    assert_eq!(
+        terminal.nonce_source,
+        Some(ClientNonceSource::ClientSupplied)
+    );
+    assert_eq!(terminal.twin_bracket_id.as_deref(), Some("pair-7"));
 }
 
 /// When no peer delivered (this node served it), the local-candidates route

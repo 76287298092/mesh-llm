@@ -206,7 +206,8 @@ complete conformance example.
 The host marks a candidate `deprioritized` when its peer advertises reduced
 inference readiness. The built-in plugin ranks ready placements first and
 retains eligible standbys for a direct answer if the first pinned placement
-fails with a retryable transport or availability error.
+fails with a retryable transport or availability error. Operator-blocked peers
+are omitted from the candidate snapshot.
 
 V1 host inference accepts only concrete model ids. It rejects built-in aliases
 and all virtual model ids, including the caller, so a plugin cannot recurse.
