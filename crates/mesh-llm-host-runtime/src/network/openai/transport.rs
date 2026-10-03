@@ -26,10 +26,10 @@ pub use super::request_parse::{
     read_http_request, rewrite_model_field, rewrite_public_model_alias,
 };
 pub(crate) use super::response::{
-    PeerCapsuleIdSink, PipelineCapsuleNonce, PipelineProxyResult, append_safe_header,
-    is_valid_header_name, pipeline_proxy_local, send_400_observed, send_409_observed,
-    send_503_observed, send_error_observed, send_json_with_status_and_headers_observed,
-    send_models_list_with_descriptors,
+    PeerCapsuleIdSink, PipelineCapsuleNonce, PipelineProxyResult, ServedByNodeIdSink,
+    append_safe_header, is_valid_header_name, pipeline_proxy_local, send_400_observed,
+    send_409_observed, send_503_observed, send_error_observed,
+    send_json_with_status_and_headers_observed, send_models_list_with_descriptors,
 };
 pub(crate) use super::routing_rank::request_budget_tokens_from_parts;
 
@@ -1878,6 +1878,7 @@ pub(crate) async fn test_paid_multi_target(
             route_observer: OpenAiRouteObserver::default(),
             served_by_header: None,
             peer_capsule_id: None,
+            served_by_node_id: None,
         },
     )
     .await
