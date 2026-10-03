@@ -380,7 +380,6 @@ should_skip_initial_dry_run() {
 publish_crates=(
     mesh-llm-plugin
     mesh-llm-wallet
-    mesh-wallet-lexe
     mesh-llm-payments-types
     mesh-llm-payments
     mesh-llm-identity
@@ -399,12 +398,12 @@ publish_crates=(
     skippy-package-format
     skippy-model
     skippy-protocol
+    skippy-model-ref
+    skippy-model-artifact
     skippy-coordinator
     skippy-topology
     skippy-metrics
     skippy-cache
-    skippy-model-ref
-    skippy-model-artifact
     skippy-model-resolver
     mesh-llm-client
     mesh-llm-api-client

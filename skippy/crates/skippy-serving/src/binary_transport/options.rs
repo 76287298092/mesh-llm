@@ -41,6 +41,7 @@ pub struct EmbeddedOpenAiStageOptions {
     pub model_id: Option<String>,
     pub default_max_tokens: u32,
     pub generation_concurrency: usize,
+    pub pipeline_decode_groups: Option<usize>,
     pub adaptive_generation_min_concurrency: Option<usize>,
     pub generation_queue_capacity: usize,
     pub generation_admission_timeout_secs: u64,

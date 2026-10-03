@@ -2,8 +2,10 @@
 
 import importlib.util
 import json
+import subprocess
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location("laya_parity", ROOT / "scripts" / "skippy-laya-parity.py")
@@ -14,10 +16,17 @@ FIXTURES = ROOT / "ci" / "llama-canary" / "fixtures" / "laya-golden"
 
 
 def golden(name):
-    return json.loads((FIXTURES / f"{name}.json").read_text())
+    return json.loads((FIXTURES / f"{name}.json").read_text(encoding="utf-8"))
 
 
 class LayaParityTest(unittest.TestCase):
+    def test_fixture_io_uses_utf8(self):
+        path = mock.Mock()
+        path.read_text.return_value = '{"label": "\u4e2d\u6587"}'
+
+        self.assertEqual({"label": "\u4e2d\u6587"}, parity.read_fixture(path))
+        path.read_text.assert_called_once_with(encoding="utf-8")
+
     def test_every_vendored_fixture_has_an_upstream_error_budget(self):
         names = {path.stem for path in FIXTURES.glob("*.json") if path.stem != "manifest"}
         self.assertEqual(names, set(parity.UPSTREAM_CPU_ERROR))
@@ -56,6 +65,41 @@ class LayaParityTest(unittest.TestCase):
         joined = " ".join(failures["failures"])
         self.assertIn("choice", joined)
         self.assertIn("token ids", joined)
+
+    def test_cli_device_is_forwarded(self):
+        captured = {}
+
+        def fake_run(command, **kwargs):
+            captured["command"] = command
+            return subprocess.CompletedProcess(
+                command,
+                0,
+                stdout=json.dumps({"answers": {}, "per_question": {}}),
+                stderr="",
+            )
+
+        original = parity.subprocess.run
+        parity.subprocess.run = fake_run
+        try:
+            parity.read_via_cli("llama-laya-cli", "model.gguf", Path("fixture.json"), 1, "MTL0")
+        finally:
+            parity.subprocess.run = original
+        self.assertEqual(
+            ["llama-laya-cli", "-m", "model.gguf", "-f", "fixture.json", "--device", "MTL0"],
+            captured["command"],
+        )
+
+    def test_canary_prewarm_uses_the_pinned_fixture(self):
+        result = subprocess.run(
+            ["bash", str(ROOT / "scripts" / "skippy-laya-smoke.sh"), "--prewarm"],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("meshllm/laya-multilingual-F16-GGUF", result.stdout)
+        self.assertIn("bcc99560232b5a5c91cb14d46b9496acbeae2c43", result.stdout)
 
 
 if __name__ == "__main__":

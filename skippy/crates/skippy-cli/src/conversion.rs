@@ -97,6 +97,7 @@ pub fn binary_stage_options(args: ServeBinaryArgs) -> Result<BinaryStageOptions>
         model_id: args.openai_model_id,
         default_max_tokens: args.openai_default_max_tokens,
         generation_concurrency: openai_generation_concurrency,
+        pipeline_decode_groups: None,
         adaptive_generation_min_concurrency,
         generation_queue_capacity: openai_generation_queue_capacity,
         generation_admission_timeout_secs: args.openai_generation_admission_timeout_secs,
@@ -161,7 +162,9 @@ pub fn local_openai_options(
         config,
         topology,
         speculative,
-        bind_addr: args.bind_addr,
+        bind_addr: args
+            .bind_addr
+            .unwrap_or_else(crate::serve::default_public_bind_addr),
         model_id: args.model_id,
         default_max_tokens: args.default_max_tokens,
         generation_concurrency: args.generation_concurrency,
@@ -233,7 +236,11 @@ mod tests {
             panic!("expected serve command");
         };
         args.stage.config = args.public.config.expect("stage config");
-        args.stage.api_bind_addr = Some(args.public.bind_addr);
+        args.stage.api_bind_addr = Some(
+            args.public
+                .bind_addr
+                .unwrap_or_else(crate::serve::default_public_bind_addr),
+        );
         args.stage
     }
 

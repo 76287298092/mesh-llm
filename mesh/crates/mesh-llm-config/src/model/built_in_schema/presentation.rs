@@ -47,6 +47,12 @@ const ANALYTICS_CATEGORY: CategoryPresentation = CategoryPresentation {
     summary: "Anonymous usage reporting to the mesh-llm maintainers",
     order: 50,
 };
+const PAYMENTS_CATEGORY: CategoryPresentation = CategoryPresentation {
+    id: "payments",
+    label: "Payments",
+    summary: "Wallet backend used for paid inference",
+    order: 60,
+};
 const RUNTIME_POLICY_CATEGORY: CategoryPresentation = CategoryPresentation {
     id: "runtime-policy",
     label: "Runtime Policy",
@@ -121,6 +127,7 @@ fn setting_presentation_for_path(rendered: &str) -> Option<SettingPresentation> 
         .or_else(|| kv_disk_presentation(rendered))
         .or_else(|| gpu_setting_presentation(rendered))
         .or_else(|| process_setting_presentation(rendered))
+        .or_else(|| payments_presentation(rendered))
         .or_else(|| native_runtime_presentation(rendered))
         .or_else(|| runtime_defaults_presentation(rendered))
         .or_else(|| generation_defaults_presentation(rendered))
@@ -369,7 +376,7 @@ fn process_setting_presentation(rendered: &str) -> Option<SettingPresentation> {
             ATTESTATION_CATEGORY,
             20,
         )
-        .placeholder("0.76.1")
+        .placeholder("0.77.0")
         .hint("text")),
         "mesh_requirements.min_protocol_version" => Some(sp(
             "Minimum protocol generation",
@@ -400,6 +407,22 @@ fn process_setting_presentation(rendered: &str) -> Option<SettingPresentation> {
         )
         .placeholder("ed25519:<64 hex characters>")
         .hint("text")),
+        _ => None,
+    }
+}
+
+fn payments_presentation(rendered: &str) -> Option<SettingPresentation> {
+    match rendered {
+        "payments.wallet" => Some(
+            sp(
+                "Wallet plugin",
+                "Plugin name of the wallet that backs paid inference. When unset, the only running wallet plugin is used.",
+                PAYMENTS_CATEGORY,
+                10,
+            )
+            .placeholder("lexe-wallet")
+            .hint("text"),
+        ),
         _ => None,
     }
 }
@@ -468,6 +491,15 @@ fn runtime_defaults_presentation(rendered: &str) -> Option<SettingPresentation> 
             30,
         )
         .hint("segmented")),
+        "defaults.throughput.pipeline_decode_groups" => Some(sp(
+            "Pipeline decode groups",
+            "Split each decode wave into this many groups so a pipelined split keeps more \
+             than one batch in flight. 1 disables grouping.",
+            RUNTIME_CATEGORY,
+            32,
+        )
+        .unit("groups")
+        .hint("range")),
         "defaults.hardware.gpu_layers" => Some(sp(
             "GPU layers",
             "Set the GPU layer count, or use auto. The backend also accepts -1 to mean all layers.",
@@ -884,6 +916,15 @@ fn model_and_plugin_presentation(rendered: &str) -> Option<SettingPresentation> 
             )
             .hint("toggle"),
         ),
+        "plugin.<plugin-name>.web_ui_primary_tab" => Some(
+            sp(
+                "Primary tab placement",
+                "Promote the plugin's web UI page to a primary top-level tab when its manifest requests it.",
+                PLUGIN_HOST_CATEGORY,
+                16,
+            )
+            .hint("toggle"),
+        ),
         "plugin.<plugin-name>.url" => Some(
             sp(
                 "Base URL",
@@ -1091,6 +1132,9 @@ fn fallback_category_for_path(rendered: &str) -> Option<CategoryPresentation> {
     }
     if rendered.starts_with("owner_control.") {
         return Some(NETWORK_CATEGORY);
+    }
+    if rendered.starts_with("payments.") {
+        return Some(PAYMENTS_CATEGORY);
     }
     if rendered.starts_with("mesh_requirements.") {
         return Some(ATTESTATION_CATEGORY);

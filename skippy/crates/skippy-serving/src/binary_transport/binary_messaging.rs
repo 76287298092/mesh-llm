@@ -514,6 +514,11 @@ fn run_binary_stage(
         &config,
         max_inflight.max(1),
         continuous_batching,
+        // Grouping is a property of the dispatcher, and the embedded frontend is
+        // the only thing that dispatches, so the value rides its options.
+        openai
+            .as_ref()
+            .and_then(|options| options.pipeline_decode_groups),
         telemetry.clone(),
     )
     .map_err(|error| anyhow!("create binary iteration scheduler: {error}"))?;
@@ -553,6 +558,7 @@ fn run_binary_stage(
                         request_defaults: frontend::EmbeddedOpenAiRequestDefaults::default(),
                         generation_concurrency: openai_options.generation_concurrency,
                         continuous_batching,
+                        pipeline_decode_groups: openai_options.pipeline_decode_groups,
                         adaptive_generation_min_concurrency: openai_options
                             .adaptive_generation_min_concurrency,
                         generation_queue_capacity: openai_options.generation_queue_capacity,

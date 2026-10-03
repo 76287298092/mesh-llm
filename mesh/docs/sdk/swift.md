@@ -6,7 +6,7 @@ Use the GitHub Swift package from tagged `Mesh-LLM/mesh-llm` releases.
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/Mesh-LLM/mesh-llm", from: "0.76.1"),
+    .package(url: "https://github.com/Mesh-LLM/mesh-llm", from: "0.77.0"),
 ],
 targets: [
     .target(
@@ -19,6 +19,10 @@ targets: [
 ```
 
 Tagged releases resolve the prebuilt `MeshLLMFFI.xcframework` through SwiftPM.
+The release XCFramework supports arm64 macOS, Mac Catalyst, iOS devices, and
+iOS simulators. Intel Apple machines are not supported because they cannot run
+MeshLLM inference.
+
 For local checkout development, build the XCFramework first:
 
 ```bash
@@ -51,6 +55,31 @@ try await printChat(
 )
 await client.stop()
 ```
+
+## Agent streaming
+
+```swift
+try await client.start()
+do {
+    let publicModels = try await client.inference.listModels()
+    for try await event in client.inference.streamChatCompletions([
+        "model": publicModels[0].id,
+        "messages": [["role": "user", "content": "What is the weather?"]],
+        "tools": [["type": "function", "function": ["name": "get_weather"]]],
+    ]) {
+        if case .sse(let frame) = event, !frame.isDone {
+            print(frame.event as Any, try frame.jsonObject() as Any)
+        }
+    }
+} catch {
+    await client.stop()
+    throw error
+}
+await client.stop()
+```
+
+The stream retains named and raw SSE frames, incremental tool-call arguments,
+and future JSON fields. Ending iteration early cancels the native request.
 
 ## Client: Private Mesh
 

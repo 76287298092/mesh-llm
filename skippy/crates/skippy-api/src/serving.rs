@@ -26,6 +26,7 @@ pub struct OpenAiOptions {
     pub request_defaults: EmbeddedOpenAiRequestDefaults,
     pub generation_concurrency: usize,
     pub continuous_batching: bool,
+    pub pipeline_decode_groups: Option<usize>,
     pub adaptive_generation_min_concurrency: Option<usize>,
     pub generation_queue_capacity: usize,
     pub generation_admission_timeout_secs: u64,
@@ -79,6 +80,7 @@ impl OpenAiOptions {
             request_defaults: EmbeddedOpenAiRequestDefaults::default(),
             generation_concurrency,
             continuous_batching: true,
+            pipeline_decode_groups: None,
             adaptive_generation_min_concurrency: None,
             generation_queue_capacity: skippy_serving::frontend::default_generation_queue_capacity(
                 generation_concurrency,
@@ -146,6 +148,7 @@ impl OpenAiOptions {
             request_defaults: self.request_defaults,
             generation_concurrency: self.generation_concurrency,
             continuous_batching: self.continuous_batching,
+            pipeline_decode_groups: self.pipeline_decode_groups,
             adaptive_generation_min_concurrency: self.adaptive_generation_min_concurrency,
             generation_queue_capacity: self.generation_queue_capacity,
             generation_admission_timeout_secs: self.generation_admission_timeout_secs,

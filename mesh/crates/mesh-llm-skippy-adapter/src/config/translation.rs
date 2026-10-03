@@ -370,6 +370,10 @@ impl ResolvedSkippyConfig {
             },
             generation_concurrency: self.throughput.parallel,
             continuous_batching: self.throughput.continuous_batching != "false",
+            pipeline_decode_groups: self
+                .throughput
+                .pipeline_decode_groups
+                .map(|groups| groups as usize),
             adaptive_generation_min_concurrency: None,
             generation_queue_capacity: skippy_serving::frontend::default_generation_queue_capacity(
                 self.throughput.parallel,

@@ -31,7 +31,7 @@ class BuildReleaseScriptTests(unittest.TestCase):
         features = set(cargo_args[cargo_args.index("--features") + 1].split(","))
         self.assertEqual(
             features,
-            {"web-ui", "dynamic-native-runtime", "payments", "wallet-lexe"},
+            {"web-ui", "dynamic-native-runtime", "payments"},
         )
         self.assertIn("--no-default-features", script)
         self.assertIn("MESH_LLM_DYNAMIC_NATIVE_RUNTIME=0 is unsupported", script)

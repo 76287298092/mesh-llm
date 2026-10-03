@@ -1,6 +1,6 @@
 # MeshLLM SDK Usage Guide
 
-MeshLLM exposes two SDK roles across Rust, Swift, Kotlin, and Node.js:
+MeshLLM exposes two SDK roles across Python, Rust, Swift, Kotlin, and Node.js:
 
 - `Client` connects to an existing mesh and runs inference.
 - `Node` includes the client role and adds local model management plus serving
@@ -8,8 +8,9 @@ MeshLLM exposes two SDK roles across Rust, Swift, Kotlin, and Node.js:
 
 The SDK is split into two parts:
 
-- **Language SDKs** provide the public API: Rust `mesh-llm-sdk`, Swift
-  `MeshLLM`, Kotlin `ai.meshllm`, and Node.js `@mesh-llm/sdk`.
+- **Language SDKs** provide the public API: Python `mesh-llm`, Rust
+  `mesh-llm-sdk`, Swift `MeshLLM`, Kotlin `ai.meshllm`, and Node.js
+  `@mesh-llm/sdk`.
 - **Native runtime artifacts** provide local serving for a specific
   platform/runtime flavor, such as macOS Metal or Linux CUDA.
 
@@ -24,15 +25,16 @@ run inference but cannot currently serve local models.
 
 | Platform/package | Mesh inference | Model management | Local serving |
 |---|---:|---:|---:|
+| Python macOS/Linux/Windows | yes | native bridge available | requires an embedded-runtime wheel and matching native runtime artifact |
 | Rust SDK on macOS | yes | yes | requires an attached `ServingController` |
 | Rust SDK on Linux | yes | yes | requires an attached `ServingController` |
-| Swift macOS | yes | yes | yes with a matching native runtime artifact |
-| Swift Mac Catalyst | yes | yes | not currently advertised |
-| Swift iOS | yes | limited by app filesystem policy | no |
+| Swift macOS (Apple Silicon) | yes | yes | yes with a matching native runtime artifact |
+| Swift Mac Catalyst (arm64) | yes | yes | not currently advertised |
+| Swift iOS (arm64 device/simulator) | yes | limited by app filesystem policy | no |
 | Kotlin JVM macOS | yes | yes | yes with a matching native runtime artifact |
 | Kotlin JVM Linux | yes | yes | yes with a matching native runtime artifact |
 | Kotlin Android | yes | yes | not currently advertised |
-| Node.js macOS | yes | yes | yes with a matching native runtime artifact |
+| Node.js macOS (Apple Silicon) | yes | yes | yes with a matching native runtime artifact |
 | Node.js Linux | yes | yes | yes with a matching native runtime artifact |
 | Node.js Windows | yes | yes | yes with a matching native runtime artifact |
 
@@ -42,13 +44,39 @@ The SDK packages are published from MeshLLM releases:
 
 | SDK | Package source |
 |---|---|
+| Python | PyPI package `mesh-llm` |
 | Rust | crates.io package `mesh-llm-sdk` |
 | Node.js | npm package `@mesh-llm/sdk` |
 | Swift | GitHub Swift package from tagged `Mesh-LLM/mesh-llm` releases |
 | Kotlin/Android | GitHub Packages Maven registry for `Mesh-LLM/mesh-llm` |
 | Native runtimes | GitHub release artifacts plus `native-runtimes.json` |
 
+Swift and Node.js release artifacts do not include Intel macOS support. Intel
+Apple machines are no longer supported and cannot run MeshLLM inference.
+
 ## Install
+
+### Python
+
+Install the Python package:
+
+```bash
+pip install mesh-llm
+```
+
+Python agent integrations should use `client.inference.chat_completions(body)`
+or `responses(body)`, and their `stream_*` counterparts for SSE. These methods
+preserve the complete OpenAI-compatible request, response, and stream—including
+incremental tool calls, multipart content, structured-output fields, finish
+reasons, reasoning, and usage—instead of narrowing it to text.
+
+See [Python SDK examples](sdk/python.md).
+
+The Swift, Kotlin, and Node bindings expose the same protocol-preserving
+contract: a buffered OpenAI-compatible request plus SSE streams that retain
+event names, raw frames, arbitrary JSON data, errors, and cancellation. This
+keeps text, reasoning, multimodal content, structured output, and incremental
+tool calls consistent across every language binding.
 
 ### Rust
 
@@ -56,7 +84,7 @@ Add the Rust SDK facade crate:
 
 ```toml
 [dependencies]
-mesh-llm-sdk = "0.76.1"
+mesh-llm-sdk = "0.77.0"
 ```
 
 The default Rust SDK feature exposes client-side mesh APIs without depending on
@@ -80,7 +108,7 @@ Add the repo Swift package from a tagged GitHub release:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/Mesh-LLM/mesh-llm", from: "0.76.1"),
+    .package(url: "https://github.com/Mesh-LLM/mesh-llm", from: "0.77.0"),
 ],
 targets: [
     .target(

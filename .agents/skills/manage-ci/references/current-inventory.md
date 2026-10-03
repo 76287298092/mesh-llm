@@ -5,14 +5,19 @@ It is not a complete historical run log or live GitHub/Depot administration.
 Read it with `../SKILL.md` and `ci/ci.md` before editing CI.
 
 The affected-crate fallback roster in `scripts/affected-crates.sh` includes
-`mesh-llm-wallet` and `mesh-wallet-lexe` alongside `mesh-llm-payments`;
+`mesh-llm-wallet` alongside `mesh-llm-payments`;
 `just ci-crate-lists` checks it against workspace membership. The publish
 chain orders `mesh-llm-plugin` before `mesh-llm-wallet`, then
-`mesh-wallet-lexe` and `mesh-llm-payments`, including optional dependencies.
+`mesh-llm-payments`, including optional dependencies.
 
-The protected catalogs include `platform-windows-cfg`: ownership of
-`mesh-llm-plugin` selects `platform-checks` and its existing `windows-unit`
-row. It does not select host/native product builds by itself.
+The protected catalogs include `platform-windows-cfg`: ownership of any crate
+it lists selects `platform-checks` and its existing `windows-unit` row, and
+nothing else. The list holds `mesh-llm-plugin`, the crates verified green on
+Windows since, and `mesh-llm-host-runtime` — the shared Windows/macOS owner the
+row already runs, listed so that a change to it selects the row instead of
+leaving Windows unvalidated. It does not select host/native product builds by
+itself. `scripts/tests/test_ci_windows_composition.py` keeps the list, the
+crates the row resolves, and the still-unverified census in agreement.
 
 ## Entry workflows
 
@@ -174,23 +179,23 @@ embedding certification additionally requires the official Python SDK smoke.
 Dry-run planning needs no oracle tools; a missing execution prerequisite
 records failed lanes without discarding later family results.
 
-Both the repair and independent verification candidate gates run the System One
-(OpenJEV) smoke, `scripts/skippy-system-one-smoke.sh`, which drives
+Both the repair and independent verification candidate gates run the real-model
+System One smokes. `scripts/skippy-system-one-smoke.sh` drives
 `POST /systemone` through the pinned `family-qwen3-dense` fixture for the
 backend-independent contract and fail-closed rejections, and through the pinned
 `unsloth/diffusiongemma-26B-A4B-it-GGUF` Q4_K_M artifact for one complete
-single-lane read with repeat/interleaved determinism. Both artifacts come from
+single-lane read with repeat/interleaved determinism. The canary declares its
+Metal backend required, so a missing artifact or failed Jev read is fatal.
+`scripts/skippy-laya-smoke.sh` additionally runs the pinned
+`meshllm/laya-multilingual-F16-GGUF` fixture through the static
+`llama-laya-cli` on its explicit CPU device and compares every upstream golden
+fixture. Platform smokes separately prove the packaged Metal runtime. All
+three artifacts come from
 `ci/model-artifacts/manifests/skippy-system-one-smoke.json`, whose cadence
 authorization and pinned revision/size/SHA-256 are enforced before load; a
-mismatch is a hard failure, never a skip. On a backend declared qualified
-(default `cuda`), a missing pinned artifact is a hard failure rather than an
-unqualified pass. The complete-model read is admitted only on a declared
-qualified backend, so on the Metal runner it reports NOT CERTIFIED through the
-build job summary and the uploaded `llama-canary-system-one-*` artifact rather
-than passing quietly, and a red contract part or a red declared-qualified read
-fails the producer gate, the changed-pin repair gates, and the independent
-verification pass. It adds no family roster row and claims no split or profile
-support.
+mismatch is a hard failure, never a skip. Reports for both models are included
+in the uploaded `llama-canary-system-one-*` artifact. These smokes add no family
+roster rows and claim no split or profile support.
 
 Each named family job runs `--skip-build --shard-index` on the matching
 `family-certify` pool, with max-parallel 8 and fail-fast disabled. Workers
@@ -353,7 +358,7 @@ runner-contract update is active.
 | `ci-website-lane.yml` | Console and website graph; reusable from PRs and dispatchable for main/manual |
 | `ci-linux-lane.yml` | Linux host/runtime/product/Rust/SDK/smoke graph with one platform-local UI producer |
 | `ci-macos-lane.yml` | macOS host/runtime/product/platform/Swift/Metal graph with one platform-local UI producer |
-| `ci-windows-lane.yml` | Windows host/runtime/product/platform graph with one platform-local UI producer |
+| `ci-windows-lane.yml` | Windows host/runtime/product/platform/smoke graph with one platform-local UI producer |
 | `ci-pr-canary-lane.yml` | Optional protected merge-source diagnostic lane for one Linux amd64 CPU UI/host/runtime/product chain; runner policy stays on the default branch, and the summary is step-summary-only and non-required |
 | `ci-quality-slice.yml` | Contracts (including product-crate README, description, and local-link checks), format, unused-dependency check, Clippy and generated CLI inventory freshness; additive protected authority sentinel |
 | `ci-web-slice.yml` | Console quality, console Playwright E2E, public website build, and CLI explorer browser validation |
@@ -364,11 +369,12 @@ runner-contract update is active.
 | `ci-{linux,macos,windows}-runtime-slice.yml` | Platform-pure native runtime producers. The Linux CPU row also runs the native runtime-event gate against its verified built-or-restored runtime and uploads its evidence. |
 | `ci-{linux,macos,windows}-product-slice.yml` | Platform-pure composition-only product consumers |
 | `ci-platform-checks-slice.yml` | macOS portable/unit, Windows portable/unit, and Windows log-store privacy ACL checks |
-| `ci-linux-product-smoke-slice.yml`, `ci-macos-product-smoke-slice.yml` | Platform-local core, scripted, and model-download smokes. Core CPU/CUDA/Metal restores the registry-pinned SmolLM2 Q8 and IBM Granite 4.0 H Q4 pair once and runs both through standalone inference, OpenAI client compatibility, and constrained-Tokio restart. The CPU two-node split row uses the same pair for dense KV and strict recurrent `KvRecurrent` validation, persists strict-whitelist seed/worker identity and stage/model snapshots, reconciles two-observer topology and exact two-stage contiguous-cut agreement, and uploads evidence on every outcome. The Linux CPU row additionally preserves node cache roots across restart and requires an observable durable-L3 fill before status and clear verification. Product restore verifies the manifest backend and forces discovery through the bundled runtime. CUDA verifies the packaged dependency closure with `LD_LIBRARY_PATH` unset, runs inherited and strict device probes, installs no cudart or cuBLAS packages, and leaves the NVIDIA driver host-owned. There is no separate product-integration or Qwen migration lane. |
+| `ci-{linux,macos,windows}-product-smoke-slice.yml` | Platform-local core, scripted, model-download, and Laya smokes. The pinned Laya Multilingual F16 GGUF runs startup plus the complete upstream golden `/systemone` battery on Linux CPU/CUDA, conditional `gpu-nvidia` Vulkan and `gpu-amd` ROCm, macOS Metal, and Windows CPU; each row selects the exact native device name, so an unavailable backend fails at model load. Core CPU/CUDA/Metal restores the registry-pinned SmolLM2 Q8 and IBM Granite 4.0 H Q4 pair once and runs both through standalone inference, OpenAI client compatibility, and constrained-Tokio restart. The CPU two-node split row uses the same pair for dense KV and strict recurrent `KvRecurrent` validation, persists strict-whitelist seed/worker identity and stage/model snapshots, reconciles two-observer topology and exact two-stage contiguous-cut agreement, and uploads evidence on every outcome. The Linux CPU row additionally preserves node cache roots across restart and requires an observable durable-L3 fill before status and clear verification. Product restore verifies the manifest backend and forces discovery through the bundled runtime. CUDA verifies the packaged dependency closure with `LD_LIBRARY_PATH` unset, runs inherited and strict device probes, installs no cudart or cuBLAS packages, and leaves the NVIDIA driver host-owned. Windows accelerator product targets remain build-only because CI has no Windows accelerator runners. There is no separate product-integration or Qwen migration lane. |
+| `.github/actions/run-laya-product-smoke` | Shared product restore plus Laya startup/read harness. Inputs are bounded to the supported backend/device/cadence combinations, and the fixture is resolved through `product-smoke.json`. The explicit Vulkan row enables the Vulkan profile for runners without `vulkaninfo`; model startup and reads still verify the device. Windows product restore emits LF-delimited manifest fields for Git Bash. |
 | `ci-linux-sdk-slice.yml`, `ci-macos-sdk-slice.yml` | Platform-local Rust/Kotlin/Swift smoke consumers; SDK producers are independent top-level calls and each smoke receives the lane-local immutable UI artifact |
 | `ci-runner-contract-slice.yml` | Provider/cache/plan trust and main runner-image checks |
 | `native-sdk-artifact.yml` | Typed native SDK producer |
-| `swift-sdk-artifact.yml` | Host-only/full XCFramework producer; full mode builds the seven Apple Rust targets as a bounded matrix (maximum four concurrent macOS runners) and joins their immutable libraries in one assembly job, while host-only remains a single producer. Trusted main remains `macos-15`, while eligible same-repository PRs follow the protected Depot macOS 15 gate |
+| `swift-sdk-artifact.yml` | Host-only/full arm64 XCFramework producer; full mode builds the four Apple Silicon Rust targets as a bounded matrix (maximum four concurrent macOS runners) and joins their immutable libraries in one assembly job, while host-only remains a single Apple Silicon producer. Trusted main remains `macos-15`, while eligible same-repository PRs follow the protected Depot macOS 15 gate |
 | `smoke.yml` | Artifact-based inference/OpenAI/split smoke |
 | `scripted-binary-smoke.yml` | Artifact-based scripted product smoke with optional typed model context-size and recurrent-model inputs; recurrent models restore and save through a dedicated trust-scoped cache before the smoke runs |
 | `sdk-smoke.yml` | Artifact-based SDK consumers; all SDK rows consume the lane's immutable console UI artifact, while Rust smoke restores the main-seeded, target/profile/image/toolchain/recipe-bound Cargo/target cache through `Swatinem/rust-cache` |
@@ -821,7 +827,12 @@ may cover eligible build/test rows across Linux, Depot macOS 15 and Windows
 credential-bearing smokes, `gpu-nvidia` hardware and uncertified Intel macOS
 rows remain exceptions. The documented `gpu-nvidia` ephemeral scale set is
 the sole currently verified uncredentialed, hardware-qualified same-repository
-PR exception. The typed ROCm job remains skipped unless
+PR exception. The typed Vulkan job remains skipped until
+`verify-vulkan-device` passes in a live pod and
+`MESH_VULKAN_INFERENCE_RUNNER_ENABLED` is exactly `true`. The typed Vulkan job
+and source-checked Laya action both enforce that gate, including when an older
+protected workflow definition still admits the job. The typed ROCm job remains
+skipped unless
 `MESH_ROCM_INFERENCE_RUNNER_ENABLED` explicitly enables the repository-scoped
 `gpu-amd` role.
 
@@ -891,7 +902,9 @@ Bracketed IPv6 authorities use the fixed runner's Python 3.8+ stdlib
 Attestation reports only value-free variable/reason classes and fails closed
 on malformed or missing backend data.
 
-Relevant repository variable names include `DEPOT_RUNNERS_ENABLED`,
+Relevant repository variable names include `MESH_VULKAN_INFERENCE_RUNNER_ENABLED`
+(exact `true` enables the certified Vulkan Laya runner),
+`MESH_ROCM_INFERENCE_RUNNER_ENABLED`, `DEPOT_RUNNERS_ENABLED`,
 `DEPOT_PR_RUNNERS_ENABLED` (global temporary exception gate),
 `DEPOT_PR_CANARY_REF` (absent by default; one exact
 `refs/pull/<number>/merge` ref only), `DEPOT_PR_SENTINEL_REF` (absent by
@@ -1139,8 +1152,11 @@ Membership extraction adds `mesh-llm-membership` to the affected-crate fallback 
 
 ### Protected executor compatibility for the product extraction
 
-The protected executor workflows pin both resolver actions to commit
-`196eba4c21f9b445d0bf11f7938f87e799dd7c8c`, so older PR source checkouts do not need
+The protected executor workflows pin `resolve-source-layout` to commit
+`38d63b2f6e27998034fdf0452150c7cc081fe921` and `resolve-cargo-packages` to
+`196eba4c21f9b445d0bf11f7938f87e799dd7c8c` (which passes planned packages
+absent from the candidate through to the checked-out-workspace filter, so a PR
+that deletes a crate is not rejected), so older PR source checkouts do not need
 the new helper files. The package resolver loads its Python implementation
 from that same pinned action checkout and inspects the candidate only through
 Cargo metadata in the existing executor trust context.

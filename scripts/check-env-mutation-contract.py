@@ -77,6 +77,7 @@ KNOWN_UNAUDITED_MUTATION_COUNTS = {
     "skippy/crates/skippy-runtime-install/src/lib.rs": 16,
     "mesh/crates/mesh-llm/src/commands/plugin_cli.rs": 3,
     "skippy/crates/skippy-model-hf/src/cache_paths.rs": 2,
+    "skippy/crates/skippy-model-hf/src/remote_catalog/tests.rs": 6,
 }
 
 # These are the only intentionally unresolved sites.  They execute on runtime

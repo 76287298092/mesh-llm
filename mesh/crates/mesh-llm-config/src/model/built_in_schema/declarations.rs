@@ -35,6 +35,7 @@ fn build_built_in_config_schema() -> ConfigSchema {
             "owner_control.advertise_addr",
             ConfigValueSchema::SocketAddr,
         ),
+        top_level_setting("payments.wallet", ConfigValueSchema::String),
         telemetry_setting("telemetry.enabled", ConfigValueSchema::Boolean),
         telemetry_setting("telemetry.service_name", ConfigValueSchema::String),
         telemetry_setting("telemetry.endpoint", ConfigValueSchema::Url),
@@ -304,6 +305,10 @@ fn plugin_entry_settings() -> Vec<ConfigSettingSchema> {
             ConfigValueSchema::Boolean,
         ),
         plugin_setting(
+            &format!("{plugin_prefix}.web_ui_primary_tab"),
+            ConfigValueSchema::Boolean,
+        ),
+        plugin_setting(
             &format!("{plugin_prefix}.command"),
             ConfigValueSchema::String,
         ),
@@ -568,6 +573,10 @@ fn throughput_settings(
         basic_setting(
             &format!("{prefix}.continuous_batching"),
             bool_or_auto_schema(),
+        ),
+        basic_setting(
+            &format!("{prefix}.pipeline_decode_groups"),
+            ConfigValueSchema::Integer,
         ),
         basic_setting(&format!("{prefix}.threads"), ConfigValueSchema::Integer),
         basic_setting(

@@ -701,6 +701,7 @@ fn event_context(event: &OpenAiLifecycleEvent) -> &skippy_inference_api::OpenAiL
         | OpenAiLifecycleEvent::BackendDispatched { context, .. }
         | OpenAiLifecycleEvent::BackendTerminal { context, .. }
         | OpenAiLifecycleEvent::StreamFirstItem { context, .. }
+        | OpenAiLifecycleEvent::ExchangeIdentified { context, .. }
         | OpenAiLifecycleEvent::ResponseCompleted { context, .. }
         | OpenAiLifecycleEvent::NonStreamTerminal { context, .. }
         | OpenAiLifecycleEvent::StreamTerminal { context, .. } => context,

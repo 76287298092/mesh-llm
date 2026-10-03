@@ -305,8 +305,10 @@ pub struct ServeOpenAiArgs {
     pub hash_cache: Option<PathBuf>,
     #[arg(long)]
     pub topology: Option<PathBuf>,
-    #[arg(long, default_value = "127.0.0.1:9337")]
-    pub bind_addr: SocketAddr,
+    /// Public API address (default: 127.0.0.1:9337); in HTTP worker mode,
+    /// overrides the listener address in the stage config only when supplied.
+    #[arg(long)]
+    pub bind_addr: Option<SocketAddr>,
     #[arg(
         long,
         help = "Served model id to advertise and accept, for example org/repo:Q4_K_M. Defaults to config model_id."

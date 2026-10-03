@@ -161,7 +161,7 @@ fn is_routing_eligible(
     peer.is_admitted() && state.peer_has_observed_liveness(peer)
 }
 
-fn public_model_id_for_routable_model(peer: &PeerInfo, model: &str) -> String {
+pub(crate) fn public_model_id_for_routable_model(peer: &PeerInfo, model: &str) -> String {
     peer.served_model_descriptors
         .iter()
         .find(|descriptor| descriptor.identity.model_name == model)

@@ -110,6 +110,7 @@ mesh-llm serve --auto --headless
 | Join by invite token | `mesh-llm serve --join <token>` | [docs/MESHES.md](mesh/docs/MESHES.md) |
 | Run an API-only client | `mesh-llm client --auto` | [docs/MESHES.md](mesh/docs/MESHES.md) |
 | Run a big model with splits | `mesh-llm serve --model hf://meshllm/<repo>@<rev> --split` | [docs/SKIPPY_SPLITS.md](skippy/docs/SKIPPY_SPLITS.md) |
+| Run DeepSeek V4 and other ds4 models with DwarfStar | `mesh-llm plugins install Mesh-LLM/ds4-plugin` | [Setup and configuration](mesh/docs/plugins/dwarfstar.md) |
 | Attach a Flash-MoE SSD backend | `mesh-llm serve` with `[[plugin]] name = "flash-moe"` | [docs/plugins/flash-moe.md](mesh/docs/plugins/flash-moe.md) |
 | Fan out one prompt to every model in the mesh | `curl ... -d '{"model":"mesh", ...}'` | [docs/design/MOA_GATEWAY.md](mesh/docs/design/MOA_GATEWAY.md) |
 | Use Goose, OpenCode, Claude Code, or Pi | `mesh-llm goose`, `mesh-llm opencode`, `mesh-llm claude`, `mesh-llm pi` | [docs/AGENTS.md](mesh/docs/AGENTS.md) |
@@ -394,6 +395,7 @@ mesh-llm --llama-flavor cuda serve \
 | [docs/USAGE.md](mesh/docs/USAGE.md) | Longer operational usage guide, runtime control, owner-control operator flows |
 | [docs/design/TESTING.md](mesh/docs/design/TESTING.md) | Testing playbook, mixed-version QA, remote deploy checks |
 | [docs/plugins/flash-moe.md](mesh/docs/plugins/flash-moe.md) | Optional Flash-MoE SSD expert streaming backend setup |
+| [docs/plugins/dwarfstar.md](mesh/docs/plugins/dwarfstar.md) | DwarfStar (ds4) alternative engine setup on Apple Silicon |
 | [docs/skippy/FAMILY_STATUS.md](skippy/docs/FAMILY_STATUS.md) | Certified Skippy model-family status |
 | [docs/specs/layer-package-repos.md](skippy/docs/specs/layer-package-repos.md) | Manifest and artifact format spec |
 | [docs/specs/mesh-setup-installer.md](mesh/docs/specs/mesh-setup-installer.md) | Installer/bootstrap and setup command behavior spec |

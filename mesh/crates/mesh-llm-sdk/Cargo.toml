@@ -29,8 +29,7 @@ serving = [
 # `wallet.v1` plugin adapter. Off by default: an embedding consumer (e.g. Buzz)
 # that enables `serving` alone stays payment-free and does not compile the
 # rusqlite/lightning-invoice/bitcoin stack. Enabling it still links no wallet
-# SDK; the built-in Lexe wallet is a separate host-runtime feature
-# (`wallet-lexe`) that only the shipped `mesh-llm` CLI enables. An SDK host with
+# SDK. A host with
 # `payments` needs an external `wallet.v1` plugin configured to actually pay.
 payments = ["serving", "mesh-llm-embedded-runtime/payments"]
 
@@ -39,11 +38,11 @@ workspace = true
 
 [dependencies]
 anyhow = { workspace = true, optional = true }
-mesh-llm-api-client = { path = "../mesh-llm-api-client", version = "0.76.1", optional = true }
-mesh-llm-api-server = { path = "../mesh-llm-api-server", version = "0.76.1", optional = true }
-mesh-llm-console-server = { path = "../mesh-llm-console-server", version = "0.76.1", optional = true }
-mesh-llm-embedded-runtime = { path = "../mesh-llm-embedded-runtime", version = "0.76.1", optional = true }
-skippy-runtime-install = { path = "../../../skippy/crates/skippy-runtime-install", version = "0.76.1", optional = true }
+mesh-llm-api-client = { path = "../mesh-llm-api-client", version = "0.77.0", optional = true }
+mesh-llm-api-server = { path = "../mesh-llm-api-server", version = "0.77.0", optional = true }
+mesh-llm-console-server = { path = "../mesh-llm-console-server", version = "0.77.0", optional = true }
+mesh-llm-embedded-runtime = { path = "../mesh-llm-embedded-runtime", version = "0.77.0", optional = true }
+skippy-runtime-install = { path = "../../../skippy/crates/skippy-runtime-install", version = "0.77.0", optional = true }
 reqwest = { version = "0.13", features = ["json"], optional = true }
 serde = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }

@@ -84,6 +84,9 @@ pub struct EmbeddedOpenAiArgs {
     pub request_defaults: EmbeddedOpenAiRequestDefaults,
     pub generation_concurrency: usize,
     pub continuous_batching: bool,
+    /// Decode-wave groups for this frontend's dispatcher. `None` keeps the
+    /// ungrouped default; `SKIPPY_PIPELINE_DECODE_GROUPS` still overrides it.
+    pub pipeline_decode_groups: Option<usize>,
     pub adaptive_generation_min_concurrency: Option<usize>,
     pub generation_queue_capacity: usize,
     pub generation_admission_timeout_secs: u64,
@@ -398,6 +401,7 @@ fn embedded_openai_backend_with_scheduler(
             &args.config,
             args.generation_concurrency,
             args.continuous_batching,
+            args.pipeline_decode_groups,
             args.telemetry.clone(),
         )?,
     };

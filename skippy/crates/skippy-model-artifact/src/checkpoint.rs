@@ -82,7 +82,7 @@ pub fn checkpoint_files(
             selected.insert(shard_path);
         }
         selected.insert(index_name);
-    } else if let Some((prefix, total)) = first_shard(primary) {
+    } else if let Some((prefix, total)) = numbered_shard(primary) {
         for part in 1..=total {
             let shard = format!("{prefix}-{part:05}-of-{total:05}.safetensors");
             ensure!(
@@ -127,15 +127,20 @@ fn validate_relative_file(file: &str) -> Result<()> {
     Ok(())
 }
 
-fn first_shard(primary: &str) -> Option<(String, u32)> {
+fn numbered_shard(primary: &str) -> Option<(String, u32)> {
     let stem = primary.strip_suffix(".safetensors")?;
     let (prefix_and_part, total) = stem.rsplit_once("-of-")?;
     let (prefix, part) = prefix_and_part.rsplit_once('-')?;
-    if part != "00001" || total.len() != 5 || !total.bytes().all(|b| b.is_ascii_digit()) {
+    if part.len() != 5
+        || !part.bytes().all(|b| b.is_ascii_digit())
+        || total.len() != 5
+        || !total.bytes().all(|b| b.is_ascii_digit())
+    {
         return None;
     }
-    let total = total.parse().ok()?;
-    (total > 0).then(|| (prefix.to_string(), total))
+    let part: u32 = part.parse().ok()?;
+    let total: u32 = total.parse().ok()?;
+    (part > 0 && part <= total).then(|| (prefix.to_string(), total))
 }
 
 #[cfg(test)]
@@ -182,6 +187,11 @@ mod tests {
             4
         );
         let error = checkpoint_files(&listed[0].path, &listed[..1], None).unwrap_err();
+        assert!(error.to_string().contains("shard is missing"));
+        let from_second = checkpoint_files(&listed[1].path, &listed, None).unwrap();
+        assert_eq!(from_second[0].path, listed[1].path);
+        assert_eq!(from_second.len(), 4);
+        let error = checkpoint_files(&listed[1].path, &listed[1..], None).unwrap_err();
         assert!(error.to_string().contains("shard is missing"));
     }
 

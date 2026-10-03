@@ -13,8 +13,9 @@ path as the Swift and Kotlin SDKs.
 npm install @mesh-llm/sdk
 ```
 
-Release packages include prebuilt addons for macOS arm64/x64, Linux arm64/x64,
-and Windows x64.
+Release packages include prebuilt addons for macOS arm64, Linux arm64/x64, and
+Windows x64. Intel Macs are not supported because they cannot run MeshLLM
+inference.
 
 ## Build From Source
 
@@ -44,8 +45,31 @@ const client = Client.create({
 
 await client.start()
 const models = await client.inference.listModels()
+
+for await (const event of client.inference.streamChatCompletions({
+  model: models[0].id,
+  messages: [{ role: 'user', content: 'What is the weather in Sydney?' }],
+  tools: [{
+    type: 'function',
+    function: {
+      name: 'get_weather',
+      parameters: { type: 'object', properties: { city: { type: 'string' } } }
+    }
+  }]
+})) {
+  if (event.type === 'sse' && !event.done) {
+    const chunk = event.json()
+    // Text, reasoning, and incremental tool-call arguments are preserved.
+    console.log(chunk)
+  }
+}
 await client.stop()
 ```
+
+`chatCompletions()` and `responses()` return complete OpenAI-shaped JSON.
+`streamChatCompletions()` and `streamResponses()` preserve each complete SSE
+frame, including its optional event name, raw bytes as text, and arbitrary JSON
+payload. Breaking out of the async iterator cancels the native request.
 
 ## Local Serving Mode
 

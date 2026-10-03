@@ -22,6 +22,10 @@ use crate::{
     conversion, shutdown_signal,
 };
 
+pub(crate) fn default_public_bind_addr() -> SocketAddr {
+    SocketAddr::from(([127, 0, 0, 1], 9337))
+}
+
 pub async fn run(mut args: ServeCommandArgs) -> Result<()> {
     validate(&args)?;
     if let Some(model) = args.model.take() {
@@ -127,7 +131,10 @@ pub(crate) fn validate(args: &ServeCommandArgs) -> Result<()> {
 }
 
 async fn serve_public(args: ServeCommandArgs) -> Result<()> {
-    let bind_addr = args.public.bind_addr;
+    let bind_addr = args
+        .public
+        .bind_addr
+        .unwrap_or_else(default_public_bind_addr);
     let startup_timeout = Duration::from_secs(args.public.startup_timeout_secs.max(1));
     console::status("🧠 Preparing model")?;
     let mut options = conversion::local_openai_options(args.public)?;
@@ -160,7 +167,7 @@ async fn serve_http_stage(args: ServeCommandArgs) -> Result<()> {
     let options = conversion::stage_http_options(ServeArgs {
         config,
         topology: args.public.topology,
-        bind_addr: None,
+        bind_addr: args.public.bind_addr,
         metrics_otlp_grpc: args.public.metrics_otlp_grpc,
         telemetry_queue_capacity: args.public.telemetry_queue_capacity,
         telemetry_level: args.public.telemetry_level,
@@ -186,7 +193,11 @@ async fn serve_binary_stage(mut args: ServeCommandArgs) -> Result<()> {
     args.stage.telemetry_queue_capacity = args.public.telemetry_queue_capacity;
     args.stage.telemetry_level = args.public.telemetry_level;
     args.stage.worker_only = args.worker_only;
-    args.stage.api_bind_addr = Some(args.public.bind_addr);
+    args.stage.api_bind_addr = Some(
+        args.public
+            .bind_addr
+            .unwrap_or_else(default_public_bind_addr),
+    );
     let options = conversion::binary_stage_options(args.stage)?;
     let Some(openai) = options.openai.as_ref() else {
         if args.prompt {
@@ -495,6 +506,33 @@ mod tests {
     use super::*;
     use crate::cli::{Cli, Command};
     use clap::Parser;
+
+    #[test]
+    fn http_worker_bind_override_is_explicit() {
+        for (flags, expected) in [
+            (Vec::<&str>::new(), None),
+            (
+                vec!["--bind-addr", "192.0.2.10:9400"],
+                Some("192.0.2.10:9400".parse().unwrap()),
+            ),
+        ] {
+            let mut argv = vec![
+                "skippy",
+                "serve",
+                "--config",
+                "stage.json",
+                "--worker-only",
+                "--stage-transport",
+                "http",
+            ];
+            argv.extend(flags);
+            let cli = Cli::try_parse_from(argv).unwrap();
+            let Command::Serve(args) = cli.command else {
+                panic!("expected serve");
+            };
+            assert_eq!(args.public.bind_addr, expected);
+        }
+    }
 
     #[test]
     fn readiness_uses_the_bound_interface_for_lan_only_listeners() {
