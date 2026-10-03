@@ -170,11 +170,15 @@ pub struct HardwareSurvey {
 pub enum GpuNameSource {
     /// A Metal device name from `MTLDevice.name` (macOS). Assigned when the
     /// native-runtime backend reports a device whose backend name starts with
-    /// `"MTL"`, or when `MTLCreateSystemDefaultDevice` is queried directly
-    /// via the DefaultCollector macOS path. On switchable-graphics Macs the
-    /// default device is a moment-in-time fact: it can differ between
-    /// collections as the OS switches GPUs. Best-effort, OS-reported, not a
-    /// verified GPU identifier.
+    /// `"MTL"`, or when the DefaultCollector macOS path queries Metal (see
+    /// `with_metal_device`). That path asks `MTLCreateSystemDefaultDevice`
+    /// first and, when it returns nil, falls back to the first device
+    /// `MTLCopyAllDevices` enumerates: that list is unordered and may not name
+    /// the system-selected device, so the string can come from a non-default
+    /// GPU. The variant keeps its name for the serialized vocabulary. On
+    /// switchable-graphics Macs the default device is a moment-in-time fact:
+    /// it can differ between collections as the OS switches GPUs.
+    /// Best-effort, OS-reported, not a verified GPU identifier.
     MetalDefaultDevice,
     /// macOS `sysctl -n machdep.cpu.brand_string`, used before upstream
     /// commit 6e16b84a2 (`fix(system): report the real macOS GPU name`).
@@ -412,8 +416,11 @@ impl Drop for RetainedObjcObject {
 }
 
 /// Sends an argument-less Objective-C message and returns the raw result.
+///
+/// Returns `None` when the selector cannot be registered, so a null selector
+/// never reaches `objc_msgSend`.
 #[cfg(target_os = "macos")]
-unsafe fn msg_send(receiver: *mut std::ffi::c_void, selector: &std::ffi::CStr) -> usize {
+unsafe fn msg_send(receiver: *mut std::ffi::c_void, selector: &std::ffi::CStr) -> Option<usize> {
     use std::ffi::{c_char, c_void};
 
     #[link(name = "objc")]
@@ -422,7 +429,11 @@ unsafe fn msg_send(receiver: *mut std::ffi::c_void, selector: &std::ffi::CStr) -
         fn objc_msgSend(receiver: *mut c_void, selector: *mut c_void, ...) -> usize;
     }
 
-    unsafe { objc_msgSend(receiver, sel_registerName(selector.as_ptr())) }
+    let selector = unsafe { sel_registerName(selector.as_ptr()) };
+    if selector.is_null() {
+        return None;
+    }
+    Some(unsafe { objc_msgSend(receiver, selector) })
 }
 
 /// Runs `query` against the Metal device the survey describes.
@@ -454,7 +465,7 @@ fn with_metal_device<T>(query: impl FnOnce(*mut std::ffi::c_void) -> Option<T>) 
         if devices.0.is_null() {
             return None;
         }
-        let first = msg_send(devices.0, c"firstObject") as *mut c_void;
+        let first = msg_send(devices.0, c"firstObject")? as *mut c_void;
         if first.is_null() { None } else { query(first) }
     }
 }
@@ -465,7 +476,7 @@ fn with_metal_device<T>(query: impl FnOnce(*mut std::ffi::c_void) -> Option<T>) 
 #[cfg(target_os = "macos")]
 fn query_metal_recommended_working_set_bytes() -> Option<u64> {
     with_metal_device(|device| {
-        let bytes = unsafe { msg_send(device, c"recommendedMaxWorkingSetSize") } as u64;
+        let bytes = unsafe { msg_send(device, c"recommendedMaxWorkingSetSize") }? as u64;
         (bytes > 0).then_some(bytes)
     })
 }
@@ -483,11 +494,11 @@ fn query_metal_device_name() -> Option<String> {
     use std::ffi::{CStr, c_char, c_void};
 
     with_metal_device(|device| unsafe {
-        let name = msg_send(device, c"name") as *mut c_void;
+        let name = msg_send(device, c"name")? as *mut c_void;
         if name.is_null() {
             return None;
         }
-        let utf8 = msg_send(name, c"UTF8String") as *const c_char;
+        let utf8 = msg_send(name, c"UTF8String")? as *const c_char;
         (!utf8.is_null()).then(|| CStr::from_ptr(utf8).to_string_lossy().into_owned())
     })
 }
