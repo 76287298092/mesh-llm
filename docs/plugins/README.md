@@ -235,6 +235,12 @@ either placement. The existing Configuration `Plugins` tab owns config-section
 projection, and only ready config sections in the `integrations` projection
 mount there.
 
+The host draws a page header ("Plugin page", the page label and where it is
+mounted from) above each plugin page. A page with its own title bar can set
+`host_header = false` (`web_ui_page(...).host_header(false)`); the host then
+draws no visible header, keeps the page label as its accessible heading, and
+still names the plugin in the navigation.
+
 A plugin can also put a small element next to the host's own data, outside its
 pages. There are exactly two contribution slots:
 

@@ -53,6 +53,7 @@ pub fn web_ui_page(
             bundle_id: String::new(),
             entry_script: entry_script.into(),
             placement: proto::PluginWebUiPagePlacement::Auxiliary as i32,
+            host_header: None,
         },
     }
 }
@@ -131,6 +132,12 @@ impl PluginWebUiBuilder {
 }
 
 impl PluginWebUiPageBuilder {
+    /// `false`: the host draws no page header above this page.
+    pub fn host_header(mut self, host_header: bool) -> Self {
+        self.inner.host_header = Some(host_header);
+        self
+    }
+
     pub fn icon(mut self, icon: impl Into<String>) -> Self {
         self.inner.icon = Some(icon.into());
         self
@@ -223,6 +230,8 @@ pub(super) struct PackagedPluginWebUiPage {
     pub entry_script: String,
     #[serde(default)]
     pub placement: PackagedPluginWebUiPagePlacement,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub host_header: Option<bool>,
 }
 
 /// Mirrors `proto::PluginWebUiPagePlacement`, minus the wire-only
@@ -356,6 +365,7 @@ impl PackagedPluginWebUiPage {
             bundle_id: value.bundle_id.clone(),
             entry_script: value.entry_script.clone(),
             placement,
+            host_header: value.host_header,
         })
     }
 }
