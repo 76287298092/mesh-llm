@@ -15,6 +15,10 @@ pub struct VirtualModelCandidate {
     pub parameter_count_b: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub context_length: Option<u32>,
+    /// The host's admission state for this physical placement. Prefer ready
+    /// replicas when a virtual model caps its committee.
+    #[serde(default)]
+    pub deprioritized: bool,
     #[serde(default)]
     pub supports_tools: bool,
     #[serde(default)]

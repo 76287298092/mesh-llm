@@ -145,6 +145,7 @@ concrete model id, an OpenAI-compatible JSON body, and an optional timeout:
 ```rust
 HostInferenceRequest {
     model_id: String,
+    target_node_id: Option<String>,
     request: serde_json::Value,
     timeout_ms: Option<u64>,
 }
@@ -183,6 +184,7 @@ async fn handle_mesh_agent(
     let response = context
         .infer(HostInferenceRequest {
             model_id: candidate.model_id.clone(),
+            target_node_id: candidate.target_node_id.clone(),
             request: invocation.request,
             timeout_ms: Some(60_000),
         })
@@ -201,6 +203,10 @@ async fn handle_mesh_agent(
 
 The built-in implementation in `crates/mesh-llm-moa-plugin/src/lib.rs` is the
 complete conformance example.
+The host marks a candidate `deprioritized` when its peer advertises reduced
+inference readiness. The built-in plugin ranks ready placements first and
+retains eligible standbys for a direct answer if the first pinned placement
+fails with a retryable transport or availability error.
 
 V1 host inference accepts only concrete model ids. It rejects built-in aliases
 and all virtual model ids, including the caller, so a plugin cannot recurse.

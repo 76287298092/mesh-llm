@@ -325,6 +325,70 @@ async fn test_builtin_moa_all_small_pool_routes_direct_through_plugin_api() {
 }
 
 #[tokio::test]
+async fn test_builtin_moa_all_small_falls_back_through_host_inference() {
+    for model in ["mesh", "auto"] {
+        for disappeared in [false, true] {
+            let failed_upstream = if disappeared {
+                None
+            } else {
+                Some(spawn_status_upstream("503 Service Unavailable", r#"{"error":"busy"}"#).await)
+            };
+            let failed_port = if let Some((port, _, _)) = &failed_upstream {
+                *port
+            } else {
+                let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+                let port = listener.local_addr().unwrap().port();
+                drop(listener);
+                port
+            };
+            let healthy_body = json!({
+                "id": "chatcmpl-healthy",
+                "object": "chat.completion",
+                "model": "worker-b",
+                "choices": [{"index": 0, "message": {"role": "assistant", "content": "healthy fallback"}, "finish_reason": "stop"}]
+            }).to_string();
+            let (healthy_port, healthy_requests, healthy_handle) =
+                spawn_repeating_upstream(&healthy_body).await;
+            let plugin_manager = start_moa_plugin_manager().await;
+            let (proxy_addr, proxy_handle) = spawn_api_proxy_test_harness_with_plugin_manager(
+                local_targets(&[("worker-a", failed_port), ("worker-b", healthy_port)]),
+                plugin_manager.clone(),
+            ).await;
+            crate::network::openai::virtual_model::install_inference_bridge(
+                &plugin_manager,
+                proxy_addr.port(),
+            ).await;
+            let body = json!({
+                "model": model,
+                "messages": [{"role": "user", "content": "answer briefly"}],
+                "stream": false,
+            }).to_string();
+            let request = format!(
+                "POST /v1/chat/completions HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}",
+                body.len(), body
+            );
+            let response = send_request_and_read_response(proxy_addr, vec![request.into_bytes()]).await;
+            assert!(
+                response.starts_with("HTTP/1.1 200 OK") && response.contains("healthy fallback"),
+                "{model} disappeared={disappeared}: {response}"
+            );
+            assert_eq!(healthy_requests.load(std::sync::atomic::Ordering::Relaxed), 1);
+            if let Some((_, failed_requests, failed_handle)) = failed_upstream {
+                assert!(
+                    tokio::time::timeout(Duration::from_secs(5), failed_requests)
+                        .await
+                        .is_ok(),
+                    "the first placement must be tried"
+                );
+                failed_handle.abort();
+            }
+            proxy_handle.abort();
+            healthy_handle.abort();
+        }
+    }
+}
+
+#[tokio::test]
 async fn test_streamed_virtual_model_responses_preserves_tool_calls() {
     let tool_call_response = json!({
         "id": "chatcmpl-tool-call",

@@ -521,6 +521,16 @@ async fn virtual_model_candidates(
 ) -> Vec<VirtualModelCandidate> {
     let descriptors = node.all_served_model_descriptors().await;
     let local_models = node.hosted_models().await;
+    let deprioritized_peers = node
+        .peers()
+        .await
+        .into_iter()
+        .filter(|peer| {
+            peer.inference_admission_state
+                == Some(crate::proto::node::InferenceAdmissionState::AcceptingDeprioritized)
+        })
+        .map(|peer| hex::encode(peer.id.as_bytes()))
+        .collect::<std::collections::BTreeSet<_>>();
     let mut model_ids = candidate_models
         .into_iter()
         .filter(|candidate| !virtual_ids.contains(candidate))
@@ -533,14 +543,18 @@ async fn virtual_model_candidates(
         let descriptor = descriptors
             .iter()
             .find(|descriptor| descriptor.identity.model_name == model_id);
-        let candidate_from =
-            |target_node_id: Option<String>, context_length: Option<u32>| VirtualModelCandidate {
+        let candidate_from = |target_node_id: Option<String>, context_length: Option<u32>| {
+            let deprioritized = target_node_id
+                .as_ref()
+                .is_some_and(|target| deprioritized_peers.contains(target));
+            VirtualModelCandidate {
                 model_id: model_id.clone(),
                 target_node_id,
                 parameter_count_b: descriptor
                     .and_then(|descriptor| descriptor.metadata.as_ref())
                     .and_then(|metadata| metadata.parameter_count_b),
                 context_length,
+                deprioritized,
                 supports_tools: descriptor.is_some_and(|descriptor| {
                     descriptor.capabilities.tool_use != crate::models::CapabilityLevel::None
                 }),
@@ -548,7 +562,8 @@ async fn virtual_model_candidates(
                     .is_some_and(|descriptor| descriptor.capabilities.supports_vision_runtime()),
                 supports_audio: descriptor
                     .is_some_and(|descriptor| descriptor.capabilities.supports_audio_runtime()),
-            };
+            }
+        };
         let has_local_instance = local_models.iter().any(|local| local == &model_id);
         if has_local_instance {
             let context_length = node.local_model_context_length(&model_id).await;
