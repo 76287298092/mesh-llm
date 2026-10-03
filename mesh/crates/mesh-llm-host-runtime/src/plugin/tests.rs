@@ -17,6 +17,7 @@ fn web_ui_manifest() -> proto::PluginWebUiManifest {
             bundle_id: "main".into(),
             entry_script: "assets/app.js".into(),
             placement: proto::PluginWebUiPagePlacement::Auxiliary as i32,
+            host_header: None,
         }],
         config_sections: vec![proto::PluginWebUiConfigSectionManifest {
             id: "settings".into(),
@@ -24,6 +25,13 @@ fn web_ui_manifest() -> proto::PluginWebUiManifest {
             entry_script: "assets/settings.js".into(),
             parent_tab: Some("integrations".into()),
             bundle_id: "main".into(),
+        }],
+        contributions: vec![proto::PluginWebUiContributionManifest {
+            id: "note".into(),
+            slot: "logs_request".into(),
+            label: "Note".into(),
+            bundle_id: "main".into(),
+            entry_script: "assets/note.js".into(),
         }],
         bundles: vec![proto::PluginWebUiBundleManifest {
             id: "main".into(),
@@ -44,6 +52,7 @@ fn plugin_manifest_overview_includes_web_ui_declaration() {
     let web_ui = overview.web_ui.expect("web UI overview should be present");
     assert_eq!(web_ui.pages[0].id, "home");
     assert_eq!(web_ui.config_sections[0].id, "settings");
+    assert_eq!(web_ui.contributions[0].slot, "logs_request");
 }
 
 #[test]
@@ -62,6 +71,7 @@ fn wallet_entry(enabled: Option<bool>) -> PluginConfigEntry {
         enabled,
         web_ui_enabled: None,
         web_ui_primary_tab: None,
+        allow_peer_blocks: None,
         command: None,
         args: Vec::new(),
         url: None,
@@ -163,6 +173,7 @@ fn external_wallet_plugin_is_an_ordinary_plugin() {
             enabled: Some(true),
             web_ui_enabled: None,
             web_ui_primary_tab: None,
+            allow_peer_blocks: None,
             command: Some("/opt/wallets/lexe-wallet".into()),
             args: Vec::new(),
             url: None,
@@ -186,6 +197,7 @@ fn external_plugin_can_be_configured() {
             enabled: Some(true),
             web_ui_enabled: None,
             web_ui_primary_tab: None,
+            allow_peer_blocks: None,
             command: Some("mesh-llm-plugin-demo".into()),
             args: vec!["--stdio".into()],
             url: None,
@@ -240,6 +252,7 @@ fn blobstore_can_be_disabled() {
             enabled: Some(false),
             web_ui_enabled: None,
             web_ui_primary_tab: None,
+            allow_peer_blocks: None,
             command: None,
             args: Vec::new(),
             url: None,
@@ -262,6 +275,7 @@ fn external_plugin_can_be_enabled_with_url() {
             enabled: Some(true),
             web_ui_enabled: None,
             web_ui_primary_tab: None,
+            allow_peer_blocks: None,
             command: Some("endpoint-plugin".into()),
             args: Vec::new(),
             url: Some("http://gpu-box:8000/v1".into()),
@@ -289,6 +303,7 @@ fn external_plugin_rejects_url_that_is_empty_after_normalization() {
             enabled: Some(true),
             web_ui_enabled: None,
             web_ui_primary_tab: None,
+            allow_peer_blocks: None,
             command: Some("endpoint-plugin".into()),
             args: Vec::new(),
             url: Some("\u{2003}\t\n".into()),
@@ -312,6 +327,7 @@ fn remote_plugin_control_url_is_rejected_without_authentication() {
             enabled: Some(true),
             web_ui_enabled: None,
             web_ui_primary_tab: None,
+            allow_peer_blocks: None,
             command: None,
             args: Vec::new(),
             url: Some(raw_url.into()),
@@ -340,6 +356,7 @@ fn external_plugin_can_be_enabled_with_command_args() {
             enabled: Some(true),
             web_ui_enabled: None,
             web_ui_primary_tab: None,
+            allow_peer_blocks: None,
             command: Some("/opt/plugins/endpoint-plugin".into()),
             args: vec!["--verbose".into()],
             url: None,
@@ -366,6 +383,7 @@ fn external_plugin_ignores_disabled_entry_without_install() {
             enabled: Some(false),
             web_ui_enabled: None,
             web_ui_primary_tab: None,
+            allow_peer_blocks: None,
             command: None,
             args: Vec::new(),
             url: Some("http://gpu-box:8000/v1".into()),
@@ -402,6 +420,7 @@ fn resolves_external_plugin() {
             enabled: Some(true),
             web_ui_enabled: None,
             web_ui_primary_tab: None,
+            allow_peer_blocks: None,
             command: Some("/tmp/demo".into()),
             args: vec!["--flag".into()],
             url: None,

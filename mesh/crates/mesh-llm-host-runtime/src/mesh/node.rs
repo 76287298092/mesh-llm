@@ -179,6 +179,8 @@ pub struct Node {
     pub gpu_compute_tflops_fp32: Arc<tokio::sync::Mutex<Option<Vec<f64>>>>,
     pub gpu_compute_tflops_fp16: Arc<tokio::sync::Mutex<Option<Vec<f64>>>>,
     pub(crate) config_state: Arc<tokio::sync::Mutex<crate::runtime::config_state::ConfigState>>,
+    /// Peers this node's operator chose to stop routing to (local only).
+    pub(crate) peer_blocks: crate::network::peer_blocks::PeerBlocks,
     pub(crate) config_revision_tx: Arc<tokio::sync::watch::Sender<u64>>,
     #[cfg(feature = "payments")]
     pub(crate) payments: crate::network::payments::PaymentsSlot,
@@ -888,6 +890,7 @@ impl Node {
             gpu_compute_tflops_fp32: Arc::new(tokio::sync::Mutex::new(None)),
             gpu_compute_tflops_fp16: Arc::new(tokio::sync::Mutex::new(None)),
             config_state: Arc::new(tokio::sync::Mutex::new(config_state_init)),
+            peer_blocks: crate::network::peer_blocks::PeerBlocks::for_this_node(),
             config_revision_tx: {
                 let (tx, _rx) = tokio::sync::watch::channel(config_revision_init);
                 Arc::new(tx)
@@ -1072,6 +1075,7 @@ impl Node {
             config_state: Arc::new(tokio::sync::Mutex::new(
                 crate::runtime::config_state::ConfigState::default(),
             )),
+            peer_blocks: crate::network::peer_blocks::PeerBlocks::in_memory(),
             config_revision_tx: {
                 let (tx, _rx) = tokio::sync::watch::channel(0);
                 Arc::new(tx)

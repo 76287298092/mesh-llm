@@ -2,8 +2,7 @@ use super::*;
 
 pub(crate) use mesh_llm_membership::peer_state::{
     ClaimedLogHead, DEAD_PEER_TTL, PEER_DOWN_REPORTER_COOLDOWN_SECS, PEER_STALE_SECS,
-    ingest_tunnel_map, model_identity_score, peer_has_observed_liveness, policy_accepts_peer,
-    resolve_peer_leaving, stream_allowed_before_admission,
+    model_identity_score, policy_accepts_peer,
 };
 pub use mesh_llm_membership::peer_state::{
     DirectLatencyObservation, DisplayLatency, DisplayLatencySource, MeshCatalogEntry,
@@ -154,13 +153,6 @@ pub(crate) fn routes_http_model(peer: &PeerInfo, model: &str) -> bool {
     peer.accepts_http_inference() && routes_model(peer, model)
 }
 
-fn is_routing_eligible(
-    peer: &PeerInfo,
-    state: &mesh_llm_membership::state::MembershipState,
-) -> bool {
-    peer.is_admitted() && state.peer_has_observed_liveness(peer)
-}
-
 pub(crate) fn public_model_id_for_routable_model(peer: &PeerInfo, model: &str) -> String {
     peer.served_model_descriptors
         .iter()
@@ -199,6 +191,159 @@ pub(crate) fn is_peer_admitted(peers: &HashMap<EndpointId, PeerInfo>, id: &Endpo
     peers.get(id).is_some_and(PeerInfo::is_admitted)
 }
 
+/// The single definition of "we have evidence this peer is actually
+/// reachable right now" (issue #1756).
+///
+/// Announcement content is *not* evidence of reachability: a bridge peer can
+/// keep rebroadcasting a departed peer's last-known model list long after the
+/// peer is gone, so a peer whose only "proof" is its own announcement can look
+/// indefinitely healthy. We therefore require at least one observation that can
+/// only come from a real exchange: a live connection, a measured RTT, or a
+/// direct-latency observation.
+///
+/// Without a live connection the only acceptable evidence is a latency
+/// observation recent enough to still mean something. The stored
+/// [`PeerInfo::rtt_ms`] is deliberately *not* used on its own: it is the best
+/// RTT ever seen and is never aged or cleared, so a peer that vanished while
+/// holding a good sample would otherwise stay `serving` and routing-eligible
+/// until the stale sweep finally removed it (observed on a real 2-node mesh:
+/// a departed peer kept reporting `serving` for minutes). Ageing on
+/// `display_rtt.observed_at` closes that window — the same staleness bound the
+/// heartbeat sweep uses.
+///
+/// Requiring an observation rather than mere presence is also what keeps
+/// genuinely live peers eligible. [`update_peer_rtt`] refreshes
+/// `display_rtt.observed_at` on *every* non-zero sample, including the branch
+/// that keeps an older, better `rtt_ms`, so a peer still exchanging traffic
+/// always has a fresh observation; and it refuses to record a zero-millisecond
+/// sample, so relay- or loopback-only peers legitimately have no `rtt_ms` at
+/// all. A live connection remains sufficient on its own, because a reconnect
+/// in progress or a tunnel teardown can briefly drop the connection entry while
+/// the peer is still the right target.
+///
+/// This is deliberately one function so the two consumers cannot drift: the
+/// routing eligibility gate below, and `derive_peer_state` in
+/// `runtime_data::collector` (mirrored under `#[cfg(test)]` in `api`), which
+/// decides whether a peer is reported as `serving`.
+pub fn peer_has_observed_liveness(peer: &PeerInfo, has_connection: bool) -> bool {
+    has_connection
+        || peer.display_rtt.as_ref().is_some_and(|observation| {
+            observation.observed_at.elapsed() < std::time::Duration::from_secs(PEER_STALE_SECS)
+        })
+}
+
+/// Returns `true` if `peer` is eligible to receive routed requests: admitted
+/// through gossip AND showing signs of life per [`peer_has_observed_liveness`].
+///
+/// Issue #1756: a peer re-learned only through stale transitive gossip must
+/// not be routed to. This is the single definition consulted by
+/// `hosts_for_model`, `any_host`, and `routing_table`; it intentionally does
+/// not touch the pure announcement-formatting helpers on `PeerInfo`
+/// (`routable_models`, `routes_model`, `http_routable_models`,
+/// `routes_http_model`), which are also used to describe what a peer once
+/// advertised.
+pub(crate) fn is_routing_eligible(peer: &PeerInfo, state: &MembershipState) -> bool {
+    peer.is_admitted() && state.peer_has_observed_liveness(peer)
+}
+
+/// Returns `true` if the given stream type is permitted before a peer has
+/// been admitted through gossip, under the node's trust policy.
+///
+/// With a non-enforcing trust policy (`Off` or `PreferOwned`), three streams
+/// bypass the quarantine gate:
+/// - `STREAM_GOSSIP (0x01)`: the admission handshake itself.
+/// - `STREAM_ROUTE_REQUEST (0x05)`: passive/client request-only path — caller
+///   is NEVER promoted to `state.peers`.
+/// - `STREAM_TUNNEL_HTTP (0x04)`: passive SDK inference path for callers that
+///   have an invite token but should not need a local `/v1` HTTP listener.
+///
+/// When a trust policy enforces ownership (`RequireOwned` or `Allowlist`), only
+/// `STREAM_GOSSIP` bypasses the gate. Otherwise a leaked invite token is a
+/// bearer credential for inference: a caller rejected by the trust gate (e.g.
+/// `UntrustedOwner` under `Allowlist`) could still route requests via the
+/// passive paths without ever being admitted. If a node enforces who may join,
+/// the same enforcement must cover who may consume. `PreferOwned` remains
+/// advisory and therefore preserves the passive-client behavior of `Off`.
+///
+/// Every other stream — including raw tunnel (0x02) — always requires the
+/// remote to have completed gossip first.
+pub(crate) fn stream_allowed_before_admission(stream_type: u8, trust_policy: TrustPolicy) -> bool {
+    if stream_type == STREAM_GOSSIP {
+        return true;
+    }
+    if matches!(
+        trust_policy,
+        TrustPolicy::RequireOwned | TrustPolicy::Allowlist
+    ) {
+        return false;
+    }
+    stream_type == STREAM_ROUTE_REQUEST || stream_type == STREAM_TUNNEL_HTTP
+}
+
+pub(crate) fn ingest_tunnel_map(
+    remote: EndpointId,
+    frame: &crate::proto::node::TunnelMap,
+    remote_tunnel_maps: &mut HashMap<EndpointId, HashMap<EndpointId, u16>>,
+) -> Result<()> {
+    if frame.owner_peer_id.as_slice() != remote.as_bytes() {
+        anyhow::bail!(
+            "TunnelMap owner_peer_id mismatch: frame claims owner {}, but connected peer is {}",
+            hex::encode(&frame.owner_peer_id),
+            remote.fmt_short()
+        );
+    }
+
+    let mut tunnel_map: HashMap<EndpointId, u16> = HashMap::new();
+    for entry in &frame.entries {
+        if entry.target_peer_id.len() != 32 {
+            anyhow::bail!(
+                "TunnelMap entry has invalid target_peer_id length: {} (expected 32)",
+                entry.target_peer_id.len()
+            );
+        }
+        if entry.tunnel_port > u16::MAX as u32 {
+            anyhow::bail!(
+                "TunnelMap entry has out-of-range tunnel_port: {} (max {})",
+                entry.tunnel_port,
+                u16::MAX
+            );
+        }
+        let arr: [u8; 32] = entry.target_peer_id.as_slice().try_into().unwrap();
+        let eid = EndpointId::from(
+            iroh::PublicKey::from_bytes(&arr)
+                .map_err(|e| anyhow::anyhow!("Invalid target_peer_id bytes: {e}"))?,
+        );
+        tunnel_map.insert(eid, entry.tunnel_port as u16);
+    }
+
+    remote_tunnel_maps.insert(remote, tunnel_map);
+    Ok(())
+}
+
+/// Validates the sender-identity rule for a validated `PeerLeaving` frame.
+/// Returns `Ok(leaving_id)` if `frame.peer_id == remote` (sender is announcing its own departure).
+/// Returns `Err(ForgedSender)` if `frame.peer_id != remote` — no peer should be removed.
+pub(crate) fn resolve_peer_leaving(
+    remote: EndpointId,
+    frame: &crate::proto::node::PeerLeaving,
+) -> Result<EndpointId, ControlFrameError> {
+    if frame.peer_id.as_slice() != remote.as_bytes() {
+        return Err(ControlFrameError::ForgedSender);
+    }
+    let arr: [u8; 32] =
+        frame
+            .peer_id
+            .as_slice()
+            .try_into()
+            .map_err(|_| ControlFrameError::InvalidEndpointId {
+                got: frame.peer_id.len(),
+            })?;
+    let pk =
+        iroh::PublicKey::from_bytes(&arr).map_err(|_| ControlFrameError::InvalidEndpointId {
+            got: frame.peer_id.len(),
+        })?;
+    Ok(EndpointId::from(pk))
+}
 impl Node {
     pub async fn mesh_catalog(&self) -> Vec<String> {
         // Snapshot each lock independently to avoid holding multiple locks.
@@ -352,16 +497,23 @@ impl Node {
         healthy.sort_by_key(|peer| std::cmp::Reverse(affinity_score(peer)));
         deprioritized.sort_by_key(|peer| std::cmp::Reverse(affinity_score(peer)));
         healthy.extend(deprioritized);
+        // The operator's local blocks apply to every routing path that reads
+        // this list; see `network::peer_blocks`.
+        self.peer_blocks
+            .retain_unblocked(&mut healthy, crate::network::peer_blocks::now_ms());
         healthy
     }
 
-    /// Find ANY host in the mesh (fallback when no model match).
+    /// Find ANY host in the mesh (fallback when no model match). Peers the
+    /// operator blocked are never returned.
     pub async fn any_host(&self) -> Option<PeerInfo> {
+        let now_ms = crate::network::peer_blocks::now_ms();
         let state = self.state.lock().await;
         state
             .peers
             .values()
             .filter(|p| is_routing_eligible(p, &state))
+            .filter(|p| !self.peer_blocks.is_blocked(&p.id, now_ms))
             .find(|p| !http_routable_models(p).is_empty())
             .cloned()
     }
@@ -428,6 +580,15 @@ impl Node {
             .filter(|peer| peer.is_admitted())
             .cloned()
             .collect()
+    }
+
+    /// Admitted peers minus the ones the operator stopped routing to. Every
+    /// path that picks a peer to send a request to reads this, not `peers()`.
+    pub(crate) async fn routable_peers(&self) -> Vec<PeerInfo> {
+        let now_ms = crate::network::peer_blocks::now_ms();
+        let mut peers = self.peers().await;
+        peers.retain(|peer| !self.peer_blocks.is_blocked(&peer.id, now_ms));
+        peers
     }
 
     pub(crate) async fn connection_to_peer(&self, peer_id: EndpointId) -> Result<Connection> {

@@ -1,4 +1,4 @@
-use std::io::{Read, Seek, SeekFrom};
+use std::io::{BufReader, Read, Seek};
 use std::path::Path;
 
 mod kv_cache;
@@ -19,6 +19,11 @@ const MAX_GGUF_ARRAY_DEPTH: u32 = 64;
 const MAX_GGUF_TENSOR_DIMS: u32 = 8;
 const MAX_GGUF_HEADER_KV_COUNT: usize = 1_000_000;
 const MAX_GGUF_TENSOR_COUNT: usize = 1_000_000;
+
+/// The scans below parse metadata field by field. Unbuffered, every 4- or
+/// 8-byte field would be its own read syscall (about 200k for a 49k-token
+/// vocabulary).
+type GgufReader = BufReader<std::fs::File>;
 
 /// GGUF value types (matching gguf.h enum).
 #[repr(u32)]
@@ -70,35 +75,31 @@ impl GgufType {
     }
 }
 
-fn read_u32(f: &mut std::fs::File) -> std::io::Result<u32> {
+fn read_u32(f: &mut GgufReader) -> std::io::Result<u32> {
     let mut buf = [0u8; 4];
     f.read_exact(&mut buf)?;
     Ok(u32::from_le_bytes(buf))
 }
 
-fn read_u64(f: &mut std::fs::File) -> std::io::Result<u64> {
+fn read_u64(f: &mut GgufReader) -> std::io::Result<u64> {
     let mut buf = [0u8; 8];
     f.read_exact(&mut buf)?;
     Ok(u64::from_le_bytes(buf))
 }
 
-fn read_i32(f: &mut std::fs::File) -> std::io::Result<i32> {
+fn read_i32(f: &mut GgufReader) -> std::io::Result<i32> {
     let mut buf = [0u8; 4];
     f.read_exact(&mut buf)?;
     Ok(i32::from_le_bytes(buf))
 }
 
-fn read_i64(f: &mut std::fs::File) -> std::io::Result<i64> {
+fn read_i64(f: &mut GgufReader) -> std::io::Result<i64> {
     let mut buf = [0u8; 8];
     f.read_exact(&mut buf)?;
     Ok(i64::from_le_bytes(buf))
 }
 
-fn read_gguf_header_count(
-    f: &mut std::fs::File,
-    max: usize,
-    label: &str,
-) -> std::io::Result<usize> {
+fn read_gguf_header_count(f: &mut GgufReader, max: usize, label: &str) -> std::io::Result<usize> {
     let value = read_i64(f)?;
     let count = usize::try_from(value).map_err(|_| {
         std::io::Error::new(std::io::ErrorKind::InvalidData, format!("negative {label}"))
@@ -112,7 +113,7 @@ fn read_gguf_header_count(
     Ok(count)
 }
 
-fn read_bounded_len(f: &mut std::fs::File, max: u64, label: &str) -> std::io::Result<usize> {
+fn read_bounded_len(f: &mut GgufReader, max: u64, label: &str) -> std::io::Result<usize> {
     let len = read_u64(f)?;
     if len > max {
         return Err(std::io::Error::new(
@@ -128,7 +129,7 @@ fn read_bounded_len(f: &mut std::fs::File, max: u64, label: &str) -> std::io::Re
     })
 }
 
-fn read_gguf_string(f: &mut std::fs::File) -> std::io::Result<String> {
+fn read_gguf_string(f: &mut GgufReader) -> std::io::Result<String> {
     let buf = read_gguf_bytes(f, "string")?;
     String::from_utf8(buf).map_err(|_| {
         std::io::Error::new(
@@ -138,19 +139,19 @@ fn read_gguf_string(f: &mut std::fs::File) -> std::io::Result<String> {
     })
 }
 
-fn read_gguf_bytes(f: &mut std::fs::File, label: &str) -> std::io::Result<Vec<u8>> {
+fn read_gguf_bytes(f: &mut GgufReader, label: &str) -> std::io::Result<Vec<u8>> {
     let len = read_bounded_len(f, MAX_GGUF_STRING_BYTES, label)?;
     let mut buf = vec![0u8; len];
     f.read_exact(&mut buf)?;
     Ok(buf)
 }
 
-fn skip_gguf_value(f: &mut std::fs::File, typ: GgufType) -> std::io::Result<()> {
+fn skip_gguf_value(f: &mut GgufReader, typ: GgufType) -> std::io::Result<()> {
     skip_gguf_value_with_depth(f, typ, 0)
 }
 
 fn skip_gguf_value_with_depth(
-    f: &mut std::fs::File,
+    f: &mut GgufReader,
     typ: GgufType,
     depth: u32,
 ) -> std::io::Result<()> {
@@ -175,13 +176,14 @@ fn skip_gguf_value_with_depth(
         }
         other => {
             let size = other.fixed_size().unwrap_or(0);
-            f.seek(SeekFrom::Current(size as i64))?;
+            // A plain seek would drop the buffer on every skipped element.
+            f.seek_relative(size as i64)?;
         }
     }
     Ok(())
 }
 
-fn read_gguf_value_as_u32(f: &mut std::fs::File, typ: GgufType) -> std::io::Result<Option<u32>> {
+fn read_gguf_value_as_u32(f: &mut GgufReader, typ: GgufType) -> std::io::Result<Option<u32>> {
     match typ {
         GgufType::Uint32 => Ok(Some(read_u32(f)?)),
         GgufType::Int32 => {
@@ -212,7 +214,7 @@ fn read_gguf_value_as_u32(f: &mut std::fs::File, typ: GgufType) -> std::io::Resu
 }
 
 fn read_gguf_value_as_u32_list(
-    f: &mut std::fs::File,
+    f: &mut GgufReader,
     typ: GgufType,
 ) -> std::io::Result<Option<Vec<u32>>> {
     if typ != GgufType::Array {
@@ -234,7 +236,7 @@ fn read_gguf_value_as_u32_list(
     Ok(supported.then_some(values))
 }
 
-fn read_gguf_value_as_f32(f: &mut std::fs::File, typ: GgufType) -> std::io::Result<Option<f32>> {
+fn read_gguf_value_as_f32(f: &mut GgufReader, typ: GgufType) -> std::io::Result<Option<f32>> {
     match typ {
         GgufType::Float32 => {
             let mut buf = [0u8; 4];
@@ -248,7 +250,7 @@ fn read_gguf_value_as_f32(f: &mut std::fs::File, typ: GgufType) -> std::io::Resu
     }
 }
 
-fn read_gguf_value_as_bool(f: &mut std::fs::File, typ: GgufType) -> std::io::Result<Option<bool>> {
+fn read_gguf_value_as_bool(f: &mut GgufReader, typ: GgufType) -> std::io::Result<Option<bool>> {
     if typ == GgufType::Bool {
         let mut value = [0u8; 1];
         f.read_exact(&mut value)?;
@@ -258,7 +260,7 @@ fn read_gguf_value_as_bool(f: &mut std::fs::File, typ: GgufType) -> std::io::Res
 }
 
 fn read_gguf_value_as_bool_list(
-    f: &mut std::fs::File,
+    f: &mut GgufReader,
     typ: GgufType,
 ) -> std::io::Result<Option<Vec<bool>>> {
     if typ != GgufType::Array {
@@ -281,7 +283,7 @@ fn read_gguf_value_as_bool_list(
 }
 
 fn read_gguf_value_as_string_opt(
-    f: &mut std::fs::File,
+    f: &mut GgufReader,
     typ: GgufType,
 ) -> std::io::Result<Option<String>> {
     match typ {
@@ -515,7 +517,7 @@ struct GgufTensorInfo {
 /// Scan a GGUF file header and return compact structural metadata.
 /// Reads only the KV section, never tensor data. Returns None on any parse failure.
 struct GgufHeader {
-    file: std::fs::File,
+    file: GgufReader,
     n_tensors: usize,
     n_kv: usize,
 }
@@ -523,7 +525,7 @@ struct GgufHeader {
 /// Opens `path`, validates the GGUF magic/version, and reads the tensor/KV
 /// header counts shared by every GGUF scan entry point below.
 fn open_gguf_header(path: &Path) -> Option<GgufHeader> {
-    let mut f = std::fs::File::open(path).ok()?;
+    let mut f = BufReader::new(std::fs::File::open(path).ok()?);
 
     let mut magic = [0u8; 4];
     f.read_exact(&mut magic).ok()?;
@@ -547,7 +549,7 @@ fn open_gguf_header(path: &Path) -> Option<GgufHeader> {
 
 /// Skips every KV pair without inspecting keys/values, for scans that only
 /// need the tensor-info table.
-fn skip_all_kv_pairs(f: &mut std::fs::File, n_kv: usize) -> Option<()> {
+fn skip_all_kv_pairs(f: &mut GgufReader, n_kv: usize) -> Option<()> {
     for _ in 0..n_kv {
         let _key = read_gguf_string(f).ok()?;
         let vtype = GgufType::from_u32(read_u32(f).ok()?)?;
@@ -718,7 +720,7 @@ pub fn scan_gguf_projector_meta(path: &Path) -> Option<GgufProjectorMeta> {
     Some(meta)
 }
 
-fn read_string_array(f: &mut std::fs::File, typ: GgufType) -> std::io::Result<Vec<Vec<u8>>> {
+fn read_string_array(f: &mut GgufReader, typ: GgufType) -> std::io::Result<Vec<Vec<u8>>> {
     if typ != GgufType::Array {
         return Err(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
@@ -745,7 +747,7 @@ fn read_string_array(f: &mut std::fs::File, typ: GgufType) -> std::io::Result<Ve
     Ok(tokens)
 }
 
-fn read_token_type_array(f: &mut std::fs::File, typ: GgufType) -> std::io::Result<Vec<u32>> {
+fn read_token_type_array(f: &mut GgufReader, typ: GgufType) -> std::io::Result<Vec<u32>> {
     if typ != GgufType::Array {
         return Err(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
@@ -824,10 +826,7 @@ fn align_offset(value: u64, alignment: u32) -> u64 {
     }
 }
 
-fn read_tensor_infos(
-    f: &mut std::fs::File,
-    n_tensors: usize,
-) -> std::io::Result<Vec<GgufTensorInfo>> {
+fn read_tensor_infos(f: &mut GgufReader, n_tensors: usize) -> std::io::Result<Vec<GgufTensorInfo>> {
     let mut tensors = Vec::new();
     tensors.try_reserve(n_tensors).map_err(|_| {
         std::io::Error::new(
@@ -947,7 +946,7 @@ pub fn scan_gguf_tensor_byte_profile(path: &Path) -> Option<GgufTensorByteProfil
         n_tensors,
         n_kv,
     } = open_gguf_header(path)?;
-    let file_len = f.metadata().ok()?.len();
+    let file_len = f.get_ref().metadata().ok()?.len();
 
     let mut expert_count = 0u32;
     let mut expert_used_count = 0u32;
@@ -1291,7 +1290,7 @@ mod tests {
         bytes.push(0);
 
         let path = write_bytes("skippy-model-artifact-gguf-depth", &bytes);
-        let mut file = std::fs::File::open(&path).unwrap();
+        let mut file = BufReader::new(std::fs::File::open(&path).unwrap());
         let err = skip_gguf_value(&mut file, GgufType::Array).unwrap_err();
         assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
         assert!(err.to_string().contains("nesting too deep"));
@@ -1304,7 +1303,7 @@ mod tests {
         push_array_header(&mut bytes, GgufType::Uint8, MAX_GGUF_ARRAY_ELEMENTS + 1);
 
         let path = write_bytes("skippy-model-artifact-gguf-count", &bytes);
-        let mut file = std::fs::File::open(&path).unwrap();
+        let mut file = BufReader::new(std::fs::File::open(&path).unwrap());
         let err = skip_gguf_value(&mut file, GgufType::Array).unwrap_err();
         assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
         assert!(err.to_string().contains("array too long"));
@@ -1561,7 +1560,7 @@ mod tests {
             "skippy-model-artifact-gguf-negative-int32",
             &(-1i32).to_le_bytes(),
         );
-        let mut file = std::fs::File::open(&path).unwrap();
+        let mut file = BufReader::new(std::fs::File::open(&path).unwrap());
         let err = read_gguf_value_as_u32(&mut file, GgufType::Int32).unwrap_err();
         assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
         assert!(
