@@ -16,8 +16,11 @@ nothing else. The list holds `mesh-llm-plugin`, the crates verified green on
 Windows since, and `mesh-llm-host-runtime` — the shared Windows/macOS owner the
 row already runs, listed so that a change to it selects the row instead of
 leaving Windows unvalidated. It does not select host/native product builds by
-itself. `scripts/tests/test_ci_windows_composition.py` keeps the list, the
-crates the row resolves, and the still-unverified census in agreement.
+itself. `mesh-llm-commands` and `mesh-llm-system` run in their own step with
+`mesh-llm-system/dynamic-native-runtime`, because they reach `skippy-ffi`
+without its dynamic loader and the row prepares no static llama archives.
+`scripts/tests/test_ci_windows_composition.py` keeps the list, the crates the
+row resolves, and the still-unverified census in agreement.
 
 ## Entry workflows
 
