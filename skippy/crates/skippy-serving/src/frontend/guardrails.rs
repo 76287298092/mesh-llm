@@ -1,6 +1,7 @@
 /// Compatibility behavior selected by the embedding application.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum OpenAiGuardrailsMode {
+    #[default]
     Disabled,
     Metrics,
     Enforce,
@@ -39,42 +40,46 @@ pub struct OpenAiGuardrailsConfig {
 }
 
 impl OpenAiGuardrailsConfig {
-    pub fn disabled_for_skippy() -> Self {
+    /// Shared serving policy: automatic chat compaction and operator-selected guardrails.
+    pub fn with_policy(policy: GuardrailPolicyHandle) -> Self {
         Self {
             target: OpenAiGuardrailsTarget::Skippy,
-            policy: GuardrailPolicyHandle::default(),
-            compaction: None,
+            policy,
+            compaction: Some(CompactionConfig {
+                enabled: true,
+                ..CompactionConfig::default()
+            }),
         }
     }
 
+    pub fn disabled_for_skippy() -> Self {
+        Self::with_policy(GuardrailPolicyHandle::default())
+    }
+
     pub fn compatibility_for_skippy() -> Self {
-        Self {
-            target: OpenAiGuardrailsTarget::Skippy,
-            policy: GuardrailPolicy {
+        Self::with_policy(
+            GuardrailPolicy {
                 mode: GuardrailMode::MetricsOnly,
                 apply_to_all_models: true,
                 retry_exhaustion_mode: RetryExhaustionMode::PassLastText,
                 ..GuardrailPolicy::default()
             }
             .into(),
-            compaction: None,
-        }
+        )
     }
 
     pub fn for_standalone_mode(mode: OpenAiGuardrailsMode) -> Self {
         match mode {
             OpenAiGuardrailsMode::Disabled => Self::disabled_for_skippy(),
             OpenAiGuardrailsMode::Metrics => Self::compatibility_for_skippy(),
-            OpenAiGuardrailsMode::Enforce => Self {
-                target: OpenAiGuardrailsTarget::Skippy,
-                policy: GuardrailPolicy {
+            OpenAiGuardrailsMode::Enforce => Self::with_policy(
+                GuardrailPolicy {
                     mode: GuardrailMode::Enforce,
                     apply_to_all_models: true,
                     ..GuardrailPolicy::default()
                 }
                 .into(),
-                compaction: None,
-            },
+            ),
         }
     }
 

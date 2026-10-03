@@ -474,26 +474,26 @@ def launch_cell(
         "--config",
         str(stage0_config),
         *common,
-        "--openai-bind-addr",
+        "--bind-addr",
         f"127.0.0.1:{openai_port}",
-        "--openai-generation-concurrency",
+        "--generation-concurrency",
         str(args.lanes),
-        "--openai-default-max-tokens",
+        "--default-max-tokens",
         str(max(args.anchor_output_tokens, args.prefill_output_tokens)),
-        "--openai-prefill-chunk-policy",
+        "--prefill-chunk-policy",
         "adaptive-ramp",
-        "--openai-prefill-chunk-size",
+        "--prefill-chunk-size",
         str(args.n_ubatch),
-        "--openai-prefill-adaptive-start",
+        "--prefill-adaptive-start",
         str(args.prefill_adaptive_start),
-        "--openai-prefill-adaptive-step",
+        "--prefill-adaptive-step",
         str(args.prefill_adaptive_step),
-        "--openai-prefill-adaptive-max",
+        "--prefill-adaptive-max",
         str(args.prefill_adaptive_max),
     ]
     if version == "new" or not args.adaptive_target_new_only:
         stage0_command.extend(
-            ["--openai-prefill-adaptive-target-ms", str(args.adaptive_target_ms)]
+            ["--prefill-adaptive-target-ms", str(args.adaptive_target_ms)]
         )
     stage1_command = (
         [str(binary), "serve-binary", "--config", str(stage1_config), *common]

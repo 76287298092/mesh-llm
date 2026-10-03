@@ -301,7 +301,7 @@ Near-term work:
 - Calibrate adaptive chunk sizing against the slowest stage. Keep unchunked
   prefill for short prompts, use coarse bounded chunks such as `128` for long
   prompts, bound the next request's chunk duration with
-  `--openai-prefill-adaptive-target-ms`, and use stage compute plus transport
+  `--prefill-adaptive-target-ms`, and use stage compute plus transport
   timing to decide whether the ramp can grow within that ceiling. The
   fixed-size driver remains useful for controls, but it
   leaves asymmetric topologies making decisions from stage0 timing alone.

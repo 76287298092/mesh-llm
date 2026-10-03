@@ -126,7 +126,7 @@ impl Default for SpeculativeDecodeConfig {
             effective_strategy: "disabled".to_string(),
             native_mtp: NativeMtpProposalConfig {
                 enabled: false,
-                max_draft_tokens: 1,
+                max_draft_tokens: skippy_config::local_serving::NATIVE_MTP_DRAFT_TOKENS,
                 min_draft_tokens: 0,
                 reject_cooldown_tokens: 0,
                 suppress_cooldown_drafts: false,
@@ -564,7 +564,7 @@ mod standalone_speculative_config_tests {
     #[test]
     fn ngram_proposal_config_without_kind_defaults_to_cache() {
         // Speculative plans written before the kind field existed omit it; they
-        // must still deserialize (for --openai-speculative-config) as cache.
+        // must still deserialize (for --speculative-config) as cache.
         let json = r#"{"min_ngram":2,"max_ngram":4,"max_proposal_tokens":6}"#;
         let config: NgramProposalConfig =
             serde_json::from_str(json).expect("legacy plan without kind should deserialize");

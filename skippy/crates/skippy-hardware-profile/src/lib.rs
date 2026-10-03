@@ -7,6 +7,7 @@ use std::collections::BTreeSet;
 mod cuda;
 mod environment;
 mod gpu_discovery;
+pub mod model_capacity;
 mod platform;
 mod rocm;
 

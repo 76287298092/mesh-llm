@@ -44,3 +44,10 @@ no downstream peer; split configurations retain embedded stage-zero execution.
 `materialized_cache` owns pin-aware stage-artifact pruning, source-index previews and source-based removal. Every operation takes an explicit cache root. Active pins preserve their artifact and index; removal errors propagate before an index is discarded. Mesh supplies its existing cache directory.
 
 `package::certification` owns two-stage package materialization checks and OpenAI model/chat/Responses smoke gates. The caller supplies the resolved package reference, acquisition policy and optional digest cache. Mesh retains catalog-name lookup. Missing runtime endpoints remain incomplete; package-only runs explicitly mark runtime gates not required.
+
+Shared serving defaults are defined by `SingleStageOptions` and `OpenAiOptions`,
+using [`skippy-config`](../skippy-config/README.md). [`kv_cache`](src/kv_cache.rs)
+owns publisher-declared live-KV dtype selection and model compatibility fallback;
+[`speculative`](src/speculative.rs) owns installed sibling draft discovery and
+conservative automatic pairing. Standalone Skippy and Mesh consume these same
+policies. Explicit caller settings take precedence.

@@ -1,13 +1,12 @@
+use crate::models::capabilities;
+use crate::models::capabilities::ModelCapabilities;
+use crate::models::details::ModelDetails;
+use crate::models::search::{SearchArtifactFilter, SearchHit, SearchSort};
+use crate::models::storage::{DeleteResult as CliDeleteResult, ResolvedModel as CliResolvedModel};
+use crate::models::storage::{huggingface_hub_cache_dir, remote_catalog};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use mesh_llm_host_runtime::command_support::models::{
-    DeleteResult as CliDeleteResult, ResolvedModel as CliResolvedModel,
-};
-use mesh_llm_host_runtime::command_support::models::{
-    ModelCapabilities, ModelDetails, SearchArtifactFilter, SearchHit, SearchSort, capabilities,
-    catalog, huggingface_hub_cache_dir, remote_catalog,
-};
-use mesh_llm_system::hardware;
+
 use serde_json::{Value, json};
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -146,7 +145,7 @@ pub(crate) fn sort_label(sort: SearchSort) -> &'static str {
 }
 
 pub(crate) fn print_json(value: Value) -> Result<()> {
-    let mut out = mesh_llm_events::machine_out();
+    let mut out = crate::models::output::machine_out();
     writeln!(out, "{}", serde_json::to_string_pretty(&value)?)?;
     Ok(())
 }
@@ -215,8 +214,7 @@ pub(crate) fn format_source_label(source: &str) -> &'static str {
 }
 
 pub(crate) fn local_capacity_summary() -> Option<String> {
-    let vram_gb =
-        mesh_llm_system::capacity::local_fit_budget_bytes(&hardware::survey()) as f64 / 1e9;
+    let vram_gb = crate::models::output::fit_budget_bytes() as f64 / 1e9;
     if vram_gb <= 0.0 {
         None
     } else {
@@ -225,7 +223,7 @@ pub(crate) fn local_capacity_summary() -> Option<String> {
 }
 
 pub(crate) fn local_capacity_json() -> Value {
-    let vram_bytes = mesh_llm_system::capacity::local_fit_budget_bytes(&hardware::survey());
+    let vram_bytes = crate::models::output::fit_budget_bytes();
     let vram_gb = vram_bytes as f64 / 1e9;
     json!({
         "vram_bytes": vram_bytes,
@@ -245,9 +243,8 @@ pub(crate) fn capabilities_json(caps: ModelCapabilities) -> Value {
 }
 
 pub(crate) fn fit_code_for_size_label(size_label: &str) -> Option<&'static str> {
-    let model_gb = catalog::parse_size_gb(size_label);
-    let vram_gb =
-        mesh_llm_system::capacity::local_fit_budget_bytes(&hardware::survey()) as f64 / 1e9;
+    let model_gb = skippy_model_artifact::sizes::parse_size_gb(size_label);
+    let vram_gb = crate::models::output::fit_budget_bytes() as f64 / 1e9;
     if model_gb <= 0.0 || vram_gb <= 0.0 {
         return None;
     }
@@ -265,9 +262,8 @@ pub(crate) fn fit_code_for_size_label(size_label: &str) -> Option<&'static str> 
 }
 
 pub(crate) fn fit_hint_for_size_label(size_label: &str) -> Option<String> {
-    let model_gb = catalog::parse_size_gb(size_label);
-    let vram_gb =
-        mesh_llm_system::capacity::local_fit_budget_bytes(&hardware::survey()) as f64 / 1e9;
+    let model_gb = skippy_model_artifact::sizes::parse_size_gb(size_label);
+    let vram_gb = crate::models::output::fit_budget_bytes() as f64 / 1e9;
     if model_gb <= 0.0 || vram_gb <= 0.0 {
         return None;
     }

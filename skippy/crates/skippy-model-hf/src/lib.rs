@@ -138,6 +138,14 @@ impl HfModelRepository {
     }
 }
 
+/// Build the authenticated, cache-aware Hub client for asynchronous workflows.
+pub fn build_hf_async_api() -> Result<HFClient> {
+    Ok(HfModelRepository::builder()
+        .cache_dir(huggingface_hub_cache_dir())
+        .build()?
+        .api)
+}
+
 /// Build the same authenticated, cache-aware Hub client for blocking workflows.
 pub fn build_hf_sync_api() -> Result<HFClientSync> {
     build_hf_sync_api_in(&huggingface_hub_cache_dir())

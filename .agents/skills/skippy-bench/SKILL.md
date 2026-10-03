@@ -126,7 +126,7 @@ used for completion, while preserving caller-provided `EVAL_LLM_*` overrides
 for judge-model runs. When validating with a very small local Skippy model, run
 completion against the normal compatibility endpoint and point `EVAL_LLM_*` at
 a separate strict structured-output scorer endpoint, for example a second
-`skippy-serving serve-openai --openai-guardrails enforce` process; do not patch
+`skippy-serving serve-openai --guardrails enforce` process; do not patch
 or post-process the MCP scorer. For resumed operator runs, set
 `MCP_ATLAS_COMPLETION_OUTPUT_NAME` to an existing upstream
 `completion_results/*.csv` basename so the native completion script can reuse

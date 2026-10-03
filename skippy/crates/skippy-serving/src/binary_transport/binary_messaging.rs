@@ -540,7 +540,7 @@ fn run_binary_stage(
     let mut frontend_task = None;
     if let Some(openai_options) = openai {
         if config.stage_index != 0 || config.layer_start != 0 {
-            bail!("--openai-bind-addr is only supported on stage 0");
+            bail!("--bind-addr is only supported on stage 0");
         }
         let openai_config = config.clone();
         let openai_runtime = runtime.clone();

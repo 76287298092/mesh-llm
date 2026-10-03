@@ -1,3 +1,6 @@
+pub mod capabilities;
+pub mod sizes;
+
 pub mod checkpoint;
 pub mod gguf;
 pub mod selection;

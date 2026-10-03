@@ -1,8 +1,8 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::{Result, bail};
+use skippy_api::speculative::{discover_sibling_draft_model, incompatible_draft_pair_reason};
 use skippy_config::speculative::validate_draft_min_max;
-use skippy_model_artifact::gguf::scan_gguf_compact_meta;
 use skippy_model_hf::store::local::find_model_path;
 use skippy_runtime::package::{
     PackageExtensionPolicyInfo, PackageGenerationInfo, PackageSpeculativeDecodingInfo,
@@ -82,7 +82,7 @@ pub(super) fn resolve_speculative_config(
     );
     if (mode == "draft" || (mode == "auto" && draft_model_path.is_some())) && draft_max_tokens == 0
     {
-        draft_max_tokens = 3;
+        draft_max_tokens = skippy_config::local_serving::DRAFT_MODEL_TOKENS as u32;
     }
     let draft_min_tokens = super::support::pick_value(
         model_config.and_then(|config| config.draft_min_tokens),
@@ -740,20 +740,9 @@ fn strategy_uses_native_mtp(
     }
 }
 
-/// Default native-MTP proposal window when the operator sets no bound.
-///
-/// Depth 1 is the only depth measured to be a win. On Qwen3.8-27B-UD-Q4_K_XL
-/// (RTX 5090, CUDA 13, 8192 ctx) depth 1 reached 42.751 tok/s against a
-/// 37.503 tok/s speculation-disabled control (+14.0%), while depth 3 reached
-/// 37.938 tok/s (+1.16% over control, 11.3% *slower* than depth 1): the extra
-/// proposal compute is paid without a correspondingly longer verified window.
-/// Raise this only when the verify-window sizing (`n_rs_seq`) makes deeper
-/// drafts reachable and a re-measurement shows depth > 1 beating depth 1.
-const NATIVE_MTP_DEFAULT_DRAFT_MAX_TOKENS: u32 = 1;
-
 fn resolved_draft_max_tokens(native_mtp_enabled: bool, draft_max_tokens: u32) -> u32 {
     if native_mtp_enabled && draft_max_tokens == 0 {
-        return NATIVE_MTP_DEFAULT_DRAFT_MAX_TOKENS;
+        return skippy_config::local_serving::NATIVE_MTP_DRAFT_TOKENS as u32;
     }
     draft_max_tokens
 }
@@ -771,30 +760,6 @@ fn resolve_draft_model_path(raw: String) -> String {
         return candidate.to_string_lossy().into_owned();
     }
     raw
-}
-
-fn discover_sibling_draft_model(model_path: &Path) -> Option<PathBuf> {
-    let mut candidates = std::fs::read_dir(model_path.parent()?)
-        .ok()?
-        .filter_map(Result::ok)
-        .map(|entry| entry.path())
-        .filter(|path| path != model_path)
-        .filter(|path| {
-            path.extension()
-                .and_then(|extension| extension.to_str())
-                .is_some_and(|extension| extension.eq_ignore_ascii_case("gguf"))
-        })
-        .filter(|path| {
-            path.file_name()
-                .and_then(|name| name.to_str())
-                .is_some_and(|name| {
-                    let name = name.to_ascii_lowercase();
-                    name.contains("draft") || name.contains("eagle")
-                })
-        })
-        .collect::<Vec<_>>();
-    candidates.sort();
-    candidates.into_iter().next()
 }
 
 fn resolve_draft_speculative_mode(
@@ -880,32 +845,4 @@ fn direct_gguf_supports_native_mtp(model_path: &Path) -> bool {
 
 fn normalize_pairing_fault(value: &str) -> String {
     value.replace('-', "_")
-}
-
-fn incompatible_draft_pair_reason(model_path: &Path, draft_model_path: &Path) -> Option<String> {
-    let target_architecture = model_architecture_from_path(model_path);
-    let draft_architecture = model_architecture_from_path(draft_model_path);
-    match (target_architecture, draft_architecture) {
-        (None, None) => {
-            Some("target and draft model architecture metadata is unavailable".to_string())
-        }
-        (None, Some(_)) => Some("target model architecture metadata is unavailable".to_string()),
-        (Some(_), None) => Some("draft model architecture metadata is unavailable".to_string()),
-        (Some(target), Some(draft)) if target != draft => Some(format!(
-            "target architecture {target} does not match draft architecture {draft}"
-        )),
-        _ => None,
-    }
-}
-
-fn model_architecture_from_path(path: &Path) -> Option<String> {
-    scan_gguf_compact_meta(path)
-        .or_else(|| scan_gguf_compact_meta(&path.join("shared/metadata.gguf")))
-        .map(|meta| {
-            meta.architecture
-                .trim()
-                .to_ascii_lowercase()
-                .replace('-', "_")
-        })
-        .filter(|architecture| !architecture.is_empty())
 }

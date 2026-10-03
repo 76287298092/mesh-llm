@@ -292,3 +292,25 @@ async fn compaction_and_guardrails_can_stack() {
     assert_eq!(seen.messages[0].role, "system");
     assert!(seen.messages.iter().all(|message| message.role != "tool"));
 }
+
+#[test]
+fn serving_defaults_preserve_chat_compaction_for_every_guardrail_mode() {
+    use crate::frontend::OpenAiGuardrailsMode;
+    assert_eq!(
+        OpenAiGuardrailsMode::default(),
+        OpenAiGuardrailsMode::Disabled
+    );
+    for mode in [
+        OpenAiGuardrailsMode::Disabled,
+        OpenAiGuardrailsMode::Metrics,
+        OpenAiGuardrailsMode::Enforce,
+    ] {
+        let config = OpenAiGuardrailsConfig::for_standalone_mode(mode);
+        assert!(config.compaction.unwrap().enabled);
+    }
+    let default = OpenAiGuardrailsConfig::disabled_for_skippy();
+    assert_eq!(
+        default,
+        OpenAiGuardrailsConfig::for_standalone_mode(OpenAiGuardrailsMode::default())
+    );
+}

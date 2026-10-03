@@ -1,10 +1,7 @@
 use anyhow::{Result, bail};
-use skippy_protocol::{FlashAttentionType, StageKvCacheMode, StageKvCachePayload};
+use skippy_protocol::{StageKvCacheMode, StageKvCachePayload};
 
-use super::types::{
-    BUILTIN_BATCH, BUILTIN_PARALLEL, BUILTIN_UBATCH, ResolvedStageKvCache,
-    ResolvedStageKvCacheTemplate,
-};
+use super::types::{ResolvedStageKvCache, ResolvedStageKvCacheTemplate};
 use mesh_llm_config::{
     BoolOrAuto, HardwareConfig, IntegerOrString, ModelConfigDefaults, ModelFitConfig, SkippyConfig,
     StringOrStringList,
@@ -35,17 +32,9 @@ pub fn effective_safety_margin_bytes(defaults: Option<&ModelConfigDefaults>) -> 
     )
 }
 
-pub(super) fn effective_flash_attention(cache_type_v: &str) -> FlashAttentionType {
-    if cache_type_v.eq_ignore_ascii_case("f16") {
-        FlashAttentionType::Auto
-    } else {
-        FlashAttentionType::Enabled
-    }
-}
-
 pub(super) fn resolve_prefill_chunk_policy(value: &str) -> String {
     if value.eq_ignore_ascii_case("auto") {
-        "fixed".to_string()
+        skippy_config::local_serving::PREFILL_CHUNK_POLICY.to_string()
     } else {
         value.to_string()
     }
@@ -178,13 +167,6 @@ pub(super) fn resolve_prefix_cache(
     ))
 }
 
-pub(super) struct ThroughputMacroDefaults {
-    pub(super) batch: Option<u32>,
-    pub(super) ubatch: Option<u32>,
-    pub(super) parallel: Option<usize>,
-    pub(super) continuous_batching: Option<String>,
-}
-
 pub(super) fn resolve_field_value<T: Copy>(
     per_model_explicit: Option<T>,
     per_model_macro: Option<T>,
@@ -212,29 +194,6 @@ pub(super) fn resolve_field_string(
         .or(global_macro)
         .unwrap_or(builtin)
         .to_string()
-}
-
-pub(super) fn throughput_macro_defaults(policy: &str) -> ThroughputMacroDefaults {
-    match policy {
-        "throughput" => ThroughputMacroDefaults {
-            batch: Some(BUILTIN_BATCH * 2),
-            ubatch: Some(BUILTIN_UBATCH * 2),
-            parallel: Some(2),
-            continuous_batching: Some("true".to_string()),
-        },
-        "saver" => ThroughputMacroDefaults {
-            batch: Some(BUILTIN_BATCH / 2),
-            ubatch: Some(BUILTIN_UBATCH / 2),
-            parallel: Some(1),
-            continuous_batching: Some("false".to_string()),
-        },
-        _ => ThroughputMacroDefaults {
-            batch: Some(BUILTIN_BATCH),
-            ubatch: Some(BUILTIN_UBATCH),
-            parallel: Some(BUILTIN_PARALLEL),
-            continuous_batching: Some("auto".to_string()),
-        },
-    }
 }
 
 pub(super) fn parse_gpu_layers(

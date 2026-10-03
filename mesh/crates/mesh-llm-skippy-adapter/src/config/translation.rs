@@ -28,6 +28,32 @@ use super::types::{
 
 const MAX_CHAT_TEMPLATE_BYTES: u64 = 1024 * 1024;
 
+fn resolve_dry_sampling(
+    dry: &mesh_llm_config::DrySamplingConfig,
+) -> skippy_runtime::DrySamplingConfig {
+    let defaults = skippy_runtime::SamplingConfig::default().dry;
+    skippy_runtime::DrySamplingConfig {
+        multiplier: dry.multiplier.unwrap_or(f64::from(defaults.multiplier)) as f32,
+        base: dry.base.unwrap_or(f64::from(defaults.base)) as f32,
+        allowed_length: dry.allowed_length.unwrap_or(defaults.allowed_length),
+        penalty_last_n: dry.penalty_last_n.unwrap_or(defaults.penalty_last_n),
+        sequence_breakers: dry
+            .sequence_breakers
+            .clone()
+            .unwrap_or(defaults.sequence_breakers),
+    }
+}
+
+fn resolve_xtc_sampling(
+    xtc: &mesh_llm_config::XtcSamplingConfig,
+) -> skippy_runtime::XtcSamplingConfig {
+    let defaults = skippy_runtime::SamplingConfig::default().xtc;
+    skippy_runtime::XtcSamplingConfig {
+        probability: xtc.probability.unwrap_or(f64::from(defaults.probability)) as f32,
+        threshold: xtc.threshold.unwrap_or(f64::from(defaults.threshold)) as f32,
+    }
+}
+
 fn read_chat_template(path: &str) -> Result<String> {
     let file = std::fs::File::open(path)
         .with_context(|| format!("open request_defaults.chat_template_file {path}"))?;
@@ -297,23 +323,8 @@ impl ResolvedSkippyConfig {
                     .request_defaults
                     .dynatemp_exponent
                     .map(|value| value as f32),
-                dry: self.request_defaults.dry.as_ref().map(|dry| {
-                    skippy_runtime::DrySamplingConfig {
-                        multiplier: dry.multiplier.unwrap_or(0.0) as f32,
-                        base: dry.base.unwrap_or(1.75) as f32,
-                        allowed_length: dry.allowed_length.unwrap_or(2),
-                        penalty_last_n: dry.penalty_last_n.unwrap_or(64),
-                        sequence_breakers: dry.sequence_breakers.clone().unwrap_or_else(|| {
-                            vec!["\n".into(), ":".into(), "\"".into(), "*".into()]
-                        }),
-                    }
-                }),
-                xtc: self.request_defaults.xtc.as_ref().map(|xtc| {
-                    skippy_runtime::XtcSamplingConfig {
-                        probability: xtc.probability.unwrap_or(0.0) as f32,
-                        threshold: xtc.threshold.unwrap_or(0.1) as f32,
-                    }
-                }),
+                dry: self.request_defaults.dry.as_ref().map(resolve_dry_sampling),
+                xtc: self.request_defaults.xtc.as_ref().map(resolve_xtc_sampling),
                 mirostat_mode: self
                     .request_defaults
                     .mirostat_mode
@@ -410,7 +421,8 @@ impl ResolvedSkippyConfig {
             native_mtp_min_tokens: self.speculative.decode.native_mtp.min_draft_tokens,
             activation_width,
             reply_credit_limit: None,
-            downstream_connect_timeout_secs: 30,
+            downstream_connect_timeout_secs:
+                skippy_config::local_serving::DOWNSTREAM_CONNECT_TIMEOUT_SECS,
         })
     }
 

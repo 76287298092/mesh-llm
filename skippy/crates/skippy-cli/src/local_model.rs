@@ -29,13 +29,11 @@ pub(crate) fn prepare_openai_stage(args: &ServeOpenAiArgs) -> Result<StageConfig
                     .to_string()
             });
             let mut options = SingleStageOptions::new(&model_id, &path);
-            options.ctx_size = args
-                .ctx_size
-                .unwrap_or(skippy_config::local_serving::CTX_SIZE);
-            options.n_gpu_layers = args.n_gpu_layers.unwrap_or(-1);
+            options.ctx_size = args.ctx_size.unwrap_or(options.ctx_size);
+            options.n_gpu_layers = args.n_gpu_layers.unwrap_or(options.n_gpu_layers);
             options.generation_concurrency = args
                 .generation_concurrency
-                .unwrap_or(skippy_config::local_serving::PARALLEL);
+                .unwrap_or(options.generation_concurrency);
             options.checkpoint_quantization = args.checkpoint_quantization.clone();
             options.native_mtp_enabled = skippy_model_artifact::gguf::supports_native_mtp(&path);
             options.checkpoint_imatrix = args

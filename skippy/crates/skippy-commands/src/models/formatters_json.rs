@@ -4,15 +4,16 @@ use super::formatters::{
     fit_code_for_size_label, format_installed_size, huggingface_cache_dir,
     installed_model_kind_code, local_capacity_json, model_kind_code, print_json,
 };
-use anyhow::Result;
-use mesh_llm_host_runtime::command_support::models::{
-    DeleteResult as CliDeleteResult, ResolvedModel as CliResolvedModel,
+use crate::models::details::{
+    ModelDetails, remote_catalog_model_draft_ref, remote_catalog_model_ref,
 };
-use mesh_llm_host_runtime::command_support::models::{
-    ModelDetails, SearchArtifactFilter, SearchHit, SearchSort, remote_catalog,
-    remote_catalog_model_draft_ref, remote_catalog_model_ref, search_catalog_json_payload,
+use crate::models::search::{
+    SearchArtifactFilter, SearchHit, SearchSort, search_catalog_json_payload,
     search_huggingface_json_payload,
 };
+use crate::models::storage::remote_catalog;
+use crate::models::storage::{DeleteResult as CliDeleteResult, ResolvedModel as CliResolvedModel};
+use anyhow::Result;
 use serde_json::{Value, json};
 use std::path::Path;
 
@@ -151,8 +152,8 @@ impl ModelsFormatter for JsonFormatter {
                     "draft": remote_catalog_model_draft_ref(model),
                     "type": catalog_model_kind_code(model),
                     "ref": model_ref,
-                    "show": format!("mesh-llm models show {model_ref}"),
-                    "download": format!("mesh-llm models download {model_ref}"),
+                    "show": format!("{program} models show {model_ref}", program = crate::models::output::program()),
+                    "download": format!("{program} models download {model_ref}", program = crate::models::output::program()),
                     "capabilities": capabilities_json(model_capabilities),
                 })
             })
@@ -268,8 +269,8 @@ impl ModelsFormatter for JsonFormatter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::commands::models::formatters::DownloadRenderInput;
-    use mesh_llm_host_runtime::command_support::models::ModelCapabilities;
+    use crate::models::capabilities::ModelCapabilities;
+    use crate::models::formatters::DownloadRenderInput;
     use std::path::Path;
 
     #[test]

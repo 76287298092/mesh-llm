@@ -103,7 +103,7 @@ skippy-serving serve --config stage.json
 skippy-serving serve-binary --config stage.json
 skippy-serving serve-openai --config stage.json --bind-addr 127.0.0.1:9337
 skippy-serving --runtime-bundle /path/to/runtime serve-openai --model-path /models/model.gguf --model-id local-model --ctx-size 4096
-skippy-serving serve-binary --config stage-0.json --topology topology.json --openai-bind-addr 127.0.0.1:9337 --generation-concurrency 1
+skippy-serving serve-binary --config stage-0.json --topology topology.json --bind-addr 127.0.0.1:9337 --generation-concurrency 1
 ```
 
 `serve-openai --model-path` prepares a local GGUF (including multipart sources)
@@ -183,7 +183,7 @@ deadline handling.
   embeddings, rerank, and audio endpoints using the shared `skippy-inference-api`
   crate for a local
   final/single-stage config with no downstream peer. Split serving uses
-  embedded stage-0 OpenAI serving from `serve-binary --openai-bind-addr` because
+  embedded stage-0 OpenAI serving from `serve-binary --bind-addr` because
   prediction returns flow directly from the final stage to stage 0.
   The older standalone `serve-openai --first-stage-addr` adapter is no longer
   supported. `--model-id` is the exact served model id to advertise
@@ -201,8 +201,7 @@ deadline handling.
   legitimate prompt-sized prefill is therefore not killed by the queue-wait
   bound; when the work deadline does expire the request fails with a
   `timeout` error frame in the stream, not an empty response. Embedded serving
-  exposes the same controls with the
-  `--openai-` prefix. Keep all three explicit in benchmark reports because
+  exposes the same controls. Keep all three explicit in benchmark reports because
   they determine active execution, overload behavior, and tail latency.
 - `serve-openai` and embedded stage-0 OpenAI serving emit OpenAI-surface
   telemetry when `--metrics-otlp-grpc` and `--telemetry-level debug` are set.
@@ -224,7 +223,7 @@ deadline handling.
   experimental TCQ/TurboQuant cache lane is documented as benchmark evidence
   but is not built into this tree.
 - Embedded stage-0 OpenAI serving preconnects a persistent downstream lane pool
-  sized to `--openai-generation-concurrency`. Each request leases one live
+  sized to `--generation-concurrency`. Each request leases one live
   stage0-to-stage1 stream for its full prefill/decode/stop sequence, then
   returns it to the pool; non-final binary stages keep their matching
   downstream streams open for the lifetime of that lane. `Stop` resets the
@@ -240,20 +239,20 @@ deadline handling.
   not restore or retain the removed decode batchers. Scheduler startup
   telemetry records `skippy.scheduler.safe_mode` and the bounded command-queue
   capacity so operators can verify the effective mode.
-- `--openai-prefill-chunk-policy` selects fixed, scheduled, or adaptive stage0
+- `--prefill-chunk-policy` selects fixed, scheduled, or adaptive stage0
   prefill chunking without changing the default fixed
-  `--openai-prefill-chunk-size`. Passing `--openai-prefill-chunk-schedule`
+  `--prefill-chunk-size`. Passing `--prefill-chunk-schedule`
   keeps the legacy schedule behavior, for example `128,256,384` uses `128` for
   the first prefill chunk, `256` for the second, and repeats `384` afterward.
-  `adaptive-ramp` starts at `--openai-prefill-adaptive-start`, grows by
-  `--openai-prefill-adaptive-step` up to `--openai-prefill-adaptive-max` when
+  `adaptive-ramp` starts at `--prefill-adaptive-start`, grows by
+  `--prefill-adaptive-step` up to `--prefill-adaptive-max` when
   downstream transport is hidden under the slowest measured stage, and backs
   off when transport is exposed. Each stage folds its maximum prefill compute
   sample into the deferred ACK statistics; stage0 combines those samples with
   its own compute/write/wait timing, updates a lane-pool EWMA, and seeds the
   next request from that calibrated bottleneck. The measured slowest-stage
   token rate derives a chunk ceiling for
-  `--openai-prefill-adaptive-target-ms` (100 ms by default), rounded down to an
+  `--prefill-adaptive-target-ms` (100 ms by default), rounded down to an
   adaptive step. The configured start is the minimum feasible chunk and
   `adaptive_max` remains the hard starvation ceiling, so calibration cannot
   weaken the scheduler's bounded-prefill decode-progress guarantee. Prefill
@@ -261,8 +260,8 @@ deadline handling.
   policy, schedule/adaptive knobs, min/max observed chunk sizes, bottleneck
   stage, bottleneck duration, and transport-to-compute ratios.
 - Embedded stage-0 OpenAI serving can run neural draft speculative decoding with
-  `--openai-draft-model-path`, `--openai-speculative-window`, and
-  `--openai-adaptive-speculative-window`. The draft model runs locally in the
+  `--draft-model-path`, `--speculative-window`, and
+  `--adaptive-speculative-window`. The draft model runs locally in the
   stage0 process as a complete model without stage tensor filtering, and
   proposal windows are verified through the existing staged `VerifyWindow` binary
   request. Rejected suffixes are resolved by the next message's absolute

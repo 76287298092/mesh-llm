@@ -29,15 +29,15 @@ pub fn stage_http_options(args: ServeArgs) -> Result<StageHttpOptions> {
 }
 pub fn binary_stage_options(args: ServeBinaryArgs) -> Result<BinaryStageOptions> {
     if args.openai_generation_concurrency == Some(0) {
-        bail!("--openai-generation-concurrency must be greater than zero");
+        bail!("--generation-concurrency must be greater than zero");
     }
     if args.openai_prefill_chunk_size == 0 {
-        bail!("--openai-prefill-chunk-size must be greater than zero");
+        bail!("--prefill-chunk-size must be greater than zero");
     }
     if !args.openai_prefill_adaptive_target_ms.is_finite()
         || args.openai_prefill_adaptive_target_ms <= 0.0
     {
-        bail!("--openai-prefill-adaptive-target-ms must be finite and greater than zero");
+        bail!("--prefill-adaptive-target-ms must be finite and greater than zero");
     }
     let downstream_wire_condition = WireCondition::with_jitter(
         args.downstream_wire_delay_ms,
@@ -46,7 +46,7 @@ pub fn binary_stage_options(args: ServeBinaryArgs) -> Result<BinaryStageOptions>
         args.downstream_wire_stall_ms,
         args.downstream_wire_stall_p,
     )?;
-    let config = load_json::<StageConfig>(&args.config)
+    let mut config = load_json::<StageConfig>(&args.config)
         .with_context(|| format!("load stage config {}", args.config.display()))?;
     let topology = match args.topology.as_ref() {
         Some(path) => Some(
@@ -70,18 +70,20 @@ pub fn binary_stage_options(args: ServeBinaryArgs) -> Result<BinaryStageOptions>
             args.openai_adaptive_generation_concurrency,
             args.openai_adaptive_generation_min_concurrency,
             openai_generation_concurrency,
-            "--openai-adaptive-generation-min-concurrency",
+            "--adaptive-generation-min-concurrency",
         )?;
+    let defaults = binary_frontend_defaults(&args, &config, openai_generation_concurrency);
     let openai_speculative: SpeculativeDecodeConfig = args
         .openai_speculative_config
         .as_ref()
         .map(load_json)
         .transpose()
-        .context("load --openai-speculative-config")?
-        .unwrap_or_default();
+        .context("load --speculative-config")?
+        .unwrap_or(defaults.speculative);
     openai_speculative.validate()?;
+    config.native_mtp_enabled = openai_speculative.native_mtp.enabled;
     if openai_speculative.ngram_fallback_draft && args.openai_draft_model_path.is_none() {
-        bail!("ngram_fallback_draft requires --openai-draft-model-path");
+        bail!("ngram_fallback_draft requires --draft-model-path");
     }
     let openai_bind_addr = if args.worker_only {
         None
@@ -92,6 +94,8 @@ pub fn binary_stage_options(args: ServeBinaryArgs) -> Result<BinaryStageOptions>
                 .flatten()
         })
     };
+    let adaptive_draft =
+        args.openai_draft_model_path.is_some() || defaults.adaptive_speculative_window;
     let openai = openai_bind_addr.map(|bind_addr| EmbeddedOpenAiStageOptions {
         bind_addr,
         model_id: args.openai_model_id,
@@ -108,13 +112,15 @@ pub fn binary_stage_options(args: ServeBinaryArgs) -> Result<BinaryStageOptions>
         prefill_adaptive_step: args.openai_prefill_adaptive_step,
         prefill_adaptive_max: args.openai_prefill_adaptive_max,
         prefill_adaptive_target_ms: args.openai_prefill_adaptive_target_ms,
-        draft_model_path: args.openai_draft_model_path,
+        draft_model_path: args.openai_draft_model_path.or(defaults.draft_model_path),
         speculative_window: args.openai_speculative_window,
-        adaptive_speculative_window: args.openai_adaptive_speculative_window,
+        adaptive_speculative_window: args.openai_adaptive_speculative_window || adaptive_draft,
         draft_n_gpu_layers: args.openai_draft_n_gpu_layers,
-        native_mtp_draft_model_path: args.openai_native_mtp_draft_model_path,
-        native_mtp_max_tokens: 3,
-        native_mtp_min_tokens: 0,
+        native_mtp_draft_model_path: args
+            .openai_native_mtp_draft_model_path
+            .or(defaults.native_mtp_draft_model_path),
+        native_mtp_max_tokens: openai_speculative.native_mtp.max_draft_tokens,
+        native_mtp_min_tokens: openai_speculative.native_mtp.min_draft_tokens,
         speculative: openai_speculative,
     });
     let native_mtp_enabled = config.native_mtp_enabled;
@@ -131,11 +137,38 @@ pub fn binary_stage_options(args: ServeBinaryArgs) -> Result<BinaryStageOptions>
         downstream_wire_condition,
         downstream_connect_timeout_secs: args.downstream_connect_timeout_secs,
         native_mtp_enabled,
-        continuous_batching: true,
+        continuous_batching: skippy_config::local_serving::CONTINUOUS_BATCHING,
         compute_meter: None,
         openai,
         l3_manager: None,
     })
+}
+
+fn binary_frontend_defaults(
+    args: &ServeBinaryArgs,
+    config: &StageConfig,
+    generation_concurrency: usize,
+) -> skippy_api::serving::OpenAiOptions {
+    let mut defaults = skippy_api::serving::OpenAiOptions::embedded_stage_defaults(
+        args.openai_model_id.clone(),
+        args.openai_default_max_tokens,
+        generation_concurrency,
+        0,
+        config.native_mtp_enabled,
+    );
+    if !args.worker_only
+        && config.stage_index == 0
+        && args.openai_speculative_config.is_none()
+        && args.openai_draft_model_path.is_none()
+        && args.openai_native_mtp_draft_model_path.is_none()
+        && let Some(path) = config
+            .source_model_path
+            .as_deref()
+            .or(config.model_path.as_deref())
+    {
+        skippy_api::speculative::apply_auto_speculation(&mut defaults, std::path::Path::new(path));
+    }
+    defaults
 }
 
 pub fn local_openai_options(
@@ -240,6 +273,7 @@ mod tests {
         let Command::Serve(mut args) = cli.command else {
             panic!("expected serve command");
         };
+        crate::serve::apply_public_frontend_tuning(&args.public, &mut args.stage);
         args.stage.config = args.public.config.expect("stage config");
         args.stage.api_bind_addr = Some(
             args.public
@@ -300,6 +334,29 @@ mod tests {
         }
     }
 
+    #[test]
+    fn worker_stages_preserve_configured_speculation_without_sibling_discovery() {
+        for (worker_only, stage_index) in [(true, 0), (false, 1)] {
+            let directory = tempfile::tempdir().unwrap();
+            let target = directory.path().join("model.gguf");
+            // Unknown architecture metadata would disable frontend auto speculation.
+            fs::write(directory.path().join("draft.gguf"), []).unwrap();
+            let mut config = stage_config();
+            config.stage_index = stage_index;
+            config.model_path = Some(target.to_string_lossy().into_owned());
+            let cli = Cli::try_parse_from(["skippy", "serve", "--model", "model.gguf"]).unwrap();
+            let Command::Serve(mut args) = cli.command else {
+                panic!("expected serve");
+            };
+            args.stage.worker_only = worker_only;
+            let defaults = binary_frontend_defaults(&args.stage, &config, 1);
+            assert!(defaults.native_mtp_enabled);
+            assert!(defaults.speculative.native_mtp.enabled);
+            assert!(defaults.draft_model_path.is_none());
+            assert!(defaults.native_mtp_draft_model_path.is_none());
+        }
+    }
+
     fn cache_composite_plan() -> SpeculativeDecodeConfig {
         SpeculativeDecodeConfig {
             requested_strategy: "mtp-cache".to_string(),
@@ -353,9 +410,9 @@ mod tests {
             stage_path.to_str().expect("UTF-8 stage path"),
             "--stage-transport",
             "binary",
-            "--openai-bind-addr",
+            "--bind-addr",
             "127.0.0.1:9337",
-            "--openai-speculative-config",
+            "--speculative-config",
             plan_path.to_str().expect("UTF-8 plan path"),
         ])
         .expect("parse binary stage CLI");
@@ -389,13 +446,13 @@ mod tests {
             stage_path.to_str().expect("UTF-8 stage path"),
             "--stage-transport",
             "binary",
-            "--openai-bind-addr",
+            "--bind-addr",
             "127.0.0.1:9337",
-            "--openai-generation-concurrency",
+            "--generation-concurrency",
             "2",
-            "--openai-generation-queue-capacity",
+            "--generation-queue-capacity",
             "33",
-            "--openai-generation-admission-timeout-secs",
+            "--generation-admission-timeout-secs",
             "90",
         ])
         .expect("parse binary stage CLI");
@@ -434,11 +491,11 @@ mod tests {
             stage_path.to_str().expect("UTF-8 stage path"),
             "--stage-transport",
             "binary",
-            "--openai-bind-addr",
+            "--bind-addr",
             "127.0.0.1:9337",
-            "--openai-speculative-config",
+            "--speculative-config",
             plan_path.to_str().expect("UTF-8 speculative path"),
-            "--openai-native-mtp-draft-model-path",
+            "--native-mtp-draft-model-path",
             sidecar_path.to_str().expect("UTF-8 sidecar path"),
         ])
         .expect("parse binary stage CLI");
@@ -513,9 +570,9 @@ mod tests {
             stage_path.to_str().expect("UTF-8 stage path"),
             "--stage-transport",
             "binary",
-            "--openai-bind-addr",
+            "--bind-addr",
             "127.0.0.1:9337",
-            "--openai-speculative-config",
+            "--speculative-config",
             plan_path.to_str().expect("UTF-8 speculative path"),
         ])
         .expect("parse binary stage CLI");
@@ -524,6 +581,6 @@ mod tests {
             Err(error) => error.to_string(),
         };
 
-        assert!(error.contains("requires --openai-draft-model-path"));
+        assert!(error.contains("requires --draft-model-path"));
     }
 }

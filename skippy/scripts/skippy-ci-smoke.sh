@@ -718,7 +718,7 @@ LLAMA_STAGE_BUILD_DIR="$LLAMA_BUILD_DIR" \
   "$STAGE_SERVER_BIN" serve-binary \
     --config "$PROMPT_CONFIG" \
     --max-inflight 4 \
-    --openai-bind-addr "127.0.0.1:${PROMPT_OPENAI_PORT}" \
+    --bind-addr "127.0.0.1:${PROMPT_OPENAI_PORT}" \
     >"$PROMPT_LOG" 2>&1 &
 SERVER_PID="$!"
 if ! wait_for_tcp "127.0.0.1" "$PROMPT_PORT" "$SERVER_PID"; then

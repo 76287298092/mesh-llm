@@ -349,9 +349,9 @@ fn spawn_prefix_hit_stage(
         "debug",
     ]);
     if let Some(openai_bind_addr) = openai_bind_addr {
-        command.args(["--openai-bind-addr", &openai_bind_addr.to_string()]);
-        command.args(["--openai-prefill-chunk-policy", "fixed"]);
-        command.args(["--openai-prefill-chunk-size", "4096"]);
+        command.args(["--bind-addr", &openai_bind_addr.to_string()]);
+        command.args(["--prefill-chunk-policy", "fixed"]);
+        command.args(["--prefill-chunk-size", "4096"]);
     }
     command.env("SKIPPY_TELEMETRY_STDERR", "1");
     if cache_enabled {

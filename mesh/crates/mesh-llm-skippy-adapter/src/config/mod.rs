@@ -12,6 +12,9 @@ mod test_support;
 mod native_mtp_tests;
 
 #[cfg(test)]
+mod defaults_parity_tests;
+
+#[cfg(test)]
 mod tests;
 
 #[cfg(test)]

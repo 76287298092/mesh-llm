@@ -1,3 +1,9 @@
+pub use skippy_commands::models::cli::ModelsCommand as ModelCommand;
+#[cfg(test)]
+mod defaults_parity_tests;
+mod prompt;
+pub use prompt::PromptArgs;
+
 use std::{net::SocketAddr, path::PathBuf};
 
 use skippy_serving::frontend::DEFAULT_GENERATION_ADMISSION_TIMEOUT_SECS;
@@ -90,25 +96,6 @@ pub struct ServeCommandArgs {
 }
 
 #[derive(Parser)]
-pub struct PromptArgs {
-    #[arg(long, default_value = "http://127.0.0.1:9337/v1")]
-    pub endpoint: String,
-    #[arg(
-        long,
-        help = "Model ID; defaults to the first model returned by /models"
-    )]
-    pub model: Option<String>,
-    #[arg(long, default_value_t = 128)]
-    pub max_new_tokens: u32,
-    #[arg(long, help = "Use /completions with each line as a raw prompt")]
-    pub raw: bool,
-    #[arg(long, help = "Disable model thinking through reasoning_effort=none")]
-    pub no_think: bool,
-    #[arg(long)]
-    pub history_path: Option<PathBuf>,
-}
-
-#[derive(Parser)]
 pub struct ServeArgs {
     #[arg(long)]
     pub config: PathBuf,
@@ -185,94 +172,58 @@ pub struct ServeBinaryArgs {
         help = "Probability in [0, 1] that a downstream message is hit by --downstream-wire-stall-ms."
     )]
     pub downstream_wire_stall_p: f64,
-    #[arg(long, default_value_t = 60)]
+    #[arg(long, default_value_t = skippy_config::local_serving::DOWNSTREAM_CONNECT_TIMEOUT_SECS)]
     pub downstream_connect_timeout_secs: u64,
-    #[arg(
-        long,
-        help = "Also serve the OpenAI-compatible HTTP surface from this stage process. Intended for stage 0."
-    )]
+    #[arg(skip)]
     pub openai_bind_addr: Option<SocketAddr>,
-    #[arg(
-        long,
-        help = "Served OpenAI model id. Defaults to the stage config model_id."
-    )]
+    #[arg(skip)]
     pub openai_model_id: Option<String>,
-    #[arg(long, default_value_t = 16)]
+    #[arg(skip = skippy_config::local_serving::MAX_OUTPUT_TOKENS)]
     pub openai_default_max_tokens: u32,
-    #[arg(
-        long,
-        help = "Maximum number of concurrent OpenAI chat generation requests hosted by this stage. Defaults to the KV-derived lane count."
-    )]
+    #[arg(skip)]
     pub openai_generation_concurrency: Option<usize>,
-    #[arg(
-        long,
-        help = "Adapt active OpenAI generation permits under sustained queued load, up to --openai-generation-concurrency. Disabled by default."
-    )]
+    #[arg(skip)]
     pub openai_adaptive_generation_concurrency: bool,
-    #[arg(
-        long,
-        help = "Initial committed generation permits when adaptive OpenAI generation concurrency is enabled. Defaults to 1; higher values require an externally validated hardware/model certificate."
-    )]
+    #[arg(skip)]
     pub openai_adaptive_generation_min_concurrency: Option<usize>,
-    #[arg(
-        long,
-        help = "Maximum number of additional OpenAI generation requests allowed to wait. Defaults to clamp(8 * resolved generation concurrency, 16, 256)."
-    )]
+    #[arg(skip)]
     pub openai_generation_queue_capacity: Option<usize>,
-    #[arg(
-        long,
-        default_value_t = DEFAULT_GENERATION_ADMISSION_TIMEOUT_SECS,
-        help = "Maximum seconds an OpenAI generation request may wait for admission; 0 waits until cancellation."
-    )]
+    #[arg(skip = DEFAULT_GENERATION_ADMISSION_TIMEOUT_SECS)]
     pub openai_generation_admission_timeout_secs: u64,
-    #[arg(long, default_value_t = skippy_config::local_serving::PREFILL_CHUNK_SIZE)]
+    #[arg(skip = skippy_config::local_serving::PREFILL_CHUNK_SIZE)]
     pub openai_prefill_chunk_size: usize,
-    #[arg(
-        long,
-        default_value = "fixed",
-        help = "OpenAI prefill chunk policy: fixed, schedule, or adaptive-ramp. Passing --openai-prefill-chunk-schedule keeps legacy schedule behavior."
-    )]
+    #[arg(skip = skippy_config::local_serving::PREFILL_CHUNK_POLICY.to_string())]
     pub openai_prefill_chunk_policy: String,
-    #[arg(
-        long,
-        help = "Comma-separated OpenAI prefill chunk schedule. Example: 128,256,512 sends the first chunk at 128 tokens, second at 256, and repeats 512 after that."
-    )]
+    #[arg(skip)]
     pub openai_prefill_chunk_schedule: Option<String>,
-    #[arg(long, default_value_t = skippy_config::local_serving::PREFILL_ADAPTIVE_START)]
+    #[arg(skip = skippy_config::local_serving::PREFILL_ADAPTIVE_START)]
     pub openai_prefill_adaptive_start: usize,
-    #[arg(long, default_value_t = skippy_config::local_serving::PREFILL_ADAPTIVE_STEP)]
+    #[arg(skip = skippy_config::local_serving::PREFILL_ADAPTIVE_STEP)]
     pub openai_prefill_adaptive_step: usize,
-    #[arg(long, default_value_t = skippy_config::local_serving::PREFILL_ADAPTIVE_MAX)]
+    #[arg(skip = skippy_config::local_serving::PREFILL_ADAPTIVE_MAX)]
     pub openai_prefill_adaptive_max: usize,
-    #[arg(
-        long,
-        default_value_t = 100.0,
-        help = "Target maximum compute time in milliseconds for one adaptive prefill chunk at the slowest measured stage."
-    )]
+    #[arg(skip = skippy_config::local_serving::PREFILL_ADAPTIVE_TARGET_MS)]
     pub openai_prefill_adaptive_target_ms: f64,
     #[arg(
-        long,
+        long = "draft-model-path",
         help = "Draft GGUF to use for speculative decoding in the embedded stage-0 OpenAI surface."
     )]
     pub openai_draft_model_path: Option<PathBuf>,
-    #[arg(long, default_value_t = 4)]
+    #[arg(long = "speculative-window", default_value_t = skippy_config::local_serving::DRAFT_MODEL_TOKENS)]
     pub openai_speculative_window: usize,
-    #[arg(long)]
+    #[arg(long = "adaptive-speculative-window")]
     pub openai_adaptive_speculative_window: bool,
     #[arg(
-        long,
+        long = "draft-n-gpu-layers",
         help = "Override n_gpu_layers for the embedded OpenAI draft model. Defaults to the stage config n_gpu_layers."
     )]
     pub openai_draft_n_gpu_layers: Option<i32>,
     #[arg(
-        long,
-        help = "Native MTP sidecar GGUF to attach to the stage-0 model. Unlike --openai-draft-model-path this is not opened as a standalone draft model; its MTP heads are attached to the served model."
+        long = "native-mtp-draft-model-path",
+        help = "Native MTP sidecar GGUF to attach to the stage-0 model. Unlike --draft-model-path this is not opened as a standalone draft model; its MTP heads are attached to the served model."
     )]
     pub openai_native_mtp_draft_model_path: Option<PathBuf>,
-    #[arg(
-        long,
-        help = "JSON file containing the complete resolved speculative decode plan."
-    )]
+    #[arg(skip)]
     pub openai_speculative_config: Option<PathBuf>,
 }
 
@@ -322,7 +273,7 @@ pub struct ServeOpenAiArgs {
         help = "JSON file containing a complete resolved speculative decode plan."
     )]
     pub speculative_config: Option<PathBuf>,
-    #[arg(long, default_value_t = 16)]
+    #[arg(long, default_value_t = skippy_config::local_serving::MAX_OUTPUT_TOKENS)]
     pub default_max_tokens: u32,
     #[arg(
         long,
@@ -354,7 +305,7 @@ pub struct ServeOpenAiArgs {
     pub prefill_chunk_size: usize,
     #[arg(
         long,
-        default_value = "fixed",
+        default_value = skippy_config::local_serving::PREFILL_CHUNK_POLICY,
         help = "Prefill chunk policy for split OpenAI serving: fixed, schedule, or adaptive-ramp. Passing --prefill-chunk-schedule keeps legacy schedule behavior."
     )]
     pub prefill_chunk_policy: String,
@@ -369,7 +320,7 @@ pub struct ServeOpenAiArgs {
     pub prefill_adaptive_step: usize,
     #[arg(long, default_value_t = skippy_config::local_serving::PREFILL_ADAPTIVE_MAX)]
     pub prefill_adaptive_max: usize,
-    #[arg(long, default_value_t = 100.0)]
+    #[arg(long, default_value_t = skippy_config::local_serving::PREFILL_ADAPTIVE_TARGET_MS)]
     pub prefill_adaptive_target_ms: f64,
     #[arg(long, default_value_t = 60)]
     pub startup_timeout_secs: u64,
@@ -380,9 +331,9 @@ pub struct ServeOpenAiArgs {
     #[arg(long, value_enum, default_value_t = TelemetryLevel::Summary)]
     pub telemetry_level: TelemetryLevel,
     #[arg(
-        long = "openai-guardrails",
+        long = "guardrails",
         value_enum,
-        default_value_t = OpenAiGuardrailsCliMode::Metrics,
+        default_value_t = OpenAiGuardrailsCliMode::default(),
         help = "OpenAI compatibility guardrail mode for standalone serving: disabled, metrics, or enforce."
     )]
     pub openai_guardrails: OpenAiGuardrailsCliMode,
@@ -402,6 +353,16 @@ pub enum OpenAiGuardrailsCliMode {
     Disabled,
     Metrics,
     Enforce,
+}
+
+impl Default for OpenAiGuardrailsCliMode {
+    fn default() -> Self {
+        match skippy_serving::frontend::OpenAiGuardrailsMode::default() {
+            skippy_serving::frontend::OpenAiGuardrailsMode::Disabled => Self::Disabled,
+            skippy_serving::frontend::OpenAiGuardrailsMode::Metrics => Self::Metrics,
+            skippy_serving::frontend::OpenAiGuardrailsMode::Enforce => Self::Enforce,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Default, clap::Args)]
@@ -480,49 +441,6 @@ pub struct PlanSplitArgs {
     pub output_dir: PathBuf,
 }
 
-impl From<ModelCommand> for skippy_commands::models::ModelAction {
-    fn from(command: ModelCommand) -> Self {
-        match command {
-            ModelCommand::Package(args) => Self::Package(args.into()),
-            ModelCommand::Certify(args) => Self::Certify(args.into()),
-            ModelCommand::Prune { yes } => Self::Prune { yes },
-            ModelCommand::Cleanup { unused_since, yes } => Self::Cleanup { unused_since, yes },
-            ModelCommand::Download {
-                model_ref,
-                draft,
-                direct,
-            } => Self::Download {
-                model_ref,
-                draft,
-                direct,
-            },
-            ModelCommand::Delete { model, yes } => Self::Delete { model, yes },
-            ModelCommand::Installed => Self::Installed,
-            ModelCommand::Recommended => Self::Recommended,
-            ModelCommand::Updates { repo, all, check } => Self::Updates { repo, all, check },
-            ModelCommand::Search {
-                query,
-                mlx,
-                catalog,
-                limit,
-                sort,
-                ..
-            } => Self::Search(skippy_commands::models::ModelSearchRequest {
-                query,
-                filter: if mlx {
-                    skippy_model_hf::search::ArtifactFilter::Mlx
-                } else {
-                    skippy_model_hf::search::ArtifactFilter::Gguf
-                },
-                catalog_only: catalog,
-                limit,
-                sort: sort.into(),
-            }),
-            ModelCommand::Show { model_ref } => Self::Show { model_ref },
-        }
-    }
-}
-
 impl From<RuntimeCommand> for skippy_commands::runtime::RuntimeAction {
     fn from(command: RuntimeCommand) -> Self {
         match command {
@@ -582,19 +500,19 @@ mod tests {
         ])
         .unwrap();
         let Command::Models {
-            command: ModelCommand::Package(args),
+            command: ModelCommand::Package { quant, dry_run, .. },
         } = cli.command
         else {
             panic!("expected model package command");
         };
-        assert_eq!(args.quant, None);
-        assert!(args.dry_run);
+        assert_eq!(quant, None);
+        assert!(dry_run);
 
         let cli = Cli::try_parse_from(["skippy", "models", "prune", "--yes"]).unwrap();
         assert!(matches!(
             cli.command,
             Command::Models {
-                command: ModelCommand::Prune { yes: true }
+                command: ModelCommand::Prune { yes: true, .. }
             }
         ));
     }
@@ -616,13 +534,23 @@ mod tests {
         let Command::Models { command } = cli.command else {
             panic!("expected model command");
         };
-        let skippy_commands::models::ModelAction::Search(request) = command.into() else {
-            panic!("expected model search action");
+        let ModelCommand::Search {
+            query,
+            mlx,
+            sort,
+            catalog,
+            ..
+        } = command
+        else {
+            panic!("expected model search");
         };
-        assert_eq!(request.query, ["qwen", "vision"]);
-        assert_eq!(request.filter, skippy_model_hf::search::ArtifactFilter::Mlx);
-        assert_eq!(request.sort, skippy_model_hf::search::Sort::ParametersDesc);
-        assert!(request.catalog_only);
+        assert_eq!(query, ["qwen", "vision"]);
+        assert!(mlx);
+        assert_eq!(
+            sort,
+            skippy_commands::models::cli::ModelSearchSort::ParametersDesc
+        );
+        assert!(catalog);
     }
 
     #[test]
@@ -634,7 +562,8 @@ mod tests {
                 command: ModelCommand::Updates {
                     repo: None,
                     all: false,
-                    check: true
+                    check: true,
+                    ..
                 }
             }
         ));
@@ -642,7 +571,9 @@ mod tests {
         let cli =
             Cli::try_parse_from(["skippy", "models", "update", "Qwen/Qwen3-8B-GGUF"]).unwrap();
         let Command::Models {
-            command: ModelCommand::Updates { repo, all, check },
+            command: ModelCommand::Updates {
+                repo, all, check, ..
+            },
         } = cli.command
         else {
             panic!("expected model updates command");
@@ -653,21 +584,40 @@ mod tests {
     }
 
     #[test]
-    fn prompt_accepts_a_running_endpoint_without_model_files() {
-        let cli = Cli::try_parse_from([
-            "skippy",
-            "prompt",
-            "--endpoint",
-            "http://127.0.0.1:9337/v1",
-            "--no-think",
-        ])
-        .unwrap();
-        let Command::Prompt(args) = cli.command else {
-            panic!("expected prompt command");
-        };
-        assert_eq!(args.endpoint, "http://127.0.0.1:9337/v1");
-        assert!(args.no_think);
-        assert!(args.model.is_none());
+    fn model_commands_support_mesh_json_and_sort_aliases() {
+        for command in ["recommended", "installed", "cleanup", "prune", "list"] {
+            let cli = Cli::try_parse_from(["skippy", "models", command, "--json"]).unwrap();
+            let Command::Models { command } = cli.command else {
+                panic!("expected models");
+            };
+            assert!(command.json());
+        }
+        for (alias, expected) in [
+            (
+                "most-parameters",
+                skippy_commands::models::cli::ModelSearchSort::ParametersDesc,
+            ),
+            (
+                "least-parameters",
+                skippy_commands::models::cli::ModelSearchSort::ParametersAsc,
+            ),
+        ] {
+            let cli = Cli::try_parse_from([
+                "skippy", "models", "search", "qwen", "--sort", alias, "--json",
+            ])
+            .unwrap();
+            let Command::Models {
+                command: ModelCommand::Search { sort, json, .. },
+            } = cli.command
+            else {
+                panic!("expected search");
+            };
+            assert_eq!(sort, expected);
+            assert!(json);
+        }
+        assert!(
+            Cli::try_parse_from(["skippy", "models", "search", "qwen", "--mlx", "--gguf"]).is_err()
+        );
     }
 
     #[test]
@@ -691,6 +641,48 @@ mod tests {
         assert_eq!(args.public.ctx_size, Some(8192));
         assert_eq!(args.public.n_gpu_layers, Some(-1));
         assert!(args.prompt);
+    }
+
+    #[test]
+    fn serving_flags_accept_unprefixed_names_and_reject_prefixed_names() {
+        let flags = [
+            ("bind-addr", Some("127.0.0.1:9337")),
+            ("model-id", Some("test-model")),
+            ("default-max-tokens", Some("16")),
+            ("generation-concurrency", Some("2")),
+            ("adaptive-generation-concurrency", None),
+            ("adaptive-generation-min-concurrency", Some("1")),
+            ("generation-queue-capacity", Some("16")),
+            ("generation-admission-timeout-secs", Some("30")),
+            ("prefill-chunk-size", Some("64")),
+            ("prefill-chunk-policy", Some("fixed")),
+            ("prefill-chunk-schedule", Some("64,128")),
+            ("prefill-adaptive-start", Some("64")),
+            ("prefill-adaptive-step", Some("64")),
+            ("prefill-adaptive-max", Some("512")),
+            ("prefill-adaptive-target-ms", Some("100")),
+            ("draft-model-path", Some("draft.gguf")),
+            ("speculative-window", Some("4")),
+            ("adaptive-speculative-window", None),
+            ("draft-n-gpu-layers", Some("1")),
+            ("native-mtp-draft-model-path", Some("mtp.gguf")),
+            ("speculative-config", Some("decode-plan.json")),
+            ("guardrails", Some("enforce")),
+        ];
+        for (name, value) in flags {
+            for (prefix, accepted) in [("", true), ("api-", false), ("openai-", false)] {
+                let flag = format!("--{prefix}{name}");
+                let mut args = vec!["skippy", "serve", "--config", "stage.json", &flag];
+                args.extend(value);
+                let result = Cli::try_parse_from(args);
+                if accepted {
+                    assert!(result.is_ok(), "{flag}: {:?}", result.err());
+                } else {
+                    let error = result.err().expect("old flag must be rejected");
+                    assert_eq!(error.kind(), clap::error::ErrorKind::UnknownArgument);
+                }
+            }
+        }
     }
 
     #[test]
@@ -738,7 +730,7 @@ mod tests {
         assert_eq!(args.adaptive_generation_min_concurrency, None);
         assert_eq!(args.generation_queue_capacity, None);
         assert_eq!(args.generation_admission_timeout_secs, 0);
-        assert_eq!(args.openai_guardrails, OpenAiGuardrailsCliMode::Metrics);
+        assert_eq!(args.openai_guardrails, OpenAiGuardrailsCliMode::Disabled);
     }
 
     #[test]
@@ -748,7 +740,7 @@ mod tests {
             "serve",
             "--config",
             "stage.json",
-            "--openai-guardrails",
+            "--guardrails",
             "enforce",
         ])
         .unwrap();
@@ -771,7 +763,7 @@ mod tests {
             "stage.json",
             "--stage-transport",
             "binary",
-            "--openai-speculative-config",
+            "--speculative-config",
             "decode-plan.json",
         ])
         .unwrap();
@@ -779,7 +771,7 @@ mod tests {
             panic!("expected serve command");
         };
         assert_eq!(
-            args.stage.openai_speculative_config,
+            args.public.speculative_config,
             Some(PathBuf::from("decode-plan.json"))
         );
 
@@ -799,190 +791,5 @@ mod tests {
             args.public.speculative_config,
             Some(PathBuf::from("decode-plan.json"))
         );
-    }
-}
-
-#[derive(Subcommand)]
-pub enum ModelCommand {
-    /// Package a GGUF model into a Skippy layer package with Hugging Face Jobs.
-    Package(ModelPackageArgs),
-    /// Certify a Skippy layer package locally or against a running API.
-    Certify(ModelCertifyArgs),
-    /// Preview or remove unpinned materialized Skippy stage files.
-    Prune {
-        #[arg(long)]
-        yes: bool,
-    },
-    /// Preview or remove managed models from the shared Hugging Face cache.
-    Cleanup {
-        #[arg(long)]
-        unused_since: Option<String>,
-        #[arg(long)]
-        yes: bool,
-    },
-    /// Resolve a Hub revision and download its selected model files.
-    Download {
-        /// Hub reference: org/repo@revision:filename-or-quantization.
-        model_ref: String,
-        /// Also download the recommended speculative draft model.
-        #[arg(long)]
-        draft: bool,
-        /// Download the exact Hub artifact instead of a catalog layer package.
-        #[arg(long)]
-        direct: bool,
-    },
-    /// Preview or delete one installed model, never a remote Hub repository.
-    Delete {
-        model: String,
-        /// Skip the dry-run preview and delete the selected local files.
-        #[arg(long)]
-        yes: bool,
-    },
-    /// List local model repositories and snapshots without contacting the Hub.
-    Installed,
-    /// Show recommended models from the shared remote catalog.
-    Recommended,
-    /// Check or refresh cached Hugging Face repositories.
-    #[command(visible_alias = "update")]
-    Updates {
-        /// Repo ID such as Qwen/Qwen3-8B-GGUF.
-        repo: Option<String>,
-        /// Operate on every cached Hugging Face repository.
-        #[arg(long)]
-        all: bool,
-        /// Check upstream revisions without downloading files.
-        #[arg(long)]
-        check: bool,
-    },
-    /// Find GGUF or MLX repositories on Hugging Face.
-    Search {
-        #[arg(required = true)]
-        query: Vec<String>,
-        #[arg(long, conflicts_with = "mlx")]
-        gguf: bool,
-        #[arg(long)]
-        mlx: bool,
-        #[arg(long)]
-        catalog: bool,
-        #[arg(long, default_value_t = 20)]
-        limit: usize,
-        #[arg(long, value_enum, default_value_t = ModelSearchSort::Trending)]
-        sort: ModelSearchSort,
-    },
-    /// Resolve one model reference and show its selected artifact.
-    Show { model_ref: String },
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
-pub enum ModelSearchSort {
-    Trending,
-    Downloads,
-    Likes,
-    Created,
-    Updated,
-    ParametersDesc,
-    ParametersAsc,
-}
-
-impl From<ModelSearchSort> for skippy_model_hf::search::Sort {
-    fn from(sort: ModelSearchSort) -> Self {
-        match sort {
-            ModelSearchSort::Trending => Self::Trending,
-            ModelSearchSort::Downloads => Self::Downloads,
-            ModelSearchSort::Likes => Self::Likes,
-            ModelSearchSort::Created => Self::Created,
-            ModelSearchSort::Updated => Self::Updated,
-            ModelSearchSort::ParametersDesc => Self::ParametersDesc,
-            ModelSearchSort::ParametersAsc => Self::ParametersAsc,
-        }
-    }
-}
-
-#[derive(clap::Args)]
-pub struct ModelCertifyArgs {
-    pub model: String,
-    #[arg(long)]
-    pub report_out: Option<PathBuf>,
-    #[arg(long)]
-    pub package_only: bool,
-    #[arg(long)]
-    pub api_base: Option<String>,
-    #[arg(long, default_value = "Say ok.")]
-    pub prompt: String,
-    #[arg(long, default_value_t = 2)]
-    pub max_tokens: u32,
-}
-
-impl From<ModelCertifyArgs> for skippy_commands::models::ModelCertificationRequest {
-    fn from(args: ModelCertifyArgs) -> Self {
-        Self {
-            model: args.model,
-            report_out: args.report_out,
-            package_only: args.package_only,
-            api_base: args.api_base,
-            prompt: args.prompt,
-            max_tokens: args.max_tokens,
-        }
-    }
-}
-
-#[derive(clap::Args)]
-pub struct ModelPackageArgs {
-    pub source_repo: Option<String>,
-    #[arg(long)]
-    pub quant: Option<String>,
-    #[arg(long)]
-    pub target: Option<String>,
-    #[arg(long)]
-    pub model_id: Option<String>,
-    #[arg(long)]
-    pub generation_defaults: Option<PathBuf>,
-    #[arg(long, default_value = "auto")]
-    pub flavor: String,
-    #[arg(long, default_value = "1h")]
-    pub timeout: String,
-    #[arg(long, default_value = "main")]
-    pub mesh_llm_ref: String,
-    #[arg(long)]
-    pub experimental: bool,
-    #[arg(long)]
-    pub dry_run: bool,
-    #[arg(long)]
-    pub confirm: bool,
-    #[arg(long)]
-    pub follow: bool,
-    #[arg(long)]
-    pub status: Option<String>,
-    #[arg(long)]
-    pub logs: Option<String>,
-    #[arg(long)]
-    pub cancel: Option<String>,
-    #[arg(long)]
-    pub list: bool,
-    #[arg(long)]
-    pub update_script: bool,
-}
-
-impl From<ModelPackageArgs> for skippy_commands::models::ModelPackageRequest {
-    fn from(args: ModelPackageArgs) -> Self {
-        Self {
-            source_repo: args.source_repo,
-            quant: args.quant,
-            target: args.target,
-            model_id: args.model_id,
-            generation_defaults: args.generation_defaults,
-            flavor: args.flavor,
-            timeout: args.timeout,
-            mesh_llm_ref: args.mesh_llm_ref,
-            experimental: args.experimental,
-            dry_run: args.dry_run,
-            confirm: args.confirm,
-            follow: args.follow,
-            status: args.status,
-            logs: args.logs,
-            cancel: args.cancel,
-            list: args.list,
-            update_script: args.update_script,
-        }
     }
 }

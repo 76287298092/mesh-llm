@@ -617,15 +617,15 @@ run_stage() {
   fi
   if [[ "$stage_index" == "0" ]]; then
     args+=(
-      --openai-bind-addr "${OPENAI_BIND_ADDR:-0.0.0.0:9337}"
-      --openai-model-id "${MODEL_ID:-skippy-wan-lab/model}"
-      --openai-default-max-tokens "${OPENAI_DEFAULT_MAX_TOKENS:-32}"
-      --openai-generation-concurrency "${OPENAI_GENERATION_CONCURRENCY:-${STAGE_LANES:-1}}"
-      --openai-prefill-chunk-size "${OPENAI_PREFILL_CHUNK_SIZE:-256}"
-      --openai-prefill-chunk-policy "${OPENAI_PREFILL_CHUNK_POLICY:-adaptive-ramp}"
-      --openai-prefill-adaptive-start "${OPENAI_PREFILL_ADAPTIVE_START:-128}"
-      --openai-prefill-adaptive-step "${OPENAI_PREFILL_ADAPTIVE_STEP:-128}"
-      --openai-prefill-adaptive-max "${OPENAI_PREFILL_ADAPTIVE_MAX:-512}"
+      --bind-addr "${OPENAI_BIND_ADDR:-0.0.0.0:9337}"
+      --model-id "${MODEL_ID:-skippy-wan-lab/model}"
+      --default-max-tokens "${OPENAI_DEFAULT_MAX_TOKENS:-32}"
+      --generation-concurrency "${OPENAI_GENERATION_CONCURRENCY:-${STAGE_LANES:-1}}"
+      --prefill-chunk-size "${OPENAI_PREFILL_CHUNK_SIZE:-256}"
+      --prefill-chunk-policy "${OPENAI_PREFILL_CHUNK_POLICY:-adaptive-ramp}"
+      --prefill-adaptive-start "${OPENAI_PREFILL_ADAPTIVE_START:-128}"
+      --prefill-adaptive-step "${OPENAI_PREFILL_ADAPTIVE_STEP:-128}"
+      --prefill-adaptive-max "${OPENAI_PREFILL_ADAPTIVE_MAX:-512}"
     )
   fi
 

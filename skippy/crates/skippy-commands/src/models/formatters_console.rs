@@ -5,12 +5,14 @@ use super::formatters::{
     huggingface_cache_dir, huggingface_repo_url, installed_model_kind, model_kind_code, sort_label,
     variant_selector_label,
 };
-use anyhow::Result;
-use mesh_llm_host_runtime::command_support::models::{
-    DeleteResult as CliDeleteResult, ModelDetails, ResolvedModel as CliResolvedModel,
-    SearchArtifactFilter, SearchHit, SearchSort, remote_catalog, remote_catalog_model_draft_ref,
-    remote_catalog_model_ref,
+use crate::models::details::{
+    ModelDetails, remote_catalog_model_draft_ref, remote_catalog_model_ref,
 };
+use crate::models::search::{SearchArtifactFilter, SearchHit, SearchSort};
+use crate::models::storage::{
+    DeleteResult as CliDeleteResult, ResolvedModel as CliResolvedModel, remote_catalog,
+};
+use anyhow::Result;
 use std::fmt::Write as FmtWrite;
 use std::io::Write;
 use std::time::Duration;
@@ -186,7 +188,7 @@ impl SearchFormatter for ConsoleFormatter {
         filter: SearchArtifactFilter,
         sort: SearchSort,
     ) -> Result<()> {
-        let mut err = mesh_llm_events::console_err();
+        let mut err = crate::models::output::console_err();
         writeln!(
             err,
             "🔎 No {} catalog models matched '{}' (sorted by {}).",
@@ -232,7 +234,7 @@ impl SearchFormatter for ConsoleFormatter {
             }
             writeln!(&mut output)?;
         }
-        mesh_llm_cli::pager::print_or_page(&output)
+        crate::models::output::print_or_page(&output)
     }
 
     fn render_hf_empty(
@@ -241,7 +243,7 @@ impl SearchFormatter for ConsoleFormatter {
         filter: SearchArtifactFilter,
         sort: SearchSort,
     ) -> Result<()> {
-        let mut err = mesh_llm_events::console_err();
+        let mut err = crate::models::output::console_err();
         writeln!(
             err,
             "🔎 No Hugging Face {} matches for '{}' (sorted by {}).",
@@ -315,13 +317,15 @@ impl SearchFormatter for ConsoleFormatter {
             writeln!(&mut output, "   ref: {}", result.exact_ref)?;
             writeln!(
                 &mut output,
-                "   show: mesh-llm models show {}",
-                result.exact_ref
+                "   show: {program} models show {}",
+                result.exact_ref,
+                program = crate::models::output::program()
             )?;
             writeln!(
                 &mut output,
-                "   download: mesh-llm models download {}",
-                result.exact_ref
+                "   download: {program} models download {}",
+                result.exact_ref,
+                program = crate::models::output::program()
             )?;
             if let Some(size) = &result.size_label
                 && let Some(fit) = fit_hint_for_size_label(size)
@@ -341,7 +345,7 @@ impl SearchFormatter for ConsoleFormatter {
             }
             writeln!(&mut output)?;
         }
-        mesh_llm_cli::pager::print_or_page(&output)
+        crate::models::output::print_or_page(&output)
     }
 }
 
@@ -373,12 +377,12 @@ impl ModelsFormatter for ConsoleFormatter {
             }
             writeln!(&mut output)?;
         }
-        mesh_llm_cli::pager::print_or_page(&output)
+        crate::models::output::print_or_page(&output)
     }
 
     fn render_installed(&self, rows: &[InstalledRow]) -> Result<()> {
         if rows.is_empty() {
-            let mut out = mesh_llm_events::console_out();
+            let mut out = crate::models::output::console_out();
             writeln!(out, "📦 No installed models found")?;
             writeln!(out, "   HF cache: {}", huggingface_cache_dir().display())?;
             return Ok(());
@@ -460,11 +464,11 @@ impl ModelsFormatter for ConsoleFormatter {
             }
             writeln!(&mut output)?;
         }
-        mesh_llm_cli::pager::print_or_page(&output)
+        crate::models::output::print_or_page(&output)
     }
 
     fn render_show(&self, details: &ModelDetails, variants: Option<&[ModelDetails]>) -> Result<()> {
-        let mut out = mesh_llm_events::console_out();
+        let mut out = crate::models::output::console_out();
         if model_kind_code(details.kind) == "mlx" {
             writeln!(out, "🔎 {}", details.exact_ref)?;
         } else {
@@ -505,7 +509,12 @@ impl ModelsFormatter for ConsoleFormatter {
         }
         writeln!(out, "📥 Download:")?;
         if model_kind_code(details.kind) == "mlx" {
-            writeln!(out, "   mesh-llm models download {}", details.exact_ref)?;
+            writeln!(
+                out,
+                "   {program} models download {}",
+                details.exact_ref,
+                program = crate::models::output::program()
+            )?;
         } else {
             writeln!(out, "   {}", details.download_url)?;
         }
@@ -553,8 +562,8 @@ impl ModelsFormatter for ConsoleFormatter {
     }
 
     fn render_download(&self, input: DownloadRenderInput<'_>) -> Result<()> {
-        let mut out = mesh_llm_events::console_out();
-        let colors = out.is_terminal();
+        let mut out = crate::models::output::console_out();
+        let colors = crate::console::stdout_is_terminal();
         writeln!(out, "{}", downloaded_model_headline(input.stats, colors))?;
         writeln!(out)?;
         for line in download_summary_lines(&input, colors) {
@@ -583,7 +592,7 @@ impl ModelsFormatter for ConsoleFormatter {
         package_ref: &str,
         path: &std::path::Path,
     ) -> Result<()> {
-        let mut out = mesh_llm_events::console_out();
+        let mut out = crate::models::output::console_out();
         writeln!(out, "✅ Downloaded layer package")?;
         writeln!(out, "   requested: {model_ref}")?;
         writeln!(out, "   package: {package_ref}")?;
@@ -596,7 +605,7 @@ impl ModelsFormatter for ConsoleFormatter {
     }
 
     fn render_delete_preview(&self, resolved: &CliResolvedModel) -> Result<()> {
-        let mut out = mesh_llm_events::console_out();
+        let mut out = crate::models::output::console_out();
         writeln!(out, "🗑️ Model delete preview")?;
         writeln!(out)?;
         writeln!(out, "Name: {}", resolved.display_name)?;
@@ -648,7 +657,7 @@ impl ModelsFormatter for ConsoleFormatter {
     }
 
     fn render_delete_result(&self, result: &CliDeleteResult) -> Result<()> {
-        let mut out = mesh_llm_events::console_out();
+        let mut out = crate::models::output::console_out();
         writeln!(out, "✅ Model deleted successfully")?;
         writeln!(out)?;
         writeln!(out, "Deleted paths:")?;
@@ -683,7 +692,7 @@ impl ModelsFormatter for ConsoleFormatter {
 #[cfg(test)]
 mod tests {
     use super::{DownloadStats, download_summary_lines, downloaded_model_headline};
-    use crate::commands::models::formatters::DownloadRenderInput;
+    use crate::models::formatters::DownloadRenderInput;
     use std::path::Path;
     use std::time::Duration;
 

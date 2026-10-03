@@ -7,3 +7,7 @@ pager behavior, shell quoting, and shared CLI-facing output format types.
 The current host runtime still owns command dispatch while its handlers are
 being untangled from runtime internals. New parser types and CLI-only helpers
 should live here instead of in `mesh-llm-host-runtime`.
+
+The model-command types in `models` are compatibility exports from
+[`skippy-commands`](../../../skippy/crates/skippy-commands/README.md); Skippy owns
+the argument contract for both product CLIs.

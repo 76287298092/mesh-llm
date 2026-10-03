@@ -59,6 +59,7 @@ pub struct SingleStageOptions {
 
 impl SingleStageOptions {
     pub fn new(model_id: impl Into<String>, model_path: impl Into<PathBuf>) -> Self {
+        let kv = crate::kv_cache::KvCachePolicy::safe_default();
         Self {
             ctx_size: skippy_config::local_serving::CTX_SIZE,
             generation_concurrency: skippy_config::local_serving::PARALLEL,
@@ -87,9 +88,9 @@ impl SingleStageOptions {
             direct_io: false,
             main_gpu: None,
             split_mode: skippy_protocol::SplitMode::Auto,
-            cache_type_k: "f16".to_string(),
-            cache_type_v: "f16".to_string(),
-            flash_attn_type: FlashAttentionType::Auto,
+            cache_type_k: kv.cache_type_k().to_string(),
+            cache_type_v: kv.cache_type_v().to_string(),
+            flash_attn_type: crate::kv_cache::effective_flash_attention(kv.cache_type_v()),
             kv_offload: None,
             kv_unified: None,
             swa_full: None,

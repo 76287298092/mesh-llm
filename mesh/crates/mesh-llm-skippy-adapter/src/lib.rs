@@ -3,14 +3,13 @@
 mod checkpoint;
 pub mod config;
 pub mod hash_cache;
-mod kv_cache;
 mod load_options;
 pub mod package;
 mod stage;
-pub use kv_cache::{KvCachePolicy, KvCacheType};
 pub use load_options::{SkippyDeviceDescriptor, SkippyModelLoadOptions, SkippyTelemetryOptions};
 pub use skippy_api::family_policy;
 pub use skippy_api::family_policy::family_policy_for_model_path;
+pub use skippy_api::kv_cache::{KvCachePolicy, KvCacheType};
 pub use skippy_api::package::SkippyPackageIdentity;
 pub use stage::single_stage_config;
 

@@ -73,10 +73,11 @@ async fn run_main(
     native_logs: Arc<native_logging::NativeDiagnostics>,
 ) -> Result<()> {
     let output = match (&cli.command, cli.output) {
+        (Command::Models { command }, _) if command.json() => OutputFormat::Json,
         (Command::Serve(_), OutputFormat::Auto) if !std::io::stdout().is_terminal() => {
             OutputFormat::Jsonl
         }
-        (Command::Prompt(_), OutputFormat::Auto) => OutputFormat::Human,
+        (Command::Models { .. } | Command::Prompt(_), OutputFormat::Auto) => OutputFormat::Human,
         _ => cli.output,
     };
     skippy_commands::console::install(output.into());
@@ -117,7 +118,7 @@ async fn run_main(
             .await?
         }
         Command::Serve(args) => serve::run(*args).await,
-        Command::Models { command } => skippy_commands::models::run(command.into()).await,
+        Command::Models { command } => skippy_commands::models::run_standalone(&command).await,
         Command::PlanSplit(args) => skippy_commands::split::run(args.into()),
         Command::Runtime { command } => {
             skippy_commands::runtime::run(

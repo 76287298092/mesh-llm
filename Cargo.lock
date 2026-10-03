@@ -4569,6 +4569,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serial_test 4.0.1",
+ "skippy-commands",
  "tabwriter",
  "tempfile",
  "tokio",
@@ -4627,6 +4628,7 @@ dependencies = [
  "mesh-llm-events",
  "serde",
  "serde_json",
+ "skippy-commands",
 ]
 
 [[package]]
@@ -4686,6 +4688,7 @@ dependencies = [
  "serde_json",
  "serde_yaml_ng",
  "serial_test 4.0.1",
+ "skippy-commands",
  "skippy-hardware-profile",
  "skippy-hf-hub",
  "skippy-model-artifact",
@@ -5213,6 +5216,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.11.0",
+ "skippy-model-artifact",
 ]
 
 [[package]]
@@ -8564,24 +8568,32 @@ name = "skippy-commands"
 version = "0.77.0"
 dependencies = [
  "anyhow",
+ "chrono",
+ "clap",
+ "crossterm",
  "futures",
  "hex",
+ "ratatui",
  "reqwest 0.13.5",
  "rustyline",
  "serde",
  "serde_json",
+ "serial_test 4.0.1",
  "sha2 0.11.0",
  "skippy-api",
  "skippy-events",
+ "skippy-hardware-profile",
  "skippy-hf-hub",
  "skippy-model-artifact",
  "skippy-model-hf",
  "skippy-model-package",
  "skippy-model-ref",
+ "skippy-model-resolver",
  "skippy-package-format",
  "skippy-protocol",
  "skippy-runtime-install",
  "skippy-topology",
+ "tabwriter",
  "tempfile",
  "tokio",
  "uuid",
@@ -8662,7 +8674,10 @@ dependencies = [
 name = "skippy-hardware-profile"
 version = "0.77.0"
 dependencies = [
+ "libloading 0.8.9",
+ "serde_json",
  "skippy-native-runtime",
+ "sysinfo",
 ]
 
 [[package]]

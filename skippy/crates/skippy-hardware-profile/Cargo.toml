@@ -13,3 +13,8 @@ workspace = true
 
 [dependencies]
 skippy-native-runtime = { path = "../skippy-native-runtime", version = "0.77.0" }
+sysinfo = "0.38"
+serde_json.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+libloading = "0.8"

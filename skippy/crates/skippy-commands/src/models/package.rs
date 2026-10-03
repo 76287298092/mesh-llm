@@ -1,332 +1,831 @@
-//! Hugging Face Jobs front end for Skippy layer packages.
+use std::io::Write;
 
-use std::{path::PathBuf, time::Duration};
-
-use anyhow::{Context, Result, bail, ensure};
+use anyhow::{Context, Result, bail};
 use futures::StreamExt;
-use serde_json::json;
-use skippy_model_package::{
-    jobs::{HfJobsClient, JobStage},
-    permissions,
-    prepare::{self, PrepareParams},
-    script,
-};
 
-#[derive(Debug, Clone)]
-pub struct ModelPackageRequest {
-    pub source_repo: Option<String>,
-    pub quant: Option<String>,
-    pub target: Option<String>,
-    pub model_id: Option<String>,
-    pub generation_defaults: Option<PathBuf>,
-    pub flavor: String,
-    pub timeout: String,
-    pub mesh_llm_ref: String,
+use ::skippy_model_package::jobs::HfJobsClient;
+use ::skippy_model_package::permissions;
+use ::skippy_model_package::prepare::{self, DiscoveredQuant, PrepareJob, PrepareParams};
+use ::skippy_model_package::script;
+
+use serde_json::json;
+use std::path::Path;
+
+/// All CLI arguments for `skippy-model-package`, bundled to avoid too-many-arguments.
+pub struct ModelPrepareArgs<'a> {
+    pub source_repo: Option<&'a str>,
+    pub quant: Option<&'a str>,
+    pub target: Option<&'a str>,
+    pub model_id: Option<&'a str>,
+    pub generation_defaults: Option<&'a Path>,
+    pub flavor: &'a str,
+    pub timeout: &'a str,
+    pub mesh_llm_ref: &'a str,
     pub experimental: bool,
     pub dry_run: bool,
     pub confirm: bool,
     pub follow: bool,
-    pub status: Option<String>,
-    pub logs: Option<String>,
-    pub cancel: Option<String>,
+    pub json: bool,
+    pub status: Option<&'a str>,
+    pub logs: Option<&'a str>,
+    pub cancel: Option<&'a str>,
     pub list: bool,
     pub update_script: bool,
 }
 
-pub(super) async fn run(request: ModelPackageRequest) -> Result<()> {
-    if request.update_script {
-        let client = skippy_model_package::build_hf_client()?;
-        let perms = permissions::check_permissions(&client).await?;
-        ensure!(
-            perms.is_meshllm_member,
-            "only meshllm org members can update the bucket script"
-        );
-        script::update_bucket_script(&client).await?;
-        return crate::console::present(&json!({"updated": true}), |out| {
-            writeln!(out, "✅ Bucket script updated")
-        });
+/// Dispatch the skippy-model-package command.
+pub async fn dispatch_model_package(args: ModelPrepareArgs<'_>) -> Result<()> {
+    let ModelPrepareArgs {
+        source_repo,
+        quant,
+        target,
+        model_id,
+        generation_defaults,
+        flavor,
+        timeout,
+        mesh_llm_ref,
+        experimental,
+        dry_run,
+        confirm,
+        follow,
+        json,
+        status,
+        logs,
+        cancel,
+        list,
+        update_script,
+    } = args;
+    // ── Management subcommands (no source_repo needed) ───────────────
+    if update_script {
+        return run_update_script().await;
     }
-    if request.status.is_some()
-        || request.logs.is_some()
-        || request.cancel.is_some()
-        || request.list
-    {
-        return manage_job(&request).await;
-    }
-    prepare_job(request).await
-}
 
-async fn manage_job(request: &ModelPackageRequest) -> Result<()> {
-    let jobs = HfJobsClient::from_env()?;
-    if let Some(job_id) = request.status.as_deref() {
-        let (namespace, id) = parse_job_id(job_id).await?;
-        let job = jobs.inspect(&namespace, &id).await?;
-        return crate::console::present(&json!({"namespace": namespace, "job": job}), |out| {
-            writeln!(out, "Job: {}", job.id)?;
-            writeln!(out, "Status: {}", job.status.stage)
-        });
+    if let Some(job_id) = status {
+        let jobs_client = HfJobsClient::from_env()?;
+        return run_status(&jobs_client, job_id, json).await;
     }
-    if let Some(job_id) = request.cancel.as_deref() {
-        let (namespace, id) = parse_job_id(job_id).await?;
-        jobs.cancel(&namespace, &id).await?;
-        return crate::console::present(
-            &json!({"namespace": namespace, "job_id": id, "canceled": true}),
-            |out| writeln!(out, "✅ Job {id} canceled"),
-        );
+    if let Some(job_id) = logs {
+        let jobs_client = HfJobsClient::from_env()?;
+        return run_logs(&jobs_client, job_id, json).await;
     }
-    if let Some(job_id) = request.logs.as_deref() {
-        ensure!(
-            crate::console::mode() != crate::console::OutputMode::Json,
-            "streamed job logs require --output human or --output jsonl"
-        );
-        let (namespace, id) = parse_job_id(job_id).await?;
-        let stream = jobs.stream_logs(&namespace, &id).await?;
-        futures::pin_mut!(stream);
-        while let Some(line) = stream.next().await {
-            let line = line?;
-            if crate::console::mode() == crate::console::OutputMode::Human {
-                crate::console::write_line(&line)?;
-            } else {
-                crate::console::event(
-                    "log",
-                    &json!({"namespace": namespace, "job_id": id, "text": line}),
-                )?;
-            }
-        }
-        return Ok(());
+    if let Some(job_id) = cancel {
+        let jobs_client = HfJobsClient::from_env()?;
+        return run_cancel(&jobs_client, job_id, json).await;
     }
-    let client = skippy_model_package::build_hf_client()?;
-    let perms = permissions::check_permissions(&client).await?;
-    let listed = jobs.list(&perms.namespace).await?;
-    crate::console::present(
-        &json!({"namespace": perms.namespace, "jobs": listed}),
-        |out| {
-            if listed.is_empty() {
-                writeln!(out, "No jobs found in namespace '{}'.", perms.namespace)?;
-            }
-            for job in &listed {
-                writeln!(out, "{}  {}", job.id, job.status.stage)?;
-            }
-            Ok(())
-        },
-    )
-}
+    if list {
+        let jobs_client = HfJobsClient::from_env()?;
+        return run_list(&jobs_client, json).await;
+    }
 
-async fn prepare_job(request: ModelPackageRequest) -> Result<()> {
-    let source_ref = request
-        .source_repo
-        .as_deref()
-        .context("source repo is required for job submission")?;
-    let source = skippy_model_ref::ModelRef::parse(source_ref)
+    // ── Submit flow (source ref required) ────────────────────────────
+    validate_submit_output_options(follow, json)?;
+    let program = super::output::program();
+    let source_ref = source_repo.with_context(|| format!("Source repo is required for job submission.\nUsage: {program} models package <source_repo>:<quant>"))?;
+    let source_model_ref = skippy_model_ref::ModelRef::parse(source_ref)
         .with_context(|| format!("invalid source model ref: {source_ref}"))?;
-    let quant = match (source.selector.as_deref(), request.quant.as_deref()) {
-        (Some(left), Some(right)) if left != right => {
-            bail!("source selector {left:?} conflicts with --quant {right:?}")
+    let source_repo = source_model_ref.repo.as_str();
+    let source_quant = match (source_model_ref.selector.as_deref(), quant) {
+        (Some(selector), Some(quant)) if selector != quant => {
+            bail!(
+                "source ref selector '{selector}' conflicts with --quant '{quant}'. \
+                 Use `{program} models package {source_repo}:{selector}`."
+            );
         }
-        (Some(selector), _) | (_, Some(selector)) => Some(selector.to_string()),
+        (Some(selector), _) => Some(selector),
+        (None, Some(quant)) => Some(quant),
         (None, None) => None,
     };
-    let client = skippy_model_package::build_hf_client()?;
-    let Some(quant) = quant else {
-        let inventory =
-            prepare::list_inventory(&client, &source.repo, source.revision.as_deref()).await?;
-        return crate::console::present(
-            &json!({
-                "source_repo": source.repo, "source_revision": source.revision,
-                "quants": inventory.quants, "projectors": inventory.projectors,
-            }),
-            |out| {
-                writeln!(out, "📦 Available quants in {}:", source.repo)?;
-                for variant in &inventory.quants {
-                    writeln!(
-                        out,
-                        "   {}  {} file(s)  {}",
-                        variant.name,
-                        variant.shard_count,
-                        prepare::format_size(variant.total_bytes)
-                    )?;
-                }
-                Ok(())
-            },
-        );
+
+    // Build HF client for API calls.
+    let hf_client = ::skippy_model_package::build_hf_client()?;
+
+    // If no quant specified, list available quants and exit.
+    // This path doesn't need HF_TOKEN — works for public repos.
+    if source_quant.is_none() {
+        return run_list_quants(
+            &hf_client,
+            source_repo,
+            source_model_ref.revision.as_deref(),
+            json,
+        )
+        .await;
+    }
+
+    let submitting = confirm && !dry_run;
+    let jobs_client = if submitting {
+        Some(HfJobsClient::from_env()?)
+    } else {
+        None
     };
-    ensure!(
-        !request.follow || request.confirm && !request.dry_run,
-        "--follow requires --confirm without --dry-run"
-    );
-    ensure!(
-        !request.follow || crate::console::mode() != crate::console::OutputMode::Json,
-        "--follow requires --output human or --output jsonl"
-    );
-    let perms = permissions::check_permissions(&client).await?;
-    let jobs = (request.confirm && !request.dry_run)
-        .then(HfJobsClient::from_env)
+
+    let mut err = crate::models::output::console_err();
+    let mut machine = crate::models::output::machine_out();
+
+    // Resolve permissions.
+    writeln!(err, "🔑 Checking permissions...")?;
+    let perms = permissions::check_permissions(&hf_client).await?;
+
+    // Parse timeout.
+    let timeout_seconds = parse_timeout(timeout)?;
+
+    let generation_defaults = generation_defaults
+        .map(|path| {
+            let bytes = std::fs::read(path)
+                .with_context(|| format!("read generation defaults {}", path.display()))?;
+            let defaults: skippy_package_format::GenerationRequestDefaults =
+                serde_json::from_slice(&bytes)
+                    .with_context(|| format!("parse generation defaults {}", path.display()))?;
+            defaults.validate().map_err(anyhow::Error::new)?;
+            Ok::<_, anyhow::Error>(defaults)
+        })
         .transpose()?;
-    let defaults = request
-        .generation_defaults
-        .as_deref()
-        .map(read_generation_defaults)
-        .transpose()?;
+
+    // Resolve source, target, and build job spec.
+    writeln!(err, "🔍 Resolving source...")?;
     let params = PrepareParams {
-        source_repo: source.repo,
-        source_revision: source.revision,
-        quant: Some(quant),
-        target: request.target,
-        model_id: request.model_id,
-        generation_defaults: defaults,
-        flavor: request.flavor,
-        timeout_seconds: parse_timeout(&request.timeout)?,
-        mesh_llm_ref: request.mesh_llm_ref,
-        experimental: request.experimental,
-        hf_token: jobs.as_ref().map(|jobs| jobs.token().to_string()),
+        source_repo: source_repo.to_string(),
+        source_revision: source_model_ref.revision.clone(),
+        quant: source_quant.map(|s| s.to_string()),
+        target: target.map(|s| s.to_string()),
+        model_id: model_id.map(|s| s.to_string()),
+        generation_defaults,
+        flavor: flavor.to_string(),
+        timeout_seconds,
+        mesh_llm_ref: mesh_llm_ref.to_string(),
+        experimental,
+        hf_token: jobs_client
+            .as_ref()
+            .map(|client| client.token().to_string()),
     };
-    let job = prepare::resolve(&client, params, &perms).await?;
-    if let Some(jobs) = jobs {
-        ensure_bucket_script_current(&client).await?;
-        let info = jobs.submit(&job.namespace, &job.spec).await?;
-        let url = format!("{}/jobs/{}/{}", jobs.endpoint(), job.namespace, info.id);
-        crate::console::present(
-            &json!({
-                "submitted": true, "job": info, "job_url": url, "namespace": job.namespace,
-                "source_repo": job.source_repo, "target_repo": job.target_repo,
-            }),
-            |out| {
-                writeln!(out, "🚀 Submitted: {}", info.id)?;
-                writeln!(out, "   Console: {url}")
-            },
-        )?;
-        if request.follow {
-            follow_job(&jobs, &job.namespace, &info.id).await?;
+
+    let job = prepare::resolve(&hf_client, params, &perms).await?;
+
+    print_prepare_job(&job, &perms, json)?;
+
+    if !submitting {
+        let redacted = redacted_spec(&job.spec);
+        if json {
+            writeln!(
+                machine,
+                "{}",
+                serde_json::to_string_pretty(&json!({
+                    "dryRun": true,
+                    "confirmRequired": true,
+                    "sourceRepo": job.source_repo,
+                    "sourceRevision": job.source_revision,
+                    "sourceFile": job.source_file,
+                    "projectors": job.projectors,
+                    "targetRepo": job.target_repo,
+                    "modelId": job.model_id,
+                    "experimental": job.experimental,
+                    "generationDefaults": job.generation_defaults,
+                    "jobPlan": job.job_plan,
+                    "spec": redacted,
+                }))?
+            )?;
+        } else {
+            writeln!(err)?;
+            writeln!(
+                err,
+                "🔍 Dry run — no HF Job was submitted. Add --confirm to submit."
+            )?;
+            writeln!(machine, "{}", serde_json::to_string_pretty(&redacted)?)?;
         }
         return Ok(());
     }
-    let mut spec = job.spec.clone();
-    for value in spec.secrets.values_mut() {
-        *value = "****".to_string();
+
+    ensure_bucket_script_current(&hf_client).await?;
+
+    // Submit.
+    writeln!(err)?;
+    let jobs_client = jobs_client.as_ref().expect("jobs client initialized");
+    let info = jobs_client.submit(&job.namespace, &job.spec).await?;
+    let job_url = format!(
+        "{}/jobs/{}/{}",
+        jobs_client.endpoint(),
+        job.namespace,
+        info.id
+    );
+    writeln!(err, "🚀 Submitted: {}", info.id)?;
+    writeln!(err, "   Console: {job_url}")?;
+    writeln!(
+        err,
+        "   Status:  {program} models package --status {}",
+        info.id,
+        program = crate::models::output::program()
+    )?;
+    writeln!(
+        err,
+        "   Logs:    {program} models package --logs {}",
+        info.id,
+        program = crate::models::output::program()
+    )?;
+
+    if json {
+        writeln!(
+            machine,
+            "{}",
+            serde_json::to_string_pretty(&json!({
+                "submitted": true,
+                "job": info,
+                "jobUrl": job_url,
+                "namespace": job.namespace,
+                "sourceRepo": job.source_repo,
+                "sourceRevision": job.source_revision,
+                "sourceFile": job.source_file,
+                "projectors": job.projectors,
+                "targetRepo": job.target_repo,
+                "modelId": job.model_id,
+                "experimental": job.experimental,
+                "generationDefaults": job.generation_defaults,
+                "jobPlan": job.job_plan,
+            }))?
+        )?;
     }
-    crate::console::present(
-        &json!({
-            "dry_run": true, "confirm_required": true, "source_repo": job.source_repo,
-            "source_revision": job.source_revision, "source_file": job.source_file,
-            "projectors": job.projectors, "target_repo": job.target_repo,
-            "model_id": job.model_id, "experimental": job.experimental,
-            "generation_defaults": job.generation_defaults, "job_plan": job.job_plan,
-            "spec": spec,
-        }),
-        |out| {
-            writeln!(out, "🔍 Dry run — no HF Job was submitted")?;
-            writeln!(
-                out,
-                "   Source: {}@{}/{}",
-                job.source_repo, job.source_revision, job.source_file
-            )?;
-            writeln!(out, "   Target: {}", job.target_repo)?;
-            writeln!(out, "   Add --confirm to submit")
-        },
+
+    // Follow logs if requested.
+    if follow {
+        writeln!(err)?;
+        writeln!(err, "📜 Following logs...")?;
+        writeln!(err)?;
+        follow_until_done(jobs_client, &job.namespace, &info.id).await?;
+    }
+
+    Ok(())
+}
+
+fn validate_submit_output_options(follow: bool, json: bool) -> Result<()> {
+    if follow && json {
+        let program = super::output::program();
+        bail!(
+            "--json cannot be combined with --follow: use the submitted job ID with \
+             `{program} models package --logs <job-id> --json`"
+        );
+    }
+    Ok(())
+}
+
+fn print_prepare_job(
+    job: &PrepareJob,
+    perms: &permissions::PermissionCheck,
+    json: bool,
+) -> Result<()> {
+    let mut err = crate::models::output::console_err();
+    let shard_info = skippy_model_ref::split_gguf_shard_info(&job.source_file);
+    let shard_str = if let Some(shard) = shard_info {
+        format!(" ({} shards)", shard.total)
+    } else {
+        String::new()
+    };
+
+    let _ = writeln!(err, "   Repo:   {}", job.source_repo);
+    let _ = writeln!(err, "   Commit: {}", job.source_revision);
+    let _ = writeln!(err, "   File:   {}{}", job.source_file, shard_str);
+    for projector in &job.projectors {
+        let _ = writeln!(err, "   MMProj: {}", projector.path);
+    }
+    if let Some(defaults) = &job.generation_defaults
+        && !json
+    {
+        let mut lines = vec!["Generation profiles:".to_string()];
+        lines.extend(defaults.profiles.iter().map(|(name, profile)| {
+            format!(
+                "  {name}: {}@{} {}#{}",
+                profile.provenance.source_repo,
+                profile.provenance.revision,
+                profile.provenance.file,
+                profile.provenance.section
+            )
+        }));
+        lines.push(format!("Default profile: {}", defaults.selection.default));
+        writeln!(err, "{}", lines.join("\n"))?;
+    }
+    let _ = writeln!(err);
+    let _ = writeln!(
+        err,
+        "🔑 Permissions: {} ({})",
+        perms.username,
+        if perms.is_meshllm_member {
+            "meshllm org member"
+        } else {
+            "not in meshllm org"
+        }
+    );
+    let _ = writeln!(err, "   Target:  {}", job.target_repo);
+    let _ = writeln!(
+        err,
+        "   Release: {}",
+        if job.experimental {
+            "experimental (public, not cataloged until HF PR merge)"
+        } else {
+            "stable"
+        }
+    );
+    let _ = writeln!(
+        err,
+        "   Catalog: meshllm/catalog ({})",
+        if job.catalog_create_pr {
+            "will open PR"
+        } else {
+            "direct commit"
+        }
+    );
+    let _ = writeln!(err);
+    let _ = writeln!(
+        err,
+        "📋 Job: {}, timeout {}, mesh-llm@{}",
+        job.spec.flavor,
+        format_timeout(job.spec.timeout_seconds),
+        job.spec
+            .environment
+            .get("MESH_LLM_REF")
+            .map(|s| s.as_str())
+            .unwrap_or("main")
+    );
+    let _ = writeln!(
+        err,
+        "   Hardware: {} {} ({})",
+        job.job_plan.pretty_name,
+        hardware_label(job.job_plan.cpu.as_deref(), job.job_plan.ram.as_deref()),
+        job.job_plan.selection_reason
+    );
+    let _ = writeln!(
+        err,
+        "   Pricing:  ${:.6}/{}, max {}",
+        job.job_plan.unit_cost_usd,
+        job.job_plan.unit_label,
+        format_cost(job.job_plan.max_cost_usd)
+    );
+    Ok(())
+}
+
+async fn run_list_quants(
+    client: &hf_hub::HFClient,
+    source_repo: &str,
+    source_revision: Option<&str>,
+    json_output: bool,
+) -> Result<()> {
+    let mut err = crate::models::output::console_err();
+    let mut machine = crate::models::output::machine_out();
+    let inventory = prepare::list_inventory(client, source_repo, source_revision).await?;
+    let quants = inventory.quants;
+
+    if json_output {
+        writeln!(
+            machine,
+            "{}",
+            serde_json::to_string_pretty(&json!({
+                "sourceRepo": source_repo,
+                "sourceRevision": source_revision,
+                "quants": quants,
+                "projectors": inventory.projectors,
+            }))?
+        )?;
+        return Ok(());
+    }
+
+    if quants.is_empty() {
+        writeln!(err, "No GGUF files found in {source_repo}")?;
+        return Ok(());
+    }
+
+    writeln!(err, "📦 Available quants in {source_repo}:")?;
+    writeln!(err)?;
+    print_quant_table(&quants);
+    writeln!(err)?;
+    writeln!(err, "Specify one as a model ref, e.g.:")?;
+    writeln!(
+        err,
+        "   {program} models package {}",
+        source_quant_ref(source_repo, source_revision, &quants[0].name),
+        program = crate::models::output::program()
+    )?;
+
+    Ok(())
+}
+
+fn source_quant_ref(source_repo: &str, source_revision: Option<&str>, quant: &str) -> String {
+    source_revision.map_or_else(
+        || format!("{source_repo}:{quant}"),
+        |revision| format!("{source_repo}@{revision}:{quant}"),
     )
 }
 
-fn read_generation_defaults(
-    path: &std::path::Path,
-) -> Result<skippy_package_format::GenerationRequestDefaults> {
-    let bytes = std::fs::read(path)
-        .with_context(|| format!("read generation defaults {}", path.display()))?;
-    let defaults: skippy_package_format::GenerationRequestDefaults =
-        serde_json::from_slice(&bytes)?;
-    defaults.validate()?;
-    Ok(defaults)
+fn print_quant_table(quants: &[DiscoveredQuant]) {
+    let mut err = crate::models::output::console_err();
+    // Find the longest name for alignment.
+    let max_name = quants.iter().map(|q| q.name.len()).max().unwrap_or(0);
+
+    for q in quants {
+        let shard_str = if q.shard_count == 1 {
+            "1 file".to_string()
+        } else {
+            format!("{} shards", q.shard_count)
+        };
+        let _ = writeln!(
+            err,
+            "   {:<width$}   {:>9}, {}",
+            q.name,
+            shard_str,
+            prepare::format_size(q.total_bytes),
+            width = max_name
+        );
+    }
 }
 
-async fn parse_job_id(value: &str) -> Result<(String, String)> {
-    if let Some((namespace, id)) = value.split_once('/') {
-        return Ok((namespace.to_string(), id.to_string()));
-    }
-    let client = skippy_model_package::build_hf_client()?;
+async fn run_update_script() -> Result<()> {
+    let mut err = crate::models::output::console_err();
+    writeln!(
+        err,
+        "📤 Uploading embedded script to meshllm/layer-split-output bucket..."
+    )?;
+    let client = ::skippy_model_package::build_hf_client()?;
+
+    // Check permissions first.
     let perms = permissions::check_permissions(&client).await?;
-    Ok((perms.namespace, value.to_string()))
+    if !perms.is_meshllm_member {
+        anyhow::bail!(
+            "Only meshllm org members can update the bucket script.\n\
+             You are logged in as '{}' which is not in the meshllm org.",
+            perms.username
+        );
+    }
+
+    script::update_bucket_script(&client).await?;
+    writeln!(
+        err,
+        "✅ Bucket script updated ({} bytes)",
+        script::EMBEDDED_SCRIPT_SIZE
+    )?;
+    Ok(())
+}
+
+async fn run_status(client: &HfJobsClient, job_id: &str, json_output: bool) -> Result<()> {
+    let mut err = crate::models::output::console_err();
+    let mut machine = crate::models::output::machine_out();
+    let (namespace, id) = parse_job_id(job_id).await?;
+    let info = client.inspect(&namespace, &id).await?;
+    if json_output {
+        writeln!(
+            machine,
+            "{}",
+            serde_json::to_string_pretty(&json!({
+                "namespace": namespace,
+                "job": info,
+            }))?
+        )?;
+        return Ok(());
+    }
+    writeln!(err, "Job:     {}", info.id)?;
+    writeln!(err, "Status:  {}", info.status.stage)?;
+    if let Some(msg) = &info.status.message {
+        writeln!(err, "Message: {msg}")?;
+    }
+    if let Some(created) = &info.created_at {
+        writeln!(err, "Created: {created}")?;
+    }
+    Ok(())
+}
+
+async fn run_logs(client: &HfJobsClient, job_id: &str, json_output: bool) -> Result<()> {
+    use ::skippy_model_package::jobs::JobStage;
+
+    let mut out = crate::models::output::console_out();
+    let mut err = crate::models::output::console_err();
+    let mut machine = crate::models::output::machine_out();
+
+    let (namespace, id) = parse_job_id(job_id).await?;
+
+    let info = client.inspect(&namespace, &id).await?;
+    if matches!(info.status.stage, JobStage::Running) && !json_output {
+        writeln!(
+            err,
+            "Job is still running; draining currently buffered logs only."
+        )?;
+        writeln!(
+            err,
+            "Use --follow when submitting to stream until completion."
+        )?;
+        writeln!(err)?;
+    }
+
+    let mut stream = std::pin::pin!(client.stream_logs(&namespace, &id).await?);
+    loop {
+        match tokio::time::timeout(std::time::Duration::from_secs(5), stream.next()).await {
+            Ok(Some(Ok(text))) if json_output => {
+                writeln!(
+                    machine,
+                    "{}",
+                    serde_json::to_string(&json!({ "data": text }))?
+                )?;
+            }
+            Ok(Some(Ok(text))) => writeln!(out, "{text}")?,
+            Ok(Some(Err(e))) => {
+                writeln!(err, "Log stream error: {e}")?;
+                break;
+            }
+            Ok(None) => break,
+            Err(_) => break,
+        }
+    }
+    Ok(())
+}
+
+async fn run_cancel(client: &HfJobsClient, job_id: &str, json_output: bool) -> Result<()> {
+    let mut err = crate::models::output::console_err();
+    let mut machine = crate::models::output::machine_out();
+    let (namespace, id) = parse_job_id(job_id).await?;
+    client.cancel(&namespace, &id).await?;
+    if json_output {
+        writeln!(
+            machine,
+            "{}",
+            serde_json::to_string_pretty(&json!({
+                "namespace": namespace,
+                "jobId": id,
+                "canceled": true,
+            }))?
+        )?;
+    } else {
+        writeln!(err, "✅ Job {id} canceled")?;
+    }
+    Ok(())
+}
+
+async fn run_list(client: &HfJobsClient, json_output: bool) -> Result<()> {
+    let mut err = crate::models::output::console_err();
+    let mut machine = crate::models::output::machine_out();
+    // We need to know the namespace — resolve via whoami.
+    let hf_client = ::skippy_model_package::build_hf_client()?;
+    let perms = permissions::check_permissions(&hf_client).await?;
+
+    let jobs = client.list(&perms.namespace).await?;
+    if json_output {
+        writeln!(
+            machine,
+            "{}",
+            serde_json::to_string_pretty(&json!({
+                "namespace": perms.namespace,
+                "jobs": jobs,
+            }))?
+        )?;
+        return Ok(());
+    }
+    if jobs.is_empty() {
+        writeln!(err, "No jobs found in namespace '{}'", perms.namespace)?;
+        return Ok(());
+    }
+
+    writeln!(err, "Recent jobs in '{}':", perms.namespace)?;
+    writeln!(err)?;
+    for job in &jobs {
+        let created = job.created_at.as_deref().unwrap_or("?");
+        writeln!(err, "  {} {} {}", job.id, job.status.stage, created)?;
+    }
+    Ok(())
+}
+
+/// Follow job logs until the job reaches a terminal state.
+async fn follow_until_done(client: &HfJobsClient, namespace: &str, job_id: &str) -> Result<()> {
+    use ::skippy_model_package::jobs::JobStage;
+
+    let mut out = crate::models::output::console_out();
+    let mut err = crate::models::output::console_err();
+
+    loop {
+        loop {
+            let info = client.inspect(namespace, job_id).await?;
+            match info.status.stage {
+                JobStage::Running => break,
+                JobStage::Completed => {
+                    writeln!(err, "Job {} finished: {}", job_id, info.status.stage)?;
+                    return Ok(());
+                }
+                JobStage::Error | JobStage::Canceled | JobStage::Deleted => {
+                    if let Some(msg) = &info.status.message {
+                        writeln!(err, "Message: {msg}")?;
+                    }
+                    anyhow::bail!(
+                        "Job {} finished unsuccessfully: {}",
+                        job_id,
+                        info.status.stage
+                    );
+                }
+                _ => tokio::time::sleep(std::time::Duration::from_secs(3)).await,
+            }
+        }
+
+        let mut stream = std::pin::pin!(client.stream_logs(namespace, job_id).await?);
+        while let Some(line) = stream.next().await {
+            match line {
+                Ok(text) => writeln!(out, "{text}")?,
+                Err(e) => {
+                    writeln!(err, "Log stream error: {e}")?;
+                    break;
+                }
+            }
+        }
+
+        let info = client.inspect(namespace, job_id).await?;
+        match info.status.stage {
+            JobStage::Completed => {
+                writeln!(err)?;
+                writeln!(err, "Job {} finished: {}", job_id, info.status.stage)?;
+                return Ok(());
+            }
+            JobStage::Error | JobStage::Canceled | JobStage::Deleted => {
+                if let Some(msg) = &info.status.message {
+                    writeln!(err, "Message: {msg}")?;
+                }
+                anyhow::bail!(
+                    "Job {} finished unsuccessfully: {}",
+                    job_id,
+                    info.status.stage
+                );
+            }
+            _ => {
+                writeln!(
+                    err,
+                    "Log stream ended while job is still {}; reconnecting...",
+                    info.status.stage
+                )?;
+                tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+            }
+        }
+    }
 }
 
 async fn ensure_bucket_script_current(client: &hf_hub::HFClient) -> Result<()> {
-    let freshness = script::check_bucket_script(client).await;
-    if freshness.is_ok_and(|freshness| freshness.is_current) {
-        return Ok(());
+    let mut stderr = crate::models::output::console_err();
+    match script::check_bucket_script(client).await {
+        Ok(freshness) if freshness.is_current => Ok(()),
+        Ok(freshness) => {
+            writeln!(
+                stderr,
+                "Bucket script is out of date ({}); updating it now...",
+                freshness
+                    .mismatch_reason
+                    .as_deref()
+                    .unwrap_or("embedded script differs from bucket script")
+            )?;
+            script::update_bucket_script(client).await?;
+            writeln!(stderr, "Bucket script updated.")?;
+            Ok(())
+        }
+        Err(err) => {
+            writeln!(
+                stderr,
+                "Could not check bucket script freshness ({err:#}); uploading current script..."
+            )?;
+            script::update_bucket_script(client).await?;
+            writeln!(stderr, "Bucket script updated.")?;
+            Ok(())
+        }
     }
-    script::update_bucket_script(client).await
 }
 
-async fn follow_job(client: &HfJobsClient, namespace: &str, id: &str) -> Result<()> {
-    loop {
-        let info = client.inspect(namespace, id).await?;
-        if info.status.stage.is_terminal() {
-            ensure!(
-                info.status.stage == JobStage::Completed,
-                "job {id} finished: {}",
-                info.status.stage
-            );
-            return Ok(());
+fn redacted_spec(
+    spec: &::skippy_model_package::jobs::JobSpec,
+) -> ::skippy_model_package::jobs::JobSpec {
+    let mut redacted = spec.clone();
+    for value in redacted.secrets.values_mut() {
+        if value.len() > 8 {
+            *value = format!("{}...{}", &value[..4], &value[value.len() - 4..]);
+        } else {
+            *value = "****".to_string();
         }
-        if info.status.stage == JobStage::Running {
-            let stream = client.stream_logs(namespace, id).await?;
-            futures::pin_mut!(stream);
-            while let Some(line) = stream.next().await {
-                let line = line?;
-                if crate::console::mode() == crate::console::OutputMode::Human {
-                    crate::console::write_line(&line)?;
-                } else {
-                    crate::console::event("log", &json!({"job_id": id, "text": line}))?;
-                }
+    }
+    redacted
+}
+
+fn hardware_label(cpu: Option<&str>, ram: Option<&str>) -> String {
+    match (cpu, ram) {
+        (Some(cpu), Some(ram)) => format!("({cpu}, {ram})"),
+        (Some(cpu), None) => format!("({cpu})"),
+        (None, Some(ram)) => format!("({ram})"),
+        (None, None) => String::new(),
+    }
+}
+
+fn format_cost(value: f64) -> String {
+    format!("${value:.2} USD")
+}
+
+/// Parse a job ID that may or may not include a namespace prefix.
+///
+/// If the job ID contains a `/`, treat the first part as the namespace.
+/// Otherwise, resolve the namespace via whoami.
+async fn parse_job_id(job_id: &str) -> Result<(String, String)> {
+    if let Some((ns, id)) = job_id.split_once('/') {
+        Ok((ns.to_string(), id.to_string()))
+    } else {
+        // Need to figure out namespace from the user's identity.
+        let hf_client = ::skippy_model_package::build_hf_client()?;
+        let perms = permissions::check_permissions(&hf_client).await?;
+        Ok((perms.namespace, job_id.to_string()))
+    }
+}
+
+/// Parse a human-readable timeout string like "3h", "2h30m", "7200" into seconds.
+fn parse_timeout(s: &str) -> Result<u64> {
+    let s = s.trim();
+
+    // Pure number → seconds.
+    if let Ok(secs) = s.parse::<u64>() {
+        return Ok(secs);
+    }
+
+    let mut total: u64 = 0;
+    let mut current = String::new();
+
+    for ch in s.chars() {
+        if ch.is_ascii_digit() {
+            current.push(ch);
+        } else {
+            let val: u64 = current
+                .parse()
+                .with_context(|| format!("invalid timeout: '{s}'"))?;
+            current.clear();
+
+            match ch {
+                'h' | 'H' => total += val * 3600,
+                'm' | 'M' => total += val * 60,
+                's' | 'S' => total += val,
+                _ => anyhow::bail!("invalid timeout unit '{ch}' in '{s}'"),
             }
         }
-        tokio::time::sleep(Duration::from_secs(3)).await;
     }
+
+    // Handle trailing number without unit (treat as seconds).
+    if !current.is_empty() {
+        let val: u64 = current.parse()?;
+        total += val;
+    }
+
+    if total == 0 {
+        anyhow::bail!("timeout must be > 0: '{s}'");
+    }
+
+    Ok(total)
 }
 
-fn parse_timeout(input: &str) -> Result<u64> {
-    let input = input.trim();
-    if let Ok(seconds) = input.parse::<u64>() {
-        ensure!(seconds > 0, "timeout must be positive");
-        return Ok(seconds);
+fn format_timeout(seconds: u64) -> String {
+    let hours = seconds / 3600;
+    let minutes = (seconds % 3600) / 60;
+    if minutes > 0 {
+        format!("{hours}h{minutes}m")
+    } else {
+        format!("{hours}h")
     }
-    let mut total = 0u64;
-    let mut digits = String::new();
-    for character in input.chars() {
-        if character.is_ascii_digit() {
-            digits.push(character);
-            continue;
-        }
-        let value: u64 = digits
-            .parse()
-            .with_context(|| format!("invalid timeout {input:?}"))?;
-        digits.clear();
-        let factor = match character.to_ascii_lowercase() {
-            'h' => 3600,
-            'm' => 60,
-            's' => 1,
-            _ => bail!("invalid timeout unit {character:?}"),
-        };
-        total = total
-            .checked_add(value.checked_mul(factor).context("timeout overflow")?)
-            .context("timeout overflow")?;
-    }
-    if !digits.is_empty() {
-        total = total
-            .checked_add(digits.parse()?)
-            .context("timeout overflow")?;
-    }
-    ensure!(total > 0, "timeout must be positive");
-    Ok(total)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::parse_timeout;
+    use super::*;
 
     #[test]
-    fn package_timeout_matches_mesh_syntax() {
-        assert_eq!(parse_timeout("3h").unwrap(), 10_800);
-        assert_eq!(parse_timeout("2h30m").unwrap(), 9_000);
-        assert_eq!(parse_timeout("7200").unwrap(), 7_200);
-        assert!(parse_timeout("0").is_err());
-        assert!(parse_timeout("4x").is_err());
+    fn json_submit_rejects_follow_before_starting_a_job() {
+        let error = validate_submit_output_options(true, true)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("--json cannot be combined with --follow"));
+        assert!(validate_submit_output_options(false, true).is_ok());
+        assert!(validate_submit_output_options(true, false).is_ok());
+    }
+
+    #[test]
+    fn parse_timeout_hours() {
+        assert_eq!(parse_timeout("3h").unwrap(), 10800);
+    }
+
+    #[test]
+    fn parse_timeout_hours_minutes() {
+        assert_eq!(parse_timeout("2h30m").unwrap(), 9000);
+    }
+
+    #[test]
+    fn parse_timeout_plain_seconds() {
+        assert_eq!(parse_timeout("7200").unwrap(), 7200);
+    }
+
+    #[test]
+    fn parse_timeout_mixed() {
+        assert_eq!(parse_timeout("1h30m45s").unwrap(), 5445);
+    }
+
+    #[test]
+    fn source_quant_ref_preserves_revision() {
+        assert_eq!(
+            source_quant_ref("poolside/Laguna-S-2.1-GGUF", Some("abc123"), "Q4_K_M"),
+            "poolside/Laguna-S-2.1-GGUF@abc123:Q4_K_M"
+        );
+    }
+
+    #[test]
+    fn source_quant_ref_omits_absent_revision() {
+        assert_eq!(
+            source_quant_ref("poolside/Laguna-S-2.1-GGUF", None, "Q4_K_M"),
+            "poolside/Laguna-S-2.1-GGUF:Q4_K_M"
+        );
     }
 }

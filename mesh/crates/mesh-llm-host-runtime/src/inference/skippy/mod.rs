@@ -34,21 +34,26 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+#[cfg(test)]
+use skippy_inference_api::CompactionConfig;
+#[cfg(test)]
+use skippy_serving::OpenAiGuardrailsTarget;
+
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use skippy_inference_api::{
     AudioResponse, AudioSpeechRequest, AudioTranscriptionRequest, AudioTranscriptionResponse,
-    ChatCompletionRequest, ChatCompletionResponse, ChatCompletionStream, CompactionConfig,
-    CompletionRequest, CompletionResponse, CompletionStream, EmbeddingResponse, EmbeddingsRequest,
-    GuardrailMode, GuardrailPolicy, GuardrailPolicyHandle, ModelObject, OpenAiBackend,
-    OpenAiHookPolicy, OpenAiRequestContext, OpenAiResult, RerankRequest, RerankResponse,
+    ChatCompletionRequest, ChatCompletionResponse, ChatCompletionStream, CompletionRequest,
+    CompletionResponse, CompletionStream, EmbeddingResponse, EmbeddingsRequest, GuardrailMode,
+    GuardrailPolicy, GuardrailPolicyHandle, ModelObject, OpenAiBackend, OpenAiHookPolicy,
+    OpenAiRequestContext, OpenAiResult, RerankRequest, RerankResponse,
 };
 use skippy_protocol::{FlashAttentionType, LoadMode, StageConfig};
 use skippy_runtime::{ModelInfo, MtpSource};
 use skippy_serving::serving_hooks::SharedModelServingHooksFactory;
 use skippy_serving::{
     EmbeddedRuntimeOptions, EmbeddedRuntimeStatus, EmbeddedServerHandle, EmbeddedState,
-    OpenAiGuardrailsConfig, OpenAiGuardrailsStatus, OpenAiGuardrailsTarget, SkippyRuntimeHandle,
+    OpenAiGuardrailsConfig, OpenAiGuardrailsStatus, SkippyRuntimeHandle,
     binary_transport::PredictionReturnListener, binary_transport::WireCondition,
 };
 
@@ -197,7 +202,9 @@ pub(crate) struct SkippySessionLaneStatus {
 }
 
 pub(crate) fn default_skippy_openai_guardrails() -> OpenAiGuardrailsConfig {
-    skippy_openai_guardrails_for_mode(GuardrailMode::Disabled)
+    OpenAiGuardrailsConfig::for_standalone_mode(
+        skippy_serving::frontend::OpenAiGuardrailsMode::default(),
+    )
 }
 
 pub(crate) fn skippy_openai_guardrails_for_mode(mode: GuardrailMode) -> OpenAiGuardrailsConfig {
@@ -214,14 +221,7 @@ pub(crate) fn skippy_openai_guardrails_for_mode(mode: GuardrailMode) -> OpenAiGu
 pub(crate) fn skippy_openai_guardrails_for_policy_handle(
     policy: GuardrailPolicyHandle,
 ) -> OpenAiGuardrailsConfig {
-    OpenAiGuardrailsConfig {
-        target: OpenAiGuardrailsTarget::Skippy,
-        policy,
-        compaction: Some(CompactionConfig {
-            enabled: true,
-            ..CompactionConfig::default()
-        }),
-    }
+    OpenAiGuardrailsConfig::with_policy(policy)
 }
 
 #[derive(Debug)]

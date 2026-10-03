@@ -187,7 +187,7 @@ OpenAI-compatible endpoint/model as the completion run; set `EVAL_LLM_MODEL`,
 small local Skippy validation models, keep the completion endpoint in normal
 compatibility mode and point the scorer override at a strict structured-output
 endpoint, for example a second `skippy-serving serve-openai
---openai-guardrails enforce` process. The adapter still uses the native scorer
+--guardrails enforce` process. The adapter still uses the native scorer
 and does not rewrite score data. For operator resumes, set
 `MCP_ATLAS_COMPLETION_OUTPUT_NAME` to an existing upstream
 `completion_results/*.csv` basename so the native completion script can reuse

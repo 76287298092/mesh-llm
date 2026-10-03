@@ -58,6 +58,18 @@ To start the server and immediately chat with the model in the same terminal:
 skippy serve --model Qwen3-0.6B-Q4_K_M --prompt
 ```
 
+Serving defaults are owned by Skippy and shared with Mesh. Both use an
+8,192-token completion ceiling, clamped to remaining context space, automatic
+chat compaction, and disabled compatibility guardrails. Memory-aware context
+and concurrency planning, F16 KV, 512-token batch/microbatch limits, prefix
+caching, and prefill policies also use the same defaults. Automatic speculation
+uses integrated native MTP at depth one when supported, or a compatible installed
+sibling draft with a three-token window. Explicit settings still override defaults.
+
+The prompt inherits the server and model request defaults, including output
+length, sampling, and reasoning. Set `serve --default-max-tokens` to change the
+server ceiling, or `prompt --max-new-tokens` for a client override.
+
 The API remains available while the prompt is open. Enter `:quit` to end the
 prompt and shut down this combined serving session. `:reset` clears chat
 history. To connect a prompt to a server that is already running, use
@@ -79,6 +91,12 @@ curl http://127.0.0.1:9337/v1/messages \
 ```
 
 ## Find and download models
+
+`skippy models` uses the same command contract, tables, and JSON schemas as
+`mesh-llm models`. Skippy owns the implementation; Mesh uses it with its own
+console destinations. Model commands default to human-readable output, even
+when piped. Every model subcommand accepts `--json`, alongside Skippy’s global
+`--output` modes.
 
 ```sh
 skippy models recommended
@@ -156,6 +174,10 @@ stage transport is the normal split path. Internal HTTP stages use
 `--stage-transport http --worker-only` and run on their own listener; that
 internal `/v1/messages` route is separate from the public Anthropic route.
 
+Serving tuning flags use names such as `--bind-addr`,
+`--generation-concurrency`, and `--prefill-chunk-size` for both local and
+binary stage serving. Compatibility guardrails use `--guardrails`.
+
 `plan-split` admits every native stage before writing configs. Its output
 directory must not exist. The generated stage files, not the diagnostic
 `admissions.json`, are the serving inputs. Regenerate the plan when changing
@@ -210,8 +232,9 @@ skippy serve --model Qwen3-0.6B-Q4_K_M --debug
 ```
 
 In JSONL mode these diagnostics are `native_log` events with a `message` field.
-Commands that return one result use JSON when stdout is redirected; use
-`--output json` to request it explicitly. A long-running `serve` command uses
+Model commands retain their human-readable default when stdout is redirected;
+use `--json` or `--output json` for a JSON document. Other commands that return
+one result automatically use JSON when redirected. A long-running `serve` command uses
 JSONL when redirected, or when `--output jsonl` is given:
 
 ```sh

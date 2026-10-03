@@ -190,11 +190,8 @@ async fn serve_binary_stage(mut args: ServeCommandArgs) -> Result<()> {
         args.public.kv_cache_disk_dir.clone(),
         args.public.kv_cache_min_free.as_deref(),
     )?;
-    if args.worker_only && args.stage.openai_bind_addr.is_some() {
-        bail!("--openai-bind-addr conflicts with --worker-only");
-    }
-    if args.public.openai_guardrails != OpenAiGuardrailsCliMode::Metrics {
-        bail!("--openai-guardrails is not supported by the binary stage frontend");
+    if args.public.openai_guardrails != OpenAiGuardrailsCliMode::default() {
+        bail!("--guardrails is not supported by the binary stage frontend");
     }
     apply_public_frontend_tuning(&args.public, &mut args.stage);
     let startup_timeout = Duration::from_secs(args.public.startup_timeout_secs.max(1));
@@ -204,6 +201,9 @@ async fn serve_binary_stage(mut args: ServeCommandArgs) -> Result<()> {
     args.stage.telemetry_queue_capacity = args.public.telemetry_queue_capacity;
     args.stage.telemetry_level = args.public.telemetry_level;
     args.stage.worker_only = args.worker_only;
+    if args.worker_only {
+        args.stage.bind_addr = args.public.bind_addr;
+    }
     args.stage.api_bind_addr = Some(
         args.public
             .bind_addr
@@ -250,55 +250,22 @@ async fn serve_binary_stage(mut args: ServeCommandArgs) -> Result<()> {
     .await
 }
 
-fn apply_public_frontend_tuning(public: &ServeOpenAiArgs, stage: &mut ServeBinaryArgs) {
-    if let Some(value) = &public.model_id {
-        stage.openai_model_id = Some(value.clone());
-    }
-    if public.default_max_tokens != 16 {
-        stage.openai_default_max_tokens = public.default_max_tokens;
-    }
-    if let Some(value) = public.generation_concurrency {
-        stage.openai_generation_concurrency = Some(value);
-    }
-    if public.adaptive_generation_concurrency {
-        stage.openai_adaptive_generation_concurrency = true;
-    }
-    if let Some(value) = public.adaptive_generation_min_concurrency {
-        stage.openai_adaptive_generation_min_concurrency = Some(value);
-    }
-    if let Some(value) = public.generation_queue_capacity {
-        stage.openai_generation_queue_capacity = Some(value);
-    }
-    if public.generation_admission_timeout_secs
-        != skippy_serving::frontend::DEFAULT_GENERATION_ADMISSION_TIMEOUT_SECS
-    {
-        stage.openai_generation_admission_timeout_secs = public.generation_admission_timeout_secs;
-    }
-    if public.prefill_chunk_size != skippy_config::local_serving::PREFILL_CHUNK_SIZE {
-        stage.openai_prefill_chunk_size = public.prefill_chunk_size;
-    }
-    if public.prefill_chunk_policy != skippy_config::local_serving::PREFILL_CHUNK_POLICY {
-        stage.openai_prefill_chunk_policy = public.prefill_chunk_policy.clone();
-    }
-    if let Some(value) = &public.prefill_chunk_schedule {
-        stage.openai_prefill_chunk_schedule = Some(value.clone());
-    }
-    if public.prefill_adaptive_start != skippy_config::local_serving::PREFILL_ADAPTIVE_START {
-        stage.openai_prefill_adaptive_start = public.prefill_adaptive_start;
-    }
-    if public.prefill_adaptive_step != skippy_config::local_serving::PREFILL_ADAPTIVE_STEP {
-        stage.openai_prefill_adaptive_step = public.prefill_adaptive_step;
-    }
-    if public.prefill_adaptive_max != skippy_config::local_serving::PREFILL_ADAPTIVE_MAX {
-        stage.openai_prefill_adaptive_max = public.prefill_adaptive_max;
-    }
-    if public.prefill_adaptive_target_ms != skippy_config::local_serving::PREFILL_ADAPTIVE_TARGET_MS
-    {
-        stage.openai_prefill_adaptive_target_ms = public.prefill_adaptive_target_ms;
-    }
-    if let Some(value) = &public.speculative_config {
-        stage.openai_speculative_config = Some(value.clone());
-    }
+pub(crate) fn apply_public_frontend_tuning(public: &ServeOpenAiArgs, stage: &mut ServeBinaryArgs) {
+    stage.openai_model_id = public.model_id.clone();
+    stage.openai_default_max_tokens = public.default_max_tokens;
+    stage.openai_generation_concurrency = public.generation_concurrency;
+    stage.openai_adaptive_generation_concurrency = public.adaptive_generation_concurrency;
+    stage.openai_adaptive_generation_min_concurrency = public.adaptive_generation_min_concurrency;
+    stage.openai_generation_queue_capacity = public.generation_queue_capacity;
+    stage.openai_generation_admission_timeout_secs = public.generation_admission_timeout_secs;
+    stage.openai_prefill_chunk_size = public.prefill_chunk_size;
+    stage.openai_prefill_chunk_policy = public.prefill_chunk_policy.clone();
+    stage.openai_prefill_chunk_schedule = public.prefill_chunk_schedule.clone();
+    stage.openai_prefill_adaptive_start = public.prefill_adaptive_start;
+    stage.openai_prefill_adaptive_step = public.prefill_adaptive_step;
+    stage.openai_prefill_adaptive_max = public.prefill_adaptive_max;
+    stage.openai_prefill_adaptive_target_ms = public.prefill_adaptive_target_ms;
+    stage.openai_speculative_config = public.speculative_config.clone();
 }
 
 async fn serve_worker_with_readiness(
@@ -596,5 +563,26 @@ mod tests {
         assert_eq!(args.stage.openai_default_max_tokens, 64);
         assert_eq!(args.stage.openai_generation_concurrency, Some(2));
         assert_eq!(args.stage.openai_prefill_chunk_size, 512);
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn binary_stage_defaults_reach_config_loading() {
+        let directory = tempfile::tempdir().unwrap();
+        let config = directory.path().join("missing-stage.json");
+        let cli = Cli::try_parse_from([
+            "skippy",
+            "serve",
+            "--config",
+            config.to_str().unwrap(),
+            "--stage-transport",
+            "binary",
+            "--worker-only",
+        ])
+        .unwrap();
+        let Command::Serve(args) = cli.command else {
+            panic!("expected serve");
+        };
+        let error = serve_binary_stage(*args).await.unwrap_err();
+        assert!(error.to_string().contains("load stage config"), "{error:#}");
     }
 }

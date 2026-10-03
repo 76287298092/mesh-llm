@@ -16,3 +16,7 @@ Current ownership:
 Keep runtime state, peer connection state, protobuf frame validation, and host
 process orchestration out of this crate. Those belong in the future protocol,
 control-plane, routing, and host-runtime crates.
+
+Model capability types and inference are owned by
+[`skippy-model-artifact`](../../../skippy/crates/skippy-model-artifact/README.md)
+and exposed through the existing `models::capabilities` path for compatibility.

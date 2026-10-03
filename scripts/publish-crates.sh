@@ -388,6 +388,8 @@ publish_crates=(
     mesh-llm-protocol
     mesh-llm-transport
     mesh-llm-routing
+    skippy-model-ref
+    skippy-model-artifact
     mesh-llm-types
     mesh-llm-membership
     skippy-guardrails
@@ -398,8 +400,6 @@ publish_crates=(
     skippy-package-format
     skippy-model
     skippy-protocol
-    skippy-model-ref
-    skippy-model-artifact
     skippy-coordinator
     skippy-topology
     skippy-metrics
@@ -419,7 +419,6 @@ publish_crates=(
     mesh-llm-ui
     mesh-llm-console-server
     mesh-llm-tui
-    mesh-llm-cli
     skippy-hf-hub
     skippy-model-hf
     skippy-model-package
@@ -435,6 +434,7 @@ publish_crates=(
     skippy-api
     mesh-llm-skippy-adapter
     skippy-commands
+    mesh-llm-cli
     skippy-cli
     mesh-native-serving-plugin-host
     mesh-llm-plugin-manager

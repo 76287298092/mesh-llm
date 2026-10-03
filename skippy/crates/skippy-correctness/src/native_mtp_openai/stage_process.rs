@@ -129,7 +129,7 @@ pub(super) fn spawn_stage(
         "debug",
     ]);
     if let Some(openai_bind_addr) = openai_bind_addr {
-        command.args(["--openai-bind-addr", &openai_bind_addr.to_string()]);
+        command.args(["--bind-addr", &openai_bind_addr.to_string()]);
     }
     command.env("SKIPPY_TELEMETRY_STDERR", "1");
     if native_mtp_enabled {

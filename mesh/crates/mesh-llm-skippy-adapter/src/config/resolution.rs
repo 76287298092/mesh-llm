@@ -6,11 +6,10 @@ use super::super::KvCachePolicy;
 use super::request_defaults::resolve_request_defaults;
 use super::speculative::resolve_speculative_config;
 use super::support::{
-    ThroughputMacroDefaults, bool_or_auto_value, derive_fit_target_mib, effective_flash_attention,
-    has_explicit_prefill_controls, parse_gpu_layers, parse_kv_offload_string, pick_owned,
-    pick_string, pick_string_owned, pick_value, reject_unsupported_hardware_controls,
-    reject_unsupported_model_fit_controls, resolve_bool_or_auto, resolve_field_string,
-    resolve_field_value, resolve_prefix_cache, throughput_macro_defaults,
+    bool_or_auto_value, derive_fit_target_mib, has_explicit_prefill_controls, parse_gpu_layers,
+    parse_kv_offload_string, pick_owned, pick_string, pick_string_owned, pick_value,
+    reject_unsupported_hardware_controls, reject_unsupported_model_fit_controls,
+    resolve_bool_or_auto, resolve_field_string, resolve_field_value, resolve_prefix_cache,
 };
 use super::types::{
     BUILTIN_BATCH, BUILTIN_CTX_SIZE, BUILTIN_PARALLEL, BUILTIN_PREFILL_CHUNK_SIZE,
@@ -22,6 +21,8 @@ use mesh_llm_config::KvDiskCodec;
 use mesh_llm_config::{
     BoolOrAuto, ModelConfigDefaults, ModelConfigEntry, ModelFitConfig, ThroughputConfig,
 };
+use skippy_api::kv_cache::effective_flash_attention;
+use skippy_config::local_serving::{ThroughputProfileDefaults, throughput_profile_defaults};
 
 #[cfg(test)]
 pub(crate) fn resolve_skippy_config(
@@ -384,6 +385,8 @@ fn resolve_kv_offload(context: &ResolverContext<'_>) -> String {
 }
 
 fn resolve_hardware_config(context: &ResolverContext<'_>) -> Result<ResolvedHardwareConfig> {
+    let defaults =
+        skippy_api::SingleStageOptions::new(context.request.model_id, context.request.model_path);
     let model_hardware = context
         .model_entry
         .and_then(|entry| entry.hardware.as_ref());
@@ -397,7 +400,7 @@ fn resolve_hardware_config(context: &ResolverContext<'_>) -> Result<ResolvedHard
         model_hardware.and_then(|hardware| hardware.gpu_layers.as_ref()),
         global_hardware.and_then(|hardware| hardware.gpu_layers.as_ref()),
     )?
-    .unwrap_or(-1);
+    .unwrap_or(defaults.n_gpu_layers);
     let mmap = resolve_mmap_override(
         model_hardware.and_then(|hardware| hardware.mmap.as_ref()),
         global_hardware.and_then(|hardware| hardware.mmap.as_ref()),
@@ -406,12 +409,12 @@ fn resolve_hardware_config(context: &ResolverContext<'_>) -> Result<ResolvedHard
         model_hardware.and_then(|hardware| hardware.mlock),
         global_hardware.and_then(|hardware| hardware.mlock),
     )
-    .unwrap_or(false);
+    .unwrap_or(defaults.mlock);
     let repack = pick_owned(
         model_hardware.and_then(|hardware| hardware.repack),
         global_hardware.and_then(|hardware| hardware.repack),
     )
-    .unwrap_or(false);
+    .unwrap_or(defaults.repack);
     let op_offload = pick_owned(
         model_hardware.and_then(|hardware| hardware.op_offload),
         global_hardware.and_then(|hardware| hardware.op_offload),
@@ -420,12 +423,12 @@ fn resolve_hardware_config(context: &ResolverContext<'_>) -> Result<ResolvedHard
         model_hardware.and_then(|hardware| hardware.no_host_buffer),
         global_hardware.and_then(|hardware| hardware.no_host_buffer),
     )
-    .unwrap_or(false);
+    .unwrap_or(defaults.no_host_buffer);
     let check_tensors = pick_owned(
         model_hardware.and_then(|hardware| hardware.check_tensors),
         global_hardware.and_then(|hardware| hardware.check_tensors),
     )
-    .unwrap_or(false);
+    .unwrap_or(defaults.check_tensors);
     let checkpoint_quantization = pick_owned(
         model_hardware.and_then(|hardware| hardware.checkpoint_quantization.clone()),
         global_hardware.and_then(|hardware| hardware.checkpoint_quantization.clone()),
@@ -438,7 +441,7 @@ fn resolve_hardware_config(context: &ResolverContext<'_>) -> Result<ResolvedHard
         model_hardware.and_then(|hardware| hardware.direct_io),
         global_hardware.and_then(|hardware| hardware.direct_io),
     )
-    .unwrap_or(false);
+    .unwrap_or(defaults.direct_io);
     let main_gpu = pick_owned(
         model_hardware.and_then(|hardware| hardware.main_gpu),
         global_hardware.and_then(|hardware| hardware.main_gpu),
@@ -554,8 +557,8 @@ fn resolve_projector_path(context: &ResolverContext<'_>) -> Option<PathBuf> {
 
 struct ThroughputDefaults {
     effective_profile: String,
-    model_macro: Option<ThroughputMacroDefaults>,
-    global_macro: Option<ThroughputMacroDefaults>,
+    model_macro: Option<ThroughputProfileDefaults>,
+    global_macro: Option<ThroughputProfileDefaults>,
 }
 
 fn resolve_throughput_defaults(context: &ResolverContext<'_>) -> ThroughputDefaults {
@@ -565,12 +568,16 @@ fn resolve_throughput_defaults(context: &ResolverContext<'_>) -> ThroughputDefau
     let global_profile = context
         .global_throughput
         .and_then(|throughput| throughput.tuning_profile.as_deref());
-    let effective_profile = pick_string(model_profile, global_profile, Some("balanced"));
+    let effective_profile = pick_string(
+        model_profile,
+        global_profile,
+        Some(skippy_config::local_serving::THROUGHPUT_PROFILE),
+    );
 
     ThroughputDefaults {
         effective_profile: effective_profile.to_string(),
-        model_macro: model_profile.map(throughput_macro_defaults),
-        global_macro: global_profile.map(throughput_macro_defaults),
+        model_macro: model_profile.map(throughput_profile_defaults),
+        global_macro: global_profile.map(throughput_profile_defaults),
     }
 }
 
@@ -654,7 +661,7 @@ fn resolve_continuous_batching(
             .global_macro
             .as_ref()
             .and_then(|defaults| defaults.continuous_batching.as_deref()),
-        "auto",
+        skippy_config::local_serving::CONTINUOUS_BATCHING_POLICY,
     )
 }
 

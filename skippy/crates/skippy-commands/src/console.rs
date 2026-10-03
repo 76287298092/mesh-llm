@@ -221,6 +221,101 @@ pub fn progress_with_unit(label: &str, current: u64, total: u64, unit: &str) -> 
     }
 }
 
+pub fn stdout_is_terminal() -> bool {
+    io::stdout().is_terminal()
+}
+
+pub fn stderr_is_terminal() -> bool {
+    io::stderr().is_terminal()
+}
+
+pub(crate) fn model_console_out() -> Box<dyn Write + Send> {
+    Box::new(io::stdout())
+}
+pub(crate) fn model_console_err() -> Box<dyn Write + Send> {
+    if mode() == OutputMode::Jsonl {
+        Box::new(ModelDiagnosticWriter(Vec::new()))
+    } else {
+        Box::new(io::stderr())
+    }
+}
+pub(crate) fn model_machine_out() -> Box<dyn Write + Send> {
+    if mode() == OutputMode::Jsonl {
+        Box::new(ModelJsonWriter(Vec::new()))
+    } else {
+        Box::new(io::stdout())
+    }
+}
+struct ModelJsonWriter(Vec<u8>);
+impl Write for ModelJsonWriter {
+    fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+        self.0.extend_from_slice(bytes);
+        if self.0.last() == Some(&b'\n')
+            && let Ok(value) = serde_json::from_slice::<serde_json::Value>(&self.0)
+        {
+            event("result", &value)?;
+            self.0.clear();
+        }
+        Ok(bytes.len())
+    }
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+struct ModelDiagnosticWriter(Vec<u8>);
+impl Write for ModelDiagnosticWriter {
+    fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+        self.0.extend_from_slice(bytes);
+        while let Some(end) = self.0.iter().position(|byte| *byte == b'\n') {
+            let line = self.0.drain(..=end).collect::<Vec<_>>();
+            let line = String::from_utf8_lossy(&line);
+            write_status(line.trim_end_matches('\n'))?;
+        }
+        Ok(bytes.len())
+    }
+    fn flush(&mut self) -> io::Result<()> {
+        if !self.0.is_empty() {
+            write_status(&String::from_utf8_lossy(&self.0))?;
+            self.0.clear();
+        }
+        Ok(())
+    }
+}
+
+/// Page a long model table on interactive terminals; return false for direct output.
+pub(crate) fn page_model_table(output: &str) -> anyhow::Result<bool> {
+    use std::{
+        ffi::OsStr,
+        process::{Command, Stdio},
+    };
+    if !io::stdin().is_terminal()
+        || !io::stdout().is_terminal()
+        || std::env::var_os("TERM")
+            .as_deref()
+            .is_some_and(|term| term.eq_ignore_ascii_case(OsStr::new("dumb")))
+    {
+        return Ok(false);
+    }
+    let mut child = match Command::new("less")
+        .args(["-F", "-R", "-X"])
+        .stdin(Stdio::piped())
+        .spawn()
+    {
+        Ok(child) => child,
+        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(false),
+        Err(error) => return Err(error.into()),
+    };
+    if let Some(mut input) = child.stdin.take() {
+        match input.write_all(output.as_bytes()) {
+            Ok(()) => {}
+            Err(error) if error.kind() == io::ErrorKind::BrokenPipe => {}
+            Err(error) => return Err(error.into()),
+        }
+    }
+    child.wait()?;
+    Ok(true)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -20,14 +20,14 @@ use metrics::PromptMetrics;
 pub struct PromptCommand {
     pub endpoint: String,
     pub model: Option<String>,
-    pub max_new_tokens: u32,
+    pub max_new_tokens: Option<u32>,
     pub raw: bool,
     pub no_think: bool,
     pub history_path: Option<PathBuf>,
 }
 
 pub fn run(args: PromptCommand) -> Result<()> {
-    if args.max_new_tokens == 0 {
+    if args.max_new_tokens == Some(0) {
         bail!("--max-new-tokens must be greater than zero");
     }
     let endpoint = args.endpoint.trim_end_matches('/');
@@ -149,10 +149,13 @@ fn first_model(client: &Client, endpoint: &str) -> Result<String> {
 
 fn request_body(model: &str, input: &str, messages: &[Value], args: &PromptCommand) -> Value {
     let mut body = if args.raw {
-        json!({"model": model, "prompt": input, "stream": true, "max_tokens": args.max_new_tokens})
+        json!({"model": model, "prompt": input, "stream": true})
     } else {
-        json!({"model": model, "messages": messages, "stream": true, "max_tokens": args.max_new_tokens})
+        json!({"model": model, "messages": messages, "stream": true})
     };
+    if let Some(tokens) = args.max_new_tokens {
+        body["max_tokens"] = json!(tokens);
+    }
     if args.no_think {
         body["reasoning_effort"] = json!("none");
     }
@@ -242,6 +245,29 @@ mod tests {
             &mut PromptMetrics::default(),
             |_| Ok(()),
         )
+    }
+
+    #[test]
+    fn prompt_requests_inherit_server_defaults_unless_explicitly_overridden() {
+        for raw in [false, true] {
+            for max_new_tokens in [None, Some(4096)] {
+                let args = PromptCommand {
+                    endpoint: String::new(),
+                    model: None,
+                    max_new_tokens,
+                    raw,
+                    no_think: false,
+                    history_path: None,
+                };
+                let body = request_body("model", "hello", &[], &args);
+                assert_eq!(
+                    body.get("max_tokens").and_then(Value::as_u64),
+                    max_new_tokens.map(u64::from)
+                );
+                assert!(body.get("temperature").is_none());
+                assert!(body.get("reasoning_effort").is_none());
+            }
+        }
     }
 
     #[test]

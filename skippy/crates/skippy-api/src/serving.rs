@@ -17,7 +17,7 @@ const BUILTIN_PREFILL_ADAPTIVE_STEP: usize = skippy_config::local_serving::PREFI
 const BUILTIN_PREFILL_ADAPTIVE_MAX: usize = skippy_config::local_serving::PREFILL_ADAPTIVE_MAX;
 const BUILTIN_PREFILL_ADAPTIVE_TARGET_MS: f64 =
     skippy_config::local_serving::PREFILL_ADAPTIVE_TARGET_MS;
-const DEFAULT_NATIVE_MTP_MAX_TOKENS: usize = 3;
+const DEFAULT_NATIVE_MTP_MAX_TOKENS: usize = skippy_config::local_serving::NATIVE_MTP_DRAFT_TOKENS;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct OpenAiOptions {
@@ -79,7 +79,7 @@ impl OpenAiOptions {
             default_max_tokens,
             request_defaults: EmbeddedOpenAiRequestDefaults::default(),
             generation_concurrency,
-            continuous_batching: true,
+            continuous_batching: skippy_config::local_serving::CONTINUOUS_BATCHING,
             pipeline_decode_groups: None,
             adaptive_generation_min_concurrency: None,
             generation_queue_capacity: skippy_serving::frontend::default_generation_queue_capacity(
@@ -100,11 +100,7 @@ impl OpenAiOptions {
             speculative: SpeculativeDecodeConfig {
                 native_mtp: NativeMtpProposalConfig {
                     enabled: native_mtp_enabled,
-                    max_draft_tokens: if native_mtp_enabled {
-                        DEFAULT_NATIVE_MTP_MAX_TOKENS
-                    } else {
-                        1
-                    },
+                    max_draft_tokens: DEFAULT_NATIVE_MTP_MAX_TOKENS,
                     min_draft_tokens: 0,
                     reject_cooldown_tokens: 0,
                     suppress_cooldown_drafts: false,
@@ -119,15 +115,12 @@ impl OpenAiOptions {
             },
             native_mtp_enabled,
             native_mtp_draft_model_path: None,
-            native_mtp_max_tokens: if native_mtp_enabled {
-                DEFAULT_NATIVE_MTP_MAX_TOKENS
-            } else {
-                0
-            },
+            native_mtp_max_tokens: DEFAULT_NATIVE_MTP_MAX_TOKENS,
             native_mtp_min_tokens: 0,
             activation_width,
             reply_credit_limit: None,
-            downstream_connect_timeout_secs: 30,
+            downstream_connect_timeout_secs:
+                skippy_config::local_serving::DOWNSTREAM_CONNECT_TIMEOUT_SECS,
         }
     }
 

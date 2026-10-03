@@ -1,3 +1,5 @@
+use skippy_protocol::FlashAttentionType;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum KvCacheType {
     F16,
@@ -125,6 +127,15 @@ impl KvCachePolicy {
             self.cache_type_k().to_ascii_uppercase(),
             self.cache_type_v().to_ascii_uppercase()
         )
+    }
+}
+
+/// Quantized value caches require Flash Attention; F16 uses runtime auto selection.
+pub fn effective_flash_attention(cache_type_v: &str) -> FlashAttentionType {
+    if cache_type_v.eq_ignore_ascii_case("f16") {
+        FlashAttentionType::Auto
+    } else {
+        FlashAttentionType::Enabled
     }
 }
 

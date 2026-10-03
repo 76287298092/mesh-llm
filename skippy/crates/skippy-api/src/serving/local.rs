@@ -90,6 +90,15 @@ impl LocalOpenAiOptions {
             concurrency,
             self.config.native_mtp_enabled,
         );
+        if self.speculative.is_none()
+            && let Some(path) = self
+                .config
+                .source_model_path
+                .as_deref()
+                .or(self.config.model_path.as_deref())
+        {
+            crate::speculative::apply_auto_speculation(&mut openai, std::path::Path::new(path));
+        }
         openai.adaptive_generation_min_concurrency = adaptive_minimum;
         openai.generation_queue_capacity = self.generation_queue_capacity.unwrap_or_else(|| {
             skippy_serving::frontend::default_generation_queue_capacity(concurrency)
@@ -103,23 +112,33 @@ impl LocalOpenAiOptions {
         openai.prefill_adaptive_max = self.prefill_adaptive_max;
         openai.prefill_adaptive_target_ms = self.prefill_adaptive_target_ms;
         if let Some(speculative) = self.speculative {
+            openai.native_mtp_enabled = speculative.native_mtp.enabled;
+            openai.native_mtp_max_tokens = speculative.native_mtp.max_draft_tokens;
+            openai.native_mtp_min_tokens = speculative.native_mtp.min_draft_tokens;
             openai.speculative = speculative;
         }
-        let native_mtp_enabled = self.config.native_mtp_enabled;
+        let native_mtp_enabled = openai.native_mtp_enabled;
+        let mtp_source = if native_mtp_enabled {
+            if openai.native_mtp_draft_model_path.is_some() {
+                skippy_runtime::MtpSource::External
+            } else {
+                skippy_runtime::MtpSource::Integrated
+            }
+        } else {
+            skippy_runtime::MtpSource::Disabled
+        };
+        let mut config = self.config;
+        config.native_mtp_enabled = native_mtp_enabled;
         let l3_manager = self.disk_cache.and_then(LocalDiskCacheOptions::acquire);
         Ok((
             self.bind_addr,
             ModelLoadRequest {
                 runtime: EmbeddedRuntimeOptions {
-                    config: self.config,
+                    config,
                     topology: self.topology,
                     n_threads: None,
                     n_threads_batch: None,
-                    mtp_source: if native_mtp_enabled {
-                        skippy_runtime::MtpSource::Integrated
-                    } else {
-                        skippy_runtime::MtpSource::Disabled
-                    },
+                    mtp_source,
                     metrics_otlp_grpc: self.metrics_otlp_grpc,
                     telemetry_queue_capacity: self.telemetry_queue_capacity,
                     telemetry_level: self.telemetry_level,
@@ -206,6 +225,23 @@ mod tests {
             request.runtime.mtp_source,
             skippy_runtime::MtpSource::Integrated
         );
+    }
+
+    #[test]
+    fn explicit_speculation_controls_override_automatic_runtime_defaults() {
+        let mut options = options();
+        let mut plan = SpeculativeDecodeConfig::default();
+        plan.native_mtp.enabled = false;
+        plan.native_mtp.max_draft_tokens = 7;
+        options.speculative = Some(plan);
+        let (_, request) = options.into_request().unwrap();
+        assert!(!request.runtime.config.native_mtp_enabled);
+        assert_eq!(
+            request.runtime.mtp_source,
+            skippy_runtime::MtpSource::Disabled
+        );
+        assert!(!request.openai.native_mtp_enabled);
+        assert_eq!(request.openai.native_mtp_max_tokens, 7);
     }
 
     #[test]

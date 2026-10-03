@@ -285,18 +285,18 @@ fn embedded_openai_backend_with_scheduler(
     iteration_scheduler: Option<IterationScheduler>,
 ) -> Result<EmbeddedOpenAiBackend> {
     if args.prefill_chunk_size == 0 {
-        bail!("--openai-prefill-chunk-size must be greater than zero");
+        bail!("--prefill-chunk-size must be greater than zero");
     }
     if args.generation_concurrency == 0 {
-        bail!("--openai-generation-concurrency must be greater than zero");
+        bail!("--generation-concurrency must be greater than zero");
     }
     ensure_generation_concurrency_fits_lanes(
         args.generation_concurrency,
         args.config.lane_count,
-        "--openai-generation-concurrency",
+        "--generation-concurrency",
     )?;
     if args.draft_model_path.is_some() && args.speculative_window == 0 {
-        bail!("--openai-speculative-window must be greater than zero when a draft model is set");
+        bail!("--speculative-window must be greater than zero when a draft model is set");
     }
     if args.native_mtp_draft_model_path.is_some() && !args.native_mtp_enabled {
         bail!("native MTP must be enabled when an MTP draft model is set");
@@ -343,8 +343,8 @@ fn embedded_openai_backend_with_scheduler(
         adaptive_step: args.prefill_adaptive_step,
         adaptive_max: args.prefill_adaptive_max,
         adaptive_target_ms: args.prefill_adaptive_target_ms,
-        schedule_arg: "--openai-prefill-chunk-schedule",
-        policy_arg: "--openai-prefill-chunk-policy",
+        schedule_arg: "--prefill-chunk-schedule",
+        policy_arg: "--prefill-chunk-policy",
     })?;
     let mode = if args.config.downstream.is_none() {
         OpenAiBackendMode::LocalRuntime

@@ -1,10 +1,13 @@
-use anyhow::Result;
-use mesh_llm_host_runtime::command_support::models::{
-    find_remote_catalog_model_exact, huggingface_hub_cache_dir, huggingface_identity_for_path,
-    installed_model_capabilities, installed_model_display_name, installed_model_huggingface_ref,
-    layered_package_layer_count_for_path, layered_package_total_bytes_for_path,
-    load_model_usage_record_for_path, remote_catalog_model_ref, scan_installed_artifacts_in,
+use crate::models::details::{
+    find_remote_catalog_model_exact, installed_model_capabilities, installed_model_display_name,
+    installed_model_huggingface_ref, remote_catalog_model_ref,
 };
+use crate::models::storage::{
+    huggingface_hub_cache_dir, huggingface_identity_for_path, layered_package_layer_count_for_path,
+    layered_package_total_bytes_for_path, load_model_usage_record_for_path,
+    scan_installed_artifacts_in,
+};
+use anyhow::Result;
 use std::path::Path;
 
 use super::formatters::{InstalledRow, models_formatter};
@@ -19,8 +22,8 @@ fn build_installed_rows(cache_root: &Path) -> Vec<InstalledRow> {
         .map(|artifact| {
             let name = artifact.model_ref;
             let path = artifact.path;
-            let is_safetensors = path.extension().and_then(|extension| extension.to_str())
-                == Some("safetensors");
+            let is_safetensors =
+                path.extension().and_then(|extension| extension.to_str()) == Some("safetensors");
             let display_name = installed_model_display_name(&name);
             let catalog_model = find_remote_catalog_model_exact(&name);
             let layer_count =
@@ -34,13 +37,22 @@ fn build_installed_rows(cache_root: &Path) -> Vec<InstalledRow> {
             } else {
                 name.clone()
             };
-            let show_command = layer_count
-                .is_none()
-                .then(|| format!("mesh-llm models show {model_ref}"));
-            let download_command = layer_count
-                .is_none()
-                .then(|| format!("mesh-llm models download {model_ref}"));
-            let delete_command = format!("mesh-llm models delete {model_ref}");
+            let show_command = layer_count.is_none().then(|| {
+                format!(
+                    "{program} models show {model_ref}",
+                    program = crate::models::output::program()
+                )
+            });
+            let download_command = layer_count.is_none().then(|| {
+                format!(
+                    "{program} models download {model_ref}",
+                    program = crate::models::output::program()
+                )
+            });
+            let delete_command = format!(
+                "{program} models delete {model_ref}",
+                program = crate::models::output::program()
+            );
             let size = if let Some(bytes) = layered_package_total_bytes_for_path(&path) {
                 Some(bytes)
             } else if path
@@ -48,16 +60,12 @@ fn build_installed_rows(cache_root: &Path) -> Vec<InstalledRow> {
                 .and_then(|ext| ext.to_str())
                 .is_some_and(|ext| ext.eq_ignore_ascii_case("gguf"))
             {
-                Some(
-                    mesh_llm_host_runtime::command_support::models::election::total_model_bytes(
-                        &path,
-                    ),
-                )
+                Some(crate::models::storage::total_model_bytes(&path))
             } else {
                 std::fs::metadata(&path).map(|meta| meta.len()).ok()
             };
             let capabilities = if is_safetensors {
-                mesh_llm_host_runtime::command_support::models::capabilities::infer_local_model_capabilities(&name, &path)
+                crate::models::capabilities::infer_local_model_capabilities(&name, &path)
             } else {
                 installed_model_capabilities(&name)
             };
@@ -155,7 +163,7 @@ mod tests {
         assert_eq!(row.download_command, None);
         assert_eq!(
             row.delete_command,
-            "mesh-llm models delete meshllm/DeepSeek-V3.2-UD-Q4_K_XL-layers"
+            "skippy models delete meshllm/DeepSeek-V3.2-UD-Q4_K_XL-layers"
         );
 
         let _ = std::fs::remove_dir_all(&temp);
@@ -182,7 +190,7 @@ mod tests {
         assert_eq!(row.download_command, None);
         assert_eq!(
             row.delete_command,
-            "mesh-llm models delete meshllm/Qwen3-8B-Q4_K_M-layers"
+            "skippy models delete meshllm/Qwen3-8B-Q4_K_M-layers"
         );
 
         let _ = std::fs::remove_dir_all(&temp);

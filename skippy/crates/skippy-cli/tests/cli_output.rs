@@ -201,7 +201,15 @@ fn recommended_models_have_human_and_json_presentations() {
         .output()
         .unwrap();
     assert!(human.status.success());
-    assert!(String::from_utf8_lossy(&human.stdout).contains("⭐ Tiny Test"));
+    assert!(String::from_utf8_lossy(&human.stdout).contains("• Tiny Test  1GB"));
+    let default = std::process::Command::new(env!("CARGO_BIN_EXE_skippy"))
+        .env("HF_HOME", root.path())
+        .args(["models", "recommended"])
+        .output()
+        .unwrap();
+    assert!(default.status.success());
+    assert_eq!(default.stdout, human.stdout);
+
     let json = std::process::Command::new(env!("CARGO_BIN_EXE_skippy"))
         .env("HF_HOME", root.path())
         .args(["--output", "json", "models", "recommended"])
@@ -211,6 +219,24 @@ fn recommended_models_have_human_and_json_presentations() {
     let models: serde_json::Value = serde_json::from_slice(&json.stdout).unwrap();
     assert_eq!(models["source"], "catalog");
     assert_eq!(models["results"][0]["name"], "Tiny Test");
+    assert_eq!(models["results"][0]["type"], "gguf");
+    assert!(models["results"][0]["capabilities"].is_object());
+    assert!(
+        models["results"][0]["show"]
+            .as_str()
+            .unwrap()
+            .starts_with("skippy models show ")
+    );
+    let flag_json = std::process::Command::new(env!("CARGO_BIN_EXE_skippy"))
+        .env("HF_HOME", root.path())
+        .args(["models", "recommended", "--json"])
+        .output()
+        .unwrap();
+    assert!(flag_json.status.success());
+    assert_eq!(
+        models,
+        serde_json::from_slice::<serde_json::Value>(&flag_json.stdout).unwrap()
+    );
 }
 
 #[test]
@@ -240,7 +266,7 @@ fn models_list_uses_hugging_face_cache_without_native_runtime_or_network() {
     let output = std::process::Command::new(env!("CARGO_BIN_EXE_skippy"))
         .env("HF_ENDPOINT", "http://127.0.0.1:1")
         .env("HF_HUB_CACHE", &cache)
-        .args(["models", "installed"])
+        .args(["models", "installed", "--json"])
         .output()
         .unwrap();
     assert!(
@@ -252,6 +278,23 @@ fn models_list_uses_hugging_face_cache_without_native_runtime_or_network() {
     assert_eq!(value["cache_dir"], cache.to_string_lossy().as_ref());
     assert_eq!(value["results"], serde_json::json!([]));
     assert!(cache.is_dir());
+    let jsonl = std::process::Command::new(env!("CARGO_BIN_EXE_skippy"))
+        .env("HF_ENDPOINT", "http://127.0.0.1:1")
+        .env("HF_HUB_CACHE", &cache)
+        .args(["--output", "jsonl", "models", "installed"])
+        .output()
+        .unwrap();
+    assert!(jsonl.status.success());
+    assert!(jsonl.stderr.is_empty());
+    let events = String::from_utf8(jsonl.stdout)
+        .unwrap()
+        .lines()
+        .map(|line| serde_json::from_str::<serde_json::Value>(line).unwrap())
+        .collect::<Vec<_>>();
+    let result = events.last().unwrap();
+    assert_eq!(result["schema_version"], 1);
+    assert_eq!(result["type"], "result");
+    assert_eq!(result["data"], value);
 }
 
 #[test]
@@ -271,15 +314,28 @@ fn model_download_has_no_skippy_only_pin_flags() {
 #[test]
 fn model_delete_uses_mesh_preview_first_policy() {
     let root = tempfile::tempdir().unwrap();
+    let repo = root.path().join("models--org--model");
+    let snapshot = repo.join("snapshots/abcdef1234567890");
+    std::fs::create_dir_all(&snapshot).unwrap();
+    std::fs::create_dir_all(repo.join("refs")).unwrap();
+    std::fs::write(repo.join("refs/main"), b"abcdef1234567890").unwrap();
+    let model = snapshot.join("model-Q4_K_M.gguf");
+    std::fs::write(&model, b"GGUF fixture, never loaded").unwrap();
     let output = std::process::Command::new(env!("CARGO_BIN_EXE_skippy"))
         .env("HF_ENDPOINT", "http://127.0.0.1:1")
         .env("HF_HUB_CACHE", root.path())
-        .args(["models", "delete", "org/model"])
+        .args(["models", "delete", "org/model/model-Q4_K_M.gguf", "--json"])
         .output()
         .unwrap();
-    assert!(!output.status.success());
-    assert!(String::from_utf8_lossy(&output.stderr).contains("Model not found"));
-    assert!(!root.path().join("models--org--model").exists());
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let preview: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(preview["dry_run"], true);
+    assert_eq!(preview["paths"], serde_json::json!([model]));
+    assert!(model.is_file());
 }
 
 #[test]
