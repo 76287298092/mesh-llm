@@ -8,10 +8,11 @@ Standalone Skippy command execution and output formatting. Argument parsing live
 interactive chat or raw-completion client. It does not load a native runtime or
 manage stage processes.
 
-Responses stream as they arrive. After each response, a compact emoji footer
+Responses stream as they arrive. After each response, a single-line emoji footer
 shows generation speed, time to first token (TTFT), total elapsed time, input and
 output token counts, and cached input tokens with their reuse percentage. The
-footer goes to stderr and is dimmed on terminals unless `NO_COLOR` is set.
+footer has no indentation, goes to stderr, and is dimmed on terminals unless
+`NO_COLOR` is set.
 TTFT and total time are measured by the client, including connection and server
 wait time. Generation speed uses server timings when supplied; otherwise it is
 estimated from the output token count and the time between the first and last

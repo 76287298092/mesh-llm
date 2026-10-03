@@ -229,11 +229,11 @@ mod tests {
     fn prompt_stats_only_use_ansi_when_requested() {
         for dim in [false, true] {
             let mut output = Vec::new();
-            render_prompt_stats(&mut output, "  ⚡ 43.2 tok/s\n  📝 128 out", dim).unwrap();
+            render_prompt_stats(&mut output, "⚡ 43.2 tok/s · 📝 128 out", dim).unwrap();
             let output = String::from_utf8(output).unwrap();
             assert_eq!(output.contains("\x1b[2m"), dim);
             assert_eq!(output.contains("\x1b[0m"), dim);
-            assert!(output.contains("  ⚡ 43.2 tok/s\n  📝 128 out"));
+            assert!(output.contains("⚡ 43.2 tok/s · 📝 128 out"));
         }
     }
 

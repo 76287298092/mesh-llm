@@ -76,7 +76,7 @@ impl PromptMetrics {
         );
         let state = if interrupted { "Interrupted · " } else { "" };
         format!(
-            "  ⚡ {state}{tps} · ⏱ TTFT {ttft} · Total {:.2} s\n  📝 {} in / {} out · ♻️ Cached {}",
+            "⚡ {state}{tps} · ⏱ TTFT {ttft} · Total {:.2} s · 📝 {} in / {} out · ♻️ Cached {}",
             total.as_secs_f64(),
             token_count(self.input_tokens),
             token_count(self.output_tokens),
@@ -132,7 +132,7 @@ mod tests {
         );
         assert_eq!(
             metrics.footer(Duration::from_millis(3120), false),
-            "  ⚡ 43.2 tok/s · ⏱ TTFT 184 ms · Total 3.12 s\n  📝 1,280 in / 128 out · ♻️ Cached 1,024 (80%)"
+            "⚡ 43.2 tok/s · ⏱ TTFT 184 ms · Total 3.12 s · 📝 1,280 in / 128 out · ♻️ Cached 1,024 (80%)"
         );
     }
 
@@ -183,7 +183,7 @@ mod tests {
         let metrics = PromptMetrics::default();
         assert_eq!(
             metrics.footer(Duration::from_millis(250), true),
-            "  ⚡ Interrupted · — tok/s · ⏱ TTFT — · Total 0.25 s\n  📝 — in / — out · ♻️ Cached —"
+            "⚡ Interrupted · — tok/s · ⏱ TTFT — · Total 0.25 s · 📝 — in / — out · ♻️ Cached —"
         );
     }
 
