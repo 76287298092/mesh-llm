@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 
-const publishScript = readFileSync(new URL("../../../scripts/publish-crates.sh", import.meta.url), "utf8");
+const publishScript = readFileSync(new URL("../../../../scripts/publish-crates.sh", import.meta.url), "utf8");
 const publishList = publishScript.match(/publish_crates=\(([\s\S]*?)\n\)/)?.[1];
 
 if (!publishList) {

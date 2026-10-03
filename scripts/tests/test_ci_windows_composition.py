@@ -58,7 +58,6 @@ def _windows_unit_row_crates() -> set[str]:
 # change under test. A crate leaves this list, for a platform-windows* crate
 # rule and the windows-unit row, once its suite is confirmed green there.
 WINDOWS_UNVERIFIED_CRATES = {
-    "mesh-llm-commands",
     "mesh-llm-membership",
     "skippy-api",
     "skippy-cli",
@@ -69,9 +68,7 @@ WINDOWS_UNVERIFIED_CRATES = {
     "skippy-native-runtime",
     "skippy-model-hf",
     "mesh-llm-routing",
-    "mesh-llm-system",
     "skippy-bench",
-    "skippy-cache",
     "skippy-quantize",
     "skippy-runtime",
     "skippy-serving",
