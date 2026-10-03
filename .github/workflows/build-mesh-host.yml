@@ -42,6 +42,37 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
+      # The web console is embedded at compile time --
+      # `mesh-llm-ui/src/lib.rs` is `include_dir!("$MESH_LLM_UI_DIST")` -- and
+      # that crate's build script falls back to an EMPTY directory when
+      # `crates/mesh-llm-ui/dist` is absent, silently. The host then builds
+      # cleanly and serves 500 on every console route, so the dist has to exist
+      # before cargo runs.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: crates/mesh-llm-ui/pnpm-lock.yaml
+
+      - name: Build the web console
+        working-directory: crates/mesh-llm-ui
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run build
+          if (-not (Test-Path dist/index.html)) {
+            throw "the console build produced no dist/index.html"
+          }
+          "console dist: $((Get-ChildItem dist -Recurse -File | Measure-Object).Count) files"
+
+      # The Rust cache can hold a `mesh-llm-ui` artifact built when dist was
+      # absent. Drop it so the host embeds the console that was just built
+      # rather than the empty fallback.
+      - name: Force the console crate to rebuild against the real dist
+        run: cargo clean -p mesh-llm-ui
+
       - name: Build the host
         run: cargo build --release -p mesh-llm -j 2
 
