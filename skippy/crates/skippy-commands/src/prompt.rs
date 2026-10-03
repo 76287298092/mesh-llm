@@ -3,7 +3,7 @@
 use std::{
     io::{self, BufRead, BufReader, IsTerminal},
     path::PathBuf,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use anyhow::{Context, Result, bail, ensure};
@@ -12,6 +12,10 @@ use rustyline::{DefaultEditor, error::ReadlineError};
 use serde_json::{Value, json};
 
 use crate::console;
+
+mod metrics;
+
+use metrics::PromptMetrics;
 
 pub struct PromptCommand {
     pub endpoint: String,
@@ -152,6 +156,7 @@ fn request_body(model: &str, input: &str, messages: &[Value], args: &PromptComma
     if args.no_think {
         body["reasoning_effort"] = json!("none");
     }
+    body["stream_options"] = json!({"include_usage": true});
     body
 }
 
@@ -162,6 +167,7 @@ fn stream_completion(
     body: Value,
     raw: bool,
 ) -> Result<String> {
+    let started = Instant::now();
     let response = client
         .post(format!("{endpoint}/{route}"))
         .json(&body)
@@ -172,10 +178,26 @@ fn stream_completion(
         let detail = response.text().unwrap_or_default();
         bail!("{route} returned {status}: {detail}");
     }
-    print_stream(BufReader::new(response), raw)
+    print_stream(BufReader::new(response), raw, started)
 }
 
-fn print_stream(reader: impl BufRead, raw: bool) -> Result<String> {
+fn print_stream(reader: impl BufRead, raw: bool, started: Instant) -> Result<String> {
+    let mut metrics = PromptMetrics::default();
+    let result = read_stream(reader, raw, started, &mut metrics, |text| {
+        console::write_text(text).context("write completion")
+    });
+    console::write_line("")?;
+    console::write_prompt_stats(&metrics.footer(started.elapsed(), result.is_err()))?;
+    result
+}
+
+fn read_stream(
+    reader: impl BufRead,
+    raw: bool,
+    started: Instant,
+    metrics: &mut PromptMetrics,
+    mut write_text: impl FnMut(&str) -> Result<()>,
+) -> Result<String> {
     let mut output = String::new();
     let mut done = false;
     for line in reader.lines() {
@@ -191,18 +213,18 @@ fn print_stream(reader: impl BufRead, raw: bool) -> Result<String> {
         if let Some(error) = chunk.get("error") {
             bail!("completion stream failed: {error}");
         }
+        metrics.observe(&chunk, raw, started.elapsed());
         let text = if raw {
             chunk["choices"][0]["text"].as_str()
         } else {
             chunk["choices"][0]["delta"]["content"].as_str()
         };
         if let Some(text) = text {
-            console::write_text(text).context("write completion")?;
+            write_text(text)?;
             output.push_str(text);
         }
     }
     ensure!(done, "completion stream ended before [DONE]");
-    console::write_line("")?;
     Ok(output)
 }
 
@@ -210,16 +232,26 @@ fn print_stream(reader: impl BufRead, raw: bool) -> Result<String> {
 mod tests {
     use std::io::Cursor;
 
-    use super::print_stream;
+    use super::*;
+
+    fn collect_stream(body: &[u8], raw: bool) -> Result<String> {
+        read_stream(
+            Cursor::new(body),
+            raw,
+            Instant::now(),
+            &mut PromptMetrics::default(),
+            |_| Ok(()),
+        )
+    }
 
     #[test]
     fn chat_stream_requires_done_after_content() {
         let complete =
             b"data: {\"choices\":[{\"delta\":{\"content\":\"hello\"}}]}\n\ndata: [DONE]\n";
-        assert_eq!(print_stream(Cursor::new(complete), false).unwrap(), "hello");
+        assert_eq!(collect_stream(complete, false).unwrap(), "hello");
         let truncated = b"data: {\"choices\":[{\"delta\":{\"content\":\"hel\"}}]}\n";
         assert!(
-            print_stream(Cursor::new(truncated), false)
+            collect_stream(truncated, false)
                 .unwrap_err()
                 .to_string()
                 .contains("before [DONE]")
@@ -229,6 +261,49 @@ mod tests {
     #[test]
     fn raw_stream_reads_completion_text() {
         let body = b"data: {\"choices\":[{\"text\":\"answer\"}]}\n\ndata: [DONE]\n";
-        assert_eq!(print_stream(Cursor::new(body), true).unwrap(), "answer");
+        assert_eq!(collect_stream(body, true).unwrap(), "answer");
+    }
+
+    #[test]
+    fn both_request_modes_ask_for_final_usage() {
+        for raw in [false, true] {
+            let args = PromptCommand {
+                endpoint: String::new(),
+                model: None,
+                max_new_tokens: Default::default(),
+                raw,
+                no_think: false,
+                history_path: None,
+            };
+            assert_eq!(
+                request_body("model", "hello", &[], &args)["stream_options"],
+                json!({"include_usage": true})
+            );
+        }
+    }
+
+    #[test]
+    fn stream_writes_deltas_and_collects_usage_before_done() {
+        let body = b"data: {\"choices\":[{\"delta\":{\"content\":\"hel\"}}]}\n\ndata: {\"choices\":[{\"delta\":{\"content\":\"lo\"}}]}\n\ndata: {\"choices\":[],\"usage\":{\"prompt_tokens\":10,\"completion_tokens\":2,\"prompt_tokens_details\":{\"cached_tokens\":8}}}\n\ndata: [DONE]\n";
+        let mut metrics = PromptMetrics::default();
+        let mut deltas = Vec::new();
+        let output = read_stream(
+            Cursor::new(body),
+            false,
+            Instant::now(),
+            &mut metrics,
+            |text| {
+                deltas.push(text.to_owned());
+                Ok(())
+            },
+        )
+        .unwrap();
+        assert_eq!(deltas, ["hel", "lo"]);
+        assert_eq!(output, "hello");
+        assert!(
+            metrics
+                .footer(Duration::from_secs(1), false)
+                .contains("10 in / 2 out · ♻️ Cached 8 (80%)")
+        );
     }
 }

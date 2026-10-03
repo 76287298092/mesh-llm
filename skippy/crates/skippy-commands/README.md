@@ -8,4 +8,14 @@ Standalone Skippy command execution and output formatting. Argument parsing live
 interactive chat or raw-completion client. It does not load a native runtime or
 manage stage processes.
 
+Responses stream as they arrive. After each response, a compact emoji footer
+shows generation speed, time to first token (TTFT), total elapsed time, input and
+output token counts, and cached input tokens with their reuse percentage. The
+footer goes to stderr and is dimmed on terminals unless `NO_COLOR` is set.
+TTFT and total time are measured by the client, including connection and server
+wait time. Generation speed uses server timings when supplied; otherwise it is
+estimated from the output token count and the time between the first and last
+generated text events, including reasoning events. Unavailable metrics appear
+as `—`; incomplete streams are marked `Interrupted`.
+
 Commands are expressed as plain typed actions (`ModelAction`, `RuntimeAction`, `PlanSplitCommand`), deliberately decoupled from Clap. The crate has no dependency on `skippy-serving`, adds no serving options types, and reads only the documented `SKIPPY_*` environment variables through `skippy-config` path policy.

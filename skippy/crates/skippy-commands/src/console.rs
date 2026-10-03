@@ -148,6 +148,21 @@ pub(crate) fn write_status(message: &str) -> io::Result<()> {
     writeln!(io::stderr().lock(), "{message}")
 }
 
+/// Keep prompt statistics separate from response text and dim them on terminals.
+pub(crate) fn write_prompt_stats(message: &str) -> io::Result<()> {
+    let dim = io::stderr().is_terminal() && std::env::var_os("NO_COLOR").is_none();
+    render_prompt_stats(&mut io::stderr().lock(), message, dim)
+}
+
+fn render_prompt_stats(output: &mut impl Write, message: &str, dim: bool) -> io::Result<()> {
+    writeln!(output)?;
+    if dim {
+        writeln!(output, "\x1b[2m{message}\x1b[0m")
+    } else {
+        writeln!(output, "{message}")
+    }
+}
+
 pub fn status(message: &str) -> io::Result<()> {
     write_status(message)
 }
@@ -199,6 +214,19 @@ pub fn progress_with_unit(label: &str, current: u64, total: u64, unit: &str) -> 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn prompt_stats_only_use_ansi_when_requested() {
+        for dim in [false, true] {
+            let mut output = Vec::new();
+            render_prompt_stats(&mut output, "  ⚡ 43.2 tok/s\n  📝 128 out", dim).unwrap();
+            let output = String::from_utf8(output).unwrap();
+            assert_eq!(output.contains("\x1b[2m"), dim);
+            assert_eq!(output.contains("\x1b[0m"), dim);
+            assert!(output.contains("  ⚡ 43.2 tok/s\n  📝 128 out"));
+        }
+    }
+
     #[test]
     fn diagnostics_preserve_warning_context_and_status_text() {
         let mut output = Vec::new();
