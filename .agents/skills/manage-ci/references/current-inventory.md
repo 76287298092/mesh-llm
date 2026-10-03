@@ -17,9 +17,12 @@ Windows since, and `mesh-llm-host-runtime` — the shared Windows/macOS owner th
 row already runs, listed so that a change to it selects the row instead of
 leaving Windows unvalidated. The row also resolves `mesh-llm-commands`,
 `mesh-llm-system`, and `skippy-cache`, which are now in that catalog. It does
-not select host/native product builds by
-itself. `scripts/tests/test_ci_windows_composition.py` keeps the list, the
-crates the row resolves, and the still-unverified census in agreement.
+not select host/native product builds by itself. `mesh-llm-commands` and
+`mesh-llm-system` run in their own step with
+`mesh-llm-system/dynamic-native-runtime`, because they reach `skippy-ffi`
+without its dynamic loader and the row prepares no static llama archives.
+`scripts/tests/test_ci_windows_composition.py` keeps the list, the crates the
+row resolves, and the still-unverified census in agreement.
 
 ## Entry workflows
 
