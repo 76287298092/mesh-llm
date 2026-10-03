@@ -201,6 +201,15 @@ unless `--active-only` is passed.
 
 Interactive terminals show concise status, download and native model-load progress, and a ready
 summary. Use `--output human` to request that presentation explicitly.
+Llama.cpp diagnostic logs stay quiet during successful runs. Skippy retains a
+bounded recent log history and displays it when a native error occurs or the
+command fails. Add `--debug` to stream native logs as they occur:
+
+```sh
+skippy serve --model Qwen3-0.6B-Q4_K_M --debug
+```
+
+In JSONL mode these diagnostics are `native_log` events with a `message` field.
 Commands that return one result use JSON when stdout is redirected; use
 `--output json` to request it explicitly. A long-running `serve` command uses
 JSONL when redirected, or when `--output jsonl` is given:

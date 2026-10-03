@@ -10,6 +10,9 @@ pub struct Cli {
     /// Output presentation for humans or automation.
     #[arg(long, global = true, value_enum, default_value_t = OutputFormat::Auto)]
     pub output: OutputFormat,
+    /// Show llama.cpp diagnostic logs as they occur.
+    #[arg(long, global = true)]
+    pub debug: bool,
     #[command(flatten)]
     pub native_runtime: NativeRuntimeArgs,
     #[command(subcommand)]

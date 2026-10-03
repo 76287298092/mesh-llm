@@ -1,24 +1,15 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::{CStr, c_char, c_int, c_void};
-use std::fs::{File, OpenOptions};
-use std::io::{LineWriter, Write};
-use std::path::Path;
-use std::ptr;
+use std::io::Write;
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::{Mutex, OnceLock};
 
-#[cfg(unix)]
-use std::os::unix::fs::OpenOptionsExt;
-
-use anyhow::{Context, Result, anyhow};
 use serde_json::Value;
 use tokio::sync::mpsc;
 
 /// GGML_LLAMA_LOG_LEVEL values (set before llama_backend_init).
 /// 0=silent, 1=error, 2=warn, 3=info (default), 4=debug.
 pub const LLAMA_LOG_LEVEL_DEBUG: &str = "4";
-
-static NATIVE_LOG_FILE: OnceLock<Mutex<Option<LineWriter<File>>>> = OnceLock::new();
 
 /// Channel sender for filtered native log messages.
 /// Messages matching key patterns (backend init, model load, VRAM, KV cache, tokenizer) are sent here.
@@ -28,7 +19,14 @@ static NATIVE_LOG_FILTERED_TX: OnceLock<Mutex<Option<mpsc::UnboundedSender<Nativ
 static NATIVE_LOG_AGGREGATOR: OnceLock<Mutex<NativeLogAggregator>> = OnceLock::new();
 static NATIVE_LOG_FORWARDING_MASK: AtomicU8 = AtomicU8::new(0);
 
+mod output;
 mod parser_policy;
+
+use output::native_log_file;
+pub use output::{
+    NativeLogSink, redirect_native_logs_to_file, restore_native_logs, set_native_log_sink,
+    suppress_native_logs,
+};
 
 use parser_policy::{
     ALL_FORWARDING_CATEGORIES, MODEL_CATEGORY, MODEL_FALLBACK_NOTE, category_mask,
@@ -238,10 +236,6 @@ struct NativeLogAggregator {
     measured_compute_mib: BTreeMap<String, f64>,
     measured_kv_mib: BTreeMap<String, f64>,
     host_memory_observed: bool,
-}
-
-fn native_log_file() -> &'static Mutex<Option<LineWriter<File>>> {
-    NATIVE_LOG_FILE.get_or_init(|| Mutex::new(None))
 }
 
 fn native_log_aggregator() -> &'static Mutex<NativeLogAggregator> {
@@ -832,12 +826,6 @@ fn parse_kv_cache_layer_index(line: &str) -> Option<usize> {
     (!digits.is_empty()).then(|| digits.parse().ok()).flatten()
 }
 
-fn flush_native_log_writer<W: Write>(writer: &mut Option<LineWriter<W>>) {
-    if let Some(writer) = writer.as_mut() {
-        let _ = writer.flush();
-    }
-}
-
 fn sanitize_native_log_note(note: &str) -> String {
     note.chars()
         .map(|ch| if matches!(ch, '\n' | '\r') { ' ' } else { ch })
@@ -886,56 +874,6 @@ fn forward_native_log_note(note: String, required_mask: u8) {
     }
 }
 
-fn clear_native_log_file() {
-    if let Ok(mut guard) = native_log_file().lock() {
-        flush_native_log_writer(&mut guard);
-        *guard = None;
-    }
-}
-
-fn set_native_log_callback(callback: skippy_ffi::LlamaLogCallback) {
-    if !skippy_ffi::native_runtime_loaded() {
-        return;
-    }
-    unsafe {
-        skippy_ffi::llama_log_set(callback, ptr::null_mut());
-        skippy_ffi::ggml_log_set(callback, ptr::null_mut());
-        skippy_ffi::mtmd_helper_log_set(callback, ptr::null_mut());
-    }
-}
-
-pub fn redirect_native_logs_to_file(path: impl AsRef<Path>) -> Result<()> {
-    let path = path.as_ref();
-    let mut options = OpenOptions::new();
-    options.create(true).append(true);
-    #[cfg(unix)]
-    options.mode(0o600);
-
-    let file = options
-        .open(path)
-        .with_context(|| format!("open skippy native log file {}", path.display()))?;
-    let mut guard = native_log_file()
-        .lock()
-        .map_err(|_| anyhow!("native log file mutex poisoned"))?;
-    flush_native_log_writer(&mut guard);
-    *guard = Some(LineWriter::new(file));
-    drop(guard);
-
-    set_native_log_callback(Some(write_native_log));
-
-    Ok(())
-}
-
-pub fn suppress_native_logs() {
-    clear_native_log_file();
-    set_native_log_callback(Some(discard_native_log));
-}
-
-pub fn restore_native_logs() {
-    clear_native_log_file();
-    set_native_log_callback(None);
-}
-
 /// Enable verbose llama.cpp logging. Call before `llama_backend_init()` / model loading.
 /// Sets GGML_LLAMA_LOG_LEVEL=4 so LLAMA_LOG_DEBUG macros produce output.
 pub fn enable_verbose_native_logs() {
@@ -955,12 +893,13 @@ pub fn disable_verbose_native_logs() {
     unsafe { std::env::remove_var("GGML_LLAMA_LOG_LEVEL") };
 }
 
-unsafe extern "C" fn write_native_log(_level: c_int, text: *const c_char, _user_data: *mut c_void) {
+unsafe extern "C" fn write_native_log(level: c_int, text: *const c_char, _user_data: *mut c_void) {
     if text.is_null() {
         return;
     }
 
     let bytes = unsafe { CStr::from_ptr(text) }.to_bytes();
+    output::forward_raw_native_log(level, bytes);
     if let Ok(mut guard) = native_log_file().lock()
         && let Some(writer) = guard.as_mut()
     {

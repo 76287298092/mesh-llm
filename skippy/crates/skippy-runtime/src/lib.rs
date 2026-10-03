@@ -12,7 +12,7 @@ mod error;
 mod gguf_writer;
 mod kv_pages;
 mod laya;
-mod logging;
+pub mod logging;
 mod media;
 mod native;
 mod native_mtp;

@@ -3,6 +3,7 @@ mod conversion;
 mod disk_cache;
 mod local_model;
 mod local_resource_planning;
+mod native_logging;
 mod runtime;
 mod serve;
 
@@ -12,9 +13,19 @@ use anyhow::Result;
 use clap::Parser;
 use cli::{Cli, Command, OutputFormat};
 use std::io::IsTerminal;
+use std::sync::Arc;
 
 fn main() -> std::process::ExitCode {
     let startup_warnings = prepare_model_download_directories();
+    let cli = match parse_cli() {
+        Ok(Some(cli)) => cli,
+        Ok(None) => return std::process::ExitCode::SUCCESS,
+        Err(error) => {
+            let _ = skippy_commands::console::failure(&error);
+            return std::process::ExitCode::FAILURE;
+        }
+    };
+    let native_logs = Arc::new(native_logging::NativeDiagnostics::new(cli.debug));
     let runtime = match tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
@@ -25,11 +36,12 @@ fn main() -> std::process::ExitCode {
             return std::process::ExitCode::FAILURE;
         }
     };
-    let result = runtime.block_on(run_main(startup_warnings));
+    let result = runtime.block_on(run_main(cli, startup_warnings, native_logs.clone()));
     runtime.shutdown_timeout(std::time::Duration::from_secs(1));
     match result {
         Ok(()) => std::process::ExitCode::SUCCESS,
         Err(error) => {
+            native_logs.flush_on_error();
             let _ = skippy_commands::console::failure(&error);
             std::process::ExitCode::FAILURE
         }
@@ -55,10 +67,11 @@ fn prepare_model_download_directories() -> Vec<String> {
     }
 }
 
-async fn run_main(startup_warnings: Vec<String>) -> Result<()> {
-    let Some(cli) = parse_cli()? else {
-        return Ok(());
-    };
+async fn run_main(
+    cli: Cli,
+    startup_warnings: Vec<String>,
+    native_logs: Arc<native_logging::NativeDiagnostics>,
+) -> Result<()> {
     let output = match (&cli.command, cli.output) {
         (Command::Serve(_), OutputFormat::Auto) if !std::io::stdout().is_terminal() => {
             OutputFormat::Jsonl
@@ -87,6 +100,7 @@ async fn run_main(startup_warnings: Vec<String>) -> Result<()> {
     if matches!(&cli.command, Command::Serve(_) | Command::PlanSplit(_)) {
         runtime::prepare_native_runtime(&native_options, automatic_runtime).await?;
     }
+    skippy_runtime::logging::set_native_log_sink(native_logs);
     match cli.command {
         Command::Doctor => runtime::doctor(&native_options),
         Command::Prompt(args) => {

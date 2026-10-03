@@ -130,6 +130,16 @@ pub fn failure(error: &anyhow::Error) -> io::Result<()> {
     }
 }
 
+/// Render native diagnostic fragments without corrupting machine output.
+pub fn native_log(text: &str) -> io::Result<()> {
+    if mode() == OutputMode::Jsonl {
+        return event("native_log", &serde_json::json!({"message": text}));
+    }
+    let mut output = io::stderr().lock();
+    output.write_all(text.as_bytes())?;
+    output.flush()
+}
+
 /// Write streamed interactive output without waiting for a newline.
 pub(crate) fn write_text(text: &str) -> io::Result<()> {
     let mut output = io::stdout().lock();
