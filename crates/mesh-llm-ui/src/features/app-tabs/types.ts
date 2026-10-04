@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import type { LatencySource } from '@/lib/api/types'
+import type { CapabilityReport } from '@/lib/api/types'
 import type { MemoryBreakdownGB } from '@/lib/vram'
 import type { ChatMessage } from '@/features/chat/lib/chat-types'
 import type { WakeableNode } from '@/features/app-shell/lib/status-types'
@@ -44,6 +45,7 @@ export type Peer = {
   vramGB?: number
   /** Itemized view of `vramGB` when the node advertised one. */
   memory?: MemoryBreakdownGB
+  capabilityReport?: CapabilityReport
   toksPerSec?: number
   hardwareLabel?: string
   ownership?: string

@@ -459,7 +459,16 @@ fn local_hardware_info_to_proto(
 ) -> Option<crate::proto::node::HardwareInfo> {
     let gpus = local_gpu_info_to_proto(ann);
     let memory = ann.memory.as_ref().map(local_memory_to_proto);
-    if ann.hostname.is_none() && ann.is_soc.is_none() && gpus.is_empty() && memory.is_none() {
+    let capability_report_json = ann
+        .capability_report
+        .as_ref()
+        .and_then(|report| serde_json::to_vec(report).ok());
+    if ann.hostname.is_none()
+        && ann.is_soc.is_none()
+        && gpus.is_empty()
+        && memory.is_none()
+        && capability_report_json.is_none()
+    {
         None
     } else {
         Some(crate::proto::node::HardwareInfo {
@@ -467,6 +476,7 @@ fn local_hardware_info_to_proto(
             hostname: ann.hostname.clone(),
             gpus,
             memory,
+            capability_report_json,
         })
     }
 }
@@ -511,6 +521,21 @@ fn proto_memory_to_local(
         system_ram_bytes: memory.system_ram_bytes,
         ram_offload_bytes: memory.ram_offload_bytes.unwrap_or(0),
     })
+}
+
+const MAX_CAPABILITY_REPORT_BYTES: usize = 64 * 1024;
+
+fn proto_capability_report_to_local(
+    hardware: Option<&crate::proto::node::HardwareInfo>,
+) -> Option<mesh_llm_system::capability::CapabilityReport> {
+    let bytes = hardware?.capability_report_json.as_deref()?;
+    if bytes.len() > MAX_CAPABILITY_REPORT_BYTES {
+        return None;
+    }
+    let report: mesh_llm_system::capability::CapabilityReport =
+        serde_json::from_slice(bytes).ok()?;
+    (report.schema_version == mesh_llm_system::capability::CAPABILITY_SCHEMA_VERSION)
+        .then_some(report)
 }
 
 struct LegacyGpuFields {
@@ -1126,6 +1151,7 @@ pub(crate) fn proto_ann_to_local(
             .and_then(|hardware| hardware.memory.as_ref())
             .and_then(proto_memory_to_local)
             .filter(|memory| memory.usable_bytes <= pa.vram_bytes),
+        capability_report: proto_capability_report_to_local(hardware),
         gpu_mem_bandwidth_gbps: legacy_gpu_fields
             .gpu_mem_bandwidth_gbps
             .or_else(|| pa.gpu_mem_bandwidth_gbps.clone()),

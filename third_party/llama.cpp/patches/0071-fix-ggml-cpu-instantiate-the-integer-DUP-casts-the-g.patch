@@ -1,0 +1,104 @@
+From 8b339e85d6674628984303d900192d7d01ba9aa8 Mon Sep 17 00:00:00 2001
+From: Mesh-LLM CI <ci@mesh-llm.local>
+Date: Sun, 4 Oct 2026 11:04:33 +0800
+Subject: [PATCH] fix(ggml-cpu): instantiate the integer DUP casts the graph
+ reaches
+
+deepseek4's top-k attention mask builder has to carry the runtime top-k count
+into the zero-value tensor it scatters into the mask, so it reshapes the I32
+top-k index tensor and casts that to the mask type:
+
+    zeros_shape = ggml_reshape_4d(ctx0, top_k_3d, ...);   // I32
+    zeros = ggml_fill(ctx0, ggml_cast(ctx0, zeros_shape,
+            cparams.flash_attn ? GGML_TYPE_F16 : GGML_TYPE_F32), 0.0f);
+
+ggml_top_k produces GGML_TYPE_I32 and cont/view/reshape all preserve it, so the
+cast source is I32. The cast exists only to carry the type across: ggml_fill
+writes the destination and never reads the cast result, which is why qwen4exp
+builds the same zero tensor with ggml_new_tensor_4d(..., GGML_TYPE_F32, ...)
+and casts nothing.
+
+With flash attention on, the destination is F16, and the CPU DUP dispatcher
+instantiated only I32 -> F32, so the node aborted:
+
+    ggml/src/ggml-cpu/ops.cpp:563: not implemented
+
+An abort inside graph compute leaves through ucrtbase (0xc0000409), which is
+how the DeepSeek4 port died seconds after kv_cache_initialization_completed
+while the qwen4exp path stayed up.
+
+Instantiate the missing pairs, and give I64 a case of its own: it previously
+fell through to the default arm, which reports a bare "fatal error" unless the
+source is quantized. Stage program replay copies between integer index tensors,
+so both widths need conversions in both directions. Name the pair in the
+remaining unsupported combinations so a future abort reports its types and not
+just its line.
+---
+ ggml/src/ggml-cpu/common.h | 17 +++++++++++++++++
+ ggml/src/ggml-cpu/ops.cpp  | 15 +++++++++++++--
+ 2 files changed, 30 insertions(+), 2 deletions(-)
+
+diff --git a/ggml/src/ggml-cpu/common.h b/ggml/src/ggml-cpu/common.h
+index abbadc359..062147147 100644
+--- a/ggml/src/ggml-cpu/common.h
++++ b/ggml/src/ggml-cpu/common.h
+@@ -39,6 +39,17 @@ static inline int32_t f32_to_i32(float x) {
+     return x;
+ }
+ 
++// Index tensors in the graph are a mix of I32 and I64 (a stage boundary copies whichever the
++// producer used into whichever the consumer wants), so both directions have to be convertible.
++// The values moved this way are element indices; truncation toward zero matches f32_to_i32.
++static inline float i64_to_f32(int64_t x) {
++    return (float) x;
++}
++
++static inline int64_t f32_to_i64(float x) {
++    return (int64_t) x;
++}
++
+ static inline float f32_to_f32(float x) {
+     return x;
+ }
+@@ -71,6 +82,12 @@ struct type_conversion_table<int32_t> {
+     static constexpr int32_t (*from_f32)(float) = f32_to_i32;
+ };
+ 
++template <>
++struct type_conversion_table<int64_t> {
++    static constexpr float (*to_f32)(int64_t) = i64_to_f32;
++    static constexpr int64_t (*from_f32)(float) = f32_to_i64;
++};
++
+ static std::pair<int64_t, int64_t> get_thread_range(const struct ggml_compute_params * params, const struct ggml_tensor * src0) {
+     const int64_t ith = params->ith;
+     const int64_t nth = params->nth;
+diff --git a/ggml/src/ggml-cpu/ops.cpp b/ggml/src/ggml-cpu/ops.cpp
+index ba00a0a73..b88334efd 100644
+--- a/ggml/src/ggml-cpu/ops.cpp
++++ b/ggml/src/ggml-cpu/ops.cpp
+@@ -559,8 +559,19 @@ void ggml_compute_forward_dup(
+             } break;
+         case GGML_TYPE_I32:
+             {
+-                if (dst->type == GGML_TYPE_F32) ggml_compute_forward_dup_flt<int32_t, float>(params, dst);
+-                else GGML_ABORT("not implemented");
++                /**/ if (dst->type == GGML_TYPE_F32)  ggml_compute_forward_dup_flt<int32_t, float      >(params, dst);
++                else if (dst->type == GGML_TYPE_F16)  ggml_compute_forward_dup_flt<int32_t, ggml_fp16_t >(params, dst);
++                else if (dst->type == GGML_TYPE_BF16) ggml_compute_forward_dup_flt<int32_t, ggml_bf16_t >(params, dst);
++                else if (dst->type == GGML_TYPE_I64)  ggml_compute_forward_dup_flt<int32_t, int64_t    >(params, dst);
++                else GGML_ABORT("not implemented: dup %s -> %s", ggml_type_name(src0->type), ggml_type_name(dst->type));
++            } break;
++        case GGML_TYPE_I64:
++            {
++                /**/ if (dst->type == GGML_TYPE_F32)  ggml_compute_forward_dup_flt<int64_t, float      >(params, dst);
++                else if (dst->type == GGML_TYPE_F16)  ggml_compute_forward_dup_flt<int64_t, ggml_fp16_t >(params, dst);
++                else if (dst->type == GGML_TYPE_BF16) ggml_compute_forward_dup_flt<int64_t, ggml_bf16_t >(params, dst);
++                else if (dst->type == GGML_TYPE_I32)  ggml_compute_forward_dup_flt<int64_t, int32_t    >(params, dst);
++                else GGML_ABORT("not implemented: dup %s -> %s", ggml_type_name(src0->type), ggml_type_name(dst->type));
+             } break;
+         default:
+             {
+-- 
+2.55.0.windows.4
+

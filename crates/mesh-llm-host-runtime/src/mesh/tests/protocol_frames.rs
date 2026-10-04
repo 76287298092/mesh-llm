@@ -326,6 +326,7 @@ async fn transitive_peer_update_refreshes_last_mentioned() {
         latency_observer_id: None,
         inference_admission_state: None,
         claimed_log_head: None,
+        capability_report: None,
     };
 
     node.update_transitive_peer(peer_id, &addr, &ann, make_test_endpoint_id(0xee))
@@ -909,6 +910,7 @@ fn stale_serving_announcement(
         claimed_log_head: None,
         #[cfg(feature = "payments")]
         lightning_offers: Default::default(),
+        capability_report: None,
     };
     (addr, ann)
 }

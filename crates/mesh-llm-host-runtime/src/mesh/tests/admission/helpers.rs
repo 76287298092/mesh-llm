@@ -54,6 +54,7 @@ pub(super) fn make_test_peer(id: EndpointId, rtt_ms: Option<u32>, vram_gb: u64) 
         selected_path: None,
         propagated_latency: None,
         inference_admission_state: None,
+        capability_report: None,
     }
 }
 pub(super) fn test_owner_keypair(
@@ -436,5 +437,6 @@ pub(super) fn requirement_peer_announcement(
         latency_observer_id: None,
         inference_admission_state: None,
         claimed_log_head: None,
+        capability_report: None,
     }
 }

@@ -189,6 +189,7 @@ pub(super) fn split_test_peer(
         propagated_latency: None,
         owner_summary: crate::crypto::OwnershipSummary::default(),
         inference_admission_state: None,
+        capability_report: None,
     }
 }
 

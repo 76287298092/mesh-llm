@@ -45,12 +45,27 @@ pub(super) fn runtime_capacity_request_for_model(
     capacity_bytes: u64,
     model_bytes: u64,
 ) -> RuntimeCapacityRequest {
+    let required_bytes = runtime_model_required_bytes(model_bytes);
+    // The ledger's rule is that a reservation has to fit the pool. For a mapped
+    // model that rule degenerates into a size check on the whole model, and a
+    // model larger than the node is then refused even though paging is exactly
+    // how it is meant to run -- which leaves the console with no backend to talk
+    // to. Under the mapping opt-in, what has to fit is the resident set, so this
+    // model reserves the node's whole pool. The ledger keeps bounding how many
+    // models a node holds, which is the job it exists for; it stops being a veto
+    // on any single model's size. Capacity 0 is left alone: an unmeasured node
+    // must not silently gain an unbounded pool.
+    let required_bytes = if capacity_bytes > 0 && super::local_split::serve_over_capacity_locally() {
+        required_bytes.min(capacity_bytes)
+    } else {
+        required_bytes
+    };
     RuntimeCapacityRequest {
         instance_id: instance_id.to_string(),
         model_name: model_name.to_string(),
         pool: runtime_capacity_pool(pinned_gpu),
         capacity_bytes,
-        required_bytes: runtime_model_required_bytes(model_bytes),
+        required_bytes,
     }
 }
 

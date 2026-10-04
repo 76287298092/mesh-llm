@@ -151,6 +151,7 @@ pub(crate) struct LocalAnnouncementData {
     gpu_mem_bandwidth_gbps: Option<String>,
     gpu_compute_tflops_fp32: Option<String>,
     gpu_compute_tflops_fp16: Option<String>,
+    capability_report: Option<mesh_llm_system::capability::CapabilityReport>,
     inference_admission_state: Option<crate::proto::node::InferenceAdmissionState>,
 }
 
@@ -278,6 +279,9 @@ pub(super) fn apply_transitive_ann(
         // is never paired with the new budget and rebroadcast as such.
         None if capacity_changed => existing.memory = None,
         None => {}
+    }
+    if let Some(report) = ann.capability_report.as_ref() {
+        existing.capability_report = Some(report.clone());
     }
     if ann.gpu_mem_bandwidth_gbps.is_some() {
         existing.gpu_mem_bandwidth_gbps = ann.gpu_mem_bandwidth_gbps.clone();
@@ -468,6 +472,9 @@ impl Node {
                 &self.gpu_compute_tflops_fp16,
             )
             .await,
+            capability_report: Some(
+                mesh_llm_system::capability::CapabilityReport::collect_mesh_snapshot(),
+            ),
             inference_admission_state: activity_advertisement.admission_state,
         }
     }
@@ -512,6 +519,7 @@ impl Node {
             gpu_vram: peer.gpu_vram.clone(),
             gpu_reserved_bytes: peer.gpu_reserved_bytes.clone(),
             memory: peer.memory,
+            capability_report: peer.capability_report.clone(),
             gpu_mem_bandwidth_gbps: peer.gpu_mem_bandwidth_gbps.clone(),
             gpu_compute_tflops_fp32: peer.gpu_compute_tflops_fp32.clone(),
             gpu_compute_tflops_fp16: peer.gpu_compute_tflops_fp16.clone(),
@@ -588,6 +596,7 @@ impl Node {
                 .then(|| self.gpu_reserved_bytes.clone())
                 .flatten(),
             memory: self.enumerate_host.then_some(self.advertised_memory),
+            capability_report: self.enumerate_host.then_some(data.capability_report).flatten(),
             gpu_mem_bandwidth_gbps: data.gpu_mem_bandwidth_gbps,
             gpu_compute_tflops_fp32: data.gpu_compute_tflops_fp32,
             gpu_compute_tflops_fp16: data.gpu_compute_tflops_fp16,

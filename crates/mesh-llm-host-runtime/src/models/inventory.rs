@@ -283,6 +283,87 @@ fn metadata_cache_missing_for_path(path: &Path) -> bool {
     serde_json::from_slice::<CachedCompactModelMetadata>(&bytes).is_err()
 }
 
+/// Compact metadata and declared weight bytes for a local layer package
+/// directory, or `None` when the path is not one.
+///
+/// The ordinary scan walks the Hugging Face cache for `.gguf` files, so a
+/// package served straight from a directory on disk is invisible to it and every
+/// field the WebUI derives from inventory metadata came out unknown — context
+/// length, quantization, architecture, layer and head counts — for a model whose
+/// `shared/metadata.gguf` carries exactly the KV pairs a normal GGUF does.
+///
+/// The quantization is the package's own declaration: the `model-package.json`
+/// `model_id` carries it as a tag (`local/DeepSeek-V4.1-Flash:Q2_K`), and the
+/// file name heuristic cannot see it because there is no file name. That tag
+/// agrees with the metadata's authoritative `general.file_type` (10, `Q2_K`) for
+/// this package; a package whose tag and metadata disagreed would need the
+/// metadata read to win, which needs a `file_type` field on `GgufCompactMeta`.
+pub(crate) fn layer_package_inventory(
+    dir: &Path,
+    model_key: &str,
+) -> Option<(crate::proto::node::CompactModelMetadata, u64)> {
+    let manifest = std::fs::read(dir.join("model-package.json")).ok()?;
+    if manifest.len() > 1 << 20 {
+        return None;
+    }
+    let value: serde_json::Value = serde_json::from_slice(&manifest).ok()?;
+
+    let metadata_path = dir.join("shared").join("metadata.gguf");
+    if !metadata_path.is_file() {
+        return None;
+    }
+
+    let meta = cached_compact_metadata_for_path(
+        &metadata_path,
+        model_key.to_string(),
+        declared_quantization_type(&value).unwrap_or_default(),
+    );
+    let bytes = declared_source_bytes(&value)?;
+    (bytes > 0).then_some((meta, bytes))
+}
+
+/// The `model_id` a layer package declares for itself, or `None` when the path
+/// is not a package directory.
+///
+/// This is the name the rest of the runtime already displays for the package --
+/// `local/DeepSeek-V4.1-Flash:Q2_K` -- and therefore the key the model view
+/// looks metadata up by. Reading it from the manifest is what lets a package be
+/// identified without any ref-to-path resolution, which cannot reach one.
+pub(crate) fn layer_package_model_id(dir: &Path) -> Option<String> {
+    let manifest = std::fs::read(dir.join("model-package.json")).ok()?;
+    if manifest.len() > 1 << 20 {
+        return None;
+    }
+    let value: serde_json::Value = serde_json::from_slice(&manifest).ok()?;
+    let model_id = value.get("model_id")?.as_str()?.trim().to_string();
+    (!model_id.is_empty()).then_some(model_id)
+}
+
+/// The quantization tag a package declares in its own `model_id`.
+fn declared_quantization_type(value: &serde_json::Value) -> Option<String> {
+    let model_id = value.get("model_id")?.as_str()?;
+    let tag = model_id.rsplit(':').next()?;
+    let looks_like_quant = !tag.is_empty()
+        && tag.len() <= 16
+        && tag.chars().any(|c| c.is_ascii_digit())
+        && tag
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-');
+    (looks_like_quant && tag.len() < model_id.len()).then(|| tag.to_string())
+}
+
+/// Total bytes of the source model this package was built from.
+fn declared_source_bytes(value: &serde_json::Value) -> Option<u64> {
+    let files = value.get("source_model")?.get("files")?.as_array()?;
+    let total = files.iter().filter_map(|file| {
+        file.get("byte_size")
+            .or_else(|| file.get("bytes"))
+            .and_then(serde_json::Value::as_u64)
+    });
+    let total = total.fold(0u64, u64::saturating_add);
+    (total > 0).then_some(total)
+}
+
 fn inventory_scan_entries() -> Vec<InventoryScanEntry> {
     let mut entries = Vec::new();
     let mut metadata_seen = HashSet::new();

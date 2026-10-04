@@ -37,6 +37,11 @@ function modelForName(models: ModelSummary[], modelName: string) {
   return models.find((model) => model.name === modelName)
 }
 
+function formatCapabilityBytes(bytes: number | undefined) {
+  if (bytes == null || !Number.isFinite(bytes)) return 'Unknown'
+  return formatDecimalVramGB(bytes / 1e9)
+}
+
 function runtimeBadgeLabel(status: string | undefined, loading: boolean, runtimeError: string | null) {
   if (loading && !status) return 'Loading'
   if (!status && runtimeError) return 'Unavailable'
@@ -370,6 +375,44 @@ function NodeDrawerContent({
                 {hardwareLabel(peer, node)}
               </KV>
             </div>
+
+            {peer.capabilityReport ? (
+              <>
+                <h3 className="sr-only">Reported compute capability</h3>
+                <SectionHead icon={drawerIcon(Cpu)}>CPU and system RAM</SectionHead>
+                <div className="space-y-2 px-[18px]">
+                  <KV label="CPU">{peer.capabilityReport.cpu.model ?? 'Unknown'}</KV>
+                  <KV label="Logical cores">{peer.capabilityReport.cpu.logical_cores ?? 'Unknown'}</KV>
+                  <KV label="Total system RAM">
+                    {formatCapabilityBytes(peer.capabilityReport.memory.total_bytes)}
+                  </KV>
+                  <KV label="Available system RAM">
+                    {formatCapabilityBytes(peer.capabilityReport.memory.available_bytes)}
+                  </KV>
+                  <KV label="Measured">
+                    {new Date(peer.capabilityReport.measured_at_unix_secs * 1000).toLocaleString()}
+                  </KV>
+                  <KV label="CPU source">{peer.capabilityReport.cpu.source}</KV>
+                  <KV label="RAM source">{peer.capabilityReport.memory.source}</KV>
+                  {peer.capabilityReport.links.length > 0 ? (
+                    <KV label="Network links">
+                      <div className="space-y-1 text-right">
+                        {peer.capabilityReport.links.map((link) => (
+                          <div key={link.name}>
+                            <span className="font-mono">{link.name}</span> · {link.kind}
+                            {link.operstate ? ` · ${link.operstate}` : ''}
+                          </div>
+                        ))}
+                      </div>
+                    </KV>
+                  ) : null}
+                  <p className="text-[length:var(--density-type-caption)] text-fg-faint">
+                    Capability schema v{peer.capabilityReport.schema_version}. System RAM is reported separately from
+                    accelerator VRAM.
+                  </p>
+                </div>
+              </>
+            ) : null}
 
             {peer.memory ? (
               <>

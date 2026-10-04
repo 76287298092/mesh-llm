@@ -68,7 +68,8 @@ use self::local::{
     resolved_model_name, runtime_model_planning_bytes, set_advertised_model_context,
     set_openai_guardrail_policy_mode, set_runtime_verified_served_model_capabilities,
     start_local_openai_model, start_runtime_local_model, start_runtime_split_model,
-    startup_runtime_plan, stop_split_generation_cleanup, withdraw_advertised_model,
+    serve_over_capacity_locally, startup_runtime_plan, stop_split_generation_cleanup,
+    withdraw_advertised_model,
 };
 use self::local_model_only::*;
 pub(crate) use self::model_reconciliation::{

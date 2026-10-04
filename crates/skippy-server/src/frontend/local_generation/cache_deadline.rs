@@ -7,8 +7,18 @@ use std::time::{Duration, Instant};
 const PREFILL_WORK_TOKENS_PER_SEC: f64 = 64.0;
 
 /// Minimum and maximum prompt-scaled prefill work budget.
-const PREFILL_WORK_MIN: Duration = Duration::from_secs(60);
-const PREFILL_WORK_MAX: Duration = Duration::from_secs(30 * 60);
+///
+/// The floor is what a short prompt gets, and 60 s was sized for a model whose
+/// weights are resident: it assumes the prefill of a handful of tokens finishes
+/// inside a minute. A model served by paging its weights in from storage does
+/// not meet that assumption -- every step waits on the device -- and the request
+/// then dies with "cache operation deadline exceeded during scheduler
+/// iteration" before it can produce a single token, at a deadline that is not
+/// reachable from `mesh-llm serve`. The floor is therefore raised to a budget a
+/// disk-backed prefill can actually finish in, and the ceiling raised with it so
+/// the floor never exceeds the cap it is clamped against.
+const PREFILL_WORK_MIN: Duration = Duration::from_secs(30 * 60);
+const PREFILL_WORK_MAX: Duration = Duration::from_secs(2 * 60 * 60);
 
 /// Deadline for one request's KV-restore + prefill-record work.
 ///

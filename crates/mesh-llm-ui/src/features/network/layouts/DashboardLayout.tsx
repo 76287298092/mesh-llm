@@ -9,12 +9,13 @@ type DashboardLayoutProps = {
   status: ReactNode
   topology: ReactNode
   catalog: ReactNode
+  scheduler?: ReactNode
   peers: ReactNode
   connect: ReactNode
   drawers: ReactNode
 }
 
-export function DashboardLayout({ hero, status, topology, catalog, peers, connect, drawers }: DashboardLayoutProps) {
+export function DashboardLayout({ hero, status, topology, catalog, scheduler, peers, connect, drawers }: DashboardLayoutProps) {
   return (
     <div className="flex min-w-0 flex-col gap-[14px]">
       {hero}
@@ -25,6 +26,7 @@ export function DashboardLayout({ hero, status, topology, catalog, peers, connec
         <div className={`flex min-h-0 min-w-0 flex-col ${DASHBOARD_TOPOLOGY_PANEL_HEIGHT_CLASS}`}>{topology}</div>
         <div className={`flex min-h-0 min-w-0 flex-col ${DASHBOARD_TOPOLOGY_PANEL_HEIGHT_CLASS}`}>{catalog}</div>
       </div>
+      {scheduler}
       <div className="min-w-0">{peers}</div>
       <div className="min-w-0">{connect}</div>
       {drawers}

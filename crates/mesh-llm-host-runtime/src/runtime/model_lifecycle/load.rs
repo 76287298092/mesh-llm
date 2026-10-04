@@ -481,6 +481,14 @@ pub(crate) async fn run_auto_load_runtime_model(
     // §8.2 "model resolution completed": the model's source is now known
     // (local path or remote catalog ref), before any native load work.
     load_op.resolution_completed(&runtime_model_name);
+    // Identify the layer package here: the directory is resolved, and this is
+    // still ahead of the capacity reservation below, which returns early for a
+    // model larger than the node's pool. Identification describes what this node
+    // is trying to serve, so it must not depend on that attempt succeeding --
+    // and the console has to be able to name a package whose load was refused.
+    ctx.node
+        .runtime_data_collector()
+        .identify_local_package(&model_path, Some(&runtime_model_name));
     let requested_model = spec.clone();
     let model_bytes = plan_runtime_model_bytes(&model_path, &requested_model).await;
     let ctx_size_override = runtime_model_ctx_size_override(ctx.options, model_overrides);

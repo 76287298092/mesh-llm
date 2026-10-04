@@ -295,6 +295,9 @@ pub struct HardwareInfo {
     /// Introduced in v0.77.0; itemizes the capacity behind PeerAnnouncement.vram_bytes
     #[prost(message, optional, tag = "4")]
     pub memory: ::core::option::Option<MemoryInfo>,
+    /// Versioned CPU, system-RAM, storage, and link report; independent of accelerator VRAM
+    #[prost(bytes = "vec", optional, tag = "5")]
+    pub capability_report_json: ::core::option::Option<::prost::alloc::vec::Vec<u8>>,
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GpuInfo {

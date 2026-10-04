@@ -481,6 +481,39 @@ impl RuntimeDataCollector {
             }
         }
 
+        // A layer package served straight from a directory on disk is in neither
+        // the local inventory scan nor any peer's metadata, so every field
+        // derived from metadata came out unknown for a model this node is
+        // actually serving. Identify it from the package itself.
+        //
+        // The lists hold model REFS, not paths: `serving_models` carries
+        // `local/DeepSeek-V4.1-Flash:Q2_K` even when the operator passed the
+        // package directory to `--model`. Resolving the ref first is what makes
+        // the package discoverable; testing the ref as a path matched nothing
+        // and silently changed nothing.
+        for name in input
+            .served_models
+            .iter()
+            .chain(input.my_hosted_models.iter())
+        {
+            if metadata_by_name.contains_key(name) {
+                continue;
+            }
+            let path = crate::models::find_model_path(name);
+            let identified = crate::models::inventory::layer_package_inventory(&path, name)
+                .or_else(|| {
+                    crate::models::inventory::layer_package_inventory(
+                        std::path::Path::new(name),
+                        name,
+                    )
+                });
+            let Some((meta, bytes)) = identified else {
+                continue;
+            };
+            size_by_name.entry(name.clone()).or_insert(bytes);
+            metadata_by_name.insert(name.clone(), meta);
+        }
+
         let mut catalog = std::mem::take(&mut input.catalog);
         let mut catalog_names = catalog
             .iter()
@@ -529,8 +562,98 @@ impl RuntimeDataCollector {
 
     fn replace_local_inventory_snapshot(&self, snapshot: LocalModelInventorySnapshot) -> bool {
         self.update_snapshots(RuntimeDataDirty::INVENTORY, |snapshots| {
-            replace_local_inventory_snapshot(&mut snapshots.local_inventory, snapshot)
+            // The scan publishes by wholesale replacement, so anything another
+            // source put into this snapshot -- a layer package identified at
+            // launch, which no filesystem walk can find -- is discarded the
+            // moment the next scan lands. Carry those entries across. The scan
+            // stays authoritative for everything it did find; it just does not
+            // get to erase what it cannot see.
+            let mut carried = snapshot;
+            for (name, meta) in snapshots.local_inventory.metadata_by_name.iter() {
+                carried
+                    .metadata_by_name
+                    .entry(name.clone())
+                    .or_insert_with(|| meta.clone());
+            }
+            for (name, size) in snapshots.local_inventory.size_by_name.iter() {
+                carried.size_by_name.entry(name.clone()).or_insert(*size);
+            }
+            for name in snapshots.local_inventory.model_names.iter() {
+                carried.model_names.insert(name.clone());
+            }
+            replace_local_inventory_snapshot(&mut snapshots.local_inventory, carried)
         })
+    }
+
+    /// Record the metadata of a layer package this node serves from a directory,
+    /// so the model view can identify it.
+    ///
+    /// The view cannot work this out for itself. Its inputs carry model refs, and
+    /// the only ref-to-path registry in the tree is written by
+    /// `model_ref_for_path`, which produces Hugging Face refs or
+    /// `local-gguf/sha256-...` -- never the `model_id` a package declares
+    /// (`local/DeepSeek-V4.1-Flash:Q2_K`). So a package served straight from a
+    /// directory resolves to a path that does not exist and every metadata field
+    /// the WebUI shows comes out empty. This is called from the one place that
+    /// still holds the directory, before the ref is all that is left.
+    pub(crate) fn identify_local_package(&self, path: &std::path::Path, alias: Option<&str>) {
+        let Some(name) = crate::models::inventory::layer_package_model_id(path) else {
+            tracing::info!(
+                target: "runtime_data",
+                path = %path.display(),
+                "identify_local_package: not a layer package directory"
+            );
+            return;
+        };
+        let Some((meta, bytes)) =
+            crate::models::inventory::layer_package_inventory(path, &name)
+        else {
+            tracing::info!(
+                target: "runtime_data",
+                path = %path.display(),
+                name = %name,
+                "identify_local_package: package has no readable shared/metadata.gguf"
+            );
+            return;
+        };
+        // Insert under the package's own model_id -- that is the string the
+        // model view looks metadata up by -- and under the runtime model name
+        // too when it differs, so either spelling finds it.
+        let keys: Vec<String> = std::iter::once(name.clone())
+            .chain(alias.map(str::to_string))
+            .collect();
+        self.update_snapshots(RuntimeDataDirty::INVENTORY, |snapshots| {
+            let inventory = &mut snapshots.local_inventory;
+            for key in &keys {
+                inventory.model_names.insert(key.clone());
+                inventory.size_by_name.insert(key.clone(), bytes);
+                inventory.metadata_by_name.insert(key.clone(), meta.clone());
+            }
+            true
+        });
+        // Emitted as an output event, not only a tracing record: this project's
+        // console log has been observed to carry the event stream's scopes and
+        // not arbitrary tracing targets, and a diagnostic that might be filtered
+        // out cannot settle whether this ran.
+        let _ = mesh_llm_events::emit_event(mesh_llm_events::OutputEvent::Info {
+            message: format!(
+                "identified local layer package {name} ({} bytes, arch {}, {} layers, ctx {}, quant {})",
+                bytes, meta.architecture, meta.layer_count, meta.context_length, meta.quantization_type
+            ),
+            context: Some(format!("model={name} path={} keys={}", path.display(), keys.join("|"))),
+        });
+        tracing::info!(
+            target: "runtime_data",
+            path = %path.display(),
+            name = %name,
+            alias = alias.unwrap_or("-"),
+            bytes,
+            arch = %meta.architecture,
+            context_length = meta.context_length,
+            layer_count = meta.layer_count,
+            quantization = %meta.quantization_type,
+            "identify_local_package: identified the served layer package"
+        );
     }
 
     /// Generation-tagged field-level merge gate for the collector's
@@ -1244,6 +1367,7 @@ fn build_peer_payload(peer: &mesh::PeerInfo, has_connection: bool) -> PeerPayloa
         hostname: peer.hostname.clone(),
         is_soc: peer.is_soc,
         memory: peer.memory.map(MemoryPayload::from),
+        capability_report: peer.capability_report.clone(),
         gpus: build_gpus(
             peer.gpu_name.as_deref(),
             peer.gpu_vram.as_deref(),

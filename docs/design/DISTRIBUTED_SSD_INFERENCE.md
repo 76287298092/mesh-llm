@@ -615,11 +615,79 @@ That is the *consuming* half of the runtime handoff becoming reachable for the f
 only because the harness feeds it no frontier, so feeding it the frame `[0,1)` produces completes the
 last unproven piece of the split contract.
 
+## Layer stages are sufficient; per-expert ranges are not required
+
+Expert-level splitting was evaluated against the layered placement already measured, and rejected on
+its arithmetic rather than on effort. The reasoning is recorded so it does not have to be re-derived,
+and because one part of it (the engram layer) constrains ARM placement independently.
+
+**What a stage already bounds.** A stage costs its owned dense weights plus, per token, only the
+experts that token routes to. The table in "Measured stage footprint" gives both halves: a normal
+layer is `4.977 GiB`, of which `4.581 GiB` is fused experts at `12.2 MiB` each, so the layer holds
+`4.581 GiB / 12.2 MiB` = **384 experts** and a token activates **six** of them, `73.3 MiB`. That is
+**1.6%** of the layer's weights per step. Layer staging divides that per-step term by the number of
+stages, which is the term that actually decides whether a small node can host a stage.
+
+**Why a split inside the layer does not improve on that.** Expert routing is data-dependent and
+changes every token. Partitioning a layer's 384 experts across `E` owners leaves a token's six active
+experts local with probability about `E^-6` under uniform routing -- `1.6e-2` at `E = 2` and `2.4e-4`
+at `E = 4`. Nearly every (token, MoE layer) pair would therefore need the missing experts fetched
+over the network, on the critical path, for a payload the stage would otherwise read from storage it
+already has mapped. The cost is per token rather than per stage, and it cannot be scheduled ahead
+because the router has not run yet when the fetch would have to start.
+
+**The bandwidth check agrees.** Streaming one layer's six experts is `73.3 MiB`. From the local SATA
+SSD at its measured 391--401 MiB/s that is about `0.18 s`. Over 1 GbE (~118 MiB/s) it is about
+`0.62 s`, and over 2.5 GbE (~298 MiB/s) about `0.25 s`. A peer's storage must therefore be several
+times faster than the local device before a remote expert fetch breaks even -- and the local read is
+already the term being hidden behind compute. Cross-node expert distribution was also ruled out as a
+design goal, so nothing recovers that cost.
+
+**The one case that does need care is the engram layer.** Layers 1 and 14 carry a `37.29 GB` engram
+table (`32.37 GB` dense). It stays affordable only because `engram_embd` is created
+`TENSOR_READ_LAZY` and consumed by `ggml_get_rows` as a row-wise gather, so the table is never
+resident. That read mode is documented as *"read rows on demand instead of loading whole tensor;
+requires mmap for now"*, so the engram layer is affordable **only on a node that can mmap the
+table**, and only while the gather keeps touched rows evictable. This is a property of the leaf
+tensor's read mode rather than of the layer's position, which is why it does not argue for splitting
+the layer: splitting the table would not remove the mmap requirement, and staging already keeps the
+layer's other `4.581 GiB` of experts out of the per-step working set.
+
+`[0,1)` contains no engram layer and `[0,2)` does, so two adjacent ranges differ qualitatively, not
+merely in size. ARM placement must treat them as different classes of stage.
+
+### Preservation measure: record per-expert row ranges now
+
+The runtime has no expert-range or row-range concept (see "Where expert-level splitting would attach"
+above), so nothing consumes this today. It is recorded anyway because the alternative is re-deriving
+row ranges for a 246.344 GiB, 1046-tensor artifact and re-publishing it. Additive manifest fields
+carry no consumer and change no behaviour; adding them later is a re-conversion.
+
+### Three gates for an ARM node
+
+Establish these on x86 first. An ARM failure without an established x86 baseline has several
+candidate causes at once, and the x86 baseline is what separates them.
+
+- **Gate A -- a stage program installs.** A node that cannot install one walks into the whole-model
+  reserve at `sched_reserve` and attempts an allocation it can never satisfy; that is what froze this
+  host on `[0,2)` before patch 0061. Gate A is therefore "a stage program installs and the reserve
+  stays sliced", not "the model opens".
+- **Gate B -- the residency trim bounds growth.** The `0.340 GiB` prefill peak is a per-step floor,
+  not a steady-state bound. Pages touched by one token stay resident, later tokens activate different
+  experts, and the set grows toward the `4.838 GiB` closure unless it is evicted. Gate B is growth
+  measured across many tokens with the trim active, not a single prefill.
+- **Gate C -- the engram gather works.** Layer 1's `32.37 GB` table has to be gathered row-wise
+  under `TENSOR_READ_LAZY`, which requires mmap. A 4 GB Android device has a smaller page cache and a
+  far more willing low-memory killer than this host, so gate C is an observation rather than an
+  inference. Failing it does not invalidate layering; it constrains which node may host layers 1
+  and 14.
+
 ## Reproducing any of this
 
-The patch queue `0001..0068` in `third_party/llama.cpp/patches` reproduces the working tree exactly
-(`git am` onto the port baseline yields tree `4ed867be`). The measurement harness is out of tree, at
-`build/v41-port/tools`, with `SAFETY.md` beside it; read that first.
+The patch queue `0001..0071` in `third_party/llama.cpp/patches` reproduces the working tree exactly
+(`git am` onto the port baseline yields tree `0acbf18a`, the tree of the current queue head). The
+measurement harness is out of tree, at `build/v41-port/tools`, with `SAFETY.md` beside it; read that
+first.
 
 Two hard-won operational notes belong here too, because both cost time to diagnose:
 
@@ -628,3 +696,15 @@ Two hard-won operational notes belong here too, because both cost time to diagno
 - Post-hoc free-memory readings prove nothing about safety. Runs that froze this host reported a
   healthy 9.6 GiB free immediately afterwards. The only sound rule is to size the host for the
   reserve, not for the closure, and to grow a range by one layer at a time.
+
+A third belongs to the native build, since it silently produces the wrong artifact class rather than
+failing:
+
+- `scripts/build-llama.sh` resolves its link mode as
+  `LLAMA_LINK_MODE="${LLAMA_STAGE_LINK_MODE:-${SKIPPY_LLAMA_LINK_MODE:-static}}"`. Unlike
+  `LLAMA_BACKEND` on the line above it, it never falls back to `LLAMA_LINK_MODE`, so exporting that
+  name is ignored and the build defaults to `static`. Pointed at an existing shared build directory
+  this reconfigures it to `BUILD_SHARED_LIBS=OFF` and relinks the runtime as static libraries, so the
+  run ends without any DLLs. Select `dynamic` through `LLAMA_STAGE_LINK_MODE`. Reverting afterwards
+  is not free: the objects were compiled with the other configuration, so the whole target graph
+  rebuilds either way, and the cached `CMAKE_C_FLAGS`/`CMAKE_CXX_FLAGS` keep that run's flags.

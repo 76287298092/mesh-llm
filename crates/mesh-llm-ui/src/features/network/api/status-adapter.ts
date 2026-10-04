@@ -157,6 +157,7 @@ function adaptPeer(peer: PeerInfo, fallbackIndex: number): Peer {
     version: peer.version,
     vramGB: peerVramGb(peer),
     memory: memoryBreakdownGB(peer.memory) ?? undefined,
+    capabilityReport: peer.capability_report,
     role: resolvePeerRole(peer),
     nodeState,
     toksPerSec: peer.tok_per_sec,

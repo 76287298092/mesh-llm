@@ -6,6 +6,7 @@ import { MeshVizTopologyGhost } from '@/features/network/components/MeshVizTopol
 import { ModelCatalog } from '@/features/network/components/ModelCatalog'
 import { NetworkHeroBanner } from '@/features/network/components/NetworkHeroBanner'
 import { PeersTable } from '@/features/network/components/PeersTable'
+import { ShardSchedulerPanel } from '@/features/network/components/ShardSchedulerPanel'
 import { LiveDataUnavailableOverlay } from '@/components/ui/LiveDataUnavailableOverlay'
 import { resolveOpenAIBaseUrl } from '@/app/layout/shell-adapter'
 import { DashboardLayout } from '@/features/network/layouts/DashboardLayout'
@@ -230,6 +231,7 @@ function DashboardPageContent({
       catalog={
         <ModelCatalog models={displayData.models} selectedModelName={selectedModelView?.name} onSelect={selectModel} />
       }
+      scheduler={liveMode && statusQuery.data ? <ShardSchedulerPanel status={statusQuery.data} /> : undefined}
       peers={
         <PeersTable
           peers={displayData.peers}

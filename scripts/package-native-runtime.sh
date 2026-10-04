@@ -127,12 +127,26 @@ target_platform() {
         x86_64-unknown-linux-gnu) printf 'linux-x86_64\n' ;;
         aarch64-unknown-linux-gnu) printf 'linux-aarch64\n' ;;
         x86_64-pc-windows-msvc) printf 'windows-x86_64\n' ;;
+        # Android artifacts are labelled by ABI rather than by target triple.
+        # The ABI name is the one the rest of the tree already uses for the same
+        # thing (jniLibs/<abi>/ in the Kotlin SDK, and the llama build directory
+        # build-stage-abi-android-<abi>-cpu), and it is also what keeps the three
+        # Android flavors from colliding on one artifact id.
+        aarch64-linux-android) printf 'android-arm64-v8a\n' ;;
+        armv7-linux-androideabi) printf 'android-armeabi-v7a\n' ;;
+        thumbv7neon-linux-androideabi) printf 'android-armeabi-v7a\n' ;;
+        i686-linux-android) printf 'android-x86\n' ;;
+        x86_64-linux-android) printf 'android-x86_64\n' ;;
         *) printf '%s\n' "$1" | tr '_' '-' ;;
     esac
 }
 
 target_runtime_os() {
     case "$1" in
+        # Must precede the *linux* arm: every Android triple also contains
+        # "linux". "android" is what std::env::consts::OS reports there and what
+        # select-native-runtime.py matches a runtime against.
+        *android*) printf 'android\n' ;;
         *apple-darwin) printf 'macos\n' ;;
         *linux*) printf 'linux\n' ;;
         *windows*) printf 'windows\n' ;;
@@ -342,14 +356,15 @@ build_gpu_benchmark_tool() {
 }
 
 build_model_package_tool() {
-    # The package tool links against the staged Skippy DLLs. Windows native
-    # runtime producers do not have a robust import-library path for that
-    # dynamic link, and the current consumers do not need this offline tool.
-    # Keep Windows runtime artifacts limited to the established DLL producer
-    # path until an import-library mechanism is available.
-    if [[ "$runtime_os" == "windows" ]]; then
-        return 0
-    fi
+    # The package tool links against the staged Skippy shared libraries. Windows
+    # and Android runtime producers have no robust import-library path for that
+    # dynamic link, and the current consumers do not need this offline tool: it is
+    # a host-side CLI, while both of these artifacts are consumed on the target
+    # device. Building it for Android also means a full cross-compile of the crate
+    # in the middle of packaging, which is a silent multi-minute stall.
+    case "$runtime_os" in
+        windows|android) return 0 ;;
+    esac
 
     local tool_rel tool_path source_path configured cargo_target_dir
     local -a cargo_env=(
@@ -625,10 +640,13 @@ rewrite_macos_runtime_paths() {
 }
 
 rewrite_linux_runtime_paths() {
-    case "$TARGET_TRIPLE" in
-        *linux*) ;;
-        *) return 0 ;;
-    esac
+    # Guard on the resolved runtime os rather than the triple. Every Android
+    # triple contains "linux", but Android has no rpath: the platform linker
+    # searches the application's own library directory, so there is nothing to
+    # rewrite and requiring patchelf here would fail Android packaging outright.
+    if [[ "$runtime_os" != "linux" ]]; then
+        return 0
+    fi
     if ! command -v patchelf >/dev/null 2>&1; then
         echo "patchelf is required to package Linux native runtimes" >&2
         exit 1

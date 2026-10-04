@@ -38,6 +38,44 @@ export interface MemoryBreakdown {
   ram_offload_bytes: number
 }
 
+/** Versioned host capability report, separate from accelerator VRAM. */
+export interface CapabilityReport {
+  schema_version: number
+  measured_at_unix_secs: number
+  cpu: {
+    source: string
+    logical_cores?: number
+    model?: string
+    max_freq_khz?: number
+    min_freq_khz?: number
+    governor?: string
+    effective_gflops_fp32?: number
+    compute_probe_ms?: number
+    compute_probe_partial: boolean
+  }
+  memory: {
+    total_bytes?: number
+    available_bytes?: number
+    swap_total_bytes?: number
+    source: string
+  }
+  storage?: {
+    path: string
+    bytes_read: number
+    elapsed_ms: number
+    read_mb_per_sec: number
+    page_cache_may_inflate: boolean
+  }
+  links: Array<{
+    name: string
+    kind: 'wired' | 'wireless' | 'virtual' | 'unknown'
+    source: string
+    operstate?: string
+    speed_mbps?: number
+  }>
+  notes: string[]
+}
+
 export interface ServingModel {
   name: string
   node_id: string
@@ -118,6 +156,7 @@ export interface PeerInfo {
   my_vram_gb?: number
   vram_gb?: number
   memory?: MemoryBreakdown
+  capability_report?: CapabilityReport
   latency_ms?: number
   latency_source?: LatencySource
   latency_age_ms?: number
@@ -138,11 +177,19 @@ export type MeshPublicationState = 'private' | 'public' | 'publish_failed'
 
 export interface RuntimeStageInfo {
   stage_id: string
+  stage_index?: number
+  topology_id?: string
+  run_id?: string
   model_id: string
+  package_ref?: string
   node_id?: string
   layer_start: number
   layer_end: number
   state: string
+  materialized_bytes?: number
+  materialized_pinned?: boolean
+  source_model_bytes?: number
+  error?: string
 }
 
 export interface RuntimeInfo {
@@ -167,6 +214,7 @@ export interface StatusPayload {
   node_state: 'client' | 'standby' | 'loading' | 'serving'
   is_client?: boolean
   model_name: string
+  available_models?: string[]
   llama_ready?: boolean
   runtime?: RuntimeInfo
   peers: PeerInfo[]

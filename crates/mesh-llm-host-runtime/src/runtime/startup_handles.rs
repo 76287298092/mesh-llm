@@ -676,6 +676,16 @@ pub(super) async fn startup_prepare_launch(
         ctx.node.advertised_memory.ram_offload_bytes,
     );
     let model_bytes = startup_planning_model_bytes(&ctx).await?;
+    // Identify the layer package while its directory is still in hand, and
+    // before anything downstream can return early. The model view only ever sees
+    // the ref and cannot resolve a package to a path, so without this a served
+    // package reports no size, no context length and no quantization. This runs
+    // once per launch preparation, ahead of every capacity decision: a package
+    // the node is trying to serve should be describable in the console even when
+    // the launch itself is refused.
+    ctx.node
+        .runtime_data_collector()
+        .identify_local_package(ctx.model_path, None);
     let runtime_plan = startup_runtime_plan(
         ctx.split,
         local_capacity,
@@ -807,6 +817,13 @@ pub(super) async fn startup_launch_runtime(
         backend: None,
         context_length: ctx_size.map(u64::from),
     };
+    // Identify the layer package while its directory is still in hand, and
+    // ahead of both plan branches. This is the launch point for an explicitly
+    // named model, and the Local branch reserves capacity immediately below --
+    // a reservation that returns early for a model larger than this node's pool,
+    // which is exactly the case that must still be nameable in the console.
+    node.runtime_data_collector()
+        .identify_local_package(model_path, Some(model_name));
     match runtime_plan {
         StartupRuntimePlan::Split { reason } => {
             startup_start_split_runtime_loop(StartupSplitRuntimeLoopParams {

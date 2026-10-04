@@ -722,6 +722,7 @@ fn peer_serving(peer_id: iroh::EndpointId, model: &str, vision: bool) -> mesh::P
         propagated_latency: None,
         owner_summary: crate::crypto::OwnershipSummary::default(),
         inference_admission_state: None,
+        capability_report: None,
     }
 }
 

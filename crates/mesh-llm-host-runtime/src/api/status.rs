@@ -547,6 +547,9 @@ pub(crate) struct PeerPayload {
     /// peers that predate it or that hide their hardware.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) memory: Option<MemoryPayload>,
+    /// Versioned CPU, system RAM, storage, and network link measurements.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) capability_report: Option<mesh_llm_system::capability::CapabilityReport>,
     pub(crate) gpus: Vec<GpuEntry>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) first_joined_mesh_ts: Option<u64>,
@@ -1125,6 +1128,7 @@ mod tests {
             is_soc: None,
             gpus: vec![],
             first_joined_mesh_ts: None,
+            capability_report: None,
         };
 
         let json = serde_json::to_string(&peer).expect("serialization failed");
@@ -1159,6 +1163,7 @@ mod tests {
             is_soc: None,
             gpus: vec![],
             first_joined_mesh_ts: None,
+            capability_report: None,
         };
 
         let json = serde_json::to_string(&peer).expect("serialization failed");
@@ -1479,6 +1484,7 @@ mod tests {
             is_soc: Some(false),
             gpus: vec![],
             first_joined_mesh_ts: None,
+            capability_report: None,
         };
 
         let json = serde_json::to_string(&peer).expect("serialization failed");

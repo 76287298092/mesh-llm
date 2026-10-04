@@ -562,6 +562,7 @@ impl Node {
         existing.gpu_vram = ann.gpu_vram.clone();
         existing.gpu_reserved_bytes = ann.gpu_reserved_bytes.clone();
         existing.memory = ann.memory;
+        existing.capability_report = ann.capability_report.clone();
         existing.gpu_mem_bandwidth_gbps = ann.gpu_mem_bandwidth_gbps.clone();
         existing.gpu_compute_tflops_fp32 = ann.gpu_compute_tflops_fp32.clone();
         existing.gpu_compute_tflops_fp16 = ann.gpu_compute_tflops_fp16.clone();

@@ -69,6 +69,7 @@ fn owner_fields_roundtrip_through_proto_announcement() {
         latency_observer_id: None,
         inference_admission_state: None,
         claimed_log_head: None,
+        capability_report: None,
     };
     let proto_pa = local_ann_to_proto_ann(&ann);
     let skippy = proto_pa
@@ -242,6 +243,7 @@ fn advertised_model_throughput_roundtrips_through_proto_announcement() {
         latency_observer_id: None,
         inference_admission_state: None,
         claimed_log_head: None,
+        capability_report: None,
     };
 
     let mut proto_pa = local_ann_to_proto_ann(&ann);
@@ -416,6 +418,7 @@ fn inference_admission_state_roundtrips_through_proto_announcement() {
         latency_observer_id: None,
         inference_admission_state: Some(expected_state),
         claimed_log_head: None,
+        capability_report: None,
     };
 
     let proto_pa = local_ann_to_proto_ann(&ann);
@@ -676,6 +679,7 @@ fn test_proto_round_trip_with_bandwidth_and_tflops() {
         latency_observer_id: None,
         inference_admission_state: None,
         claimed_log_head: None,
+        capability_report: None,
     };
 
     let proto_pa = local_ann_to_proto_ann(&ann);
@@ -740,6 +744,7 @@ fn test_proto_backward_compat_missing_tflops() {
             memory: None,
             is_soc: Some(false),
             hostname: None,
+            capability_report_json: None,
             gpus: vec![crate::proto::node::GpuInfo {
                 name: Some("NVIDIA A100".to_string()),
                 vram_bytes: Some("51539607552".to_string()),
@@ -772,6 +777,7 @@ fn test_proto_gpu_info_preserves_legacy_fields_for_old_consumers() {
             memory: None,
             is_soc: Some(false),
             hostname: Some("worker-01".to_string()),
+            capability_report_json: None,
             gpus: vec![
                 crate::proto::node::GpuInfo {
                     name: Some("NVIDIA A100".to_string()),
@@ -923,6 +929,7 @@ fn malformed_memory_blocks_are_dropped_at_ingest() {
             hostname: None,
             gpus: vec![],
             memory: Some(memory),
+            capability_report_json: None,
         }),
         ..Default::default()
     };
@@ -1002,6 +1009,7 @@ fn memory_block_exceeding_the_placement_budget_is_dropped_at_ingest() {
                 usable_bytes: Some(12_000_000_000),
                 ..Default::default()
             }),
+            capability_report_json: None,
         }),
         ..Default::default()
     };
@@ -1084,6 +1092,7 @@ fn claimed_log_head_test_announcement(
         claimed_log_head,
         #[cfg(feature = "payments")]
         lightning_offers: Default::default(),
+        capability_report: None,
     }
 }
 
@@ -1198,6 +1207,7 @@ fn proto_announcement_without_claimed_log_head_decodes_as_absent() {
         claimed_log_head: None,
         #[cfg(feature = "payments")]
         lightning_offers: Default::default(),
+        capability_report: None,
     };
     // Encode to wire bytes, then decode back — this is what an old peer's
     // message looks like on the wire when it has never set tag 51.

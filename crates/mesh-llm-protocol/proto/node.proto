@@ -285,6 +285,7 @@ message HardwareInfo {
   optional string hostname = 2;
   repeated GpuInfo gpus = 3;
   optional MemoryInfo memory = 4;                    // Introduced in v0.77.0; itemizes the capacity behind PeerAnnouncement.vram_bytes
+  optional bytes capability_report_json = 5;         // Versioned CPU, system-RAM, storage, and link report; independent of accelerator VRAM
 }
 
 message GpuInfo {

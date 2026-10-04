@@ -135,12 +135,38 @@ required_static_archives_exist() {
      -f "$LLAMA_BUILD_DIR/ggml/src/ggml-cpu/libggml-cpu.a" ]]
 }
 
-dynamic_library_name_groups() {
+# Expected shared-library names follow the TARGET, not the host.
+#
+# This used to switch on `uname -s` alone, so a dynamic cross-build to Android
+# from Git Bash (uname "MINGW64_NT-...") looked for libllama.dll while CMake had
+# just linked bin/libllama.so, and required_outputs_exist reported "patched
+# llama.cpp build completed without the full link closure" for a complete build.
+# The requested target is visible in the CMake arguments the script is about to
+# pass, so read it there and fall back to the host only when nothing says
+# otherwise.
+llama_target_os() {
+  local arg
+  for arg in "${CMAKE_ARGS[@]}"; do
+    case "$arg" in
+      -DANDROID_ABI=*|*android.toolchain.cmake*|-DCMAKE_SYSTEM_NAME=Android) printf 'android\n'; return 0 ;;
+      -DCMAKE_SYSTEM_NAME=Darwin|*apple-darwin*) printf 'macos\n'; return 0 ;;
+      -DCMAKE_SYSTEM_NAME=Linux) printf 'linux\n'; return 0 ;;
+      -DCMAKE_SYSTEM_NAME=Windows) printf 'windows\n'; return 0 ;;
+    esac
+  done
   case "$(uname -s)" in
-    Darwin)
+    Darwin) printf 'macos\n' ;;
+    MINGW*|MSYS*|CYGWIN*) printf 'windows\n' ;;
+    *) printf 'linux\n' ;;
+  esac
+}
+
+dynamic_library_name_groups() {
+  case "$(llama_target_os)" in
+    macos)
       printf '%s\n' libllama.dylib libllama-common.dylib libmtmd.dylib
       ;;
-    MINGW*|MSYS*|CYGWIN*)
+    windows)
       # CMake's MinGW generator normally prefixes these DLLs with "lib";
       # retain the unprefixed MSVC-compatible spelling as an accepted
       # alternative because both are valid runtime package inputs.

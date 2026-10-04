@@ -974,8 +974,16 @@ pub(super) async fn start_local_openai_model(
     let local_layer_fraction: Option<f64> = None;
 
     let required_bytes = runtime_model_required_bytes(local_model_bytes);
+    // The comment above states this path's premise: the entire model is loaded
+    // on this node. A mapped model breaks that premise -- its weights are paged
+    // and what has to fit is the resident set the runtime keeps, bounded by its
+    // own budget rather than by the model's size. Applying the whole-model test
+    // anyway refuses exactly the load this node is configured to serve, so under
+    // the mapping opt-in the node's capacity is accepted as the resident budget.
+    // Capacity 0 keeps the check: an unmeasured node must not pass it either way.
+    let serves_by_mapping = my_vram > 0 && serve_over_capacity_locally();
     anyhow::ensure!(
-        my_vram >= required_bytes,
+        serves_by_mapping || my_vram >= required_bytes,
         "runtime load only supports models that fit locally on this node; model requires {}, local capacity is {}",
         format_gb(required_bytes),
         format_gb(my_vram)

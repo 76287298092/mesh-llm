@@ -150,6 +150,7 @@ pub(super) fn fleet_peer(seed: u32, model: FleetModel) -> mesh::PeerInfo {
         display_rtt: None,
         selected_path: None,
         propagated_latency: None,
+        capability_report: None,
     }
 }
 

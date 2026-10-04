@@ -1332,6 +1332,7 @@ fn test_remote_peer(seed: u32, model: &str) -> mesh::PeerInfo {
         propagated_latency: None,
         owner_summary: crate::crypto::OwnershipSummary::default(),
         inference_admission_state: None,
+        capability_report: None,
     }
 }
 

@@ -70,6 +70,7 @@ pub(crate) fn test_announcement(ts: Option<u64>) -> PeerAnnouncement {
         latency_observer_id: None,
         inference_admission_state: None,
         claimed_log_head: None,
+        capability_report: None,
     }
 }
 

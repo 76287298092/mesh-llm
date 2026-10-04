@@ -60,6 +60,7 @@ fn test_peer_announcement_first_joined_mesh_ts_roundtrip() {
         latency_observer_id: None,
         inference_admission_state: None,
         claimed_log_head: None,
+        capability_report: None,
     };
 
     let proto_pa = local_ann_to_proto_ann(&ann_with_timestamp);
@@ -122,6 +123,7 @@ fn test_peer_announcement_first_joined_mesh_ts_roundtrip() {
         latency_observer_id: None,
         inference_admission_state: None,
         claimed_log_head: None,
+        capability_report: None,
     };
 
     let proto_pa = local_ann_to_proto_ann(&ann_without_timestamp);

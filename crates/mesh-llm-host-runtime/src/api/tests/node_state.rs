@@ -129,6 +129,7 @@ fn make_test_state_peer(seed: u8, role: mesh::NodeRole) -> mesh::PeerInfo {
         selected_path: None,
         propagated_latency: None,
         inference_admission_state: None,
+        capability_report: None,
     }
 }
 

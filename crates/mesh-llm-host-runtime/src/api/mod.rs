@@ -747,12 +747,19 @@ impl MeshApi {
 
     async fn local_inventory_snapshot(&self) -> crate::models::LocalModelInventorySnapshot {
         let runtime_data_collector = self.inner.lock().await.runtime_data_collector.clone();
-        runtime_data_collector
+        // Drive (or join) the scan so the collector is current, then read the
+        // collector's own snapshot rather than the scan's result. The scan only
+        // knows what it can walk; the collector's copy also carries entries that
+        // were identified at launch -- a layer package served straight from a
+        // directory, which no filesystem walk finds. Returning the raw scan here
+        // is what kept those entries out of the model view even once they were
+        // being written.
+        let _ = runtime_data_collector
             .coalesce_local_inventory_scan(|| {
                 crate::models::scan_local_inventory_snapshot_with_progress(|_| {})
             })
-            .await
-            .unwrap_or_else(|_| runtime_data_collector.local_inventory_snapshot())
+            .await;
+        runtime_data_collector.local_inventory_snapshot()
     }
 
     async fn mesh_models(&self) -> Vec<MeshModelPayload> {
@@ -761,7 +768,12 @@ impl MeshApi {
             (
                 inner.runtime_data_collector.clone(),
                 inner.node.clone(),
-                inner.node.vram_bytes() as f64 / 1e9,
+                // The capacity the launch planner uses, not accelerator memory
+                // alone. `vram_bytes()` is 0.0 on a CPU-only node, and the fit
+                // hint below gives up on any machine whose capacity reads as
+                // zero -- so every model showed "Unknown" on a host whose
+                // capacity the loader had already measured as 12.6 GB.
+                inner.node.local_runtime_capacity_bytes() as f64 / 1e9,
                 inner.model_name.clone(),
                 inner.model_size_bytes,
             )

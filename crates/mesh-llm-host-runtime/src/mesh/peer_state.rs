@@ -142,6 +142,9 @@ pub struct PeerAnnouncement {
     /// Itemized view of `vram_bytes`; absent from peers that predate it or
     /// that do not enumerate their hardware.
     pub(crate) memory: Option<AdvertisedMemory>,
+    /// Versioned CPU, host RAM, storage, and link measurements, independent
+    /// of the accelerator placement budget above.
+    pub(crate) capability_report: Option<mesh_llm_system::capability::CapabilityReport>,
     pub(crate) gpu_mem_bandwidth_gbps: Option<String>,
     pub(crate) gpu_compute_tflops_fp32: Option<String>,
     pub(crate) gpu_compute_tflops_fp16: Option<String>,
@@ -271,6 +274,8 @@ pub struct PeerInfo {
     pub gpu_reserved_bytes: Option<String>,
     /// Itemized view of `vram_bytes` when the peer advertised one.
     pub memory: Option<AdvertisedMemory>,
+    /// Versioned CPU, host RAM, storage, and link measurements.
+    pub capability_report: Option<mesh_llm_system::capability::CapabilityReport>,
     pub gpu_mem_bandwidth_gbps: Option<String>,
     pub gpu_compute_tflops_fp32: Option<String>,
     pub gpu_compute_tflops_fp16: Option<String>,
@@ -363,6 +368,7 @@ impl PeerInfo {
             gpu_vram: ann.gpu_vram.clone(),
             gpu_reserved_bytes: ann.gpu_reserved_bytes.clone(),
             memory: ann.memory,
+            capability_report: ann.capability_report.clone(),
             gpu_mem_bandwidth_gbps: ann.gpu_mem_bandwidth_gbps.clone(),
             gpu_compute_tflops_fp32: ann.gpu_compute_tflops_fp32.clone(),
             gpu_compute_tflops_fp16: ann.gpu_compute_tflops_fp16.clone(),
